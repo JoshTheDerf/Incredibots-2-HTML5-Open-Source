@@ -294,7 +294,6 @@ export class ControllerMainMenu extends Controller
 		this.userText = new Text("Welcome, " + (ControllerGameGlobals.userName == "_Public" ? "Guest" : ControllerGameGlobals.userName));
 		this.userText.x = 10;
 		this.userText.y = 20;
-		this.userText.width = 200;
 		this.userText.style = style;
 		this.levelSelectGui.addChild(this.userText);
 

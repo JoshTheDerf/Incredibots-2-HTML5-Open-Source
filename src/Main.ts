@@ -67,6 +67,7 @@ export class Main {
 
 			if (domain == "incredibotsgold.com") Main.premiumMode = true;
 
+			renderer.ticker.maxFPS = 30 // Cap FPS to 30 as the FPS is tied directly to the game loop and the flash version was designed this way. :(
 			renderer.ticker.add((delta) => this.update())
 
 			addEventListener(Event.ADDED_TO_STAGE, this.Init, false, 0, true);
