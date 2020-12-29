@@ -155,10 +155,11 @@ export class GuiButton extends Sprite
 	}
 
 	private mouseOver(e:MouseEvent):void {
-		if (Main.enableSound && GuiButton.lastRolloverFrame != Main.frameCounter) {
+		if (Main.enableSound && GuiButton.lastRolloverFrame != Math.floor(Date.now() / 150)) {
+			GuiButton.rolloverSound.stop()
 			GuiButton.rolloverSound.volume = 0.3
 			GuiButton.rolloverSound.play()
-			GuiButton.lastRolloverFrame = Main.frameCounter;
+			GuiButton.lastRolloverFrame = Math.floor(Date.now() / 150);
 		}
 		this.texture = this.overTexture
 	}
