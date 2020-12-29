@@ -2,9 +2,9 @@
 
 import { Application, Container, Sprite } from "pixi.js";
 import { Controller } from "./Game/Controller";
-import { ControllerGame } from "./Game/ControllerGame";
+import { ControllerGameGlobals } from "./Game/Globals/ControllerGameGlobals";
 import { ControllerMainMenu } from "./Game/ControllerMainMenu";
-import { Resource } from "./Game/Graphics/Resource";
+import { ControllerSandbox } from "./Game/ControllerSandbox";
 import { SandboxSettings } from "./Game/SandboxSettings";
 import { FpsCounter } from "./General/FpsCounter";
 import { LSOManager } from "./General/LSOManager";
@@ -129,25 +129,25 @@ export class Main {
 					ControllerSandbox.settings = new SandboxSettings(15.0, 0, 0, 0, 0);
 					Main.m_curController = new ControllerSandbox();
 					(Main.m_curController as ControllerGame).LoadReplayNow(replayID);
-					ControllerGame.potentialReplayID = replayID;
-					ControllerGame.potentialReplayPublic = true;
-					ControllerGame.replayDirectlyLinked = true;
+					ControllerGameGlobals.potentialReplayID = replayID;
+					ControllerGameGlobals.potentialReplayPublic = true;
+					ControllerGameGlobals.replayDirectlyLinked = true;
 					Main.theRoot.addChild(Main.m_curController);
 					Main.nextControllerType = 0;
 				} else if (Main.loadRobotMode && !Main.premiumMode) {
 					ControllerSandbox.settings = new SandboxSettings(15.0, 0, 0, 0, 0);
 					Main.m_curController = new ControllerSandbox();
 					(Main.m_curController as ControllerGame).LoadRobotNow(robotID);
-					ControllerGame.potentialRobotID = robotID;
-					ControllerGame.potentialRobotPublic = true;
+					ControllerGameGlobals.potentialRobotID = robotID;
+					ControllerGameGlobals.potentialRobotPublic = true;
 					Main.theRoot.addChild(Main.m_curController);
 					Main.nextControllerType = 0;
 				} else if (Main.loadChallengeMode && !Main.premiumMode) {
 					ControllerSandbox.settings = new SandboxSettings(15.0, 0, 0, 0, 0);
 					Main.m_curController = new ControllerSandbox();
 					(Main.m_curController as ControllerGame).LoadChallengeNow(challengeID);
-					ControllerGame.potentialChallengeID = challengeID;
-					ControllerGame.potentialChallengePublic = true;
+					ControllerGameGlobals.potentialChallengeID = challengeID;
+					ControllerGameGlobals.potentialChallengePublic = true;
 					Main.theRoot.addChild(Main.m_curController);
 					Main.nextControllerType = 0;
 				} else {

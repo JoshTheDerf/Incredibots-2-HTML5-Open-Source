@@ -13,8 +13,9 @@ import { Thrusters } from "../Parts/Thrusters";
 import { Challenge } from "./Challenge";
 import { ContactFilter } from "./ContactFilter";
 import { Controller } from "./Controller";
-import { ControllerGame } from "./ControllerGame";
+import { ControllerSandbox } from "./ControllerSandbox";
 import { Draw } from "./Draw";
+import { ControllerGameGlobals } from "./Globals/ControllerGameGlobals";
 import { Gradient } from "./Graphics/Gradient";
 import { Resource } from "./Graphics/Resource";
 import { Sky } from "./Graphics/Sky";
@@ -103,8 +104,8 @@ export class ControllerMainMenu extends Controller
 		ControllerMainMenu.cannonballs = new Array();
 
 		if (Main.enableSound) {
-			ControllerGame.introVolume = (straightToLevelSelect ? 0.4 : 0.5);
-			ControllerMainMenu.introSong.volume = ControllerGame.introVolume
+			ControllerGameGlobals.introVolume = (straightToLevelSelect ? 0.4 : 0.5);
+			ControllerMainMenu.introSong.volume = ControllerGameGlobals.introVolume
 			ControllerMainMenu.introSong.play();
 		}
 
@@ -249,10 +250,10 @@ export class ControllerMainMenu extends Controller
 		button = new GuiButton(" Advanced Sandbox ", 390, 158, 200, 65, this.advancedButton.bind(this), GuiButton.PINK, style);
 		this.levelSelectGui.addChild(button);
 		this.logInButton = new GuiButton("Log In", 675, -5, 120, 60, this.loginButton.bind(this), GuiButton.BLUE, style);
-		this.logInButton.visible = (ControllerGame.userName == "_Public");
+		this.logInButton.visible = (ControllerGameGlobals.userName == "_Public");
 		this.levelSelectGui.addChild(this.logInButton);
 		this.logOutButton = new GuiButton("Log Out", 675, -5, 120, 60, this.logout.bind(this), GuiButton.BLUE, style);
-		this.logOutButton.visible = (ControllerGame.userName != "_Public");
+		this.logOutButton.visible = (ControllerGameGlobals.userName != "_Public");
 		this.levelSelectGui.addChild(this.logOutButton);
 		this.enableSoundButton = new GuiButton("Enable Sound", 5, 535, 150, 60, this.enableSoundButtonPressed.bind(this), GuiButton.BLUE, style);
 		this.enableSoundButton.visible = !Main.enableSound;
@@ -293,7 +294,7 @@ export class ControllerMainMenu extends Controller
 		style.fontFamily = Main.GLOBAL_FONT;
 		style.fontSize = 12;
 		style.fill = '#FFFFFF';
-		this.userText = new Text("Welcome, " + (ControllerGame.userName == "_Public" ? "Guest" : ControllerGame.userName));
+		this.userText = new Text("Welcome, " + (ControllerGameGlobals.userName == "_Public" ? "Guest" : ControllerGameGlobals.userName));
 		this.userText.x = 10;
 		this.userText.y = 20;
 		this.userText.width = 200;
@@ -353,9 +354,9 @@ export class ControllerMainMenu extends Controller
 			if (this.allParts[i] instanceof JointPart || this.allParts[i] instanceof Thrusters) this.allParts[i].Init(this.world);
 		}
 
-		ControllerGame.curRobotID = "";
-		ControllerGame.curReplayID = "";
-		ControllerGame.curChallengeID = "";
+		ControllerGameGlobals.curRobotID = "";
+		ControllerGameGlobals.curReplayID = "";
+		ControllerGameGlobals.curChallengeID = "";
 
 		this.Update();
 	}
@@ -398,7 +399,7 @@ export class ControllerMainMenu extends Controller
 	}
 
 	private loadRobotButton(e:MouseEvent):void {
-		Database.GetRobotData(ControllerGame.userName, ControllerGame.password, Database.curShared, Database.curSortType, Database.curSortPeriod, (Database.curShared ? Database.curRobotPage : 1), "", this.finishGettingLoadRobotData);
+		Database.GetRobotData(ControllerGameGlobals.userName, ControllerGameGlobals.password, Database.curShared, Database.curSortType, Database.curSortPeriod, (Database.curShared ? Database.curRobotPage : 1), "", this.finishGettingLoadRobotData);
 		this.ShowDialog("Getting robots...");
 		Main.ShowHourglass();
 		this.fader2.visible = true;
@@ -406,7 +407,7 @@ export class ControllerMainMenu extends Controller
 
 	private loadReplayButton(e:MouseEvent):void {
 		if (Database.curSortPeriod == Database.SORT_PERIOD_PROP) Database.curSortPeriod = Database.SORT_PERIOD_ALLTIME;
-		Database.GetReplayData(ControllerGame.userName, ControllerGame.password, Database.curShared, Database.curSortType, Database.curSortPeriod, (Database.curShared ? Database.curReplayPage : 1), "", this.finishGettingLoadReplayData);
+		Database.GetReplayData(ControllerGameGlobals.userName, ControllerGameGlobals.password, Database.curShared, Database.curSortType, Database.curSortPeriod, (Database.curShared ? Database.curReplayPage : 1), "", this.finishGettingLoadReplayData);
 		this.ShowDialog("Getting replays...");
 		Main.ShowHourglass();
 		this.fader2.visible = true;
@@ -414,7 +415,7 @@ export class ControllerMainMenu extends Controller
 
 	private loadChallengeButton(e:MouseEvent):void {
 		if (Database.curSortPeriod == Database.SORT_PERIOD_PROP) Database.curSortPeriod = Database.SORT_PERIOD_ALLTIME;
-		Database.GetChallengeData(ControllerGame.userName, ControllerGame.password, Database.curShared, Database.curSortType, Database.curSortPeriod, (Database.curShared ? Database.curChallengePage : 1), "", this.finishGettingLoadChallengeData);
+		Database.GetChallengeData(ControllerGameGlobals.userName, ControllerGameGlobals.password, Database.curShared, Database.curSortType, Database.curSortPeriod, (Database.curShared ? Database.curChallengePage : 1), "", this.finishGettingLoadChallengeData);
 		this.ShowDialog("Getting challenges...");
 		Main.ShowHourglass();
 		this.fader2.visible = true;
@@ -433,7 +434,7 @@ export class ControllerMainMenu extends Controller
 	}
 
 	private highScoresButton(e:MouseEvent):void {
-		Database.GetChallengeData(ControllerGame.userName, ControllerGame.password, true, Database.curSortType, Database.curSortPeriod, Database.curChallengePage, "", this.finishGettingLoadChallengeForScoreData);
+		Database.GetChallengeData(ControllerGameGlobals.userName, ControllerGameGlobals.password, true, Database.curSortType, Database.curSortPeriod, Database.curChallengePage, "", this.finishGettingLoadChallengeForScoreData);
 		this.ShowDialog("Getting challenges...");
 		Main.ShowHourglass();
 		this.fader2.visible = true;
@@ -495,16 +496,16 @@ export class ControllerMainMenu extends Controller
 		for (var i:number = 0; i < loadedParts.length; i++) {
 			if (loadedParts[i] instanceof Thrusters || loadedParts[i] instanceof Cannon) hasThrusters = true;
 		}
-		ControllerGame.loadedParts = loadedParts;
-		ControllerGame.curRobotID = ControllerGame.potentialRobotID;
-		ControllerGame.ratedCurRobot = false;
-		ControllerGame.curRobotEditable = (ControllerGame.potentialRobotEditable/* && (!hasThrusters || Main.premiumMode)*/);
-		ControllerGame.curRobotPublic = ControllerGame.potentialRobotPublic;
-		ControllerGame.curRobotFeatured = ControllerGame.potentialRobotFeatured;
-		ControllerGame.curReplayID = "";
-		ControllerGame.initX = robot.cameraX;
-		ControllerGame.initY = robot.cameraY;
-		ControllerGame.initZoom = robot.zoomLevel;
+		ControllerGameGlobals.loadedParts = loadedParts;
+		ControllerGameGlobals.curRobotID = ControllerGameGlobals.potentialRobotID;
+		ControllerGameGlobals.ratedCurRobot = false;
+		ControllerGameGlobals.curRobotEditable = (ControllerGameGlobals.potentialRobotEditable/* && (!hasThrusters || Main.premiumMode)*/);
+		ControllerGameGlobals.curRobotPublic = ControllerGameGlobals.potentialRobotPublic;
+		ControllerGameGlobals.curRobotFeatured = ControllerGameGlobals.potentialRobotFeatured;
+		ControllerGameGlobals.curReplayID = "";
+		ControllerGameGlobals.initX = robot.cameraX;
+		ControllerGameGlobals.initY = robot.cameraY;
+		ControllerGameGlobals.initZoom = robot.zoomLevel;
 		Main.changeControllers = true;
 		if (robot.challenge) {
 			Main.nextControllerType = 1;
@@ -512,15 +513,15 @@ export class ControllerMainMenu extends Controller
 			ControllerChallenge.playChallengeMode = true;
 			ControllerChallenge.playOnlyMode = true;
 			ControllerSandbox.settings = robot.challenge.settings;
-			ControllerGame.curChallengeID = ControllerGame.potentialChallengeID;
-			ControllerGame.ratedCurChallenge = false;
-			ControllerGame.curChallengePublic = false;
-			ControllerGame.curChallengeFeatured = false;
-			ControllerGame.justLoadedRobotWithChallenge = true;
+			ControllerGameGlobals.curChallengeID = ControllerGameGlobals.potentialChallengeID;
+			ControllerGameGlobals.ratedCurChallenge = false;
+			ControllerGameGlobals.curChallengePublic = false;
+			ControllerGameGlobals.curChallengeFeatured = false;
+			ControllerGameGlobals.justLoadedRobotWithChallenge = true;
 		} else {
 			Main.nextControllerType = 0;
 			ControllerSandbox.settings = robot.settings;
-			ControllerGame.curChallengeID = "";
+			ControllerGameGlobals.curChallengeID = "";
 		}
 	}
 
@@ -533,16 +534,16 @@ export class ControllerMainMenu extends Controller
 			for (var i:number = 0; i < loadedParts.length; i++) {
 				if (loadedParts[i] instanceof Thrusters || loadedParts[i] instanceof Cannon) hasThrusters = true;
 			}
-			ControllerGame.loadedParts = loadedParts;
-			ControllerGame.curRobotID = ControllerGame.potentialRobotID;
-			ControllerGame.ratedCurRobot = false;
-			ControllerGame.curRobotEditable = (ControllerGame.potentialRobotEditable/* && (!hasThrusters || Main.premiumMode)*/);
-			ControllerGame.curRobotPublic = ControllerGame.potentialRobotPublic;
-			ControllerGame.curRobotFeatured = ControllerGame.potentialRobotFeatured;
-			ControllerGame.curReplayID = "";
-			ControllerGame.initX = robot.cameraX;
-			ControllerGame.initY = robot.cameraY;
-			ControllerGame.initZoom = robot.zoomLevel;
+			ControllerGameGlobals.loadedParts = loadedParts;
+			ControllerGameGlobals.curRobotID = ControllerGameGlobals.potentialRobotID;
+			ControllerGameGlobals.ratedCurRobot = false;
+			ControllerGameGlobals.curRobotEditable = (ControllerGameGlobals.potentialRobotEditable/* && (!hasThrusters || Main.premiumMode)*/);
+			ControllerGameGlobals.curRobotPublic = ControllerGameGlobals.potentialRobotPublic;
+			ControllerGameGlobals.curRobotFeatured = ControllerGameGlobals.potentialRobotFeatured;
+			ControllerGameGlobals.curReplayID = "";
+			ControllerGameGlobals.initX = robot.cameraX;
+			ControllerGameGlobals.initY = robot.cameraY;
+			ControllerGameGlobals.initZoom = robot.zoomLevel;
 			Main.changeControllers = true;
 			if (robot.challenge) {
 				Main.nextControllerType = 1;
@@ -550,15 +551,15 @@ export class ControllerMainMenu extends Controller
 				ControllerChallenge.playChallengeMode = true;
 				ControllerChallenge.playOnlyMode = true;
 				ControllerSandbox.settings = robot.challenge.settings;
-				ControllerGame.curChallengeID = ControllerGame.potentialChallengeID;
-				ControllerGame.ratedCurChallenge = false;
-				ControllerGame.curChallengePublic = false;
-				ControllerGame.curChallengeFeatured = false;
-				ControllerGame.justLoadedRobotWithChallenge = true;
+				ControllerGameGlobals.curChallengeID = ControllerGameGlobals.potentialChallengeID;
+				ControllerGameGlobals.ratedCurChallenge = false;
+				ControllerGameGlobals.curChallengePublic = false;
+				ControllerGameGlobals.curChallengeFeatured = false;
+				ControllerGameGlobals.justLoadedRobotWithChallenge = true;
 			} else {
 				Main.nextControllerType = 0;
 				ControllerSandbox.settings = robot.settings;
-				ControllerGame.curChallengeID = "";
+				ControllerGameGlobals.curChallengeID = "";
 			}
 		}
 	}
@@ -567,51 +568,51 @@ export class ControllerMainMenu extends Controller
 		if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_LOAD_REPLAY) return;
 		var replayAndRobot:Array<any> = Database.FinishLoadingReplay(e);
 		if (replayAndRobot) {
-			ControllerGame.replay = replayAndRobot[0];
-			if (ControllerGame.replay.version != Database.VERSION_STRING_FOR_REPLAYS) {
+			ControllerGameGlobals.replay = replayAndRobot[0];
+			if (ControllerGameGlobals.replay.version != Database.VERSION_STRING_FOR_REPLAYS) {
 				this.ShowConfirmDialog("This replay was saved using an older version of IncrediBots.  Redirect there now?", 6);
 				Main.ShowMouse();
 			} else {
 				var robot:Robot = replayAndRobot[1];
-				ControllerGame.replayParts = robot.allParts;
+				ControllerGameGlobals.replayParts = robot.allParts;
 				ControllerSandbox.settings = robot.settings;
-				ControllerGame.playingReplay = true;
+				ControllerGameGlobals.playingReplay = true;
 				Main.changeControllers = true;
 				Main.nextControllerType = 0;
-				ControllerGame.curRobotID = ControllerGame.potentialRobotID;
-				ControllerGame.ratedCurRobot = false;
-				ControllerGame.curReplayID = ControllerGame.potentialReplayID;
-				ControllerGame.ratedCurReplay = false;
-				ControllerGame.curReplayPublic = ControllerGame.potentialReplayPublic;
-				ControllerGame.curReplayFeatured = ControllerGame.potentialReplayFeatured;
-				ControllerGame.curChallengeID = "";
-				ControllerGame.curChallengePublic = false;
-				ControllerGame.curChallengeFeatured = false;
+				ControllerGameGlobals.curRobotID = ControllerGameGlobals.potentialRobotID;
+				ControllerGameGlobals.ratedCurRobot = false;
+				ControllerGameGlobals.curReplayID = ControllerGameGlobals.potentialReplayID;
+				ControllerGameGlobals.ratedCurReplay = false;
+				ControllerGameGlobals.curReplayPublic = ControllerGameGlobals.potentialReplayPublic;
+				ControllerGameGlobals.curReplayFeatured = ControllerGameGlobals.potentialReplayFeatured;
+				ControllerGameGlobals.curChallengeID = "";
+				ControllerGameGlobals.curChallengePublic = false;
+				ControllerGameGlobals.curChallengeFeatured = false;
 			}
 		}
 	}
 
 	public processLoadedReplay(replayAndRobot:Array<any>):void {
-		ControllerGame.replay = replayAndRobot[0];
-		if (ControllerGame.replay.version != Database.VERSION_STRING_FOR_REPLAYS) {
+		ControllerGameGlobals.replay = replayAndRobot[0];
+		if (ControllerGameGlobals.replay.version != Database.VERSION_STRING_FOR_REPLAYS) {
 			this.ShowConfirmDialog("This replay was saved using an older version of IncrediBots.  Redirect there now?", 6);
 			Main.ShowMouse();
 		} else {
 			var robot:Robot = replayAndRobot[1];
-			ControllerGame.replayParts = robot.allParts;
+			ControllerGameGlobals.replayParts = robot.allParts;
 			ControllerSandbox.settings = robot.settings;
-			ControllerGame.playingReplay = true;
+			ControllerGameGlobals.playingReplay = true;
 			Main.changeControllers = true;
 			Main.nextControllerType = 0;
-			ControllerGame.curRobotID = ControllerGame.potentialRobotID;
-			ControllerGame.ratedCurRobot = false;
-			ControllerGame.curReplayID = ControllerGame.potentialReplayID;
-			ControllerGame.ratedCurReplay = false;
-			ControllerGame.curReplayPublic = ControllerGame.potentialReplayPublic;
-			ControllerGame.curReplayFeatured = ControllerGame.potentialReplayFeatured;
-			ControllerGame.curChallengeID = "";
-			ControllerGame.curChallengePublic = false;
-			ControllerGame.curChallengeFeatured = false;
+			ControllerGameGlobals.curRobotID = ControllerGameGlobals.potentialRobotID;
+			ControllerGameGlobals.ratedCurRobot = false;
+			ControllerGameGlobals.curReplayID = ControllerGameGlobals.potentialReplayID;
+			ControllerGameGlobals.ratedCurReplay = false;
+			ControllerGameGlobals.curReplayPublic = ControllerGameGlobals.potentialReplayPublic;
+			ControllerGameGlobals.curReplayFeatured = ControllerGameGlobals.potentialReplayFeatured;
+			ControllerGameGlobals.curChallengeID = "";
+			ControllerGameGlobals.curChallengePublic = false;
+			ControllerGameGlobals.curChallengeFeatured = false;
 		}
 	}
 
@@ -620,19 +621,19 @@ export class ControllerMainMenu extends Controller
 		Main.nextControllerType = 1;
 
 		ControllerChallenge.challenge = challenge;
-		ControllerChallenge.playChallengeMode = !ControllerGame.potentialChallengeEditable;
-		ControllerChallenge.playOnlyMode = !ControllerGame.potentialChallengeEditable;
+		ControllerChallenge.playChallengeMode = !ControllerGameGlobals.potentialChallengeEditable;
+		ControllerChallenge.playOnlyMode = !ControllerGameGlobals.potentialChallengeEditable;
 		ControllerSandbox.settings = challenge.settings;
-		ControllerGame.curChallengeID = ControllerGame.potentialChallengeID;
-		ControllerGame.ratedCurChallenge = false;
-		ControllerGame.curChallengePublic = ControllerGame.potentialChallengePublic;
-		ControllerGame.curChallengeFeatured = ControllerGame.potentialChallengeFeatured;
-		ControllerGame.curRobotID = "";
-		ControllerGame.curReplayID = "";
-		ControllerGame.loadedParts = challenge.allParts;
-		ControllerGame.initX = challenge.cameraX;
-		ControllerGame.initY = challenge.cameraY;
-		ControllerGame.initZoom = challenge.zoomLevel;
+		ControllerGameGlobals.curChallengeID = ControllerGameGlobals.potentialChallengeID;
+		ControllerGameGlobals.ratedCurChallenge = false;
+		ControllerGameGlobals.curChallengePublic = ControllerGameGlobals.potentialChallengePublic;
+		ControllerGameGlobals.curChallengeFeatured = ControllerGameGlobals.potentialChallengeFeatured;
+		ControllerGameGlobals.curRobotID = "";
+		ControllerGameGlobals.curReplayID = "";
+		ControllerGameGlobals.loadedParts = challenge.allParts;
+		ControllerGameGlobals.initX = challenge.cameraX;
+		ControllerGameGlobals.initY = challenge.cameraY;
+		ControllerGameGlobals.initZoom = challenge.zoomLevel;
 	}
 
 	public finishLoadingChallenge(e:Event):void {
@@ -643,19 +644,19 @@ export class ControllerMainMenu extends Controller
 			Main.nextControllerType = 1;
 
 			ControllerChallenge.challenge = challenge;
-			ControllerChallenge.playChallengeMode = !ControllerGame.potentialChallengeEditable;
-			ControllerChallenge.playOnlyMode = !ControllerGame.potentialChallengeEditable;
+			ControllerChallenge.playChallengeMode = !ControllerGameGlobals.potentialChallengeEditable;
+			ControllerChallenge.playOnlyMode = !ControllerGameGlobals.potentialChallengeEditable;
 			ControllerSandbox.settings = challenge.settings;
-			ControllerGame.curChallengeID = ControllerGame.potentialChallengeID;
-			ControllerGame.ratedCurChallenge = false;
-			ControllerGame.curChallengePublic = ControllerGame.potentialChallengePublic;
-			ControllerGame.curChallengeFeatured = ControllerGame.potentialChallengeFeatured;
-			ControllerGame.curRobotID = "";
-			ControllerGame.curReplayID = "";
-			ControllerGame.loadedParts = challenge.allParts;
-			ControllerGame.initX = challenge.cameraX;
-			ControllerGame.initY = challenge.cameraY;
-			ControllerGame.initZoom = challenge.zoomLevel;
+			ControllerGameGlobals.curChallengeID = ControllerGameGlobals.potentialChallengeID;
+			ControllerGameGlobals.ratedCurChallenge = false;
+			ControllerGameGlobals.curChallengePublic = ControllerGameGlobals.potentialChallengePublic;
+			ControllerGameGlobals.curChallengeFeatured = ControllerGameGlobals.potentialChallengeFeatured;
+			ControllerGameGlobals.curRobotID = "";
+			ControllerGameGlobals.curReplayID = "";
+			ControllerGameGlobals.loadedParts = challenge.allParts;
+			ControllerGameGlobals.initX = challenge.cameraX;
+			ControllerGameGlobals.initY = challenge.cameraY;
+			ControllerGameGlobals.initZoom = challenge.zoomLevel;
 		}
 	}
 
@@ -730,9 +731,9 @@ export class ControllerMainMenu extends Controller
 			this.m_progressDialog.SetMessage("Success!");
 			this.m_progressDialog.HideInXSeconds(1);
 			this.m_goldLoginWindow.visible = false;
-			ControllerGame.userName = retVal.substring(retVal.indexOf("user: ") + 6, retVal.indexOf("password: ") - 1);
-			ControllerGame.password = retVal.substring(retVal.indexOf("password: ") + 10, retVal.indexOf("session: ") - 1);
-			ControllerGame.sessionID = retVal.substr(retVal.indexOf("session: ") + 9);
+			ControllerGameGlobals.userName = retVal.substring(retVal.indexOf("user: ") + 6, retVal.indexOf("password: ") - 1);
+			ControllerGameGlobals.password = retVal.substring(retVal.indexOf("password: ") + 10, retVal.indexOf("session: ") - 1);
+			ControllerGameGlobals.sessionID = retVal.substr(retVal.indexOf("session: ") + 9);
 			this.fader.visible = false;
 			this.playButton.visible = true;
 			this.logInButton.visible = false;
@@ -743,7 +744,7 @@ export class ControllerMainMenu extends Controller
 		var format:TextFormat = new TextFormat();
 		format.font = Main.GLOBAL_FONT;
 		format.color = 0xFFFFFF;
-		this.userText.text = "Welcome, " + (ControllerGame.userName == "_Public" ? "Guest" : ControllerGame.userName);
+		this.userText.text = "Welcome, " + (ControllerGameGlobals.userName == "_Public" ? "Guest" : ControllerGameGlobals.userName);
 		this.userText.setTextFormat(format);
 	}
 
@@ -756,9 +757,9 @@ export class ControllerMainMenu extends Controller
 			if (this.m_loginWindow) this.m_loginWindow.visible = false;
 			if (retVal.indexOf("premium") == 0) Main.premiumMode = true;
 			else Main.premiumMode = false;
-			ControllerGame.userName = retVal.substring(retVal.indexOf("user: ") + 6, retVal.indexOf("password: ") - 1);
-			ControllerGame.password = retVal.substring(retVal.indexOf("password: ") + 10, retVal.indexOf("session: ") - 1);
-			ControllerGame.sessionID = retVal.substr(retVal.indexOf("session: ") + 9);
+			ControllerGameGlobals.userName = retVal.substring(retVal.indexOf("user: ") + 6, retVal.indexOf("password: ") - 1);
+			ControllerGameGlobals.password = retVal.substring(retVal.indexOf("password: ") + 10, retVal.indexOf("session: ") - 1);
+			ControllerGameGlobals.sessionID = retVal.substr(retVal.indexOf("session: ") + 9);
 			if (this.m_loadWindow && this.m_loadWindow.visible) {
 				this.m_loadWindow.HideFader();
 				this.m_loadWindow.reportClicked(new MouseEvent(""));
@@ -773,7 +774,7 @@ export class ControllerMainMenu extends Controller
 		var format:TextFormat = new TextFormat();
 		format.font = Main.GLOBAL_FONT;
 		format.color = 0xFFFFFF;
-		this.userText.text = "Welcome, " + (ControllerGame.userName == "_Public" ? "Guest" : ControllerGame.userName);
+		this.userText.text = "Welcome, " + (ControllerGameGlobals.userName == "_Public" ? "Guest" : ControllerGameGlobals.userName);
 		this.userText.setTextFormat(format);
 	}
 
@@ -786,9 +787,9 @@ export class ControllerMainMenu extends Controller
 			if (this.m_loginWindow) this.m_loginWindow.visible = false;
 			this.m_newUserWindow.visible = false;
 			Main.premiumMode = false;
-			ControllerGame.userName = retVal.substring(retVal.indexOf("user: ") + 6, retVal.indexOf("password: ") - 1);
-			ControllerGame.password = retVal.substring(retVal.indexOf("password: ") + 10, retVal.indexOf("session: ") - 1);
-			ControllerGame.sessionID = retVal.substr(retVal.indexOf("session: ") + 9);
+			ControllerGameGlobals.userName = retVal.substring(retVal.indexOf("user: ") + 6, retVal.indexOf("password: ") - 1);
+			ControllerGameGlobals.password = retVal.substring(retVal.indexOf("password: ") + 10, retVal.indexOf("session: ") - 1);
+			ControllerGameGlobals.sessionID = retVal.substr(retVal.indexOf("session: ") + 9);
 			if (this.m_loadWindow && this.m_loadWindow.visible) {
 				this.m_loadWindow.HideFader();
 				this.m_loadWindow.reportClicked(new MouseEvent(""));
@@ -802,7 +803,7 @@ export class ControllerMainMenu extends Controller
 		var format:TextFormat = new TextFormat();
 		format.font = Main.GLOBAL_FONT;
 		format.color = 0xFFFFFF;
-		this.userText.text = "Welcome, " + (ControllerGame.userName == "_Public" ? "Guest" : ControllerGame.userName);
+		this.userText.text = "Welcome, " + (ControllerGameGlobals.userName == "_Public" ? "Guest" : ControllerGameGlobals.userName);
 		this.userText.setTextFormat(format);
 	}
 
@@ -810,19 +811,19 @@ export class ControllerMainMenu extends Controller
 		this.m_loadWindow.visible = true;
 		if (this.m_loadWindow.dataType != SaveLoadWindow.HIGH_SCORE_TYPE && this.m_loadWindow.yourRobotsBox.selected) {
 			if (this.m_loadWindow.dataType == SaveLoadWindow.LOAD_ROBOT_TYPE) {
-				Database.GetRobotData(ControllerGame.userName, ControllerGame.password, false, Database.SORT_BY_EDIT_TIME, Database.SORT_PERIOD_ALLTIME, 1, "", this.finishGettingLoadRobotData);
+				Database.GetRobotData(ControllerGameGlobals.userName, ControllerGameGlobals.password, false, Database.SORT_BY_EDIT_TIME, Database.SORT_PERIOD_ALLTIME, 1, "", this.finishGettingLoadRobotData);
 				this.ShowDialog("Getting robots...");
 			} else if (this.m_loadWindow.dataType == SaveLoadWindow.LOAD_REPLAY_TYPE) {
-				Database.GetReplayData(ControllerGame.userName, ControllerGame.password, false, Database.SORT_BY_EDIT_TIME, Database.SORT_PERIOD_ALLTIME, 1, "", this.finishGettingLoadReplayData);
+				Database.GetReplayData(ControllerGameGlobals.userName, ControllerGameGlobals.password, false, Database.SORT_BY_EDIT_TIME, Database.SORT_PERIOD_ALLTIME, 1, "", this.finishGettingLoadReplayData);
 				this.ShowDialog("Getting replays...");
 			} else {
-				Database.GetChallengeData(ControllerGame.userName, ControllerGame.password, false, Database.SORT_BY_EDIT_TIME, Database.SORT_PERIOD_ALLTIME, 1, "", this.finishGettingLoadChallengeData);
+				Database.GetChallengeData(ControllerGameGlobals.userName, ControllerGameGlobals.password, false, Database.SORT_BY_EDIT_TIME, Database.SORT_PERIOD_ALLTIME, 1, "", this.finishGettingLoadChallengeData);
 				this.ShowDialog("Getting challenges...");
 			}
 			this.m_loadWindow.ShowFader();
 			Main.ShowHourglass();
 		} else if (this.m_loadWindow.dataType == SaveLoadWindow.HIGH_SCORE_TYPE) {
-			Database.GetScoreData(ControllerGame.userName, ControllerGame.password, Database.highScoresChallenge, this.m_loadWindow.m_scoreTypeBox.selectedIndex == 1, this.m_loadWindow.m_scoreTypeBox.selectedIndex == 2, Database.SORT_BY_SCORE, 1, "", this.finishGettingScoreData);
+			Database.GetScoreData(ControllerGameGlobals.userName, ControllerGameGlobals.password, Database.highScoresChallenge, this.m_loadWindow.m_scoreTypeBox.selectedIndex == 1, this.m_loadWindow.m_scoreTypeBox.selectedIndex == 2, Database.SORT_BY_SCORE, 1, "", this.finishGettingScoreData);
 			this.ShowDialog("Getting high scores...");
 			this.m_loadWindow.ShowFader();
 			Main.ShowHourglass();
@@ -847,7 +848,7 @@ export class ControllerMainMenu extends Controller
 		if (threadID != -1) {
 			this.m_loadWindow.HideFader();
 			this.m_progressDialog.visible = false;
-			Main.BrowserRedirect("http://incredibots.com/forums/posting.php?mode=reply&t=" + threadID + (ControllerGame.userName == "_Public" ? "" : "&sid=" + ControllerGame.sessionID), true);
+			Main.BrowserRedirect("http://incredibots.com/forums/posting.php?mode=reply&t=" + threadID + (ControllerGameGlobals.userName == "_Public" ? "" : "&sid=" + ControllerGameGlobals.sessionID), true);
 			Main.ShowMouse();
 		}
 	}
@@ -1041,7 +1042,7 @@ export class ControllerMainMenu extends Controller
 	}
 
 	private playButtonPressed(e:MouseEvent):void {
-		if (!Main.premiumMode || ControllerGame.userName != "") {
+		if (!Main.premiumMode || ControllerGameGlobals.userName != "") {
 			this.playButton.visible = false;
 			this.fader.visible = true;
 			this.levelSelectGui.visible = true;
@@ -1141,12 +1142,12 @@ export class ControllerMainMenu extends Controller
 
 	public logout(e:MouseEvent):void {
 		this.fader2.visible = true;
-		this.ShowConfirmDialog("Are you sure you want to log " + ControllerGame.userName +  " out?", 12);
+		this.ShowConfirmDialog("Are you sure you want to log " + ControllerGameGlobals.userName +  " out?", 12);
 	}
 
 	public ConfirmLogout(e:MouseEvent):void {
 		Main.premiumMode = false;
-		ControllerGame.userName = "_Public";
+		ControllerGameGlobals.userName = "_Public";
 		this.logInButton.visible = true;
 		this.logOutButton.visible = false;
 		this.ShowDialog3("You are now logged out.");
@@ -1175,10 +1176,10 @@ export class ControllerMainMenu extends Controller
 
 	public Update():void {
 		if (ControllerMainMenu.channel && !Main.enableSound) {
-			ControllerGame.introVolume -= 0.01;
-			var st:SoundTransform = new SoundTransform(ControllerGame.introVolume);
+			ControllerGameGlobals.introVolume -= 0.01;
+			var st:SoundTransform = new SoundTransform(ControllerGameGlobals.introVolume);
 			ControllerMainMenu.channel.soundTransform = st;
-			if (ControllerGame.introVolume <= 0) {
+			if (ControllerGameGlobals.introVolume <= 0) {
 				ControllerMainMenu.channel.stop();
 				ControllerMainMenu.channel = null;
 			}

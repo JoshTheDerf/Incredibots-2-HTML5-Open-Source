@@ -5,7 +5,7 @@ import PIXIsound from 'pixi-sound'
 
 type Sound = PIXIsound.Sound
 
-export class GuiButton extends Sprite
+export class GuiButton extends Container
 {
 	public static PURPLE:number = 0;
 	public static RED:number = 1;
@@ -77,19 +77,22 @@ export class GuiButton extends Sprite
 		style.fontFamily = Main.GLOBAL_FONT;
 		style.align = 'center';
 
-		this.texture = this.upTexture
 		this.width = w;
 		this.height = h;
 		this.position.set(xPos, yPos);
 		this.buttonMode = true;
 		this.interactive = true;
 
+		this.background = new Sprite(this.upTexture)
+		this.background.width = w
+		this.background.height = h
+		this.addChild(this.background)
+
 		this.label = new Text(text)
 		this.label.style = style
-		this.label.scale.set(1 / (this.width / this.texture.width), 1 / (this.height / this.texture.height))
 		this.label.anchor.set(0.5)
-		this.label.x = w / 4
-		this.label.y = h / 4
+		this.label.x = w / 2
+		this.label.y = h / 2
 		this.addChild(this.label)
 
 		this
@@ -123,7 +126,7 @@ export class GuiButton extends Sprite
 				this.buttonOffset = true;
 			}
 			this.depressed = true;
-			this.texture = this.downTexture
+			this.background.texture = this.downTexture
 		} else {
 			setMouseState("up");
 			if (this.buttonOffset) {
@@ -132,7 +135,7 @@ export class GuiButton extends Sprite
 				this.buttonOffset = false;
 			}
 			this.depressed = false;
-			this.texture = this.upTexture
+			this.background.texture = this.upTexture
 		}
 	}
 
@@ -142,7 +145,7 @@ export class GuiButton extends Sprite
 			this.y += 2;
 			this.buttonOffset = true;
 		}
-		this.texture = this.downTexture
+		this.background.texture = this.downTexture
 	}
 
 	private bUp(e:MouseEvent):void {
@@ -151,7 +154,7 @@ export class GuiButton extends Sprite
 			this.y -= 2;
 			this.buttonOffset = false;
 		}
-		this.texture = this.upTexture
+		this.background.texture = this.upTexture
 	}
 
 	private mouseOver(e:MouseEvent):void {
@@ -161,7 +164,7 @@ export class GuiButton extends Sprite
 			GuiButton.rolloverSound.play()
 			GuiButton.lastRolloverFrame = Math.floor(Date.now() / 150);
 		}
-		this.texture = this.overTexture
+		this.background.texture = this.overTexture
 	}
 
 	private mouseClick(e:MouseEvent):void {

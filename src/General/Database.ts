@@ -1,5 +1,5 @@
 ﻿import { Challenge } from "../Game/Challenge";
-import { ControllerGame } from "../Game/ControllerGame";
+import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals";
 import { Replay } from "../Game/Replay";
 import { Robot } from "../Game/Robot";
 import { SandboxSettings } from "../Game/SandboxSettings";
@@ -939,8 +939,8 @@ export class Database
 		b.readUTF();
 		b.readInt();
 		b.readInt();
-		ControllerGame.potentialRobotPublic = true;
-		ControllerGame.potentialRobotEditable = true;
+		ControllerGameGlobals.potentialRobotPublic = true;
+		ControllerGameGlobals.potentialRobotEditable = true;
 		b.readInt();
 		return Database.ExtractRobotFromByteArray(b);
 	}
@@ -970,7 +970,7 @@ export class Database
 		b.readUTF();
 		b.readInt();
 		b.readUTF();
-		ControllerGame.potentialReplayPublic = true;
+		ControllerGameGlobals.potentialReplayPublic = true;
 
 		return [replay, robot];
 	}
@@ -985,8 +985,8 @@ export class Database
 		b.readUTF();
 		b.readInt();
 		b.readInt();
-		ControllerGame.potentialChallengePublic = true;
-		ControllerGame.potentialChallengeEditable = true;
+		ControllerGameGlobals.potentialChallengePublic = true;
+		ControllerGameGlobals.potentialChallengeEditable = true;
 		return Database.ExtractChallengeFromByteArray(b);
 	}
 
@@ -1740,7 +1740,6 @@ export class Database
 	}
 
 	public static async ExtractRobotFromByteArray(data:ByteArray):Robot {
-		console.log(data)
 		data = data.arrayBuffer()
 		var partData:Array<any> = Database.ExtractPartsFromByteArray(data);
 		if (data.position == data.length) {
@@ -1956,7 +1955,7 @@ export class Database
 		// strip off 4 leading \n characters that always get returned
 		var byteArray:ByteArray = new ByteArray();
 		byteArrayWithNewlines.position += 4;
-		ControllerGame.potentialRobotEditable = (byteArrayWithNewlines.readByte() == 49);
+		ControllerGameGlobals.potentialRobotEditable = (byteArrayWithNewlines.readByte() == 49);
 		while (byteArrayWithNewlines.position != byteArrayWithNewlines.length) {
 			byteArray.writeByte(byteArrayWithNewlines.readByte());
 		}

@@ -1,26 +1,26 @@
 package Gui
 {
 	import Game.*;
-	
+
 	import General.Input;
-	
+
 	import Parts.*;
-	
+
 	import fl.controls.*;
 	import fl.events.*;
-	
+
 	import flash.display.Sprite;
 	import flash.events.*;
 	import flash.text.*;
-	
+
 	public class PartEditWindow extends GuiWindow
 	{
 		private var cont:ControllerGame;
 		private var enteringInput:Boolean = false;
 		public var sliderDown:Boolean = false;
-		
+
 		private var m_colourWindow:ColourChangeWindow;
-		
+
 		private var m_objectEditPanel:Sprite;
 		private var m_textEditPanel:Sprite;
 		private var m_fixedJointPanel:Sprite;
@@ -86,14 +86,14 @@ package Gui
 		private var m_autoBox1:CheckBox;
 		private var m_autoBox2:CheckBox;
 		private var m_outlineBox2:CheckBox;
-		
+
 		private var m_thrustLabel:TextField;
 		private var m_thrustSlider:Slider;
 		private var m_thrustArea:TextInput;
 		private var m_thrustKeyLabel:TextField;
 		private var m_thrustKeyArea:TextInput;
 		private var m_autoBox3:CheckBox;
-		
+
 		private var m_collisionBox7:CheckBox;
 		private var m_densityArea7:TextInput;
 		private var m_densitySlider7:Slider;
@@ -106,17 +106,17 @@ package Gui
 		private var m_strengthArea7:TextInput;
 		private var m_fireKeyLabel:TextField;
 		private var m_fireKeyArea:TextInput;
-		
+
 		public function PartEditWindow(contr:ControllerGame)
 		{
 			cont = contr;
 			visible = false;
 			super(0, 90, 120, 500);
-			
+
 			m_colourWindow = new ColourChangeWindow(cont, this);
 			addChild(m_colourWindow);
 			m_colourWindow.visible = false;
-			
+
 			m_objectEditPanel = new Sprite();
 			addChild(m_objectEditPanel);
 			m_textEditPanel = new Sprite();
@@ -133,7 +133,7 @@ package Gui
 			addChild(m_buildBoxPanel);
 			m_cannonPanel = new Sprite();
 			addChild(m_cannonPanel);
-			
+
 			var format:TextFormat = new TextFormat();
 			format.font = Main.GLOBAL_FONT;
 			format.align = TextFormatAlign.CENTER;
@@ -268,7 +268,7 @@ package Gui
 			m_undragableBox.selected = false;
 			m_undragableBox.addEventListener(MouseEvent.CLICK, cont.undragableBox, false, 0, true);
 			m_objectEditPanel.addChild(m_undragableBox);
-			
+
 			format = new TextFormat();
 			format.font = Main.GLOBAL_FONT;
 			format.align = TextFormatAlign.CENTER;
@@ -449,7 +449,7 @@ package Gui
 			m_fireKeyLabel.y = 411;
 			m_fireKeyLabel.setTextFormat(format);
 			m_cannonPanel.addChild(m_fireKeyLabel);
-			
+
 			format = new TextFormat();
 			format.font = Main.GLOBAL_FONT;
 			format.align = TextFormatAlign.CENTER;
@@ -530,7 +530,7 @@ package Gui
 			m_undragableBox2.selected = false;
 			m_undragableBox2.addEventListener(MouseEvent.CLICK, cont.undragableBox, false, 0, true);
 			m_multiEditPanel.addChild(m_undragableBox2);
-			
+
 			format = new TextFormat();
 			format.font = Main.GLOBAL_FONT;
 			format.align = TextFormatAlign.CENTER;
@@ -643,7 +643,7 @@ package Gui
 			m_textKeyLabel.y = 250;
 			m_textKeyLabel.setTextFormat(format);
 			m_textEditPanel.addChild(m_textKeyLabel);
-			
+
 			format = new TextFormat();
 			format.font = Main.GLOBAL_FONT;
 			format.align = TextFormatAlign.CENTER;
@@ -662,7 +662,7 @@ package Gui
 			m_fixedJointPanel.addChild(m_backButton);
 			m_deleteButton = new GuiButton("Delete", 10, 30, 100, 35, cont.deleteButton, GuiButton.ORANGE);
 			m_fixedJointPanel.addChild(m_deleteButton);
-			
+
 			m_jointHeader = new TextField();
 			m_jointHeader.text = "Build Box";
 			m_jointHeader.width = 110;
@@ -677,7 +677,7 @@ package Gui
 			m_buildBoxPanel.addChild(m_backButton);
 			m_deleteButton = new GuiButton("Delete", 10, 30, 100, 35, cont.deleteBuildBoxButton, GuiButton.ORANGE);
 			m_buildBoxPanel.addChild(m_deleteButton);
-			
+
 			format = new TextFormat();
 			format.font = Main.GLOBAL_FONT;
 			format.align = TextFormatAlign.CENTER;
@@ -780,7 +780,7 @@ package Gui
 			m_autoBox3.selected = false;
 			m_autoBox3.addEventListener(MouseEvent.CLICK, cont.autoBox1, false, 0, true);
 			m_thrustersEditPanel.addChild(m_autoBox3);
-			
+
 			format = new TextFormat();
 			format.font = Main.GLOBAL_FONT;
 			format.align = TextFormatAlign.CENTER;
@@ -1031,16 +1031,16 @@ package Gui
 			m_collisionBox3.addEventListener(MouseEvent.CLICK, cont.collisionBox, false, 0, true);
 			m_jointEditPanel.addChild(m_collisionBox3);
 		}
-		
+
 		public function backButton(e:MouseEvent):void {
 			visible = false;
 		}
-		
+
 		private function colourButton(e:MouseEvent):void {
 			m_colourWindow.visible = true;
 			m_colourWindow.SetVals();
 		}
-		
+
 		public function DisableStuffForShapesLevel():void {
 			m_densitySlider.enabled = false;
 			m_densityArea.enabled = false;
@@ -1053,7 +1053,7 @@ package Gui
 			m_collisionBox3.enabled = false;
 			m_undragableBox2.enabled = false;
 		}
-		
+
 		public function DisableStuffForCarLevel():void {
 			m_densitySlider.enabled = false;
 			m_densityArea.enabled = false;
@@ -1065,7 +1065,7 @@ package Gui
 			m_collisionBox2.enabled = false;
 			m_collisionBox3.enabled = false;
 			m_undragableBox2.enabled = false;
-			
+
 			m_minDispArea.enabled = false;
 			m_minDispArea.focusEnabled = false;
 			m_minDispArea.editable = false;
@@ -1090,7 +1090,7 @@ package Gui
 			m_strengthArea.focusEnabled = false;
 			m_strengthArea.editable = false;
 		}
-		
+
 		public function DisableStuffForJumpbotLevel():void {
 			m_collisionBox.enabled = false;
 			m_cameraBox.enabled = false;
@@ -1098,7 +1098,7 @@ package Gui
 			m_collisionBox2.enabled = false;
 			m_collisionBox3.enabled = false;
 			m_undragableBox2.enabled = false;
-			
+
 			m_minDispArea.enabled = false;
 			m_minDispArea.focusEnabled = false;
 			m_minDispArea.editable = false;
@@ -1115,7 +1115,7 @@ package Gui
 			m_controlKeyArea2.focusEnabled = false;
 			m_controlKeyArea2.editable = false;
 		}
-		
+
 		public function DisableStuffForDumpbotLevel():void {
 			m_collisionBox.enabled = false;
 			m_cameraBox.enabled = false;
@@ -1123,7 +1123,7 @@ package Gui
 			m_collisionBox2.enabled = false;
 			m_collisionBox3.enabled = false;
 			m_undragableBox2.enabled = false;
-			
+
 			m_minDispArea.enabled = false;
 			m_minDispArea.focusEnabled = false;
 			m_minDispArea.editable = false;
@@ -1133,7 +1133,7 @@ package Gui
 			m_autoBox1.enabled = false;
 			m_autoBox2.enabled = false;
 		}
-		
+
 		public function DisableStuffForCatapultLevel():void {
 			m_collisionBox.enabled = false;
 			m_undragableBox.enabled = false;
@@ -1150,7 +1150,7 @@ package Gui
 			m_controlKeyArea2.focusEnabled = false;
 			m_controlKeyArea2.editable = false;
 		}
-		
+
 		public function DisableStuffForHomeMoviesLevel():void {
 			m_collisionBox.enabled = false;
 			m_undragableBox.enabled = false;
@@ -1161,7 +1161,7 @@ package Gui
 			m_autoBox1.enabled = false;
 			m_autoBox2.enabled = false;
 		}
-		
+
 		public function ShowObjectPanel(shape:ShapePart):void {
 			visible = true;
 			m_colourWindow.visible = false;
@@ -1174,8 +1174,8 @@ package Gui
 			m_buildBoxPanel.visible = false;
 			m_cannonPanel.visible = false;
 			m_densitySlider.value = shape.density;
-			m_densitySlider.minimum = ControllerGame.minDensity;
-			m_densitySlider.maximum = ControllerGame.maxDensity;
+			m_densitySlider.minimum = ControllerGameGlobals.minDensity;
+			m_densitySlider.maximum = ControllerGameGlobals.maxDensity;
 			m_densityArea.text = shape.density.toString();
 			m_collisionBox.selected = shape.collide;
 			m_collisionBox.visible = ((cont is ControllerSandbox) && !(cont is ControllerChallenge)) || ((cont is ControllerChallenge) && (ControllerChallenge.challenge.nonCollidingAllowed || !ControllerChallenge.playChallengeMode));
@@ -1194,7 +1194,7 @@ package Gui
 			format.align = TextFormatAlign.CENTER;
 			m_shapeHeader.setTextFormat(format);
 		}
-		
+
 		public function ShowCannonPanel(cannon:Cannon):void {
 			visible = true;
 			m_colourWindow.visible = false;
@@ -1227,7 +1227,7 @@ package Gui
 			if (str == null) str = "Unk: " + cannon.fireKey;
 			m_fireKeyArea.text = str;
 		}
-		
+
 		public function ShowTextPanel(text:TextPart):void {
 			visible = true;
 			m_colourWindow.visible = false;
@@ -1248,7 +1248,7 @@ package Gui
 			m_textArea.text = text.m_textField.text;
 			m_sizeArea.text = text.size + "";
 		}
-		
+
 		public function ShowMultiSelectPanel(parts:Array):void {
 			visible = true;
 			m_colourWindow.visible = false;
@@ -1275,7 +1275,7 @@ package Gui
 				if (parts[i] is ShapePart && !parts[i].collide) m_collisionBox2.selected = false;
 			}
 		}
-		
+
 		public function ShowJointPanel(joint:JointPart):void {
 			visible = true;
 			m_colourWindow.visible = false;
@@ -1287,7 +1287,7 @@ package Gui
 			m_textEditPanel.visible = false;
 			m_buildBoxPanel.visible = false;
 			m_cannonPanel.visible = false;
-			
+
 			var isRevolute:Boolean = (joint is RevoluteJoint);
 			var str:String;
 			var format:TextFormat;
@@ -1298,12 +1298,12 @@ package Gui
 				m_strengthLabel.text = "Motor Strength";
 				m_strengthSlider.value = rjoint.motorStrength;
 				m_strengthSlider.enabled = rjoint.enableMotor;
-				m_strengthSlider.maximum = ControllerGame.maxRJStrength;
+				m_strengthSlider.maximum = ControllerGameGlobals.maxRJStrength;
 				m_strengthArea.text = rjoint.motorStrength + "";
 				m_speedLabel.text = "Motor Speed";
 				m_speedSlider.value = rjoint.motorSpeed;
 				m_speedSlider.enabled = rjoint.enableMotor;
-				m_speedSlider.maximum = ControllerGame.maxRJSpeed;
+				m_speedSlider.maximum = ControllerGameGlobals.maxRJSpeed;
 				m_speedArea.text = rjoint.motorSpeed + "";
 				m_autoBox1.selected = rjoint.autoCW;
 				m_autoBox2.selected = rjoint.autoCCW;
@@ -1320,7 +1320,7 @@ package Gui
 				if (str == null) str = "Unk: " + rjoint.motorCWKey;
 				m_controlKeyArea1.text = str;
 				m_controlKeyArea1.enabled = rjoint.enableMotor;
-				m_controlKeyArea1.focusEnabled = rjoint.enableMotor;				
+				m_controlKeyArea1.focusEnabled = rjoint.enableMotor;
 				m_inputLabel2.text = "Rotate CCW:";
 				str = Input.getKeyString(rjoint.motorCCWKey);
 				if (str == null) str = "Unk: " + rjoint.motorCCWKey;
@@ -1361,12 +1361,12 @@ package Gui
 				m_strengthLabel.text = "Piston Strength";
 				m_strengthSlider.value = pjoint.pistonStrength;
 				m_strengthSlider.enabled = pjoint.enablePiston;
-				m_strengthSlider.maximum = ControllerGame.maxSJStrength;
+				m_strengthSlider.maximum = ControllerGameGlobals.maxSJStrength;
 				m_strengthArea.text = pjoint.pistonStrength + "";
 				m_speedLabel.text = "Piston Speed";
 				m_speedSlider.value = pjoint.pistonSpeed;
 				m_speedSlider.enabled = pjoint.enablePiston;
-				m_speedSlider.maximum = ControllerGame.maxSJSpeed;
+				m_speedSlider.maximum = ControllerGameGlobals.maxSJSpeed;
 				m_speedArea.text = pjoint.pistonSpeed + "";
 				m_autoBox1.selected = pjoint.autoOscillate;
 				m_outlineBox2.selected = pjoint.outline;
@@ -1436,13 +1436,13 @@ package Gui
 			format.color = 0x242930;
 			m_speedLabel.setTextFormat(format);
 			m_strengthLabel.setTextFormat(format);
-			
+
 			m_inputLabel1.visible = !(cont is ControllerChallenge) || !ControllerChallenge.playChallengeMode || ((cont is ControllerChallenge) && ControllerChallenge.challenge.botControlAllowed);
 			m_inputLabel2.visible = !(cont is ControllerChallenge) || !ControllerChallenge.playChallengeMode || ((cont is ControllerChallenge) && ControllerChallenge.challenge.botControlAllowed);
 			m_controlKeyArea1.visible = !(cont is ControllerChallenge) || !ControllerChallenge.playChallengeMode || ((cont is ControllerChallenge) && ControllerChallenge.challenge.botControlAllowed);
 			m_controlKeyArea2.visible = !(cont is ControllerChallenge) || !ControllerChallenge.playChallengeMode || ((cont is ControllerChallenge) && ControllerChallenge.challenge.botControlAllowed);
 		}
-		
+
 		public function ShowThrustersPanel(t:Thrusters):void {
 			visible = true;
 			m_colourWindow.visible = false;
@@ -1454,15 +1454,15 @@ package Gui
 			m_textEditPanel.visible = false;
 			m_buildBoxPanel.visible = false;
 			m_cannonPanel.visible = false;
-			
+
 			m_autoBox3.selected = t.autoOn;
 			m_thrustSlider.value = t.strength;
-			m_thrustSlider.maximum = ControllerGame.maxThrusterStrength;
+			m_thrustSlider.maximum = ControllerGameGlobals.maxThrusterStrength;
 			m_thrustArea.text = t.strength + "";
 			var str:String = Input.getKeyString(t.thrustKey);
 			if (str == null) str = "Unk: " + t.thrustKey;
 			m_thrustKeyArea.text = str;
-			
+
 			m_thrustKeyLabel.visible = !(cont is ControllerChallenge) || !ControllerChallenge.playChallengeMode || ((cont is ControllerChallenge) && ControllerChallenge.challenge.botControlAllowed);
 			m_thrustKeyArea.visible = !(cont is ControllerChallenge) || !ControllerChallenge.playChallengeMode || ((cont is ControllerChallenge) && ControllerChallenge.challenge.botControlAllowed);
 		}
@@ -1479,40 +1479,40 @@ package Gui
 			m_buildBoxPanel.visible = true;
 			m_cannonPanel.visible = false;
 		}
-		
+
 		public function TextAreaGotFocus(e:Event = null):void {
 			enteringInput = true;
 		}
-		
+
 		public function TextAreaLostFocus(e:Event = null):void {
 			enteringInput = false;
 		}
-		
+
 		public function sliderClicked(e:Event):void {
 			sliderDown = true;
 		}
-		
+
 		public function sliderReleased(e:Event):void {
 			sliderDown = false;
 		}
-		
+
 		public function EnteringInput():Boolean {
 			if (!visible) enteringInput = false;
 			return enteringInput;
 		}
-		
+
 		public function SetDensity(density:Number):void {
 			m_densityArea.text = density.toString();
 			m_densitySlider.value = density;
 			m_densityArea7.text = density.toString();
 			m_densitySlider7.value = density;
 		}
-		
+
 		public function SetStrength(strength:Number):void {
 			m_strengthArea.text = strength.toString();
 			m_strengthSlider.value = strength;
 		}
-		
+
 		public function SetSpeed(speed:Number):void {
 			m_speedArea.text = speed.toString();
 			m_speedSlider.value = speed;
@@ -1541,79 +1541,79 @@ package Gui
 			m_autoBox1.enabled = enable;
 			m_autoBox2.enabled = enable;
 		}
-		
+
 		public function EnableTextStuff(enable:Boolean):void {
 			m_textKeyArea.enabled = enable;
 		}
-		
+
 		public function deselectBox2():void {
 			m_autoBox2.selected = false;
 		}
-		
+
 		public function deselectBox1():void {
 			m_autoBox1.selected = false;
 		}
-		
+
 		public function sizeFocus(e:MouseEvent):void {
 			m_sizeArea.setSelection(0, 4);
 		}
-		
+
 		public function minDispFocus(e:MouseEvent):void {
 			if (m_minDispArea.enabled) m_minDispArea.setSelection(0, 10);
 		}
-		
+
 		public function maxDispFocus(e:MouseEvent):void {
 			if (m_maxDispArea.enabled) m_maxDispArea.setSelection(0, 10);
 		}
-		
+
 		public function densityFocus(e:MouseEvent):void {
 			if (m_densityArea.enabled) m_densityArea.setSelection(0, 10);
 		}
-		
+
 		public function strengthFocus(e:MouseEvent):void {
 			if (m_strengthArea.enabled) m_strengthArea.setSelection(0, 10);
 		}
-		
+
 		public function speedFocus(e:MouseEvent):void {
 			if (m_speedArea.enabled) m_speedArea.setSelection(0, 10);
 		}
-		
+
 		public function thrustFocus(e:MouseEvent):void {
 			if (m_thrustArea.enabled) m_thrustArea.setSelection(0, 10);
 		}
-		
+
 		public function cannonFocus(e:MouseEvent):void {
 			if (m_strengthArea7.enabled) m_strengthArea7.setSelection(0, 10);
 		}
-		
+
 		public function controlKey1Focus(e:MouseEvent):void {
 			if (m_controlKeyArea1.enabled) {
 				m_controlKeyArea1.setSelection(0, 10);
 			}
 		}
-		
+
 		public function controlKey2Focus(e:MouseEvent):void {
 			if (m_controlKeyArea2.enabled) {
 				m_controlKeyArea2.setSelection(0, 10);
 			}
 		}
-		
+
 		public function thrustKeyFocus(e:MouseEvent):void {
 			if (m_thrustKeyArea.enabled) {
 				m_thrustKeyArea.setSelection(0, 10);
-			}		
+			}
 		}
-		
+
 		public function cannonKeyFocus(e:MouseEvent):void {
 			if (m_fireKeyArea.enabled) {
 				m_fireKeyArea.setSelection(0, 10);
-			}		
+			}
 		}
-		
+
 		public function ColourWindowShowing():Boolean {
 			return (visible && m_colourWindow.visible);
 		}
-		
+
 		public function BuildWindowShowing():Boolean {
 			return (visible && m_buildBoxPanel.visible);
 		}

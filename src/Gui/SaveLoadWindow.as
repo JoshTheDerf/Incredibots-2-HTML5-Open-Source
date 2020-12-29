@@ -2,13 +2,13 @@ package Gui
 {
 	import Game.*;
 	import Game.Tutorials.*;
-	
+
 	import General.*;
-	
+
 	import Parts.Part;
-	
+
 	import fl.controls.*;
-	
+
 	import flash.display.*;
 	import flash.events.*;
 	import flash.text.*;
@@ -17,11 +17,11 @@ package Gui
 	{
 		public var cont:Controller;
 		public var dataType:int;
-		
+
 		private var curPage:int;
 		private var reportWindow:ReportWindow = null;
 		private var searchWindow:SearchWindow = null;
-		
+
 		public var header:TextField;
 		public var yourRobotsBox:CheckBox = null;
 		public var yourRobotsText:TextField = null;
@@ -59,7 +59,7 @@ package Gui
 		public var ratingText:TextField;
 		public var featuredButton:Button = null;
 		public var exportButton:Button = null;
-		
+
 		public static const SAVE_ROBOT_TYPE:int = 0;
 		public static const SAVE_REPLAY_TYPE:int = 1;
 		public static const LOAD_ROBOT_TYPE:int = 2;
@@ -71,18 +71,18 @@ package Gui
 		public function SaveLoadWindow(contr:Controller, type:int) {
 			cont = contr;
 			dataType = type;
-			
+
 			var isSaveType:Boolean = (type == SAVE_ROBOT_TYPE || type == SAVE_REPLAY_TYPE || type == SAVE_CHALLENGE_TYPE);
 			var isLoadType:Boolean = (type == LOAD_ROBOT_TYPE || type == LOAD_REPLAY_TYPE || type == LOAD_CHALLENGE_TYPE);
 			var isScoreType:Boolean = (type == HIGH_SCORE_TYPE);
 			var isRobotType:Boolean = (type == SAVE_ROBOT_TYPE || type == LOAD_ROBOT_TYPE);
 			var isReplayType:Boolean = (type == SAVE_REPLAY_TYPE || type == LOAD_REPLAY_TYPE);
 			var isChallengeType:Boolean = (type == SAVE_CHALLENGE_TYPE || type == LOAD_CHALLENGE_TYPE);
-			
+
 			curPage = (isScoreType ? Database.curScorePage : (isRobotType ? Database.curRobotPage : (isReplayType ? Database.curReplayPage : Database.curChallengePage)));
-			
+
 			Main.ShowMouse();
-			
+
 			header = new TextField();
 			if (dataType == SAVE_ROBOT_TYPE) header.text = "Export Robot";
 			else if (dataType == SAVE_REPLAY_TYPE) header.text = "Export Replay";
@@ -180,7 +180,7 @@ package Gui
 				yourRobotsBox.addEventListener(Event.CHANGE, boxChanged, false, 0, true);
 				addChild(yourRobotsBox);
 			}
-			
+
 			if (isScoreType) {
 				format = new TextFormat();
 				format.color = 0x242930;
@@ -194,7 +194,7 @@ package Gui
 				scoreTypeText.y = 53;
 				scoreTypeText.setTextFormat(format);
 				addChild(scoreTypeText);
-				
+
 				m_scoreTypeBox = new GuiCombobox(105, 45, 135, 32);
 				m_scoreTypeBox.addItem({label:"  All-time Scores"});
 				m_scoreTypeBox.addItem({label:"  Today's Scores"});
@@ -397,7 +397,7 @@ package Gui
 			sortByText.y = (isScoreType ? 53 : (isSaveType ? 58 : 63));
 			sortByText.setTextFormat(format);
 			addChild(sortByText);
-			
+
 			if (!isScoreType) {
 				sortPeriodText = new TextField();
 				sortPeriodText.text = "Sort Filter :";
@@ -408,7 +408,7 @@ package Gui
 				sortPeriodText.y = (isSaveType ? 88 : 93);
 				sortPeriodText.setTextFormat(format);
 				addChild(sortPeriodText);
-				
+
 				sortPeriodBox = new GuiCombobox(83, (isSaveType ? 80 : 85), 135, 32);
 				sortPeriodBox.addItem({label:"  Featured"});
 				sortPeriodBox.addItem({label:"  All Time"});
@@ -431,7 +431,7 @@ package Gui
 				sortPeriodBox.dropdown.addEventListener(Event.ADDED_TO_STAGE, refreshMouse, false, 0, true);
 				addChild(sortPeriodBox);
 			}
-			
+
 			sortByBox = new GuiCombobox((isScoreType ? 362 : 83), (isScoreType ? 45 : (isSaveType ? 50 : 55)), 135, 32);
 			if (isScoreType) sortByBox.addItem({label:"  Score"});
 			sortByBox.addItem({label:"  Most Viewed"});
@@ -473,7 +473,7 @@ package Gui
 				yourRobotsText.y = 33;
 				yourRobotsText.setTextFormat(format);
 				addChild(yourRobotsText);
-				
+
 				format = new TextFormat();
 				format.size = 12;
 				format.align = TextFormatAlign.CENTER;
@@ -504,7 +504,7 @@ package Gui
 				sharedBox.width = 120;
 				sharedBox.selected = (!(cont is ControllerHomeMovies) && !(cont is ControllerRubeGoldberg));
 				sharedBox.setStyle("textFormat", format);
-				sharedBox.enabled = (ControllerGame.userName != "_Public" && !(cont is ControllerHomeMovies) && !(cont is ControllerRubeGoldberg));
+				sharedBox.enabled = (ControllerGameGlobals.userName != "_Public" && !(cont is ControllerHomeMovies) && !(cont is ControllerRubeGoldberg));
 				addChild(sharedBox);
 				if (type == SAVE_ROBOT_TYPE || type == SAVE_CHALLENGE_TYPE) {
 					sharedBox.addEventListener(Event.CHANGE, sharedBoxChanged, false, 0, true);
@@ -513,12 +513,12 @@ package Gui
 					disableEditBox.x = 330;
 					disableEditBox.y = (type == SAVE_ROBOT_TYPE ? 393 : 403);
 					disableEditBox.width = 145;
-					disableEditBox.selected = (ControllerGame.userName != "_Public" && !(cont is ControllerHomeMovies) && !(cont is ControllerRubeGoldberg));
+					disableEditBox.selected = (ControllerGameGlobals.userName != "_Public" && !(cont is ControllerHomeMovies) && !(cont is ControllerRubeGoldberg));
 					if (cont is ControllerChallenge) disableEditBox.selected = false;
-					disableEditBox.enabled = (ControllerGame.userName != "_Public" && !(cont is ControllerHomeMovies) && !(cont is ControllerRubeGoldberg));
+					disableEditBox.enabled = (ControllerGameGlobals.userName != "_Public" && !(cont is ControllerHomeMovies) && !(cont is ControllerRubeGoldberg));
 					disableEditBox.setStyle("textFormat", format);
 					addChild(disableEditBox);
-					
+
 					if (type == SAVE_ROBOT_TYPE) {
 						propBox = new GuiCheckBox();
 						propBox.label = "Make Prop";
@@ -554,7 +554,7 @@ package Gui
 				text.y = 506;
 				text.setTextFormat(format);
 				addChild(text);
-				
+
 				format = new TextFormat();
 				format.color = 0x0000FF;
 				format.underline = true;
@@ -613,25 +613,25 @@ package Gui
 				m_embedButton = new GuiButton((type == LOAD_ROBOT_TYPE ? "Embed this Robot" : (type == LOAD_CHALLENGE_TYPE ? "Embed this Challenge" : "Embed this Replay")), (isScoreType ? 350 : (isChallengeType ? 293 : 298)), (isScoreType ? 453 : (isSaveType ? 465 : 460)), (isScoreType ? 195 : (isChallengeType ? 215 : 205)), 45, embedButton, GuiButton.ORANGE, format);
 				addChild(m_embedButton);
 			}
-			
+
 			if (isLoadType) {
 				searchButton = new GuiButton("Search", 80, 113, 140, 35, searchClicked, GuiButton.BLUE, format);
 				addChild(searchButton);
 			}
-			
-			if (isLoadType && Util.ObjectInArray(ControllerGame.userName, ControllerGame.ADMIN_USERS)) {
+
+			if (isLoadType && Util.ObjectInArray(ControllerGameGlobals.userName, ControllerGameGlobals.ADMIN_USERS)) {
 				featuredButton = new GuiButton("Feature!", 445, 5, 90, 40, featureButton, GuiButton.PURPLE, format);
 				addChild(featuredButton);
 			}
-			
+
 			if (isLoadType || isScoreType) {
 				exportButton = new GuiButton("Export to Text", (isScoreType ? 430 : 340), 5, 110, 40, exportButtonPressed, GuiButton.ORANGE, format);
 				addChild(exportButton);
 			}
-			
+
 			super(127, 30, 547, (isScoreType ? 545 : (isSaveType ? 520 : 550)));
 		}
-		
+
 		private function featureButton(e:MouseEvent):void {
 			ShowFader();
 			if (dataList.selectedIndex >= 0) {
@@ -664,7 +664,7 @@ package Gui
 				cont.ShowDialog2("You need to select a " + (dataType == LOAD_ROBOT_TYPE ? "robot" : (dataType == LOAD_REPLAY_TYPE ? "replay" : "challenge")) + " first!");
 			}
 		}
-		
+
 		private function finishFeaturing(e:Event):void {
 			var retVal:Boolean = Database.FinishFeaturing(e);
 			if (retVal) {
@@ -685,7 +685,7 @@ package Gui
 				}
 			}
 		}
-		
+
 		private function commentButton(e:MouseEvent):void {
 			if (dataList.selectedIndex >= 0 && dataType == LOAD_ROBOT_TYPE) {
 				ShowFader();
@@ -704,7 +704,7 @@ package Gui
 				cont.ShowDialog2("You need to select a " + (dataType == LOAD_ROBOT_TYPE || dataType == SAVE_ROBOT_TYPE ? "robot" : (dataType == LOAD_REPLAY_TYPE || dataType == SAVE_REPLAY_TYPE || dataType == HIGH_SCORE_TYPE ? "replay" : "challenge")) + " first!");
 			}
 		}
-		
+
 		private function linkButton(e:MouseEvent):void {
 			if (dataList.selectedIndex >= 0 && dataType == LOAD_ROBOT_TYPE) {
 				ShowFader();
@@ -723,7 +723,7 @@ package Gui
 				cont.ShowDialog2("You need to select a " + (dataType == LOAD_ROBOT_TYPE || dataType == SAVE_ROBOT_TYPE ? "robot" : (dataType == LOAD_REPLAY_TYPE || dataType == SAVE_REPLAY_TYPE || dataType == HIGH_SCORE_TYPE ? "replay" : "challenge")) + " first!");
 			}
 		}
-		
+
 		private function embedButton(e:MouseEvent):void {
 			if (dataList.selectedIndex >= 0 && dataType == LOAD_ROBOT_TYPE) {
 				ShowFader();
@@ -742,7 +742,7 @@ package Gui
 				cont.ShowDialog2("You need to select a " + (dataType == LOAD_ROBOT_TYPE || dataType == SAVE_ROBOT_TYPE ? "robot" : (dataType == LOAD_REPLAY_TYPE || dataType == SAVE_REPLAY_TYPE || dataType == HIGH_SCORE_TYPE ? "replay" : "challenge")) + " first!");
 			}
 		}
-		
+
 		private function cancelButtonPressed(e:MouseEvent):void {
 			visible = false;
 			if (cont is ControllerGame) {
@@ -752,7 +752,7 @@ package Gui
 				(cont as ControllerMainMenu).fader2.visible = false;
 			}
 		}
-		
+
 		private function dataListClicked(e:MouseEvent):void {
 			if (dataList.selectedIndex >= 0) {
 				if (dataType == SAVE_ROBOT_TYPE) {
@@ -762,7 +762,7 @@ package Gui
 				} else if (dataType == SAVE_CHALLENGE_TYPE)  {
 					nameArea.text = Database.challengeList[dataList.selectedIndex].name;
 				}
-				
+
 				if (dataType == SAVE_ROBOT_TYPE || dataType == LOAD_ROBOT_TYPE) {
 					descArea.text = Database.robotList[dataList.selectedIndex].description;
 					nameText.text = Database.robotList[dataList.selectedIndex].name;
@@ -788,7 +788,7 @@ package Gui
 					viewsText.text = Database.challengeList[dataList.selectedIndex].viewCount;
 					ratingText.text = (isNaN(Database.challengeList[dataList.selectedIndex].rating) ? 0 : Database.challengeList[dataList.selectedIndex].rating.toPrecision(3)) + " (" + Database.challengeList[dataList.selectedIndex].numRatings + " rating" + (Database.challengeList[dataList.selectedIndex].numRatings == 1 ? "" : "s") + ")";
 				}
-				
+
 				if (dataType == SAVE_ROBOT_TYPE) {
 					sharedBox.selected = Database.robotList[dataList.selectedIndex].shared;
 					disableEditBox.enabled = sharedBox.selected;
@@ -801,7 +801,7 @@ package Gui
 					disableEditBox.enabled = sharedBox.selected;
 					disableEditBox.selected = false;
 				}
-				
+
 				if (dataType == LOAD_ROBOT_TYPE && featuredButton) {
 					featuredButton.label = (Database.robotList[dataList.selectedIndex].featured ? "Un-feature!" : "Feature!");
 				} else if (dataType == LOAD_REPLAY_TYPE && featuredButton) {
@@ -809,7 +809,7 @@ package Gui
 				} else if (dataType == LOAD_CHALLENGE_TYPE && featuredButton) {
 					featuredButton.label = (Database.challengeList[dataList.selectedIndex].featured ? "Un-feature!" : "Feature!");
 				}
-				
+
 				if (dataType != HIGH_SCORE_TYPE) {
 					var format:TextFormat = new TextFormat();
 					format.size = 12;
@@ -829,12 +829,12 @@ package Gui
 				}
 			}
 		}
-		
+
 		private function boxChanged(e:Event):void {
 			curPage = 1;
 			Database.curSearch = "";
-			if (!ControllerGame.clickedBox && yourRobotsBox && yourRobotsBox.selected) {
-				ControllerGame.clickedBox = true;
+			if (!ControllerGameGlobals.clickedBox && yourRobotsBox && yourRobotsBox.selected) {
+				ControllerGameGlobals.clickedBox = true;
 				if (sortPeriodBox.selectedIndex == 0) sortPeriodBox.selectedIndex = 1;
 			}
 			if (dataType == HIGH_SCORE_TYPE) reloadHighScoreData(e);
@@ -861,38 +861,38 @@ package Gui
 					/*ShowFader();
 					(cont as ControllerGame).ShowDialog("Saving robot...");
 					Main.ShowHourglass();*/
-					ControllerGame.potentialRobotPublic = sharedBox.selected;
-					ControllerGame.potentialRobotFeatured = false;
+					ControllerGameGlobals.potentialRobotPublic = sharedBox.selected;
+					ControllerGameGlobals.potentialRobotFeatured = false;
 				}
 			} else {
 				ShowFader();
 				(cont as ControllerGame).ShowDialog2("You must enter a name for your robot first!");
 			}
 		}
-		
+
 		private function loadRobotButtonPressed(e:MouseEvent):void {
 			if (dataList.selectedIndex >= 0) {
-				Database.LoadRobot(ControllerGame.userName, ControllerGame.password, dataList.selectedIndex, cont.finishLoading);
+				Database.LoadRobot(ControllerGameGlobals.userName, ControllerGameGlobals.password, dataList.selectedIndex, cont.finishLoading);
 				ShowFader();
 				cont.ShowDialog("Loading robot...");
 				Main.ShowHourglass();
-				ControllerGame.potentialRobotID = Database.robotList[dataList.selectedIndex].id;
-				ControllerGame.potentialRobotEditable = Database.robotList[dataList.selectedIndex].editable;
-				ControllerGame.potentialRobotPublic = Database.robotList[dataList.selectedIndex].shared;
-				ControllerGame.potentialRobotFeatured = Database.robotList[dataList.selectedIndex].featured;
+				ControllerGameGlobals.potentialRobotID = Database.robotList[dataList.selectedIndex].id;
+				ControllerGameGlobals.potentialRobotEditable = Database.robotList[dataList.selectedIndex].editable;
+				ControllerGameGlobals.potentialRobotPublic = Database.robotList[dataList.selectedIndex].shared;
+				ControllerGameGlobals.potentialRobotFeatured = Database.robotList[dataList.selectedIndex].featured;
 			} else {
 				ShowFader();
 				cont.ShowDialog2("You need to select a " + (dataType == LOAD_ROBOT_TYPE || dataType == SAVE_ROBOT_TYPE ? "robot" : "replay") + " first!");
 			}
 		}
-		
+
 		public function deleteRobotButtonPressed(e:MouseEvent, confirmed:Boolean = false):void {
 			if (dataList.selectedIndex >= 0) {
-				if (ControllerGame.userName == "_Public" || (ControllerGame.userName != Database.robotList[dataList.selectedIndex].user && !Util.ObjectInArray(ControllerGame.userName, ControllerGame.ADMIN_USERS))) {
+				if (ControllerGameGlobals.userName == "_Public" || (ControllerGameGlobals.userName != Database.robotList[dataList.selectedIndex].user && !Util.ObjectInArray(ControllerGameGlobals.userName, ControllerGameGlobals.ADMIN_USERS))) {
 					ShowFader();
 					cont.ShowDialog2("You can only delete robots that you have created!");
 				} else if (confirmed) {
-					Database.DeleteRobot(ControllerGame.userName, ControllerGame.password, dataList.selectedIndex, cont.finishDeleting);
+					Database.DeleteRobot(ControllerGameGlobals.userName, ControllerGameGlobals.password, dataList.selectedIndex, cont.finishDeleting);
 					ShowFader();
 					cont.ShowDialog("Deleting robot...");
 					Main.ShowHourglass();
@@ -905,7 +905,7 @@ package Gui
 				cont.ShowDialog2("You need to select a " + (dataType == LOAD_ROBOT_TYPE || dataType == SAVE_ROBOT_TYPE ? "robot" : "replay") + " first!");
 			}
 		}
-		
+
 		public function saveReplayButtonPressed(e:MouseEvent, confirmed:Boolean = false):void {
 			if (nameArea.text.length > 0) {
 				var overwrite:Boolean = false;
@@ -917,8 +917,8 @@ package Gui
 					cont.ShowConfirmDialog("Overwrite " + nameArea.text + "?", 1)
 				} else {
 					(cont as ControllerGame).AddSyncPoint();
-					if (ControllerGame.viewingUnsavedReplay) Database.ExportReplay(ControllerGame.replay, nameArea.text, descArea.text, ControllerGame.curRobotID, new Robot((cont as ControllerGame).allParts, ControllerSandbox.settings), -1, "", (sharedBox.selected ? 1 : 0), (cont as ControllerGame).finishExporting);
-					else Database.ExportReplay(new Replay((cont as ControllerGame).cameraMovements, (cont as ControllerGame).syncPoints, (cont as ControllerGame).keyPresses, (cont as ControllerGame).frameCounter, Database.VERSION_STRING_FOR_REPLAYS), nameArea.text, descArea.text, ControllerGame.curRobotID, new Robot((cont as ControllerGame).allParts, ControllerSandbox.settings), -1, "", (sharedBox.selected ? 1 : 0), (cont as ControllerGame).finishExporting);
+					if (ControllerGameGlobals.viewingUnsavedReplay) Database.ExportReplay(ControllerGameGlobals.replay, nameArea.text, descArea.text, ControllerGameGlobals.curRobotID, new Robot((cont as ControllerGame).allParts, ControllerSandbox.settings), -1, "", (sharedBox.selected ? 1 : 0), (cont as ControllerGame).finishExporting);
+					else Database.ExportReplay(new Replay((cont as ControllerGame).cameraMovements, (cont as ControllerGame).syncPoints, (cont as ControllerGame).keyPresses, (cont as ControllerGame).frameCounter, Database.VERSION_STRING_FOR_REPLAYS), nameArea.text, descArea.text, ControllerGameGlobals.curRobotID, new Robot((cont as ControllerGame).allParts, ControllerSandbox.settings), -1, "", (sharedBox.selected ? 1 : 0), (cont as ControllerGame).finishExporting);
 					/*ShowFader();
 					cont.ShowDialog("Saving replay...");
 					Main.ShowHourglass();*/
@@ -928,46 +928,46 @@ package Gui
 				cont.ShowDialog2("You need to enter a name for your replay first!");
 			}
 		}
-		
+
 		private function loadReplayButtonPressed(e:MouseEvent):void {
 			if (dataList.selectedIndex >= 0) {
-				Database.LoadReplay(ControllerGame.userName, ControllerGame.password, dataList.selectedIndex, cont.finishLoadingReplay);
+				Database.LoadReplay(ControllerGameGlobals.userName, ControllerGameGlobals.password, dataList.selectedIndex, cont.finishLoadingReplay);
 				ShowFader();
 				cont.ShowDialog("Loading replay...");
 				Main.ShowHourglass();
-				ControllerGame.potentialRobotID = Database.replayList[dataList.selectedIndex].robotID;
-				ControllerGame.potentialReplayID = Database.replayList[dataList.selectedIndex].id;
-				ControllerGame.potentialReplayPublic = Database.replayList[dataList.selectedIndex].shared;
-				ControllerGame.potentialReplayFeatured = Database.replayList[dataList.selectedIndex].featured;
+				ControllerGameGlobals.potentialRobotID = Database.replayList[dataList.selectedIndex].robotID;
+				ControllerGameGlobals.potentialReplayID = Database.replayList[dataList.selectedIndex].id;
+				ControllerGameGlobals.potentialReplayPublic = Database.replayList[dataList.selectedIndex].shared;
+				ControllerGameGlobals.potentialReplayFeatured = Database.replayList[dataList.selectedIndex].featured;
 			} else {
 				ShowFader();
 				cont.ShowDialog2("You need to select a " + (dataType == LOAD_ROBOT_TYPE || dataType == SAVE_ROBOT_TYPE ? "robot" : "replay") + " first!");
 			}
 		}
-		
+
 		private function loadReplayForScoreButtonPressed(e:MouseEvent):void {
 			if (dataList.selectedIndex >= 0) {
-				Database.LoadReplayFromScore(ControllerGame.userName, ControllerGame.password, dataList.selectedIndex, cont.finishLoadingReplay);
+				Database.LoadReplayFromScore(ControllerGameGlobals.userName, ControllerGameGlobals.password, dataList.selectedIndex, cont.finishLoadingReplay);
 				ShowFader();
 				cont.ShowDialog("Loading replay...");
 				Main.ShowHourglass();
-				ControllerGame.potentialRobotID = Database.scoreList[dataList.selectedIndex].robotID;
-				ControllerGame.potentialReplayID = Database.scoreList[dataList.selectedIndex].replayID;
-				ControllerGame.potentialReplayPublic = true;
-				ControllerGame.potentialReplayFeatured = false;
+				ControllerGameGlobals.potentialRobotID = Database.scoreList[dataList.selectedIndex].robotID;
+				ControllerGameGlobals.potentialReplayID = Database.scoreList[dataList.selectedIndex].replayID;
+				ControllerGameGlobals.potentialReplayPublic = true;
+				ControllerGameGlobals.potentialReplayFeatured = false;
 			} else {
 				ShowFader();
 				cont.ShowDialog2("You need to select a " + (dataType == LOAD_ROBOT_TYPE || dataType == SAVE_ROBOT_TYPE ? "robot" : "replay") + " first!");
 			}
 		}
-		
+
 		public function deleteReplayButtonPressed(e:MouseEvent, confirmed:Boolean = false):void {
 			if (dataList.selectedIndex >= 0) {
-				if (ControllerGame.userName == "_Public" || (ControllerGame.userName != Database.replayList[dataList.selectedIndex].user && !Util.ObjectInArray(ControllerGame.userName, ControllerGame.ADMIN_USERS))) {
+				if (ControllerGameGlobals.userName == "_Public" || (ControllerGameGlobals.userName != Database.replayList[dataList.selectedIndex].user && !Util.ObjectInArray(ControllerGameGlobals.userName, ControllerGameGlobals.ADMIN_USERS))) {
 					ShowFader();
 					cont.ShowDialog2("You can only delete replays that you have created!");
 				} else if (confirmed) {
-					Database.DeleteReplay(ControllerGame.userName, ControllerGame.password, dataList.selectedIndex, cont.finishDeletingReplay);
+					Database.DeleteReplay(ControllerGameGlobals.userName, ControllerGameGlobals.password, dataList.selectedIndex, cont.finishDeletingReplay);
 					ShowFader();
 					cont.ShowDialog("Deleting replay...");
 					Main.ShowHourglass();
@@ -980,7 +980,7 @@ package Gui
 				cont.ShowDialog2("You need to select a " + (dataType == LOAD_ROBOT_TYPE || dataType == SAVE_ROBOT_TYPE ? "robot" : "replay") + " first!");
 			}
 		}
-		
+
 		public function saveChallengeButtonPressed(e:MouseEvent, confirmed:Boolean = false):void {
 			if (nameArea.text.length > 0) {
 				var overwrite:Boolean = false;
@@ -999,39 +999,39 @@ package Gui
 					/*ShowFader();
 					cont.ShowDialog("Saving challenge...");
 					Main.ShowHourglass();*/
-					ControllerGame.potentialChallengePublic = sharedBox.selected;
-					ControllerGame.potentialChallengeFeatured = false;
-					ControllerGame.potentialChallengeEditable = true;
+					ControllerGameGlobals.potentialChallengePublic = sharedBox.selected;
+					ControllerGameGlobals.potentialChallengeFeatured = false;
+					ControllerGameGlobals.potentialChallengeEditable = true;
 				}
 			} else {
 				ShowFader();
 				cont.ShowDialog2("You need to enter a name for your challenge first!");
 			}
 		}
-		
+
 		private function loadChallengeButtonPressed(e:MouseEvent):void {
 			if (dataList.selectedIndex >= 0) {
-				Database.LoadChallenge(ControllerGame.userName, ControllerGame.password, dataList.selectedIndex, cont.finishLoadingChallenge);
+				Database.LoadChallenge(ControllerGameGlobals.userName, ControllerGameGlobals.password, dataList.selectedIndex, cont.finishLoadingChallenge);
 				ShowFader();
 				cont.ShowDialog("Loading challenge...");
 				Main.ShowHourglass();
-				ControllerGame.potentialChallengeID = Database.challengeList[dataList.selectedIndex].id;
-				ControllerGame.potentialChallengePublic = Database.challengeList[dataList.selectedIndex].shared;
-				ControllerGame.potentialChallengeFeatured = Database.challengeList[dataList.selectedIndex].featured;
-				ControllerGame.potentialChallengeEditable = Database.challengeList[dataList.selectedIndex].editable;
+				ControllerGameGlobals.potentialChallengeID = Database.challengeList[dataList.selectedIndex].id;
+				ControllerGameGlobals.potentialChallengePublic = Database.challengeList[dataList.selectedIndex].shared;
+				ControllerGameGlobals.potentialChallengeFeatured = Database.challengeList[dataList.selectedIndex].featured;
+				ControllerGameGlobals.potentialChallengeEditable = Database.challengeList[dataList.selectedIndex].editable;
 			} else {
 				ShowFader();
 				cont.ShowDialog2("You need to select a challenge first!");
 			}
 		}
-		
+
 		public function deleteChallengeButtonPressed(e:MouseEvent, confirmed:Boolean = false):void {
 			if (dataList.selectedIndex >= 0) {
-				if (ControllerGame.userName == "_Public" || (ControllerGame.userName != Database.challengeList[dataList.selectedIndex].user && !Util.ObjectInArray(ControllerGame.userName, ControllerGame.ADMIN_USERS))) {
+				if (ControllerGameGlobals.userName == "_Public" || (ControllerGameGlobals.userName != Database.challengeList[dataList.selectedIndex].user && !Util.ObjectInArray(ControllerGameGlobals.userName, ControllerGameGlobals.ADMIN_USERS))) {
 					ShowFader();
 					cont.ShowDialog2("You can only delete challenges that you have created!");
 				} else if (confirmed) {
-					Database.DeleteChallenge(ControllerGame.userName, ControllerGame.password, dataList.selectedIndex, cont.finishDeletingChallenge);
+					Database.DeleteChallenge(ControllerGameGlobals.userName, ControllerGameGlobals.password, dataList.selectedIndex, cont.finishDeletingChallenge);
 					ShowFader();
 					cont.ShowDialog("Deleting challenge...");
 					Main.ShowHourglass();
@@ -1044,19 +1044,19 @@ package Gui
 				cont.ShowDialog2("You need to select a challenge first!");
 			}
 		}
-		
+
 		public function searchClicked(e:MouseEvent):void {
 			if (searchWindow) removeChild(searchWindow);
 			searchWindow = new SearchWindow(this, false, (dataType == LOAD_ROBOT_TYPE ? "Robot" : (dataType == LOAD_REPLAY_TYPE ? "Replay" : "Challenge")));
 			addChild(searchWindow);
 			ShowFader();
 		}
-		
+
 		public function reportClicked(e:MouseEvent):void {
 			if (dataList.selectedIndex >= 0) {
 				if (dataType == LOAD_ROBOT_TYPE) {
 					if (Database.robotList[dataList.selectedIndex].shared) {
-						if (ControllerGame.userName == "_Public") {
+						if (ControllerGameGlobals.userName == "_Public") {
 							cont.loginButton(new MouseEvent(""), true, true, true);
 							ShowFader();
 						} else {
@@ -1071,7 +1071,7 @@ package Gui
 					}
 				} else if (dataType == LOAD_REPLAY_TYPE) {
 					if (Database.replayList[dataList.selectedIndex].shared) {
-						if (ControllerGame.userName == "_Public") {
+						if (ControllerGameGlobals.userName == "_Public") {
 							cont.loginButton(new MouseEvent(""), true, true, true);
 							ShowFader();
 						} else {
@@ -1086,7 +1086,7 @@ package Gui
 					}
 				} else {
 					if (Database.challengeList[dataList.selectedIndex].shared) {
-						if (ControllerGame.userName == "_Public") {
+						if (ControllerGameGlobals.userName == "_Public") {
 							cont.loginButton(new MouseEvent(""), true, true, true);
 							ShowFader();
 						} else {
@@ -1105,7 +1105,7 @@ package Gui
 				cont.ShowDialog2("You need to select a " + (dataType == LOAD_ROBOT_TYPE || dataType == SAVE_ROBOT_TYPE ? "robot" : (dataType == LOAD_REPLAY_TYPE || dataType == SAVE_REPLAY_TYPE ? "replay" : "challenge")) + " first!");
 			}
 		}
-		
+
 		public function finishReporting(e:Event):void {
 			var threadID:int = Database.FinishReporting(e);
 			if (threadID != -1) {
@@ -1114,43 +1114,43 @@ package Gui
 				Main.ShowMouse();
 			}
 		}
-		
+
 		private function differentChallengeButtonPressed(e:Event):void {
 			visible = false;
-			Database.GetChallengeData(ControllerGame.userName, ControllerGame.password, true, Database.curSortType, Database.curSortPeriod, 1, "", cont.finishGettingLoadChallengeForScoreData);
+			Database.GetChallengeData(ControllerGameGlobals.userName, ControllerGameGlobals.password, true, Database.curSortType, Database.curSortPeriod, 1, "", cont.finishGettingLoadChallengeForScoreData);
 			cont.ShowDialog("Getting challenges...");
 		}
-		
+
 		private function logInButton(e:MouseEvent):void {
 			visible = false;
 			cont.loginButton(e, false, true, true);
 		}
-		
+
 		private function sharedBoxChanged(e:Event):void {
 			disableEditBox.enabled = sharedBox.selected;
 			if (!disableEditBox.enabled) disableEditBox.selected = false;
 		}
-		
+
 		private function reloadData(e:Event):void {
-			if ((dataType == LOAD_ROBOT_TYPE || dataType == LOAD_REPLAY_TYPE || dataType == LOAD_CHALLENGE_TYPE) && yourRobotsBox.selected && ControllerGame.userName == "_Public") {
+			if ((dataType == LOAD_ROBOT_TYPE || dataType == LOAD_REPLAY_TYPE || dataType == LOAD_CHALLENGE_TYPE) && yourRobotsBox.selected && ControllerGameGlobals.userName == "_Public") {
 				if (cont is ControllerGame) dataList.removeAll();
 				visible = false;
 				cont.loginButton(new MouseEvent(""), true, true, true);
 			} else if (dataType == LOAD_ROBOT_TYPE || dataType == SAVE_ROBOT_TYPE) {
 				dataList.removeAll();
-				Database.GetRobotData(ControllerGame.userName, ControllerGame.password, (dataType == LOAD_ROBOT_TYPE && !yourRobotsBox.selected), sortByBox.selectedIndex, sortPeriodBox.selectedIndex - 1, curPage, Database.curSearch, (dataType == LOAD_ROBOT_TYPE ? cont.finishGettingLoadRobotData : (cont as ControllerGame).finishGettingSaveRobotData));
+				Database.GetRobotData(ControllerGameGlobals.userName, ControllerGameGlobals.password, (dataType == LOAD_ROBOT_TYPE && !yourRobotsBox.selected), sortByBox.selectedIndex, sortPeriodBox.selectedIndex - 1, curPage, Database.curSearch, (dataType == LOAD_ROBOT_TYPE ? cont.finishGettingLoadRobotData : (cont as ControllerGame).finishGettingSaveRobotData));
 				ShowFader();
 				cont.ShowDialog("Getting robots...");
 				Main.ShowHourglass();
 			} else if (dataType == LOAD_REPLAY_TYPE || dataType == SAVE_REPLAY_TYPE) {
 				dataList.removeAll();
-				Database.GetReplayData(ControllerGame.userName, ControllerGame.password, (dataType == LOAD_REPLAY_TYPE && !yourRobotsBox.selected), sortByBox.selectedIndex, sortPeriodBox.selectedIndex - 1, curPage, Database.curSearch, (dataType == LOAD_REPLAY_TYPE ? cont.finishGettingLoadReplayData : (cont as ControllerGame).finishGettingSaveReplayData));
+				Database.GetReplayData(ControllerGameGlobals.userName, ControllerGameGlobals.password, (dataType == LOAD_REPLAY_TYPE && !yourRobotsBox.selected), sortByBox.selectedIndex, sortPeriodBox.selectedIndex - 1, curPage, Database.curSearch, (dataType == LOAD_REPLAY_TYPE ? cont.finishGettingLoadReplayData : (cont as ControllerGame).finishGettingSaveReplayData));
 				ShowFader();
 				cont.ShowDialog("Getting replays...");
 				Main.ShowHourglass();
 			} else if (dataType == LOAD_CHALLENGE_TYPE || dataType == SAVE_CHALLENGE_TYPE) {
 				dataList.removeAll();
-				Database.GetChallengeData(ControllerGame.userName, ControllerGame.password, (dataType == LOAD_CHALLENGE_TYPE && !yourRobotsBox.selected), sortByBox.selectedIndex, sortPeriodBox.selectedIndex - 1, curPage, Database.curSearch, (dataType == LOAD_CHALLENGE_TYPE ? cont.finishGettingLoadChallengeData : (cont as ControllerGame).finishGettingSaveChallengeData));
+				Database.GetChallengeData(ControllerGameGlobals.userName, ControllerGameGlobals.password, (dataType == LOAD_CHALLENGE_TYPE && !yourRobotsBox.selected), sortByBox.selectedIndex, sortPeriodBox.selectedIndex - 1, curPage, Database.curSearch, (dataType == LOAD_CHALLENGE_TYPE ? cont.finishGettingLoadChallengeData : (cont as ControllerGame).finishGettingSaveChallengeData));
 				ShowFader();
 				cont.ShowDialog("Getting challenges...");
 				Main.ShowHourglass();
@@ -1159,17 +1159,17 @@ package Gui
 
 		private function reloadHighScoreData(e:Event):void {
 			dataList.removeAll();
-			if (m_scoreTypeBox.selectedIndex == 2 && ControllerGame.userName == "_Public") {
+			if (m_scoreTypeBox.selectedIndex == 2 && ControllerGameGlobals.userName == "_Public") {
 				visible = false;
 				cont.loginButton(new MouseEvent(""), true, true);
 			} else {
-				Database.GetScoreData(ControllerGame.userName, ControllerGame.password, Database.highScoresChallenge, (m_scoreTypeBox.selectedIndex == 1), (m_scoreTypeBox.selectedIndex == 2), sortByBox.selectedIndex - 1, curPage, Database.curSearch, cont.finishGettingScoreData);
+				Database.GetScoreData(ControllerGameGlobals.userName, ControllerGameGlobals.password, Database.highScoresChallenge, (m_scoreTypeBox.selectedIndex == 1), (m_scoreTypeBox.selectedIndex == 2), sortByBox.selectedIndex - 1, curPage, Database.curSearch, cont.finishGettingScoreData);
 				ShowFader();
 				cont.ShowDialog("Getting high scores...");
 				Main.ShowHourglass();
 			}
 		}
-		
+
 		private function prevPageButtonPressed(e:Event):void {
 			if (curPage > 1) {
 				curPage--;
@@ -1177,7 +1177,7 @@ package Gui
 				else reloadData(e);
 			}
 		}
-		
+
 		private function nextPageButtonPressed(e:Event):void {
 			if (curPage < Database.numPages) {
 				curPage++;
@@ -1185,11 +1185,11 @@ package Gui
 				else reloadData(e);
 			}
 		}
-		
+
 		private function PartIsEditable(p:Part, index:int, array:Array):Boolean {
 			return p.isEditable;
 		}
-		
+
 		private function userLink(e:Event):void {
 			if (dataList.selectedIndex >= 0) {
 				if (dataType == SAVE_ROBOT_TYPE || dataType == LOAD_ROBOT_TYPE) {
@@ -1201,17 +1201,17 @@ package Gui
 				}
 			}
 		}
-		
+
 		private function exportButtonPressed(e:Event):void {
 			if (dataList.selectedIndex >= 0) {
 				if (dataType == LOAD_ROBOT_TYPE) {
-					Database.LoadRobot(ControllerGame.userName, ControllerGame.password, dataList.selectedIndex, finishLoadingRobotForExport);
+					Database.LoadRobot(ControllerGameGlobals.userName, ControllerGameGlobals.password, dataList.selectedIndex, finishLoadingRobotForExport);
 				} else if (dataType == LOAD_REPLAY_TYPE) {
-					Database.LoadReplay(ControllerGame.userName, ControllerGame.password, dataList.selectedIndex, finishLoadingReplayForExport);
+					Database.LoadReplay(ControllerGameGlobals.userName, ControllerGameGlobals.password, dataList.selectedIndex, finishLoadingReplayForExport);
 				} else if (dataType == LOAD_CHALLENGE_TYPE) {
-					Database.LoadChallenge(ControllerGame.userName, ControllerGame.password, dataList.selectedIndex, finishLoadingChallengeForExport);
+					Database.LoadChallenge(ControllerGameGlobals.userName, ControllerGameGlobals.password, dataList.selectedIndex, finishLoadingChallengeForExport);
 				} else if (dataType == HIGH_SCORE_TYPE) {
-					Database.LoadReplayFromScore(ControllerGame.userName, ControllerGame.password, dataList.selectedIndex, finishLoadingScoreReplayForExport);
+					Database.LoadReplayFromScore(ControllerGameGlobals.userName, ControllerGameGlobals.password, dataList.selectedIndex, finishLoadingScoreReplayForExport);
 				}
 				ShowFader();
 				cont.ShowDialog("Exporting...");
@@ -1221,14 +1221,14 @@ package Gui
 				cont.ShowDialog2("You need to select a " + (dataType == LOAD_ROBOT_TYPE ? "robot" : (dataType == LOAD_REPLAY_TYPE ? "replay" : "challenge")) + " first!");
 			}
 		}
-		
+
 		private function finishLoadingRobotForExport(e:Event):void {
 			cont.HideDialog(e);
 			Database.ExportRobot(Database.FinishLoadingRobot(e), Database.robotList[dataList.selectedIndex].name, Database.robotList[dataList.selectedIndex].description, Database.robotList[dataList.selectedIndex].shared, Database.robotList[dataList.selectedIndex].editable, Database.robotList[dataList.selectedIndex].prop, cont.finishExporting);
 			HideFader();
 			Main.ShowMouse();
 		}
-		
+
 		private function finishLoadingReplayForExport(e:Event):void {
 			cont.HideDialog(e);
 			var replayAndRobot:Array = Database.FinishLoadingReplay(e);
@@ -1236,14 +1236,14 @@ package Gui
 			HideFader();
 			Main.ShowMouse();
 		}
-		
+
 		private function finishLoadingChallengeForExport(e:Event):void {
 			cont.HideDialog(e);
 			Database.ExportChallenge(Database.FinishLoadingChallenge(e), Database.challengeList[dataList.selectedIndex].name, Database.challengeList[dataList.selectedIndex].description, Database.challengeList[dataList.selectedIndex].shared, Database.challengeList[dataList.selectedIndex].editable, cont.finishExporting);
 			HideFader();
 			Main.ShowMouse();
 		}
-		
+
 		private function finishLoadingScoreReplayForExport(e:Event):void {
 			cont.HideDialog(e);
 			var replayAndRobot:Array = Database.FinishLoadingReplay(e);
@@ -1251,7 +1251,7 @@ package Gui
 			HideFader();
 			Main.ShowMouse();
 		}
-		
+
 		private function refreshMouse(e:Event):void {
 			if (sortPeriodBox && e.target == sortPeriodBox.dropdown && (dataType == SAVE_ROBOT_TYPE || dataType == LOAD_ROBOT_TYPE)) {
 				e.target.height = 120;

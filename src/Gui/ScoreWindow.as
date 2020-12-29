@@ -3,9 +3,9 @@ package Gui
 	import Game.*;
 	import Game.Tutorials.*;
 	import Game.Graphics.Resource;
-	
+
 	import fl.controls.Button;
-	
+
 	import flash.events.*;
 	import flash.text.*;
 
@@ -22,11 +22,11 @@ package Gui
 		private var m_mainMenuButton:Button;
 		private var m_cancelButton:Button;
 		private var m_nextLevelButton:Button;
-		
+
 		public function ScoreWindow(contr:ControllerGame, score:int)
 		{
 			cont = contr;
-			
+
 			m_header = new Resource.cCongrats();
 			m_header.smoothing = true;
 			m_header.width = 175;
@@ -34,9 +34,9 @@ package Gui
 			m_header.x = 13;
 			m_header.y = 15;
 			addChild(m_header);
-			
+
 			var y:int = 40;
-			
+
 			if (!(cont is ControllerTutorial || cont is ControllerHomeMovies || cont is ControllerRubeGoldberg || cont is ControllerNewFeatures || cont is ControllerChallengeEditor)) {
 				m_scoreField = new TextField();
 				m_scoreField.text = "Your score is: " + score;
@@ -53,8 +53,8 @@ package Gui
 				addChild(m_scoreField);
 				y = 60;
 			}
-			
-			m_viewReplayButton = new GuiButton((ControllerGame.viewingUnsavedReplay ? "View Again!" : "View Replay"), 45, y, 110, 35, viewReplayButton, GuiButton.PURPLE);
+
+			m_viewReplayButton = new GuiButton((ControllerGameGlobals.viewingUnsavedReplay ? "View Again!" : "View Replay"), 45, y, 110, 35, viewReplayButton, GuiButton.PURPLE);
 			addChild(m_viewReplayButton);
 			m_saveReplayButton = new GuiButton("Save Replay", 45, y + 30, 110, 35, saveReplayButton, GuiButton.PURPLE);
 			addChild(m_saveReplayButton);
@@ -68,24 +68,24 @@ package Gui
 				m_nextLevelButton = new GuiButton("Next Level", 45, y + 150, 110, 35, nextButton, GuiButton.BLUE);
 				addChild(m_nextLevelButton);
 			}
-			
+
 			super(323, 130, 200, (cont is ControllerTutorial || cont is ControllerHomeMovies || cont is ControllerRubeGoldberg || cont is ControllerNewFeatures ? y + 200 : y + 170));
 		}
-		
+
 		private function viewReplayButton(e:MouseEvent):void  {
 			cont.viewReplayButton(e);
 		}
-		
+
 		private function saveReplayButton(e:MouseEvent):void {
 			cont.saveReplayButton(e);
 		}
-		
+
 		private function cancelButton(e:MouseEvent):void {
 			visible = false;
 			cont.m_fader.visible = false;
 			if (!(cont is ControllerHomeMovies || cont is ControllerChallengeEditor)) cont.resetButton(e);
 		}
-		
+
 		private function nextButton(e:MouseEvent):void {
 			Main.changeControllers = true;
 			Main.nextControllerType++;
@@ -95,8 +95,8 @@ package Gui
 				if (Main.nextControllerType == 19) settings = new SandboxSettings(15.0, 0, 2, 0, 5);
 				ControllerSandbox.settings = settings;
 			}
-			ControllerGame.playingReplay = false;
-			ControllerGame.viewingUnsavedReplay = false;
+			ControllerGameGlobals.playingReplay = false;
+			ControllerGameGlobals.viewingUnsavedReplay = false;
 		}
 	}
 }

@@ -1,6 +1,4 @@
 import { b2Vec2, b2World, b2Body, b2BodyDef, b2MassData } from "@box2d/core";
-import { ControllerGame } from "../Game/ControllerGame";
-import { ControllerMainMenu } from "../Game/ControllerMainMenu";
 import { Util } from "../General/Util";
 import { FixedJoint } from "./FixedJoint";
 import { ShapePart } from "./ShapePart";
@@ -247,8 +245,9 @@ import { ShapePart } from "./ShapePart";
 			body.ApplyImpulse(forceVector, body.GetWorldCenter());
 			forceVector = forceVector.Negative();
 			this.m_body.ApplyImpulse(forceVector, positionVector);
-			if (ControllerGame.cannonballs) ControllerGame.cannonballs.push(body);
-			if (ControllerMainMenu.cannonballs) ControllerMainMenu.cannonballs.push(body);
+			// FIXME: Disabled to prevent circular references between imports.
+			// if (ControllerGameGlobals.cannonballs) ControllerGameGlobals.cannonballs.push(body);
+			// if (ControllerMainMenu.cannonballs) ControllerMainMenu.cannonballs.push(body);
 
 			this.cannonballCounters.push(5);
 		}

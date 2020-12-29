@@ -2,11 +2,11 @@ package Gui
 {
 	import Game.*;
 	import Game.Tutorials.*;
-	
+
 	import General.*;
-	
+
 	import fl.controls.*;
-	
+
 	import flash.display.*;
 	import flash.events.*;
 	import flash.text.*;
@@ -40,11 +40,11 @@ package Gui
 
 		public function ChooseChallengeWindow(contr:Controller) {
 			cont = contr;
-			
+
 			curPage = Database.curChallengePage;
-			
+
 			Main.ShowMouse();
-			
+
 			header = new TextField();
 			header.text = "Choose a Challenge";
 			header.width = 200;
@@ -95,7 +95,7 @@ package Gui
 			dataList.setStyle("upArrowDisabledSkin", MainEditPanel.scrollbarButtonUpBase());
 			dataList.addEventListener(MouseEvent.CLICK, dataListClicked, false, 0, true);
 			addChild(dataList);
-			
+
 			format = new TextFormat();
 			format.size = 12;
 			format.align = TextFormatAlign.CENTER;
@@ -288,7 +288,7 @@ package Gui
 			sortPeriodText.y = 83;
 			sortPeriodText.setTextFormat(format);
 			addChild(sortPeriodText);
-			
+
 			sortPeriodBox = new GuiCombobox(83, 75, 135, 32);
 			sortPeriodBox.addItem({label:"  Featured"});
 			sortPeriodBox.addItem({label:"  All Time"});
@@ -309,7 +309,7 @@ package Gui
 			sortPeriodBox.addEventListener(Event.CHANGE, boxChanged, false, 0, true);
 			sortPeriodBox.dropdown.addEventListener(Event.ADDED_TO_STAGE, refreshMouse, false, 0, true);
 			addChild(sortPeriodBox);
-			
+
 			sortByBox = new GuiCombobox(83, 45, 135, 32);
 			sortByBox.addItem({label:"  Most Viewed"});
 			sortByBox.addItem({label:"  Creation Date"});
@@ -345,14 +345,14 @@ package Gui
 
 			super(127, 50, 547, 505);
 		}
-		
+
 		private function searchButtonPressed(e:MouseEvent):void {
 			if (searchWindow) removeChild(searchWindow);
 			searchWindow = new SearchWindow(this, false, "Challenge");
 			addChild(searchWindow);
 			ShowFader();
 		}
-		
+
 		private function cancelButtonPressed(e:MouseEvent):void {
 			visible = false;
 			if (cont is ControllerGame) {
@@ -383,7 +383,7 @@ package Gui
 				editedText.text = Util.FormatDate(Database.challengeList[dataList.selectedIndex].editTime);
 				viewsText.text = Database.challengeList[dataList.selectedIndex].viewCount;
 				ratingText.text = (isNaN(Database.challengeList[dataList.selectedIndex].rating) ? 0 : Database.challengeList[dataList.selectedIndex].rating.toPrecision(3)) + " (" + Database.challengeList[dataList.selectedIndex].numRatings + " rating" + (Database.challengeList[dataList.selectedIndex].numRatings == 1 ? "" : "s") + ")";
-				
+
 				var format:TextFormat = new TextFormat();
 				format.size = 12;
 				format.font = Main.GLOBAL_FONT;
@@ -405,7 +405,7 @@ package Gui
 		private function okButtonPressed(e:MouseEvent):void {
 			if (dataList.selectedIndex >= 0) {
 				visible = false;
-				Database.GetScoreData(ControllerGame.userName, ControllerGame.password, Database.challengeList[dataList.selectedIndex].id, Database.highScoresDaily, Database.highScoresPersonal, Database.highScoresSortType, 1, "", cont.finishGettingScoreData);
+				Database.GetScoreData(ControllerGameGlobals.userName, ControllerGameGlobals.password, Database.challengeList[dataList.selectedIndex].id, Database.highScoresDaily, Database.highScoresPersonal, Database.highScoresSortType, 1, "", cont.finishGettingScoreData);
 				cont.ShowDialog("Getting scores...");
 				Main.ShowHourglass();
 			} else {
@@ -413,10 +413,10 @@ package Gui
 				cont.ShowDialog2("You need to select a challenge first!");
 			}
 		}
-		
+
 		private function reloadData(e:Event):void {
 			dataList.removeAll();
-			Database.GetChallengeData(ControllerGame.userName, ControllerGame.password, true, sortByBox.selectedIndex, sortPeriodBox.selectedIndex - 1, curPage, Database.curSearch, cont.finishGettingLoadChallengeForScoreData);
+			Database.GetChallengeData(ControllerGameGlobals.userName, ControllerGameGlobals.password, true, sortByBox.selectedIndex, sortPeriodBox.selectedIndex - 1, curPage, Database.curSearch, cont.finishGettingLoadChallengeForScoreData);
 			ShowFader();
 			cont.ShowDialog("Getting challenges...");
 			Main.ShowHourglass();
@@ -428,20 +428,20 @@ package Gui
 				reloadData(e);
 			}
 		}
-		
+
 		private function nextPageButtonPressed(e:Event):void {
 			if (curPage < Database.numPages) {
 				curPage++;
 				reloadData(e);
 			}
 		}
-		
+
 		private function userLink(e:Event):void {
 			if (dataList.selectedIndex >= 0) {
 				Main.BrowserRedirect("http://incredibots2.com/users.php?user=" + escape(Database.challengeList[dataList.selectedIndex].user), true);
 			}
 		}
-		
+
 		private function refreshMouse(e:Event):void {
 			Main.RefreshMouse(stage, (e.target as Sprite));
 		}

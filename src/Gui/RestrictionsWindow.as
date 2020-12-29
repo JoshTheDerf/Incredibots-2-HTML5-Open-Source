@@ -1,19 +1,19 @@
 package Gui
 {
 	import Game.*;
-	
+
 	import General.Database;
-	
+
 	import fl.controls.*;
-	
+
 	import flash.events.*;
 	import flash.text.*;
-	
-	
+
+
 	public class RestrictionsWindow extends GuiWindow
 	{
 		private var cont:ControllerChallenge;
-		
+
 		private var circleBox:CheckBox;
 		private var rectBox:CheckBox;
 		private var triBox:CheckBox;
@@ -35,7 +35,7 @@ package Gui
 		private var maxSJStrengthBox:CheckBox;
 		private var maxSJSpeedBox:CheckBox;
 		private var maxThrusterBox:CheckBox;
-		
+
 		private var minDensityArea:TextInput;
 		private var maxDensityArea:TextInput;
 		private var maxRJStrengthArea:TextInput;
@@ -43,14 +43,14 @@ package Gui
 		private var maxSJStrengthArea:TextInput;
 		private var maxSJSpeedArea:TextInput;
 		private var maxThrusterArea:TextInput;
-		
+
 		private var backButton:GuiButton;
 		private var okButton:GuiButton;
-		
+
 		public function RestrictionsWindow(contr:ControllerChallenge)
 		{
 			cont = contr;
-			
+
 			var header:TextField = new TextField();
 			header.text = "Set Restrictions For This Challenge";
 			header.width = 400;
@@ -92,7 +92,7 @@ package Gui
 			header.y = 260;
 			header.setTextFormat(format);
 			addChild(header);
-			
+
 			header = new TextField();
 			header.text = "Max Sliding Joint Strength:";
 			header.width = 360;
@@ -103,7 +103,7 @@ package Gui
 			header.y = 310;
 			header.setTextFormat(format);
 			addChild(header);
-			
+
 			header = new TextField();
 			header.text = "Max Sliding Joint Speed:";
 			header.width = 360;
@@ -114,7 +114,7 @@ package Gui
 			header.y = 360;
 			header.setTextFormat(format);
 			addChild(header);
-			
+
 			header = new TextField();
 			header.text = "Max Rotating Joint Strength:";
 			header.width = 360;
@@ -125,7 +125,7 @@ package Gui
 			header.y = 210;
 			header.setTextFormat(format);
 			addChild(header);
-			
+
 			header = new TextField();
 			header.text = "Max Rotating Joint Speed:";
 			header.width = 360;
@@ -136,7 +136,7 @@ package Gui
 			header.y = 260;
 			header.setTextFormat(format);
 			addChild(header);
-			
+
 			header = new TextField();
 			header.text = "Max Thruster Strength:";
 			header.width = 360;
@@ -152,7 +152,7 @@ package Gui
 			format.color = 0x242930;
 			format.font = Main.GLOBAL_FONT;
 			format.size = 12;
-			
+
 			circleBox = new GuiCheckBox();
 			circleBox.label = "Exclude Circles";
 			circleBox.x = 15;
@@ -192,7 +192,7 @@ package Gui
 			fjBox.setStyle("textFormat", format);
 			fjBox.addEventListener(Event.CHANGE, boxChanged, false, 0, true);
 			addChild(fjBox);
-			
+
 			rjBox = new GuiCheckBox();
 			rjBox.label = "Exclude Rotating Joints";
 			rjBox.x = 205;
@@ -202,7 +202,7 @@ package Gui
 			rjBox.setStyle("textFormat", format);
 			rjBox.addEventListener(Event.CHANGE, boxChanged, false, 0, true);
 			addChild(rjBox);
-			
+
 			sjBox = new GuiCheckBox();
 			sjBox.label = "Exclude Sliding Joints";
 			sjBox.x = 395;
@@ -222,7 +222,7 @@ package Gui
 			thrustersBox.setStyle("textFormat", format);
 			thrustersBox.addEventListener(Event.CHANGE, boxChanged, false, 0, true);
 			addChild(thrustersBox);
-			
+
 			cannonBox = new GuiCheckBox();
 			cannonBox.label = "Exclude Cannons";
 			cannonBox.x = 300;
@@ -232,7 +232,7 @@ package Gui
 			cannonBox.setStyle("textFormat", format);
 			cannonBox.addEventListener(Event.CHANGE, boxChanged, false, 0, true);
 			addChild(cannonBox);
-			
+
 			mouseBox = new GuiCheckBox();
 			mouseBox.label = "Allow Dragging With Mouse";
 			mouseBox.x = 15;
@@ -241,7 +241,7 @@ package Gui
 			mouseBox.selected = ControllerChallenge.challenge.mouseDragAllowed;
 			mouseBox.setStyle("textFormat", format);
 			addChild(mouseBox);
-			
+
 			controlBox = new GuiCheckBox();
 			controlBox.label = "Allow User Control of Bot";
 			controlBox.x = 205;
@@ -250,7 +250,7 @@ package Gui
 			controlBox.selected = ControllerChallenge.challenge.botControlAllowed;
 			controlBox.setStyle("textFormat", format);
 			addChild(controlBox);
-			
+
 			constructionBox = new GuiCheckBox();
 			constructionBox.label = "Allow User Construction";
 			constructionBox.x = 395;
@@ -278,7 +278,7 @@ package Gui
 			collisionBox.selected = ControllerChallenge.challenge.nonCollidingAllowed;
 			collisionBox.setStyle("textFormat", format);
 			addChild(collisionBox);
-			
+
 			conditionsBox = new GuiCheckBox();
 			conditionsBox.label = "Conditions Always Visible";
 			conditionsBox.x = 395;
@@ -317,7 +317,7 @@ package Gui
 			maxSJStrengthBox.setStyle("textFormat", format);
 			maxSJStrengthBox.addEventListener(Event.CHANGE, maxSJStrengthBoxChanged, false, 0, true);
 			addChild(maxSJStrengthBox);
-			
+
 			maxSJSpeedBox = new GuiCheckBox();
 			maxSJSpeedBox.label = "No Limit";
 			maxSJSpeedBox.x = 95;
@@ -337,7 +337,7 @@ package Gui
 			maxRJStrengthBox.setStyle("textFormat", format);
 			maxRJStrengthBox.addEventListener(Event.CHANGE, maxRJStrengthBoxChanged, false, 0, true);
 			addChild(maxRJStrengthBox);
-			
+
 			maxRJSpeedBox = new GuiCheckBox();
 			maxRJSpeedBox.label = "No Limit";
 			maxRJSpeedBox.x = 300;
@@ -441,7 +441,7 @@ package Gui
 
 			super(105, 100, 600, 434);
 		}
-		
+
 		private function backButtonPressed(e:MouseEvent, callback:Boolean = true):Boolean {
 			ControllerChallenge.challenge.circlesAllowed = !circleBox.selected;
 			ControllerChallenge.challenge.rectanglesAllowed = !rectBox.selected;
@@ -456,7 +456,7 @@ package Gui
 			ControllerChallenge.challenge.fixateAllowed = fixateBox.selected;
 			ControllerChallenge.challenge.nonCollidingAllowed = collisionBox.selected;
 			ControllerChallenge.challenge.showConditions = conditionsBox.selected;
-			
+
 			var minDensity:Number = (minDensityBox.selected ? -Number.MAX_VALUE : Number(minDensityArea.text));
 			var maxDensity:Number = (maxDensityBox.selected ? Number.MAX_VALUE : Number(maxDensityArea.text));
 			var maxRJStrength:Number = (maxRJStrengthBox.selected ? Number.MAX_VALUE : Number(maxRJStrengthArea.text));
@@ -464,7 +464,7 @@ package Gui
 			var maxSJStrength:Number = (maxSJStrengthBox.selected ? Number.MAX_VALUE : Number(maxSJStrengthArea.text));
 			var maxSJSpeed:Number = (maxSJSpeedBox.selected ? Number.MAX_VALUE : Number(maxSJSpeedArea.text));
 			var maxThrusterStrength:Number = (maxThrusterBox.selected ? Number.MAX_VALUE : Number(maxThrusterArea.text));
-			
+
 			if (!minDensityBox.selected) {
 				if (minDensity < 1.0) minDensity = 1.0;
 				if (minDensity > 30.0) minDensity = 30.0;
@@ -508,23 +508,23 @@ package Gui
 			ControllerChallenge.challenge.maxSJStrength = maxSJStrength;
 			ControllerChallenge.challenge.maxSJSpeed = maxSJSpeed;
 			ControllerChallenge.challenge.maxThrusterStrength = maxThrusterStrength;
-			
-			ControllerGame.minDensity = minDensity;
-			ControllerGame.maxDensity = maxDensity;
-			ControllerGame.maxRJStrength = maxRJStrength;
-			ControllerGame.maxRJSpeed = maxRJSpeed;
-			ControllerGame.maxSJStrength = maxSJStrength;
-			ControllerGame.maxSJSpeed = maxSJSpeed;
-			ControllerGame.maxThrusterStrength = maxThrusterStrength;
-			
-			ControllerGame.minDensity = (minDensity == -Number.MAX_VALUE ? 1 : minDensity);
-			ControllerGame.maxDensity = (maxDensity == Number.MAX_VALUE ? 30 : maxDensity);
-			ControllerGame.maxRJStrength = (maxRJStrength == Number.MAX_VALUE ? 30 : maxRJStrength);
-			ControllerGame.maxRJSpeed = (maxRJSpeed == Number.MAX_VALUE ? 30 : maxRJSpeed);
-			ControllerGame.maxSJStrength = (maxSJStrength == Number.MAX_VALUE ? 30 : maxSJStrength);
-			ControllerGame.maxSJSpeed = (maxSJSpeed == Number.MAX_VALUE ? 30 : maxSJSpeed);
-			ControllerGame.maxThrusterStrength = (maxThrusterStrength == Number.MAX_VALUE ? 30 : maxThrusterStrength);
-			
+
+			ControllerGameGlobals.minDensity = minDensity;
+			ControllerGameGlobals.maxDensity = maxDensity;
+			ControllerGameGlobals.maxRJStrength = maxRJStrength;
+			ControllerGameGlobals.maxRJSpeed = maxRJSpeed;
+			ControllerGameGlobals.maxSJStrength = maxSJStrength;
+			ControllerGameGlobals.maxSJSpeed = maxSJSpeed;
+			ControllerGameGlobals.maxThrusterStrength = maxThrusterStrength;
+
+			ControllerGameGlobals.minDensity = (minDensity == -Number.MAX_VALUE ? 1 : minDensity);
+			ControllerGameGlobals.maxDensity = (maxDensity == Number.MAX_VALUE ? 30 : maxDensity);
+			ControllerGameGlobals.maxRJStrength = (maxRJStrength == Number.MAX_VALUE ? 30 : maxRJStrength);
+			ControllerGameGlobals.maxRJSpeed = (maxRJSpeed == Number.MAX_VALUE ? 30 : maxRJSpeed);
+			ControllerGameGlobals.maxSJStrength = (maxSJStrength == Number.MAX_VALUE ? 30 : maxSJStrength);
+			ControllerGameGlobals.maxSJSpeed = (maxSJSpeed == Number.MAX_VALUE ? 30 : maxSJSpeed);
+			ControllerGameGlobals.maxThrusterStrength = (maxThrusterStrength == Number.MAX_VALUE ? 30 : maxThrusterStrength);
+
 			if (minDensity > maxDensity && callback) {
 				maxDensity = minDensity;
 				visible = false;
@@ -542,12 +542,12 @@ package Gui
 				return true;
 			}
 		}
-		
+
 		private function okButtonPressed(e:MouseEvent):void {
 			if (backButtonPressed(e, false)) {
 				visible = false;
 				if (cont.saveAfterRestrictions) {
-					//Database.GetChallengeData(ControllerGame.userName, ControllerGame.password, false, Database.curSortType, (Database.curSortPeriod == Database.SORT_PERIOD_FEATURED ? Database.SORT_PERIOD_ALLTIME : Database.curSortPeriod), 1, "", cont.finishGettingSaveChallengeData);
+					//Database.GetChallengeData(ControllerGameGlobals.userName, ControllerGameGlobals.password, false, Database.curSortType, (Database.curSortPeriod == Database.SORT_PERIOD_FEATURED ? Database.SORT_PERIOD_ALLTIME : Database.curSortPeriod), 1, "", cont.finishGettingSaveChallengeData);
 					//cont.ShowDialog("Getting challenges...");
 					//Main.ShowHourglass();
 					Database.ExportChallenge(ControllerChallenge.challenge, "", "", 1, 1, (cont as ControllerGame).finishExporting);
@@ -556,11 +556,11 @@ package Gui
 				}
 			}
 		}
-		
+
 		private function textFocus(e:Event):void {
 			e.target.setSelection(0, 4);
 		}
-		
+
 		private function textEntered(e:Event):void {
 			var num:Number = Number(e.target.text);
 			if (num < 1.0) num = 1.0;
@@ -568,13 +568,13 @@ package Gui
 			if (isNaN(num)) num = 15.0;
 			e.target.text = num.toString();
 		}
-		
+
 		private function boxChanged(e:Event):void {
 			if (!e.target.selected) {
 				constructionBox.selected = true;
 			}
 		}
-		
+
 		private function allowBuildingBoxChanged(e:Event):void {
 			if (!constructionBox.selected) {
 				circleBox.selected = true;
@@ -596,43 +596,43 @@ package Gui
 				cannonBox.selected = false;
 			}
 		}
-		
+
 		private function minDensityBoxChanged(e:Event):void {
 			minDensityArea.enabled = !minDensityBox.selected;
 			minDensityArea.focusEnabled = !minDensityBox.selected;
 			minDensityArea.editable = !minDensityBox.selected;
 		}
-		
+
 		private function maxDensityBoxChanged(e:Event):void {
 			maxDensityArea.enabled = !maxDensityBox.selected;
 			maxDensityArea.focusEnabled = !maxDensityBox.selected;
 			maxDensityArea.editable = !maxDensityBox.selected;
 		}
-		
+
 		private function maxRJStrengthBoxChanged(e:Event):void {
 			maxRJStrengthArea.enabled = !maxRJStrengthBox.selected;
 			maxRJStrengthArea.focusEnabled = !maxRJStrengthBox.selected;
 			maxRJStrengthArea.editable = !maxRJStrengthBox.selected;
 		}
-		
+
 		private function maxRJSpeedBoxChanged(e:Event):void {
 			maxRJSpeedArea.enabled = !maxRJSpeedBox.selected;
 			maxRJSpeedArea.focusEnabled = !maxRJSpeedBox.selected;
 			maxRJSpeedArea.editable = !maxRJSpeedBox.selected;
 		}
-		
+
 		private function maxSJStrengthBoxChanged(e:Event):void {
 			maxSJStrengthArea.enabled = !maxSJStrengthBox.selected;
 			maxSJStrengthArea.focusEnabled = !maxSJStrengthBox.selected;
 			maxSJStrengthArea.editable = !maxSJStrengthBox.selected;
 		}
-		
+
 		private function maxSJSpeedBoxChanged(e:Event):void {
 			maxSJSpeedArea.enabled = !maxSJSpeedBox.selected;
 			maxSJSpeedArea.focusEnabled = !maxSJSpeedBox.selected;
 			maxSJSpeedArea.editable = !maxSJSpeedBox.selected;
 		}
-		
+
 		private function maxThrusterBoxChanged(e:Event):void {
 			maxThrusterArea.enabled = !maxThrusterBox.selected;
 			maxThrusterArea.focusEnabled = !maxThrusterBox.selected;

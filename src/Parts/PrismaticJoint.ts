@@ -60,20 +60,20 @@ export class PrismaticJoint extends JointPart
 		this.autoOscillate = false;
 		this.pistonUpKey = 38;
 		this.pistonDownKey = 40;
-		if (ControllerGame.maxSJStrength < 15.0) {
-			this.pistonStrength = ControllerGame.maxSJStrength;
+		if (ControllerGameGlobals.maxSJStrength < 15.0) {
+			this.pistonStrength = ControllerGameGlobals.maxSJStrength;
 		} else {
 			this.pistonStrength = 15.0;
 		}
-		if (ControllerGame.maxSJSpeed < 15.0) {
-			this.pistonSpeed = ControllerGame.maxSJSpeed;
+		if (ControllerGameGlobals.maxSJSpeed < 15.0) {
+			this.pistonSpeed = ControllerGameGlobals.maxSJSpeed;
 		} else {
 			this.pistonSpeed = 15.0;
 		}
-		this.red = ControllerGame.defaultR;
-		this.green = ControllerGame.defaultG;
-		this.blue = ControllerGame.defaultB;
-		this.opacity = ControllerGame.defaultO;
+		this.red = ControllerGameGlobals.defaultR;
+		this.green = ControllerGameGlobals.defaultG;
+		this.blue = ControllerGameGlobals.defaultB;
+		this.opacity = ControllerGameGlobals.defaultO;
 		this.outline = true;
 		this.initLength = Util.GetDist(x1, y1, x2, y2);
 		this.type = "PrismaticJoint";
@@ -163,7 +163,7 @@ export class PrismaticJoint extends JointPart
 
 		this.m_shapes = new Array();
 		if (this.part1.GetBody() != this.part2.GetBody()) {
-			var collisionGroup:number = ControllerGame.collisionGroup;
+			var collisionGroup:number = ControllerGameGlobals.collisionGroup;
 			this.part1.GetShape().m_filter.categoryBits = collisionGroup;
 			this.part2.GetShape().m_filter.categoryBits = collisionGroup;
 

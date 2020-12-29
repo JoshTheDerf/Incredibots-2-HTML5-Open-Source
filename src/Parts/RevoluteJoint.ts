@@ -35,13 +35,13 @@ import { ShapePart } from "./ShapePart";
 			this.autoCCW = false;
 			this.motorCWKey = 39;
 			this.motorCCWKey = 37;
-			if (ControllerGame.maxRJStrength < 15.0) {
-				this.motorStrength = ControllerGame.maxRJStrength;
+			if (ControllerGameGlobals.maxRJStrength < 15.0) {
+				this.motorStrength = ControllerGameGlobals.maxRJStrength;
 			} else {
 				this.motorStrength = 15.0;
 			}
-			if (ControllerGame.maxRJSpeed < 15.0) {
-				this.motorSpeed = ControllerGame.maxRJSpeed;
+			if (ControllerGameGlobals.maxRJSpeed < 15.0) {
+				this.motorSpeed = ControllerGameGlobals.maxRJSpeed;
 			} else {
 				this.motorSpeed = 15.0;
 			}

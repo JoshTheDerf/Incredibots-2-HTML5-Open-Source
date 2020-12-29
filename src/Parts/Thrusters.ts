@@ -26,8 +26,8 @@ import { ShapePart } from "./ShapePart";
 			this.centerX = x;
 			this.centerY = y;
 			this.type = "Thrusters";
-			if (ControllerGame.maxThrusterStrength < 15.0) {
-				this.strength = ControllerGame.maxThrusterStrength;
+			if (ControllerGameGlobals.maxThrusterStrength < 15.0) {
+				this.strength = ControllerGameGlobals.maxThrusterStrength;
 			} else {
 				this.strength = 15.0;
 			}

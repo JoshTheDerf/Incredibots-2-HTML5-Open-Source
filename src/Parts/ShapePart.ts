@@ -34,18 +34,18 @@ export class ShapePart extends Part
 		super()
 		this.centerX = x;
 		this.centerY = y;
-		if (ControllerGame.minDensity > 15.0) {
-			this.density = ControllerGame.minDensity;
-		} else if (ControllerGame.maxDensity < 15.0) {
-			this.density = ControllerGame.maxDensity;
+		if (ControllerGameGlobals.minDensity > 15.0) {
+			this.density = ControllerGameGlobals.minDensity;
+		} else if (ControllerGameGlobals.maxDensity < 15.0) {
+			this.density = ControllerGameGlobals.maxDensity;
 		} else {
 			this.density = 15.0;
 		}
 		this.angle = 0;
-		this.red = ControllerGame.defaultR;
-		this.green = ControllerGame.defaultG;
-		this.blue = ControllerGame.defaultB;
-		this.opacity = ControllerGame.defaultO;
+		this.red = ControllerGameGlobals.defaultR;
+		this.green = ControllerGameGlobals.defaultG;
+		this.blue = ControllerGameGlobals.defaultB;
+		this.opacity = ControllerGameGlobals.defaultO;
 		this.outline = true;
 		this.terrain = false;
 		this.undragable = false;

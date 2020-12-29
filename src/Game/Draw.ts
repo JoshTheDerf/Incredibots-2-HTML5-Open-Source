@@ -12,7 +12,6 @@ import { TextPart } from "../Parts/TextPart";
 import { Thrusters } from "../Parts/Thrusters";
 import { Triangle } from "../Parts/Triangle";
 import { Challenge } from "./Challenge";
-import { ControllerGame } from "./ControllerGame";
 
 export class Draw
 {
@@ -544,13 +543,13 @@ export class Draw
 		var vertices:Array<any>;
 		if (drawColours) m_fillAlpha = 1;
 		else m_fillAlpha = 0.5;
-		if (creatingItem == ControllerGame.NEW_CIRCLE && actionStep == 1) {
+		if (creatingItem == ControllerGameGlobals.NEW_CIRCLE && actionStep == 1) {
 			var rad:number = Util.GetDist(firstClickX, firstClickY, mouseX, mouseY);
 			if (rad < Circle.MIN_RADIUS) rad = Circle.MIN_RADIUS;
 			if (rad > Circle.MAX_RADIUS) rad = Circle.MAX_RADIUS;
-			if (drawColours) m_fillAlpha = ControllerGame.defaultO / 255.0;
-			DrawSolidCircle(new b2Vec2(firstClickX, firstClickY), rad, new b2Vec2((mouseX - firstClickX) / rad, (mouseY - firstClickY) / rad), (drawColours ? new b2Color(ControllerGame.defaultB / 255.0, ControllerGame.defaultG / 255.0, ControllerGame.defaultR / 255.0) : Draw.s_selectedColor));
-		} else if (creatingItem == ControllerGame.NEW_RECT && actionStep == 1) {
+			if (drawColours) m_fillAlpha = ControllerGameGlobals.defaultO / 255.0;
+			DrawSolidCircle(new b2Vec2(firstClickX, firstClickY), rad, new b2Vec2((mouseX - firstClickX) / rad, (mouseY - firstClickY) / rad), (drawColours ? new b2Color(ControllerGameGlobals.defaultB / 255.0, ControllerGameGlobals.defaultG / 255.0, ControllerGameGlobals.defaultR / 255.0) : Draw.s_selectedColor));
+		} else if (creatingItem == ControllerGameGlobals.NEW_RECT && actionStep == 1) {
 			var w:number = mouseX - firstClickX;
 			var h:number = mouseY - firstClickY;
 			if (Math.abs(w) < Rectangle.MIN_WIDTH) {
@@ -575,9 +574,9 @@ export class Draw
 			vertices[1] = new b2Vec2(firstClickX + w, firstClickY);
 			vertices[2] = new b2Vec2(firstClickX + w, firstClickY + h);
 			vertices[3] = new b2Vec2(firstClickX, firstClickY + h);
-			if (drawColours) m_fillAlpha = ControllerGame.defaultO / 255.0;
-			DrawSolidPolygon(vertices, 4, (drawColours ? new b2Color(ControllerGame.defaultB / 255.0, ControllerGame.defaultG / 255.0, ControllerGame.defaultR / 255.0) : Draw.s_selectedColor));
-		} else if (creatingItem == ControllerGame.NEW_CANNON && actionStep == 1) {
+			if (drawColours) m_fillAlpha = ControllerGameGlobals.defaultO / 255.0;
+			DrawSolidPolygon(vertices, 4, (drawColours ? new b2Color(ControllerGameGlobals.defaultB / 255.0, ControllerGameGlobals.defaultG / 255.0, ControllerGameGlobals.defaultR / 255.0) : Draw.s_selectedColor));
+		} else if (creatingItem == ControllerGameGlobals.NEW_CANNON && actionStep == 1) {
 			var positive:boolean = (mouseX >= firstClickX || mouseY >= firstClickY);
 			w = (positive ? Math.max(mouseX - firstClickX, 2 * (mouseY - firstClickY)) : Math.min(mouseX - firstClickX, 2 * (mouseY - firstClickY)));
 			if (Math.abs(w) < Cannon.MIN_WIDTH) {
@@ -594,9 +593,9 @@ export class Draw
 			vertices[1] = new b2Vec2(firstClickX + w, firstClickY);
 			vertices[2] = new b2Vec2(firstClickX + w, firstClickY + w / 2);
 			vertices[3] = new b2Vec2(firstClickX, firstClickY + w / 2);
-			if (drawColours) m_fillAlpha = ControllerGame.defaultO / 255.0;
-			DrawSolidCannon(vertices, 4, (drawColours ? new b2Color(ControllerGame.defaultB / 255.0, ControllerGame.defaultG / 255.0, ControllerGame.defaultR / 255.0) : Draw.s_selectedColor));
-		} else if (creatingItem == ControllerGame.NEW_TRIANGLE && actionStep == 1) {
+			if (drawColours) m_fillAlpha = ControllerGameGlobals.defaultO / 255.0;
+			DrawSolidCannon(vertices, 4, (drawColours ? new b2Color(ControllerGameGlobals.defaultB / 255.0, ControllerGameGlobals.defaultG / 255.0, ControllerGameGlobals.defaultR / 255.0) : Draw.s_selectedColor));
+		} else if (creatingItem == ControllerGameGlobals.NEW_TRIANGLE && actionStep == 1) {
 			var x2:number = mouseX;
 			var y2:number = mouseY;
 
@@ -612,7 +611,7 @@ export class Draw
 				y2 = firstClickY - Triangle.MAX_SIDE_LENGTH * Math.sin(angle);
 			}
 			DrawSegment(new b2Vec2(firstClickX, firstClickY), new b2Vec2(x2, y2), (drawColours ? new b2Color(0.0666, 0.0666, 0.0666) : Draw.s_selectedColor));
-		} else if (creatingItem == ControllerGame.NEW_TRIANGLE && actionStep == 2) {
+		} else if (creatingItem == ControllerGameGlobals.NEW_TRIANGLE && actionStep == 2) {
 			var sideLen1:number = Util.GetDist(firstClickX, firstClickY, mouseX, mouseY);
 			var sideLen2:number = Util.GetDist(secondClickX, secondClickY, mouseX, mouseY);
 			var sideLen0:number = Util.GetDist(firstClickX, firstClickY, secondClickX, secondClickY);
@@ -625,20 +624,20 @@ export class Draw
 				vertices[0] = new b2Vec2(firstClickX, firstClickY);
 				vertices[1] = new b2Vec2(secondClickX, secondClickY);
 				vertices[2] = new b2Vec2(mouseX, mouseY);
-				if (drawColours) m_fillAlpha = ControllerGame.defaultO / 255.0;
-				DrawSolidPolygon(vertices, 3, (drawColours ? new b2Color(ControllerGame.defaultB / 255.0, ControllerGame.defaultG / 255.0, ControllerGame.defaultR / 255.0) : Draw.s_selectedColor));
+				if (drawColours) m_fillAlpha = ControllerGameGlobals.defaultO / 255.0;
+				DrawSolidPolygon(vertices, 3, (drawColours ? new b2Color(ControllerGameGlobals.defaultB / 255.0, ControllerGameGlobals.defaultG / 255.0, ControllerGameGlobals.defaultR / 255.0) : Draw.s_selectedColor));
 			} else {
 				DrawSegment(new b2Vec2(firstClickX, firstClickY), new b2Vec2(secondClickX, secondClickY), (drawColours ? new b2Color(0.0666, 0.0666, 0.0666) : Draw.s_selectedColor));
 			}
-		} else if (creatingItem == ControllerGame.NEW_FIXED_JOINT || creatingItem == ControllerGame.NEW_REVOLUTE_JOINT || creatingItem == ControllerGame.NEW_PRISMATIC_JOINT || creatingItem == ControllerGame.FINALIZING_JOINT) {
+		} else if (creatingItem == ControllerGameGlobals.NEW_FIXED_JOINT || creatingItem == ControllerGameGlobals.NEW_REVOLUTE_JOINT || creatingItem == ControllerGameGlobals.NEW_PRISMATIC_JOINT || creatingItem == ControllerGameGlobals.FINALIZING_JOINT) {
 			DrawCircle(new b2Vec2(mouseX, mouseY), 0.075 * 30 / m_drawScale, Draw.s_selectedColor);
 			DrawCircle(new b2Vec2(mouseX, mouseY), 0.15 * 30 / m_drawScale, Draw.s_selectedColor);
-			if (creatingItem == ControllerGame.NEW_PRISMATIC_JOINT && actionStep == 1) {
+			if (creatingItem == ControllerGameGlobals.NEW_PRISMATIC_JOINT && actionStep == 1) {
 				DrawCircle(new b2Vec2(firstClickX, firstClickY), 0.075 * 30 / m_drawScale, Draw.s_selectedColor);
 				DrawCircle(new b2Vec2(firstClickX, firstClickY), 0.15 * 30 / m_drawScale, Draw.s_selectedColor);
 				DrawSegment(new b2Vec2(firstClickX, firstClickY), new b2Vec2(mouseX, mouseY), Draw.s_selectedColor);
 			}
-		} else if (creatingItem == ControllerGame.BOX_SELECTING || (creatingItem == ControllerGame.NEW_TEXT && actionStep == 1) || (creatingItem == ControllerGame.DRAWING_BOX && actionStep == 1) || (creatingItem == ControllerGame.DRAWING_BUILD_BOX && actionStep == 1)) {
+		} else if (creatingItem == ControllerGameGlobals.BOX_SELECTING || (creatingItem == ControllerGameGlobals.NEW_TEXT && actionStep == 1) || (creatingItem == ControllerGameGlobals.DRAWING_BOX && actionStep == 1) || (creatingItem == ControllerGameGlobals.DRAWING_BUILD_BOX && actionStep == 1)) {
 			vertices = new Array(4);
 			vertices[0] = new b2Vec2(firstClickX, firstClickY);
 			vertices[1] = new b2Vec2(firstClickX, mouseY);
@@ -646,12 +645,12 @@ export class Draw
 			vertices[3] = new b2Vec2(mouseX, firstClickY);
 			if (drawColours) m_fillAlpha = 0.5;
 			DrawSolidPolygon(vertices, 4, new b2Color(0.5, 0.5, 0.8));
-		} else if (creatingItem == ControllerGame.NEW_THRUSTERS) {
+		} else if (creatingItem == ControllerGameGlobals.NEW_THRUSTERS) {
 			DrawCircle(new b2Vec2(mouseX, mouseY), 0.075 * 30 / m_drawScale, Draw.s_selectedColor);
 			DrawCircle(new b2Vec2(mouseX, mouseY), 0.15 * 30 / m_drawScale, Draw.s_selectedColor);
-		} else if (creatingItem == ControllerGame.DRAWING_HORIZONTAL_LINE && actionStep == 1) {
+		} else if (creatingItem == ControllerGameGlobals.DRAWING_HORIZONTAL_LINE && actionStep == 1) {
 			DrawSegment(new b2Vec2(firstClickX, firstClickY), new b2Vec2(mouseX, firstClickY), new b2Color(0.0666, 0.0666, 0.0666));
-		} else if (creatingItem == ControllerGame.DRAWING_VERTICAL_LINE && actionStep == 1) {
+		} else if (creatingItem == ControllerGameGlobals.DRAWING_VERTICAL_LINE && actionStep == 1) {
 			DrawSegment(new b2Vec2(firstClickX, firstClickY), new b2Vec2(firstClickX, mouseY), new b2Color(0.0666, 0.0666, 0.0666));
 		}
 	}

@@ -2,21 +2,21 @@ package Gui
 {
 	import Game.*;
 	import Game.Graphics.Resource;
-	
+
 	import fl.controls.*;
-	
+
 	import flash.display.*;
 	import flash.events.*;
 	import flash.text.*;
-	
+
 	public class DropDownMenu extends Sprite
 	{
 		private var cont:ControllerGame;
 		private var mouseDown:Boolean = false;
-		
+
 		private var menuBitmap:BitmapData;
 		private var menuBitmapRoll:BitmapData;
-		
+
 		private var fileText:TextField;
 		private var editText:TextField;
 		private var viewText:TextField;
@@ -24,20 +24,20 @@ package Gui
 		private var helpText:TextField;
 		private var aboutText:TextField;
 		private var extrasText:TextField;
-		
+
 		private var m_currentMenu:Sprite;
-		
+
 		public function DropDownMenu(contr:ControllerGame)
 		{
 			cont = contr;
 			m_currentMenu = null;
-			
+
 			menuBitmap = new Resource.cGuiMenuBar().bitmapData;
 			menuBitmapRoll = new Resource.cGuiMenuBarRoll().bitmapData;
-			
+
 			graphics.beginBitmapFill(menuBitmap);
 			graphics.drawRect(0, 0, 800, 21);
-			
+
 			var format:TextFormat = new TextFormat();
 			format.align = TextFormatAlign.CENTER;
 			format.font = Main.GLOBAL_FONT;
@@ -105,12 +105,12 @@ package Gui
 			extrasText.selectable = false;
 			extrasText.setTextFormat(format);
 			addChild(extrasText);
-			
+
 			format = new TextFormat();
 			format.font = Main.GLOBAL_FONT;
 			format.align = TextFormatAlign.CENTER;
 			format.color = 0xE1E1EA;
-			
+
 			fileText = new TextField();
 			fileText.text = "File";
 			fileText.x = 0;
@@ -196,17 +196,17 @@ package Gui
 			extrasText.addEventListener(MouseEvent.MOUSE_OUT, noExtras, false, 0, true);
 			addChild(extrasText);
 		}
-		
+
 		public function Update():void {
-			
+
 		}
-		
+
 		public function MouseClick(up:Boolean, x:int, y:int):void {
 			if (y > 20 && (!m_currentMenu || !MouseOverMenu(x, y))) {
 				HideAll(new MouseEvent(""));
 			}
 		}
-		
+
 		private function BuildFileMenu():void {
 			if (m_currentMenu) removeChild(m_currentMenu);
 			m_currentMenu = new Sprite();
@@ -248,7 +248,7 @@ package Gui
 			m_currentMenu.addChild(item);
 			addChild(m_currentMenu);
 		}
-		
+
 		private function BuildEditMenu():void {
 			if (m_currentMenu) removeChild(m_currentMenu);
 			m_currentMenu = new Sprite();
@@ -290,7 +290,7 @@ package Gui
 			m_currentMenu.addChild(item);
 			addChild(m_currentMenu);
 		}
-		
+
 		private function BuildViewMenu():void {
 			if (m_currentMenu) removeChild(m_currentMenu);
 			m_currentMenu = new Sprite();
@@ -306,24 +306,24 @@ package Gui
 			item = new DropDownMenuItem(this, "Zoom Out", 140, cont.zoomOutButton);
 			item.y = 20;
 			m_currentMenu.addChild(item);
-			item = new DropDownMenuItem(this, "Snap to Center", 140, cont.centerBox, true, ControllerGame.snapToCenter);
+			item = new DropDownMenuItem(this, "Snap to Center", 140, cont.centerBox, true, ControllerGameGlobals.snapToCenter);
 			item.y = 40;
 			m_currentMenu.addChild(item);
-			item = new DropDownMenuItem(this, "Show Joints", 140, cont.jointBox, true, ControllerGame.showJoints);
+			item = new DropDownMenuItem(this, "Show Joints", 140, cont.jointBox, true, ControllerGameGlobals.showJoints);
 			item.y = 60;
 			m_currentMenu.addChild(item);
-			item = new DropDownMenuItem(this, "Show Colors", 140, cont.colourBox, true, ControllerGame.showColours);
+			item = new DropDownMenuItem(this, "Show Colors", 140, cont.colourBox, true, ControllerGameGlobals.showColours);
 			item.y = 80;
 			m_currentMenu.addChild(item);
-			item = new DropDownMenuItem(this, "Show Outlines", 140, cont.globalOutlineBox, true, ControllerGame.showOutlines);
+			item = new DropDownMenuItem(this, "Show Outlines", 140, cont.globalOutlineBox, true, ControllerGameGlobals.showOutlines);
 			item.y = 100;
 			m_currentMenu.addChild(item);
-			item = new DropDownMenuItem(this, "Center on Selection", 140, cont.centerOnSelectedBox, true, ControllerGame.centerOnSelected);
+			item = new DropDownMenuItem(this, "Center on Selection", 140, cont.centerOnSelectedBox, true, ControllerGameGlobals.centerOnSelected);
 			item.y = 120;
 			m_currentMenu.addChild(item);
 			addChild(m_currentMenu);
 		}
-		
+
 		private function BuildCommentMenu():void {
 			if (m_currentMenu) removeChild(m_currentMenu);
 			m_currentMenu = new Sprite();
@@ -333,7 +333,7 @@ package Gui
 			m_currentMenu.graphics.lineStyle(1, 0x43366F);
 			m_currentMenu.graphics.moveTo(0, 0);
 			m_currentMenu.graphics.drawRect(0, 0, 180, 60);
-			if (ControllerGame.playingReplay) {
+			if (ControllerGameGlobals.playingReplay) {
 				var item:DropDownMenuItem = new DropDownMenuItem(this, "Comment on this Replay", 180, cont.commentReplayButton);
 				item.y = 0;
 				m_currentMenu.addChild(item);
@@ -343,7 +343,7 @@ package Gui
 				item = new DropDownMenuItem(this, "Embed this Replay", 180, cont.embedReplayButton);
 				item.y = 40;
 				m_currentMenu.addChild(item);
-			} else if (cont is ControllerChallenge && ControllerGame.curChallengeID != "" && ControllerGame.curChallengePublic) {
+			} else if (cont is ControllerChallenge && ControllerGameGlobals.curChallengeID != "" && ControllerGameGlobals.curChallengePublic) {
 				item = new DropDownMenuItem(this, "Comment on this Challenge", 180, cont.commentChallengeButton);
 				item.y = 0;
 				m_currentMenu.addChild(item);
@@ -366,7 +366,7 @@ package Gui
 			}
 			addChild(m_currentMenu);
 		}
-		
+
 		private function BuildHelpMenu():void {
 			if (m_currentMenu) removeChild(m_currentMenu);
 			m_currentMenu = new Sprite();
@@ -384,7 +384,7 @@ package Gui
 			m_currentMenu.addChild(item);
 			addChild(m_currentMenu);
 		}
-		
+
 		private function BuildAboutMenu():void {
 			if (m_currentMenu) removeChild(m_currentMenu);
 			m_currentMenu = new Sprite();
@@ -402,7 +402,7 @@ package Gui
 			m_currentMenu.addChild(item);
 			addChild(m_currentMenu);
 		}
-		
+
 		private function BuildExtrasMenu():void {
 			if (m_currentMenu) removeChild(m_currentMenu);
 			m_currentMenu = new Sprite();
@@ -431,11 +431,11 @@ package Gui
 			}
 			addChild(m_currentMenu);
 		}
-		
+
 		public function MouseOverMenu(x:int, y:int):Boolean {
 			return (m_currentMenu && x >= m_currentMenu.x && x < m_currentMenu.x + m_currentMenu.width && y >= m_currentMenu.y && y < m_currentMenu.y + m_currentMenu.height);
 		}
-		
+
 		private function file(e:MouseEvent, callback:Boolean = true):void {
 			if (mouseDown && callback) {
 				noFile(e);
@@ -458,13 +458,13 @@ package Gui
 				mouseDown = true;
 			}
 		}
-		
+
 		private function maybeFile(e:MouseEvent):void {
 			if (mouseDown) {
 				file(e, false);
 			}
 		}
-		
+
 		private function noFile(e:MouseEvent):void {
 			if (m_currentMenu && !MouseOverMenu(e.stageX, e.stageY)) {
 				graphics.beginBitmapFill(menuBitmap);
@@ -473,7 +473,7 @@ package Gui
 				m_currentMenu = null;
 			}
 		}
-		
+
 		private function edit(e:MouseEvent, callback:Boolean = true):void {
 			if (mouseDown && callback) {
 				noEdit(e);
@@ -496,13 +496,13 @@ package Gui
 				BuildEditMenu();
 			}
 		}
-		
+
 		private function maybeEdit(e:MouseEvent):void {
 			if (mouseDown) {
 				edit(e, false);
 			}
 		}
-		
+
 		private function noEdit(e:MouseEvent):void {
 			if (m_currentMenu && !MouseOverMenu(e.stageX, e.stageY)) {
 				graphics.beginBitmapFill(menuBitmap);
@@ -511,7 +511,7 @@ package Gui
 				m_currentMenu = null;
 			}
 		}
-		
+
 		private function view(e:MouseEvent, callback:Boolean = true):void {
 			if (mouseDown && callback) {
 				noView(e);
@@ -534,13 +534,13 @@ package Gui
 				BuildViewMenu();
 			}
 		}
-		
+
 		private function maybeView(e:MouseEvent):void {
 			if (mouseDown) {
 				view(e, false);
 			}
 		}
-		
+
 		private function noView(e:MouseEvent):void {
 			if (m_currentMenu && !MouseOverMenu(e.stageX, e.stageY)) {
 				graphics.beginBitmapFill(menuBitmap);
@@ -549,7 +549,7 @@ package Gui
 				m_currentMenu = null;
 			}
 		}
-		
+
 		private function comment(e:MouseEvent, callback:Boolean = true):void {
 			if (mouseDown && callback) {
 				noComment(e);
@@ -572,13 +572,13 @@ package Gui
 				BuildCommentMenu();
 			}
 		}
-		
+
 		private function maybeComment(e:MouseEvent):void {
 			if (mouseDown) {
 				comment(e, false);
 			}
 		}
-		
+
 		private function noComment(e:MouseEvent):void {
 			if (m_currentMenu && !MouseOverMenu(e.stageX, e.stageY)) {
 				graphics.beginBitmapFill(menuBitmap);
@@ -587,7 +587,7 @@ package Gui
 				m_currentMenu = null;
 			}
 		}
-		
+
 		private function help(e:MouseEvent, callback:Boolean = true):void {
 			if (mouseDown && callback) {
 				noHelp(e);
@@ -610,13 +610,13 @@ package Gui
 				BuildHelpMenu();
 			}
 		}
-		
+
 		private function maybeHelp(e:MouseEvent):void {
 			if (mouseDown) {
 				help(e, false);
 			}
 		}
-		
+
 		private function noHelp(e:MouseEvent):void {
 			if (m_currentMenu && !MouseOverMenu(e.stageX, e.stageY)) {
 				graphics.beginBitmapFill(menuBitmap);
@@ -625,7 +625,7 @@ package Gui
 				m_currentMenu = null;
 			}
 		}
-		
+
 		private function about(e:MouseEvent, callback:Boolean = true):void {
 			if (mouseDown && callback) {
 				noAbout(e);
@@ -648,13 +648,13 @@ package Gui
 				BuildAboutMenu();
 			}
 		}
-		
+
 		private function maybeAbout(e:MouseEvent):void {
 			if (mouseDown) {
 				about(e, false);
 			}
 		}
-		
+
 		private function noAbout(e:MouseEvent):void {
 			if (m_currentMenu && !MouseOverMenu(e.stageX, e.stageY)) {
 				graphics.beginBitmapFill(menuBitmap);
@@ -663,7 +663,7 @@ package Gui
 				m_currentMenu = null;
 			}
 		}
-		
+
 		private function extras(e:MouseEvent, callback:Boolean = true):void {
 			if (mouseDown && callback) {
 				noExtras(e);
@@ -686,13 +686,13 @@ package Gui
 				BuildExtrasMenu();
 			}
 		}
-		
+
 		private function maybeExtras(e:MouseEvent):void {
 			if (mouseDown) {
 				extras(e, false);
 			}
 		}
-		
+
 		private function noExtras(e:MouseEvent):void {
 			if (m_currentMenu && !MouseOverMenu(e.stageX, e.stageY)) {
 				graphics.beginBitmapFill(menuBitmap);
@@ -701,7 +701,7 @@ package Gui
 				m_currentMenu = null;
 			}
 		}
-		
+
 		public function HideAll(e:MouseEvent):void {
 			if (m_currentMenu) {
 				removeChild(m_currentMenu);
@@ -711,22 +711,22 @@ package Gui
 			}
 			mouseDown = false;
 		}
-		
+
 		private function MakeDummyMenu():void {
 			m_currentMenu = new Sprite();
 			addChild(m_currentMenu);
 		}
-		
+
 		private function pasteButton(e:MouseEvent):void {
 			cont.ignoreAClick = true;
 			cont.pasteButton(e);
 		}
-		
+
 		private function mirrorHorizontalButton(e:MouseEvent):void {
 			cont.ignoreAClick = true;
 			cont.mirrorHorizontal(e);
 		}
-		
+
 		private function mirrorVerticalButton(e:MouseEvent):void {
 			cont.ignoreAClick = true;
 			cont.mirrorVertical(e);
@@ -739,15 +739,15 @@ package Gui
 		private function credits(e:Event):void {
 			Main.BrowserRedirect("http://www.incredifriends.com/", true);
 		}
-		
+
 		private function grubby(e:Event):void {
 			Main.BrowserRedirect("http://www.grubbygames.com", true);
 		}
-		
+
 		private function helpButton(e:Event):void {
 			Main.BrowserRedirect("http://www.incredifriends.com/", true);
 		}
-		
+
 		private function forumsButton(e:Event):void {
 			Main.BrowserRedirect("http://www.incredifriends.com/", true);
 		}
