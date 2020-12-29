@@ -42,20 +42,14 @@ export class Main {
 
 		static public const GLOBAL_FONT:string = "Arial";
 
-		public static BrowserRedirect(url:string = null, newWindow:boolean = false, parent:boolean = false):void {
-			var req:URLRequest;
-			if (url) {
-				req = new URLRequest(url);
-			} else {
-				req = new URLRequest("http://www.incredifriends.com/");
-			}
-			if (newWindow) {
-				navigateToURL(req, "_blank");
-			} else if (parent) {
-				navigateToURL(req, "_top");
-			} else {
-				navigateToURL(req, "_self");
-			}
+		public static BrowserRedirect(url:string|null = null, newWindow:boolean = false, parent:boolean = false):void {
+			const target = url || "http://www.incredibots.com/"
+			let mode = '_self'
+
+			if (newWindow) mode = '_blank'
+			if (parent) mode = '_top'
+
+			window.open(url, mode)
 		}
 
 		constructor(renderer: Application) {
@@ -69,11 +63,6 @@ export class Main {
 			var lastDot:number = domain.lastIndexOf(".") - 1;
 			var domEnd:number = domain.lastIndexOf(".", lastDot) + 1;
 			domain = domain.substring(domEnd, domain.length);
-
-			if (Main.ENABLE_SITE_LOCK == 643 && domain != "amazonaws.com" && domain != "incredibots2.com") {
-				Main.BrowserRedirect();
-				return;
-			}
 
 			if (domain == "incredibotsgold.com") Main.premiumMode = true;
 
