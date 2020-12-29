@@ -1,3 +1,4 @@
+import { Application } from 'pixi.js'
 import PIXIsound from 'pixi-sound'
 
 // Sounds
@@ -46,13 +47,60 @@ import cGuiButtonXBase from '../../../resource/button_X_base.png'
 import cGuiButtonXRoll from '../../../resource/button_X_roll.png'
 import cGuiButtonXClick from '../../../resource/button_X_click.png'
 
+// GUI window resources
+import cGuiWindowTop120 from '../../../resource/box120_top.png'
+import cGuiWindowBottom120 from '../../../resource/box120_bot.png'
+import cGuiWindowMid120 from '../../../resource/box120_mid.png'
+import cGuiWindowTop154 from '../../../resource/box154_top.png'
+import cGuiWindowBottom154 from '../../../resource/box154_bot.png'
+import cGuiWindowMid154 from '../../../resource/box154_mid.png'
+import cGuiWindowTop200 from '../../../resource/box200_top.png'
+import cGuiWindowBottom200 from '../../../resource/box200_bot.png'
+import cGuiWindowMid200 from '../../../resource/box200_mid.png'
+import cGuiWindowTop248 from '../../../resource/box248_top.png'
+import cGuiWindowBottom248 from '../../../resource/box248_bot.png'
+import cGuiWindowMid248 from '../../../resource/box248_mid.png'
+import cGuiWindowTop547 from '../../../resource/box547_top.png'
+import cGuiWindowBottom547 from '../../../resource/box547_bot.png'
+import cGuiWindowMid547 from '../../../resource/box547_mid.png'
+import cGuiWindowLeft800 from '../../../resource/topbox_left.png'
+import cGuiWindowRight800 from '../../../resource/topbox_right.png'
+import cGuiWindowMid800 from '../../../resource/topbox_mid.png'
+import cGuiWindowLeft600 from '../../../resource/chall_ed_restrictions_box_L.png'
+import cGuiWindowRight600 from '../../../resource/chall_ed_restrictions_box_R.png'
+import cGuiWindowMid600 from '../../../resource/chall_ed_restrictions_box_M.png'
+import cGuiWindowLeft700 from '../../../resource/chall_ed_winloss_box_L.png'
+import cGuiWindowRight700 from '../../../resource/chall_ed_winloss_box_R.png'
+import cGuiWindowMid700 from '../../../resource/chall_ed_winloss_box_M.png'
+import cGuiWindowLinebox from '../../../resource/chall_ed_winloss_box_linebox.png'
+import cGuiWindowLine from '../../../resource/chall_ed_winloss_box_linehoriz.png'
+
+// GUI Check box resources
+import cGuiCheckboxABase from '../../../resource/chkboxA_base.png'
+import cGuiCheckboxARoll from '../../../resource/chkboxA_roll.png'
+import cGuiCheckboxAClick from '../../../resource/chkboxA_click.png'
+import cGuiCheckboxADisabled from '../../../resource/chkboxA_disabled.png'
+import cGuiCheckboxBBase from '../../../resource/chkboxB_base.png'
+import cGuiCheckboxBRoll from '../../../resource/chkboxB_roll.png'
+import cGuiCheckboxBClick from '../../../resource/chkboxB_click.png'
+import cGuiCheckboxBDisabled from '../../../resource/chkboxB_disabled.png'
+
+// GUI text area resources
+import cGuiTextAreaBase from '../../../resource/txtbox_base.png'
+import cGuiTextAreaRoll from '../../../resource/txtbox_roll.png'
+import cGuiTextAreaDisabled from '../../../resource/txtbox_base_disabled.png'
+
+// GUI Slider resources
+import cGuiSliderGroove from '../../../resource/slider_groove.png'
+import cGuiSliderGrooveDisabled from '../../../resource/slider_groove_disabled.png'
+
 
 export class MouseCursor {
     // Css style for icons
     defaultIcon = "url('resource/mouse_pointer.png'),auto";
     hoverIcon = "url('resource/mopuse_hourglass.png'),auto";
 
-    apply(application) {
+    apply(application: Application) {
         // Add custom cursor styles
         application.renderer.plugins.interaction.cursorStyles.default = this.defaultIcon;
         application.renderer.plugins.interaction.cursorStyles.hover = this.hoverIcon;
@@ -90,6 +138,7 @@ export class Resource {
 	static cLevelSelectStartHereText = cLevelSelectStartHereText;
     static cLevelSelectStartHereArrow = cLevelSelectStartHereArrow;
 
+    // Button resources
     static cGuiButtonRedBase = cGuiButtonRedBase;
     static cGuiButtonRedRoll = cGuiButtonRedRoll;
     static cGuiButtonRedClick = cGuiButtonRedClick;
@@ -112,28 +161,52 @@ export class Resource {
     static cGuiButtonXRoll = cGuiButtonXRoll;
     static cGuiButtonXClick = cGuiButtonXClick;
 
-    // GUI button resources
-    // [Embed(source="/resource/button_red_base.png")] public static var cGuiButtonRedBase:Class;
-    // [Embed(source="/resource/button_red_roll.png")] public static var cGuiButtonRedRoll:Class;
-    // [Embed(source="/resource/button_red_click.png")] public static var cGuiButtonRedClick:Class;
-    // [Embed(source="/resource/button_purple_base.png")] public static var cGuiButtonPurpleBase:Class;
-    // [Embed(source="/resource/button_purple_roll.png")] public static var cGuiButtonPurpleRoll:Class;
-    // [Embed(source="/resource/button_purple_click.png")] public static var cGuiButtonPurpleClick:Class;
-    // [Embed(source="/resource/button_blue_base.png")] public static var cGuiButtonBlueBase:Class;
-    // [Embed(source="/resource/button_blue_roll.png")] public static var cGuiButtonBlueRoll:Class;
-    // [Embed(source="/resource/button_blue_click.png")] public static var cGuiButtonBlueClick:Class;
-    // [Embed(source="/resource/button_pink_base.png")] public static var cGuiButtonPinkBase:Class;
-    // [Embed(source="/resource/button_pink_roll.png")] public static var cGuiButtonPinkRoll:Class;
-    // [Embed(source="/resource/button_pink_click.png")] public static var cGuiButtonPinkClick:Class;
-    // [Embed(source="/resource/button_orange_base.png")] public static var cGuiButtonOrangeBase:Class;
-    // [Embed(source="/resource/button_orange_roll.png")] public static var cGuiButtonOrangeRoll:Class;
-    // [Embed(source="/resource/button_orange_click.png")] public static var cGuiButtonOrangeClick:Class;
-    // [Embed(source="/resource/button_play_base.png")] public static var cGuiButtonPlayBase:Class;
-    // [Embed(source="/resource/button_play_roll.png")] public static var cGuiButtonPlayRoll:Class;
-    // [Embed(source="/resource/button_play_click.png")] public static var cGuiButtonPlayClick:Class;
-    // [Embed(source="/resource/button_X_base.png")] public static var cGuiButtonXBase:Class;
-    // [Embed(source="/resource/button_X_roll.png")] public static var cGuiButtonXRoll:Class;
-    // [Embed(source="/resource/button_X_click.png")] public static var cGuiButtonXClick:Class;
+    // Window resources
+    static cGuiWindowTop120 = cGuiWindowTop120;
+    static cGuiWindowBottom120 = cGuiWindowBottom120;
+    static cGuiWindowMid120 = cGuiWindowMid120;
+    static cGuiWindowTop154 = cGuiWindowTop154;
+    static cGuiWindowBottom154 = cGuiWindowBottom154;
+    static cGuiWindowMid154 = cGuiWindowMid154;
+    static cGuiWindowTop200 = cGuiWindowTop200;
+    static cGuiWindowBottom200 = cGuiWindowBottom200;
+    static cGuiWindowMid200 = cGuiWindowMid200;
+    static cGuiWindowTop248 = cGuiWindowTop248;
+    static cGuiWindowBottom248 = cGuiWindowBottom248;
+    static cGuiWindowMid248 = cGuiWindowMid248;
+    static cGuiWindowTop547 = cGuiWindowTop547;
+    static cGuiWindowBottom547 = cGuiWindowBottom547;
+    static cGuiWindowMid547 = cGuiWindowMid547;
+    static cGuiWindowLeft800 = cGuiWindowLeft800;
+    static cGuiWindowRight800 = cGuiWindowRight800;
+    static cGuiWindowMid800 = cGuiWindowMid800;
+    static cGuiWindowLeft600 = cGuiWindowLeft600;
+    static cGuiWindowRight600 = cGuiWindowRight600;
+    static cGuiWindowMid600 = cGuiWindowMid600;
+    static cGuiWindowLeft700 = cGuiWindowLeft700;
+    static cGuiWindowRight700 = cGuiWindowRight700;
+    static cGuiWindowMid700 = cGuiWindowMid700;
+    static cGuiWindowLinebox = cGuiWindowLinebox;
+    static cGuiWindowLine = cGuiWindowLine;
+
+    // GUI Check box resources
+    static cGuiCheckboxABase = cGuiCheckboxABase;
+    static cGuiCheckboxARoll = cGuiCheckboxARoll;
+    static cGuiCheckboxAClick = cGuiCheckboxAClick;
+    static cGuiCheckboxADisabled = cGuiCheckboxADisabled;
+    static cGuiCheckboxBBase = cGuiCheckboxBBase;
+    static cGuiCheckboxBRoll = cGuiCheckboxBRoll;
+    static cGuiCheckboxBClick = cGuiCheckboxBClick;
+    static cGuiCheckboxBDisabled = cGuiCheckboxBDisabled;
+
+    // GUI text area resources
+    static cGuiTextAreaBase = cGuiTextAreaBase;
+    static cGuiTextAreaRoll = cGuiTextAreaRoll;
+    static cGuiTextAreaDisabled = cGuiTextAreaDisabled;
+
+    // GUI Slider resources
+    static cGuiSliderGroove = cGuiSliderGroove;
+    static cGuiSliderGrooveDisabled = cGuiSliderGrooveDisabled;
 
     static async load() {
         for (const key in Resource.paths) {

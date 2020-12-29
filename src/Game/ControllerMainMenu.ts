@@ -1,10 +1,10 @@
-import { b2World, b2AABB, b2Vec2 } from "@box2d/core";
-import { Container, Texture } from "pixi.js";
-import { Sprite, DisplayObject, Matrix, Graphics, Text, TextStyle } from "pixi.js";
+import { b2AABB, b2Vec2, b2World } from "@box2d/core";
+import { Container, DisplayObject, Graphics, Matrix, Sprite, Text, TextStyle, Texture } from "pixi.js";
 import { Database } from "../General/Database";
 import { LSOManager } from "../General/LSOManager";
 import { Util } from "../General/Util";
 import { GuiButton } from "../Gui/GuiButton";
+import { ImportWindow } from "../Gui/ImportWindow";
 import { Main } from "../Main";
 import { Cannon } from "../Parts/Cannon";
 import { JointPart } from "../Parts/JointPart";
@@ -276,11 +276,11 @@ export class ControllerMainMenu extends Controller
 		button = new GuiButton("High Scores", 315, 383, 171, 59, this.highScoresButton, GuiButton.RED, style);
 		this.levelSelectGui.addChild(button);
 
-		button = new GuiButton("Import Challenge", 145, 263, 171, 59, this.importChallengeButton, GuiButton.ORANGE, style);
+		button = new GuiButton("Import Challenge", 145, 263, 171, 59, this.importChallengeButton.bind(this), GuiButton.ORANGE, style);
 		this.levelSelectGui.addChild(button);
-		button = new GuiButton("Import Replay", 145, 303, 171, 59, this.importReplayButton, GuiButton.ORANGE, style);
+		button = new GuiButton("Import Replay", 145, 303, 171, 59, this.importReplayButton.bind(this), GuiButton.ORANGE, style);
 		this.levelSelectGui.addChild(button);
-		button = new GuiButton("Import Bot", 145, 343, 171, 59, this.importRobotButton, GuiButton.ORANGE, style);
+		button = new GuiButton("Import Bot", 145, 343, 171, 59, this.importRobotButton.bind(this), GuiButton.ORANGE, style);
 		this.levelSelectGui.addChild(button);
 
 		button = new GuiButton("Instructions", 620, 454, 153, 50, this.instructionsButton, GuiButton.BLUE, style);

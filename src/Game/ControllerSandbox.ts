@@ -423,7 +423,7 @@ export class ControllerSandbox extends ControllerGame
 			this.allParts = Util.RemoveFromArray(this.groundParts[i], this.allParts);
 		}
 		for (i = 0; i < this.allParts.length; i++) {
-			if (this.allParts[i] is TextPart) {
+			if (this.allParts[i] instanceof Text) {
 				try {
 					this.removeChild(this.allParts[i].m_textField);
 				} catch (arg:Error) {
@@ -528,7 +528,7 @@ export class ControllerSandbox extends ControllerGame
 		this.addChild(this.m_guiMenu);
 		this.addChild(this.m_fader);
 		for (i = 0; i < this.allParts.length; i++) {
-			if (this.allParts[i] is TextPart) {
+			if (this.allParts[i] instanceof TextPart) {
 				if (this.allParts[i].inFront) {
 					this.addChildAt(this.allParts[i].m_textField, this.getChildIndex(this.m_canvas) + 1);
 				} else {
@@ -678,7 +678,7 @@ export class ControllerSandbox extends ControllerGame
 				}
 			}
 		}
-		if (!(this is ControllerMonkeyBars || this is ControllerClimb || this is ControllerRace || this is ControllerSpaceship)) {
+		if (!(this instanceof ControllerMonkeyBars || this instanceof ControllerClimb || this instanceof ControllerRace || this instanceof ControllerSpaceship)) {
 			this.hasPanned = false;
 			this.hasZoomed = false;
 		}

@@ -9,7 +9,8 @@ async function main() {
 
     const renderer = new Application();
     const main = new Main(renderer)
-    requestAnimationFrame(() => {
+
+    renderer.ticker.add(function(delta) {
         main.update()
     })
 

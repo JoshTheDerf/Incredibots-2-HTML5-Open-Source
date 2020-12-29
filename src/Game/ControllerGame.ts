@@ -1,5 +1,5 @@
 ﻿import { b2World, b2MouseJoint, b2AABB, b2Body, b2MouseJointDef, b2Vec2, b2Shape } from "@box2d/core";
-import { Sprite, Matrix, Circle, Rectangle } from "pixi.js";
+import { Sprite, Matrix, Circle, Rectangle, Graphics, TextStyle, Text } from "pixi.js";
 import { Database } from "../General/Database";
 import { Util } from "../General/Util";
 import { Main } from "../Main";
@@ -22,6 +22,11 @@ import { Sky } from "./Graphics/Sky";
 import { Replay } from "./Replay";
 import { Robot } from "./Robot";
 import { ControllerGameGlobals } from './Globals/ControllerGameGlobals'
+import { Input } from "../General/Input";
+import { Action } from "../Actions/Action";
+import { MainEditPanel } from "../Gui/MainEditPanel";
+import { DropDownMenu } from "../Gui/DropDownMenu";
+import { PartEditWindow } from "../Gui/PartEditWindow";
 
 export class ControllerGame extends Controller {
 		//======================
@@ -62,8 +67,7 @@ export class ControllerGame extends Controller {
 		public m_loadWindow:LoadWindow = null;
 		public m_exportDialog:ExportWindow = null;
 		public m_importDialog:ImportWindow = null;
-		public m_fader:Sprite;
-
+		public m_fader:Graphics;
 
 		protected hasPanned:boolean = true;
 		protected hasZoomed:boolean = true;
@@ -134,18 +138,18 @@ export class ControllerGame extends Controller {
 
 		protected removedGraphics:Array<any> = new Array();
 
-		protected uneditableText:TextField;
-		protected rotatingText:TextField;
-		protected scalingText:TextField;
-		protected boxText:TextField;
-		protected horizLineText:TextField;
-		protected vertLineText:TextField;
-		protected shapeText:TextField;
-		private newText:Object = null;
+		protected uneditableText:Text;
+		protected rotatingText:Text;
+		protected scalingText:Text;
+		protected boxText:Text;
+		protected horizLineText:Text;
+		protected vertLineText:Text;
+		protected shapeText:Text;
+		private newText:Object;
 		private oldText:String = "";
 
-		public potentialJointPart1:ShapePart = null;
-		public potentialJointPart2:ShapePart = null;
+		public potentialJointPart1:ShapePart;
+		public potentialJointPart2:ShapePart;
 		public candidateJointX:number;
 		public candidateJointY:number;
 		public candidateJointType:number;
@@ -166,83 +170,76 @@ export class ControllerGame extends Controller {
 			this.m_guiMenu = new DropDownMenu(this);
 			this.m_sidePanel = new PartEditWindow(this);
 
-			this.m_fader = new Sprite();
-			this.m_fader.graphics.beginFill(0, 0.2);
-			this.m_fader.graphics.lineStyle(0, 0, 0.2);
-			this.m_fader.graphics.moveTo(0, 0);
-			this.m_fader.graphics.lineTo(800, 0);
-			this.m_fader.graphics.lineTo(800, 600);
-			this.m_fader.graphics.lineTo(0, 600);
-			this.m_fader.graphics.lineTo(0, 0);
-			this.m_fader.graphics.endFill();
+			this.m_fader = new Graphics();
+			this.m_fader.beginFill(0, 0.2);
+			this.m_fader.lineStyle(0, 0, 0.2);
+			this.m_fader.moveTo(0, 0);
+			this.m_fader.lineTo(800, 0);
+			this.m_fader.lineTo(800, 600);
+			this.m_fader.lineTo(0, 600);
+			this.m_fader.lineTo(0, 0);
+			this.m_fader.endFill();
 			this.m_fader.visible = false;
 
-			this.uneditableText = new TextField();
+			this.uneditableText = new Text('');
 			this.uneditableText.x = 0;
 			this.uneditableText.y = 102;
 			this.uneditableText.width = 800;
-			this.uneditableText.text = "The current robot instanceof uneditable.  Some features, including saving and submitting scores, will be disabled.";
-			this.uneditableText.selectable = false;
+			this.uneditableText.text = "The current robot is uneditable.  Some features, including saving and submitting scores, will be disabled.";
 			this.uneditableText.visible = false;
-			var format:TextFormat = new TextFormat();
-			format.align = TextFormatAlign.CENTER;
-			format.font = Main.GLOBAL_FONT;
-			format.size = 12;
-			this.uneditableText.setTextFormat(format);
+			var format:TextStyle = new TextStyle();
+			format.align = 'center';
+			format.fontFamily = Main.GLOBAL_FONT;
+			format.fontSize = 12;
+			this.uneditableText.style = format;
 
-			this.rotatingText = new TextField();
+			this.rotatingText = new Text('');
 			this.rotatingText.x = 0;
 			this.rotatingText.y = 102;
 			this.rotatingText.width = 800;
 			this.rotatingText.text = "Move the mouse around to rotate the shape, and click when you're done.";
-			this.rotatingText.selectable = false;
 			this.rotatingText.visible = false;
-			this.rotatingText.setTextFormat(format);
+			this.rotatingText.style = format;
 
-			this.scalingText = new TextField();
+			this.scalingText = new Text('');
 			this.scalingText.x = 0;
 			this.scalingText.y = 102;
 			this.scalingText.width = 800;
 			this.scalingText.text = "Move the mouse to the right to increase the shape's size, and left to decrease it.";
-			this.scalingText.selectable = false;
 			this.scalingText.visible = false;
-			this.scalingText.setTextFormat(format);
+			this.scalingText.style = format;
 
-			this.boxText = new TextField();
+			this.boxText = new Text('');
 			this.boxText.x = 0;
 			this.boxText.y = 102;
 			this.boxText.width = 800;
 			this.boxText.text = "Use the mouse to click and drag a box for the given condition.  You can use the arrow keys to scroll.";
-			this.boxText.selectable = false;
 			this.boxText.visible = false;
-			this.boxText.setTextFormat(format);
+			this.boxText.style = format;
 
-			this.horizLineText = new TextField();
+			this.horizLineText = new Text('');
 			this.horizLineText.x = 0;
 			this.horizLineText.y = 102;
 			this.horizLineText.width = 800;
 			this.horizLineText.text = "Use the mouse to draw a horizontal line for the given condition.  You can use the arrow keys to scroll.";
-			this.horizLineText.selectable = false;
 			this.horizLineText.visible = false;
-			this.horizLineText.setTextFormat(format);
+			this.horizLineText.style = format;
 
-			this.vertLineText = new TextField();
+			this.vertLineText = new Text('');
 			this.vertLineText.x = 0;
 			this.vertLineText.y = 102;
 			this.vertLineText.width = 800;
 			this.vertLineText.text = "Use the mouse to draw a vertical line for the given condition.  You can use the arrow keys to scroll.";
-			this.vertLineText.selectable = false;
 			this.vertLineText.visible = false;
-			this.vertLineText.setTextFormat(format);
+			this.vertLineText.style = format;
 
-			this.shapeText = new TextField();
+			this.shapeText = new Text('');
 			this.shapeText.x = 0;
 			this.shapeText.y = 102;
 			this.shapeText.width = 800;
 			this.shapeText.text = "Select a shape for the given condition.  You can use the arrow keys to scroll.";
-			this.shapeText.selectable = false;
 			this.shapeText.visible = false;
-			this.shapeText.setTextFormat(format);
+			this.shapeText.style = format;
 
 			// set debug draw
 			this.draw = new Draw();
