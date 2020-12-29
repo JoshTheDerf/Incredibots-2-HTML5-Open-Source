@@ -703,15 +703,12 @@ export class ControllerMainMenu extends Controller
 		Main.enableSound = true;
 		this.enableSoundButton.visible = false;
 		this.disableSoundButton.visible = true;
-		ControllerGame.introVolume = 0.4;
-		if (ControllerMainMenu.channel) ControllerMainMenu.channel.stop();
-		ControllerMainMenu.channel = ControllerMainMenu.introSong.play();
-		var st:SoundTransform = new SoundTransform(ControllerGame.introVolume);
-		ControllerMainMenu.channel.soundTransform = st;
+		ControllerMainMenu.introSong.resume()
 	}
 
 	public disableSoundButtonPressed(e:Event):void {
 		Main.enableSound = false;
+		ControllerMainMenu.introSong.pause()
 		this.enableSoundButton.visible = true;
 		this.disableSoundButton.visible = false;
 	}
