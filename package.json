@@ -3,7 +3,7 @@
         "dev": "parcel index.html"
     },
     "browserslist": [
-        "last 1 Chrome version"
+        "last 1 chrome version"
     ],
     "dependencies": {
         "@box2d/core": "^0.7.5",

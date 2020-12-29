@@ -54,6 +54,10 @@ export class Util {
 		return (b | (g << 8) | (r << 16));
 	}
 
+	public static HexColourString(r:number, g:number, b:number):string {
+		return `#${(b | (g << 8) | (r << 16))}`;
+	}
+
 	public static ObjectInArray(obj:Object, array:Array<any>):boolean {
 		if (!array) return false;
 		for (var i:number = 0; i < array.length; i++) {

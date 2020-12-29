@@ -1,5 +1,51 @@
 import PIXIsound from 'pixi-sound'
+
+// Sounds
 import cIntro from '../../../resource/Incredibots_Intro.mp3'
+import cRoll from '../../../resource/roll_01.mp3'
+import cClick from '../../../resource/click_02.mp3'
+
+// Main Menu Resources
+import cMainMenuLogo from '../../../resource/incredibots2_logo.png'
+
+// Level Select Resources
+import cLevelSelectBox1L from '../../../resource/levelselect_box_1_L.png'
+import cLevelSelectBox1M from '../../../resource/levelselect_box_1_M.png'
+import cLevelSelectBox1R from '../../../resource/levelselect_box_1_R.png'
+import cLevelSelectBox2L from '../../../resource/levelselect_box_2_L.png'
+import cLevelSelectBox2M from '../../../resource/levelselect_box_2_M.png'
+import cLevelSelectBox2R from '../../../resource/levelselect_box_2_R.png'
+import cLevelSelectOtherBoxL from '../../../resource/levelselect_box_other_L.png'
+import cLevelSelectOtherBoxM from '../../../resource/levelselect_box_other_M.png'
+import cLevelSelectOtherBoxR from '../../../resource/levelselect_box_other_R.png'
+import cLevelSelectLevelCheckBoxA from '../../../resource/levelselect_checkbox_levels_A.png'
+import cLevelSelectLevelCheckBoxB from '../../../resource/levelselect_checkbox_levels_B.png'
+import cLevelSelectStartHereText from '../../../resource/levelselect_starthere_text.png'
+import cLevelSelectStartHereArrow from '../../../resource/levelselect_starthere_arrow.png'
+
+// Button Resources
+import cGuiButtonRedBase from '../../../resource/button_red_base.png'
+import cGuiButtonRedRoll from '../../../resource/button_red_roll.png'
+import cGuiButtonRedClick from '../../../resource/button_red_click.png'
+import cGuiButtonPurpleBase from '../../../resource/button_purple_base.png'
+import cGuiButtonPurpleRoll from '../../../resource/button_purple_roll.png'
+import cGuiButtonPurpleClick from '../../../resource/button_purple_click.png'
+import cGuiButtonBlueBase from '../../../resource/button_blue_base.png'
+import cGuiButtonBlueRoll from '../../../resource/button_blue_roll.png'
+import cGuiButtonBlueClick from '../../../resource/button_blue_click.png'
+import cGuiButtonPinkBase from '../../../resource/button_pink_base.png'
+import cGuiButtonPinkRoll from '../../../resource/button_pink_roll.png'
+import cGuiButtonPinkClick from '../../../resource/button_pink_click.png'
+import cGuiButtonOrangeBase from '../../../resource/button_orange_base.png'
+import cGuiButtonOrangeRoll from '../../../resource/button_orange_roll.png'
+import cGuiButtonOrangeClick from '../../../resource/button_orange_click.png'
+import cGuiButtonPlayBase from '../../../resource/button_play_base.png'
+import cGuiButtonPlayRoll from '../../../resource/button_play_roll.png'
+import cGuiButtonPlayClick from '../../../resource/button_play_click.png'
+import cGuiButtonXBase from '../../../resource/button_X_base.png'
+import cGuiButtonXRoll from '../../../resource/button_X_roll.png'
+import cGuiButtonXClick from '../../../resource/button_X_click.png'
+
 
 export class MouseCursor {
     // Css style for icons
@@ -14,27 +60,80 @@ export class MouseCursor {
 }
 
 export class Resource {
-    static cIntro = PIXIsound.Sound.from(cIntro)
-
     static paths = {
-        'cReplay': 'resource/replay.dat'
+        'cReplay': 'resource/replay.dat',
+        'cRobot': 'resource/robot.dat',
     }
-
     static data = {}
+
+    static cIntro = PIXIsound.Sound.from(cIntro)
+    static cRoll = PIXIsound.Sound.from(cRoll)
+    static cClick = PIXIsound.Sound.from(cClick)
+
+    // Main menu resources
 	static cReplay: any;
 	static cRobot: any;
-	static cMainMenuLogo: any;
-	static cLevelSelectBox1L: any;
-	static cLevelSelectBox1R: any;
-	static cLevelSelectBox1M: any;
-	static cLevelSelectBox2L: any;
-	static cLevelSelectBox2R: any;
-	static cLevelSelectBox2M: any;
-	static cLevelSelectOtherBoxL: any;
-	static cLevelSelectOtherBoxR: any;
-	static cLevelSelectOtherBoxM: any;
-	static cLevelSelectStartHereArrow: any;
-	static cLevelSelectStartHereText: any;
+    static cMainMenuLogo: cMainMenuLogo;
+
+    // Level select resources
+	static cLevelSelectBox1L = cLevelSelectBox1L;
+	static cLevelSelectBox1M = cLevelSelectBox1M;
+	static cLevelSelectBox1R = cLevelSelectBox1R;
+	static cLevelSelectBox2L = cLevelSelectBox2L;
+	static cLevelSelectBox2M = cLevelSelectBox2M;
+	static cLevelSelectBox2R = cLevelSelectBox2R;
+	static cLevelSelectOtherBoxL = cLevelSelectOtherBoxL;
+	static cLevelSelectOtherBoxM = cLevelSelectOtherBoxM;
+	static cLevelSelectOtherBoxR = cLevelSelectOtherBoxR;
+    static cLevelSelectLevelCheckBoxA = cLevelSelectLevelCheckBoxA;
+    static cLevelSelectLevelCheckBoxB = cLevelSelectLevelCheckBoxB;
+	static cLevelSelectStartHereText = cLevelSelectStartHereText;
+    static cLevelSelectStartHereArrow = cLevelSelectStartHereArrow;
+
+    static cGuiButtonRedBase = cGuiButtonRedBase;
+    static cGuiButtonRedRoll = cGuiButtonRedRoll;
+    static cGuiButtonRedClick = cGuiButtonRedClick;
+    static cGuiButtonPurpleBase = cGuiButtonPurpleBase;
+    static cGuiButtonPurpleRoll = cGuiButtonPurpleRoll;
+    static cGuiButtonPurpleClick = cGuiButtonPurpleClick;
+    static cGuiButtonBlueBase = cGuiButtonBlueBase;
+    static cGuiButtonBlueRoll = cGuiButtonBlueRoll;
+    static cGuiButtonBlueClick = cGuiButtonBlueClick;
+    static cGuiButtonPinkBase = cGuiButtonPinkBase;
+    static cGuiButtonPinkRoll = cGuiButtonPinkRoll;
+    static cGuiButtonPinkClick = cGuiButtonPinkClick;
+    static cGuiButtonOrangeBase = cGuiButtonOrangeBase;
+    static cGuiButtonOrangeRoll = cGuiButtonOrangeRoll;
+    static cGuiButtonOrangeClick = cGuiButtonOrangeClick;
+    static cGuiButtonPlayBase = cGuiButtonPlayBase;
+    static cGuiButtonPlayRoll = cGuiButtonPlayRoll;
+    static cGuiButtonPlayClick = cGuiButtonPlayClick;
+    static cGuiButtonXBase = cGuiButtonXBase;
+    static cGuiButtonXRoll = cGuiButtonXRoll;
+    static cGuiButtonXClick = cGuiButtonXClick;
+
+    // GUI button resources
+    // [Embed(source="/resource/button_red_base.png")] public static var cGuiButtonRedBase:Class;
+    // [Embed(source="/resource/button_red_roll.png")] public static var cGuiButtonRedRoll:Class;
+    // [Embed(source="/resource/button_red_click.png")] public static var cGuiButtonRedClick:Class;
+    // [Embed(source="/resource/button_purple_base.png")] public static var cGuiButtonPurpleBase:Class;
+    // [Embed(source="/resource/button_purple_roll.png")] public static var cGuiButtonPurpleRoll:Class;
+    // [Embed(source="/resource/button_purple_click.png")] public static var cGuiButtonPurpleClick:Class;
+    // [Embed(source="/resource/button_blue_base.png")] public static var cGuiButtonBlueBase:Class;
+    // [Embed(source="/resource/button_blue_roll.png")] public static var cGuiButtonBlueRoll:Class;
+    // [Embed(source="/resource/button_blue_click.png")] public static var cGuiButtonBlueClick:Class;
+    // [Embed(source="/resource/button_pink_base.png")] public static var cGuiButtonPinkBase:Class;
+    // [Embed(source="/resource/button_pink_roll.png")] public static var cGuiButtonPinkRoll:Class;
+    // [Embed(source="/resource/button_pink_click.png")] public static var cGuiButtonPinkClick:Class;
+    // [Embed(source="/resource/button_orange_base.png")] public static var cGuiButtonOrangeBase:Class;
+    // [Embed(source="/resource/button_orange_roll.png")] public static var cGuiButtonOrangeRoll:Class;
+    // [Embed(source="/resource/button_orange_click.png")] public static var cGuiButtonOrangeClick:Class;
+    // [Embed(source="/resource/button_play_base.png")] public static var cGuiButtonPlayBase:Class;
+    // [Embed(source="/resource/button_play_roll.png")] public static var cGuiButtonPlayRoll:Class;
+    // [Embed(source="/resource/button_play_click.png")] public static var cGuiButtonPlayClick:Class;
+    // [Embed(source="/resource/button_X_base.png")] public static var cGuiButtonXBase:Class;
+    // [Embed(source="/resource/button_X_roll.png")] public static var cGuiButtonXRoll:Class;
+    // [Embed(source="/resource/button_X_click.png")] public static var cGuiButtonXClick:Class;
 
     static async load() {
         for (const key in Resource.paths) {

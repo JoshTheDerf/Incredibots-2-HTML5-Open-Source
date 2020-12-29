@@ -1618,6 +1618,7 @@ export class Database
 	}
 
 	private static ExtractPartsFromByteArray(b:ByteArray):Array<any> {
+		console.log(b)
 		var objectData:Array<any> = (b.readObject() as Array);
 		var partData:Array<any> = new Array();
 
@@ -1738,7 +1739,9 @@ export class Database
 		return robotData;
 	}
 
-	public static ExtractRobotFromByteArray(data:ByteArray):Robot {
+	public static async ExtractRobotFromByteArray(data:ByteArray):Robot {
+		console.log(data)
+		data = data.arrayBuffer()
 		var partData:Array<any> = Database.ExtractPartsFromByteArray(data);
 		if (data.position == data.length) {
 			return new Robot(partData, new SandboxSettings(15.0, 1, 0, 0, 0), Number.MAX_VALUE, Number.MAX_VALUE, Number.MAX_VALUE);
@@ -1799,7 +1802,9 @@ export class Database
 		return b;
 	}
 
-	public static ExtractReplayFromByteArray(data:ByteArray):Replay {
+	public static async ExtractReplayFromByteArray(data:ByteArray):Replay {
+		console.log(data)
+		const buffer = await data.arrayBuffer()
 		var cameraMovements:Array<any> = new Array();
 		while (true) {
 			var frame:number = Database.ReadInt(data);

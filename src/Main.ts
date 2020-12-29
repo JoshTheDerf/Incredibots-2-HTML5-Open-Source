@@ -9,7 +9,7 @@ import { SandboxSettings } from "./Game/SandboxSettings";
 import { FpsCounter } from "./General/FpsCounter";
 import { LSOManager } from "./General/LSOManager";
 
-export class Main extends Container {
+export class Main {
 
 		//======================
 		// Member data
@@ -59,11 +59,8 @@ export class Main extends Container {
 		}
 
 		constructor(renderer: Application) {
-			super()
 			this.renderer = renderer
-			this.theRoot = this.renderer.stage
-
-			Main.theRoot = this;
+			Main.theRoot = this.renderer.stage
 
 			var urlString:string = window.location.href;
 			var urlStart:number = urlString.indexOf("://") + 3;
@@ -158,14 +155,14 @@ export class Main extends Container {
 					Main.theRoot.addChild(Main.m_curController);
 				}
 
-				Main.mouseCursor = new Resource.cMouseCursor();
-				Main.mouseCursor.smoothing = true;
-				Main.mouseCursor.visible = (Main.m_curController is ControllerMainMenu);
-				stage.addChild(Main.mouseCursor);
-				Main.mouseHourglass = new Resource.cMouseHourglass();
-				Main.mouseHourglass.visible = !(Main.m_curController is ControllerMainMenu);
-				Main.mouseHourglass.smoothing = true;
-				stage.addChild(Main.mouseHourglass);
+				// Main.mouseCursor = new Resource.cMouseCursor();
+				// Main.mouseCursor.smoothing = true;
+				// Main.mouseCursor.visible = (Main.m_curController is ControllerMainMenu);
+				// stage.addChild(Main.mouseCursor);
+				// Main.mouseHourglass = new Resource.cMouseHourglass();
+				// Main.mouseHourglass.visible = !(Main.m_curController is ControllerMainMenu);
+				// Main.mouseHourglass.smoothing = true;
+				// stage.addChild(Main.mouseHourglass);
 
 				Main.firstFrame = false;
 			}
@@ -218,10 +215,10 @@ export class Main extends Container {
 			}
 
 			// update current test
-			Main.m_curController.Update();
+			// Main.m_curController.Update();
 
 			// Update input (last)
-			Input.update();
+			// Input.update();
 
 			//trace(getTimer() + "\n");
 
