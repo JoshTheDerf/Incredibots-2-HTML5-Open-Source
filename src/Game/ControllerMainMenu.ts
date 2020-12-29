@@ -1,5 +1,5 @@
 import { b2World, b2AABB, b2Vec2 } from "@box2d/core";
-import { Container } from "pixi.js";
+import { Container, Texture } from "pixi.js";
 import { Sprite, DisplayObject, Matrix, Graphics, Text, TextStyle } from "pixi.js";
 import { Database } from "../General/Database";
 import { LSOManager } from "../General/LSOManager";
@@ -206,9 +206,12 @@ export class ControllerMainMenu extends Controller
 		img.x = 576;
 		img.y = 105;
 		this.levelSelectGui.addChild(img);
+
 		var graphics = new Graphics();
 		this.levelSelectGui.addChild(graphics)
-		graphics.beginTextureFill(Resource.cLevelSelectBox1M);
+		let m:Matrix = new Matrix();
+		m.translate(0, 105);
+		graphics.beginTextureFill({ texture: Texture.from(Resource.cLevelSelectBox1M), matrix: m });
 		graphics.drawRect(234, 105, 342, 135);
 		img = Sprite.from(Resource.cLevelSelectBox2L);
 		img.x = 315;
@@ -218,9 +221,9 @@ export class ControllerMainMenu extends Controller
 		img.x = 472;
 		img.y = 260;
 		this.levelSelectGui.addChild(img);
-		// m = new Matrix();
-		// m.translate(0, 260);
-		graphics.beginTextureFill(Resource.cLevelSelectBox2M);
+		m = new Matrix();
+		m.translate(0, 260);
+		graphics.beginTextureFill({ texture: Texture.from(Resource.cLevelSelectBox2M), matrix: m});
 		graphics.drawRect(339, 260, 133, 194);
 		img = Sprite.from(Resource.cLevelSelectOtherBoxL);
 		img.x = 617;
@@ -230,9 +233,9 @@ export class ControllerMainMenu extends Controller
 		img.x = 763;
 		img.y = 449;
 		this.levelSelectGui.addChild(img);
-		// m = new Matrix();
-		// m.translate(0, 449);
-		graphics.beginTextureFill(Resource.cLevelSelectOtherBoxM);
+		m = new Matrix();
+		m.translate(0, 449);
+		graphics.beginTextureFill({ texture: Texture.from(Resource.cLevelSelectOtherBoxM), matrix: m});
 		graphics.drawRect(641, 449, 122, 144);
 
 		style = new TextStyle();

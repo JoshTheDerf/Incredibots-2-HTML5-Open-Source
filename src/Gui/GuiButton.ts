@@ -157,7 +157,7 @@ export class GuiButton extends Sprite
 	private mouseOver(e:MouseEvent):void {
 		if (Main.enableSound && GuiButton.lastRolloverFrame != Math.floor(Date.now() / 150)) {
 			GuiButton.rolloverSound.stop()
-			GuiButton.rolloverSound.volume = 0.3
+			GuiButton.rolloverSound.volume = 0.2
 			GuiButton.rolloverSound.play()
 			GuiButton.lastRolloverFrame = Math.floor(Date.now() / 150);
 		}
@@ -166,7 +166,7 @@ export class GuiButton extends Sprite
 
 	private mouseClick(e:MouseEvent):void {
 		if (Main.enableSound) {
-			// GuiButton.clickSound.volume = 0.8
+			GuiButton.clickSound.volume = 0.8
 			GuiButton.clickSound.play()
 		}
 	}
