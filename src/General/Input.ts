@@ -1,5 +1,6 @@
 ﻿import { Container, Sprite } from "pixi.js";
 import { ControllerGame } from "../Game/ControllerGame";
+import { ControllerMainMenu } from "../Game/ControllerMainMenu";
 import { Main } from "../Main";
 
 export class Input {
@@ -7,40 +8,39 @@ export class Input {
 	// member data
 	//======================
 	// key text array
-	static public ascii:Array<any>;
-	static private keyState:Array<any>;
-	static private keyArr:Array<any>;
+	public static ascii:Array<any>;
+	private static keyState:Array<any>;
+	private static keyArr:Array<any>;
 
-	static private keyBuffer:Array<any>;
-	static private bufferSize:number;
+	private static keyBuffer:Array<any>;
+	private static bufferSize:number;
 
 	// last key pressed
-	static public lastKey:number = 0;
-	static public timeSinceLastKey:number = 0;
+	public static lastKey:number = 0;
+	public static timeSinceLastKey:number = 0;
 
 	// mouse states
-	static public mouseDown:boolean = false;
-	static public mouseReleased:boolean = false;
-	static public mousePressed:boolean = false;
-	static public mouseOver:boolean = false;
-	static public mouseWheelVal:number = 0;
-	static public mouseX:number = 0;
-	static public mouseY:number = 0;
-	static public mouseOffsetX:number = 0;
-	static public mouseOffsetY:number = 0;
-	static public mouseDragX:number = 0;
-	static public mouseDragY:number = 0;
-	static public mouse:Sprite = new Sprite();
+	public static mouseDown:boolean = false;
+	public static mouseReleased:boolean = false;
+	public static mousePressed:boolean = false;
+	public static mouseOver:boolean = false;
+	public static mouseWheelVal:number = 0;
+	public static mouseX:number = 0;
+	public static mouseY:number = 0;
+	public static mouseOffsetX:number = 0;
+	public static mouseOffsetY:number = 0;
+	public static mouseDragX:number = 0;
+	public static mouseDragY:number = 0;
 
 	// stage
-	static public m_stageMc:Container;
-	static public m_currController:ControllerGame;
+	public static m_stageMc:Container;
+	public static m_currController:ControllerGame;
 
 
 	//======================
 	// constructor
 	//======================
-	static public Init():void {
+	public static Init():void {
 
 		Input.m_stageMc = Main.theRoot;
 
@@ -52,7 +52,7 @@ export class Input {
 		Input.keyState = new Array(222);
 		Input.keyArr = new Array();
 		for (var i:number = 0; i < 222; i++){
-			Input.keyState[i] = new int(0);
+			Input.keyState[i] = 0;
 			if (Input.ascii[i] != undefined){
 				Input.keyArr.push(i);
 			}
@@ -65,27 +65,24 @@ export class Input {
 			Input.keyBuffer[j] = new Array(0,0);
 		}
 
+		// FIXME: Wire up listeners.
 		// add key listeners
-		Input.m_stageMc.stage.addEventListener(KeyboardEvent.KEY_DOWN, this.keyPress, false, 0, true);
-		Input.m_stageMc.stage.addEventListener(KeyboardEvent.KEY_UP, this.keyRelease, false, 0, true);
+		// Input.m_stageMc.stage.addEventListener(KeyboardEvent.KEY_DOWN, this.keyPress, false, 0, true);
+		// Input.m_stageMc.stage.addEventListener(KeyboardEvent.KEY_UP, this.keyRelease, false, 0, true);
 
 		// mouse listeners
-		Input.m_stageMc.stage.addEventListener(MouseEvent.MOUSE_DOWN, this.mousePress, false, 0, true);
-		Input.m_stageMc.stage.addEventListener(MouseEvent.MOUSE_UP, this.mouseRelease, false, 0, true);
-		Input.m_stageMc.stage.addEventListener(MouseEvent.MOUSE_MOVE, this.mouseMove, false, 0, true);
-		Input.m_stageMc.stage.addEventListener(MouseEvent.MOUSE_WHEEL, this.mouseWheel, false, 0, true);
-		Input.m_stageMc.stage.addEventListener(Event.MOUSE_LEAVE, this.mouseLeave, false, 0, true);
-
-		Input.mouse.graphics.lineStyle(0.1, 0, 100);
-		Input.mouse.graphics.moveTo(0,0);
-		Input.mouse.graphics.lineTo(0,0.1);
+		// Input.m_stageMc.stage.addEventListener(MouseEvent.MOUSE_DOWN, this.mousePress, false, 0, true);
+		// Input.m_stageMc.stage.addEventListener(MouseEvent.MOUSE_UP, this.mouseRelease, false, 0, true);
+		// Input.m_stageMc.stage.addEventListener(MouseEvent.MOUSE_MOVE, this.mouseMove, false, 0, true);
+		// Input.m_stageMc.stage.addEventListener(MouseEvent.MOUSE_WHEEL, this.mouseWheel, false, 0, true);
+		// Input.m_stageMc.stage.addEventListener(Event.MOUSE_LEAVE, this.mouseLeave, false, 0, true);
 	}
 
 
 	//======================
 	// update
 	//======================
-	static public update():void{
+	public static update():void{
 
 		// array of used keys
 		/*var kArr:Array<any> = new Array(
@@ -125,7 +122,7 @@ export class Input {
 	//======================
 	// mousePress listener
 	//======================
-	static public mousePress(e:MouseEvent):void{
+	public static mousePress(e:MouseEvent):void{
 		Input.mousePressed = true;
 		Input.mouseDown = true;
 		Input.mouseDragX = 0;
@@ -134,7 +131,7 @@ export class Input {
 	}
 
 
-	static public mouseWheel(e:MouseEvent):void{
+	public static mouseWheel(e:MouseEvent):void{
 		Input.mouseWheelVal += e.delta;
 	}
 
@@ -142,7 +139,7 @@ export class Input {
 	//======================
 	// mousePress listener
 	//======================
-	static public mouseRelease(e:MouseEvent):void{
+	public static mouseRelease(e:MouseEvent):void{
 		Input.mouseDown = false;
 		Input.mouseReleased = true;
 		if (Input.m_currController) Input.m_currController.mouseClick(true);
@@ -153,7 +150,7 @@ export class Input {
 	//======================
 	// mousePress listener
 	//======================
-	static public mouseLeave(e:Event):void{
+	public static mouseLeave(e:Event):void{
 		Input.mouseReleased = Input.mouseDown;
 		Input.mouseDown = false;
 	}
@@ -163,7 +160,7 @@ export class Input {
 	//======================
 	// mouseMove listener
 	//======================
-	static public mouseMove(e:MouseEvent):void{
+	public static mouseMove(e:MouseEvent):void{
 
 		// Fix mouse release not being registered from mouse going off stage
 		/*if (mouseDown != e.buttonDown){
@@ -184,10 +181,8 @@ export class Input {
 			Input.mouseDragX += Input.mouseOffsetX;
 			Input.mouseDragY += Input.mouseOffsetY;
 		}
-		Input.mouse.x = Input.mouseX;
-		Input.mouse.y = Input.mouseY;
 		if (Input.m_currController) Input.m_currController.mouseMove(Input.mouseX, Input.mouseY);
-		if (Main.m_curController is ControllerMainMenu) {
+		if (Main.m_curController instanceof ControllerMainMenu) {
 			Main.mouseCursor.x = Input.mouseX;
 			Main.mouseCursor.y = Input.mouseY;
 			Main.mouseHourglass.x = Input.mouseX;
@@ -200,7 +195,7 @@ export class Input {
 	//======================
 	// getKeyHold
 	//======================
-	static public getKeyHold(k:number):number{
+	public static getKeyHold(k:number):number{
 		return Math.max(0, Input.keyState[k]);
 	}
 
@@ -208,7 +203,7 @@ export class Input {
 	//======================
 	// isKeyDown
 	//======================
-	static public isKeyDown(k:number):boolean{
+	public static isKeyDown(k:number):boolean{
 		return (Input.keyState[k] > 0);
 	}
 
@@ -217,7 +212,7 @@ export class Input {
 	//======================
 	//  isKeyPressed
 	//======================
-	static public isKeyPressed(k:number):boolean{
+	public static isKeyPressed(k:number):boolean{
 		Input.timeSinceLastKey = 0;
 		return (Input.keyState[k] == 1);
 	}
@@ -227,7 +222,7 @@ export class Input {
 	//======================
 	//  isKeyReleased
 	//======================
-	static public isKeyReleased(k:number):boolean{
+	public static isKeyReleased(k:number):boolean{
 		return (Input.keyState[k] == -1);
 	}
 
@@ -236,7 +231,7 @@ export class Input {
 	//======================
 	// isKeyInBuffer
 	//======================
-	static public isKeyInBuffer(k:number, i:number, t:number):boolean{
+	public static isKeyInBuffer(k:number, i:number, t:number):boolean{
 		return (Input.keyBuffer[i][0] == k && Input.keyBuffer[i][1] <= t);
 	}
 
@@ -245,7 +240,7 @@ export class Input {
 	//======================
 	// keyPress function
 	//======================
-	static public keyPress(e:KeyboardEvent):void{
+	public static keyPress(e:KeyboardEvent):void{
 
 		//strace ( e.keyCode + " : " + ascii[e.keyCode] );
 
@@ -261,7 +256,7 @@ export class Input {
 	//======================
 	// keyRelease function
 	//======================
-	static public keyRelease(e:KeyboardEvent):void{
+	public static keyRelease(e:KeyboardEvent):void{
 		Input.keyState[e.keyCode] = -1;
 
 		// add to key buffer
@@ -278,7 +273,7 @@ export class Input {
 	//======================
 	// get key string
 	//======================
-	static public getKeyString(k:number):string{
+	public static getKeyString(k:number):string{
 		return Input.ascii[k];
 	}
 
@@ -286,7 +281,7 @@ export class Input {
 	//======================
 	// set up ascii text
 	//======================
-	static private fillAscii():void{
+	private static fillAscii():void{
 		Input.ascii[65] = "A";
 		Input.ascii[66] = "B";
 		Input.ascii[67] = "C";

@@ -8,6 +8,7 @@ import { ControllerSandbox } from "./Game/ControllerSandbox";
 import { SandboxSettings } from "./Game/SandboxSettings";
 import { FpsCounter } from "./General/FpsCounter";
 import { LSOManager } from "./General/LSOManager";
+import { Input } from "./General/Input";
 
 export class Main {
 
@@ -66,10 +67,12 @@ export class Main {
 
 			if (domain == "incredibotsgold.com") Main.premiumMode = true;
 
-			addEventListener(Event.ENTER_FRAME, this.update, false, 0, true);
+			renderer.ticker.add((delta) => this.update())
+
 			addEventListener(Event.ADDED_TO_STAGE, this.Init, false, 0, true);
 
 			LSOManager.Init();
+			this.Init();
 
 			// TODO: Reimplement.
 			// Hide the mouse
@@ -86,7 +89,7 @@ export class Main {
 			// contextMenu.hideBuiltInItems();
 		}
 
-		private Init(e:Event):void {
+		private Init():void {
 			Input.Init();
 		}
 
@@ -204,10 +207,10 @@ export class Main {
 			}
 
 			// update current test
-			// Main.m_curController.Update();
+			Main.m_curController.Update();
 
 			// Update input (last)
-			// Input.update();
+			Input.update();
 
 			//trace(getTimer() + "\n");
 

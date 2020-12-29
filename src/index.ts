@@ -10,10 +10,6 @@ async function main() {
     const renderer = new Application();
     const main = new Main(renderer)
 
-    renderer.ticker.add(function(delta) {
-        main.update()
-    })
-
     document.body.appendChild(renderer.view)
 }
 

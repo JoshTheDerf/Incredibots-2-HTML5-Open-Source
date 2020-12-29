@@ -123,8 +123,6 @@ export class ControllerMainMenu extends Controller
 		this.sGround.drawRect(150, 0, 4000, 300);
 		this.sGround.endFill();
 
-		console.dir(this.addChild)
-
 		this.addChild(this.sGround);
 		this.DrawGroundCircle(0, 0, 150);
 		this.DrawGroundCircle(4000, 0, 150);
@@ -143,7 +141,7 @@ export class ControllerMainMenu extends Controller
 		this.DrawRock(0, 3842, 168, 18);
 		this.addChild(this.sGround);
 		this.sGround.width = this.World2ScreenX(85) - this.World2ScreenX(0);
-		this.sGround.scaleY = this.sGround.scaleX;
+		this.sGround.scale.y = this.sGround.scale.x;
 
 		this.sCanvas = new Container();
 		this.draw.m_sprite = this.sCanvas;
@@ -189,16 +187,15 @@ export class ControllerMainMenu extends Controller
 			this.addChild(this.playButton);
 		}
 
-		if (Main.premiumMode && this.firstLoad) {
+		if (Main.premiumMode && ControllerMainMenu.firstLoad) {
 			this.m_goldLoginWindow = new GoldLoginWindow(this);
 			this.addChild(this.m_goldLoginWindow);
 			this.playButton.visible = false;
 		}
-		this.firstLoad = false;
+		ControllerMainMenu.firstLoad = false;
 
 		this.levelSelectGui = new Sprite();
 		this.levelSelectGui.visible = straightToLevelSelect;
-		console.log(Resource.cLevelSelectBox1L)
 		var img:Sprite = Sprite.from(Resource.cLevelSelectBox1L);
 		img.x = 210;
 		img.y = 105;
@@ -1224,14 +1221,14 @@ export class ControllerMainMenu extends Controller
 		} else {
 			if (this.logoShrinking) {
 				this.logoShrinking = false;
-				if (this.sLogo.scaleX != this.sLogo.scaleY) {
-					this.sLogo.scaleX = Math.min(this.sLogo.scaleX, this.sLogo.scaleY);
-					this.sLogo.scaleY = this.sLogo.scaleX;
+				if (this.sLogo.scale.x != this.sLogo.scale.y) {
+					this.sLogo.scale.x = Math.min(this.sLogo.scale.x, this.sLogo.scale.y);
+					this.sLogo.scale.y = this.sLogo.scale.x;
 					this.logoShrinking = true;
-				} else if (this.sLogo.scaleX > 0.6) {
+				} else if (this.sLogo.scale.x > 0.6) {
 					this.sLogo.width -= 25;
-					if (this.sLogo.scaleX < 0.6) this.sLogo.scaleX = 0.6;
-					this.sLogo.scaleY = this.sLogo.scaleX;
+					if (this.sLogo.scale.x < 0.6) this.sLogo.scale.x = 0.6;
+					this.sLogo.scale.y = this.sLogo.scale.x;
 					this.logoShrinking = true;
 				}
 				if (this.sLogo.x < 215) {
