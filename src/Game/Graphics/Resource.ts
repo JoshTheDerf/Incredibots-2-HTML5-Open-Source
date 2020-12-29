@@ -121,7 +121,7 @@ export class Resource {
     // Main menu resources
 	static cReplay: any;
 	static cRobot: any;
-    static cMainMenuLogo: cMainMenuLogo;
+    static cMainMenuLogo = cMainMenuLogo;
 
     // Level select resources
 	static cLevelSelectBox1L = cLevelSelectBox1L;

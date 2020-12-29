@@ -170,7 +170,7 @@ export class ControllerMainMenu extends Controller
 		this.fader.visible = (straightToLevelSelect || Main.premiumMode);
 		this.addChild(this.fader);
 
-		this.sLogo = new Sprite(Resource.cMainMenuLogo);
+		this.sLogo = Sprite.from(Resource.cMainMenuLogo);
 		this.sLogo.smoothing = true;
 		if (straightToLevelSelect) {
 			this.sLogo.width = this.sLogo.measuredWidth * 0.6;
@@ -1207,14 +1207,15 @@ export class ControllerMainMenu extends Controller
 		} else {
 			this.frameCounter++;
 		}
+		// FIXME: World drawing
 		// this.sCanvas.clear();
 		// this.draw.DrawWorld(this.allParts, new Array(), this.world, false, false, false, true);
 		this.sSky.Update(false, this.hasPanned);
 		//Main.m_fpsCounter.updatePhys(physStart);
 
 		if (!this.levelSelectGui.visible) {
-			this.sLogo.width = this.sLogo.measuredWidth * ControllerMainMenu.LOGO_STRETCH_WIDTHS[this.logoFrame] / 100.0;
-			this.sLogo.height = this.sLogo.measuredHeight * ControllerMainMenu.LOGO_STRETCH_HEIGHTS[this.logoFrame] / 100.0;
+			this.sLogo.width = this.sLogo.texture.width * ControllerMainMenu.LOGO_STRETCH_WIDTHS[this.logoFrame] / 100.0;
+			this.sLogo.height = this.sLogo.texture.height * ControllerMainMenu.LOGO_STRETCH_HEIGHTS[this.logoFrame] / 100.0;
 			this.sLogo.x = 400 - this.sLogo.width / 2;
 			this.sLogo.y = 92.5 - this.sLogo.height / 2;
 			this.logoFrame = (this.logoFrame + 1) % 48;
