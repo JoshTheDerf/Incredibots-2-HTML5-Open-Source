@@ -31,7 +31,7 @@ export class GuiTextArea extends Stage
 
 		const textInput = new TextInput({
 			multiLine: true,
-			value: 'TEST',
+			value: '',
 			width: w,
 			height: h,
 			style: format || new TextStyle(),
