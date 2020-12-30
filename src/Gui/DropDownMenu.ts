@@ -30,8 +30,8 @@ export class DropDownMenu extends Graphics
 		this.cont = contr;
 		this.m_currentMenu = null;
 
-		this.menuBitmap = Texture.from(Resource.cGuiMenuBar);
-		this.menuBitmapRoll = Texture.from(Resource.cGuiMenuBarRoll);
+		this.menuBitmap = Resource.cGuiMenuBar;
+		this.menuBitmapRoll = Resource.cGuiMenuBarRoll;
 
 		this.beginTextureFill({ texture: this.menuBitmap });
 		this.drawRect(0, 0, 800, 21);

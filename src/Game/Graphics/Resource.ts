@@ -1,4 +1,4 @@
-import { Application } from 'pixi.js'
+import { Application, Texture } from 'pixi.js'
 import PIXIsound from 'pixi-sound'
 
 // Sounds
@@ -93,6 +93,7 @@ import cGuiTextAreaDisabled from '../../../resource/txtbox_base_disabled.png'
 // GUI Slider resources
 import cGuiSliderGroove from '../../../resource/slider_groove.png'
 import cGuiSliderGrooveDisabled from '../../../resource/slider_groove_disabled.png'
+import cGuiSliderThumb from '../../../resource/slider_arrow.png'
 
 
 export class MouseCursor {
@@ -112,7 +113,94 @@ export class Resource {
         'cReplay': 'resource/replay.dat',
         'cRobot': 'resource/robot.dat',
     }
-    static data = {}
+
+    static textures = {
+        cMainMenuLogo: cMainMenuLogo,
+        cLevelSelectBox1L: cLevelSelectBox1L,
+        cLevelSelectBox1M: cLevelSelectBox1M,
+        cLevelSelectBox1R: cLevelSelectBox1R,
+        cLevelSelectBox2L: cLevelSelectBox2L,
+        cLevelSelectBox2M: cLevelSelectBox2M,
+        cLevelSelectBox2R: cLevelSelectBox2R,
+        cLevelSelectOtherBoxL: cLevelSelectOtherBoxL,
+        cLevelSelectOtherBoxM: cLevelSelectOtherBoxM,
+        cLevelSelectOtherBoxR: cLevelSelectOtherBoxR,
+        cLevelSelectLevelCheckBoxA: cLevelSelectLevelCheckBoxA,
+        cLevelSelectLevelCheckBoxB: cLevelSelectLevelCheckBoxB,
+        cLevelSelectStartHereText: cLevelSelectStartHereText,
+        cLevelSelectStartHereArrow: cLevelSelectStartHereArrow,
+
+        // Button resources
+        cGuiButtonRedBase: cGuiButtonRedBase,
+        cGuiButtonRedRoll: cGuiButtonRedRoll,
+        cGuiButtonRedClick: cGuiButtonRedClick,
+        cGuiButtonPurpleBase: cGuiButtonPurpleBase,
+        cGuiButtonPurpleRoll: cGuiButtonPurpleRoll,
+        cGuiButtonPurpleClick: cGuiButtonPurpleClick,
+        cGuiButtonBlueBase: cGuiButtonBlueBase,
+        cGuiButtonBlueRoll: cGuiButtonBlueRoll,
+        cGuiButtonBlueClick: cGuiButtonBlueClick,
+        cGuiButtonPinkBase: cGuiButtonPinkBase,
+        cGuiButtonPinkRoll: cGuiButtonPinkRoll,
+        cGuiButtonPinkClick: cGuiButtonPinkClick,
+        cGuiButtonOrangeBase: cGuiButtonOrangeBase,
+        cGuiButtonOrangeRoll: cGuiButtonOrangeRoll,
+        cGuiButtonOrangeClick: cGuiButtonOrangeClick,
+        cGuiButtonPlayBase: cGuiButtonPlayBase,
+        cGuiButtonPlayRoll: cGuiButtonPlayRoll,
+        cGuiButtonPlayClick: cGuiButtonPlayClick,
+        cGuiButtonXBase: cGuiButtonXBase,
+        cGuiButtonXRoll: cGuiButtonXRoll,
+        cGuiButtonXClick: cGuiButtonXClick,
+
+        // Window resources
+        cGuiWindowTop120: cGuiWindowTop120,
+        cGuiWindowBottom120: cGuiWindowBottom120,
+        cGuiWindowMid120: cGuiWindowMid120,
+        cGuiWindowTop154: cGuiWindowTop154,
+        cGuiWindowBottom154: cGuiWindowBottom154,
+        cGuiWindowMid154: cGuiWindowMid154,
+        cGuiWindowTop200: cGuiWindowTop200,
+        cGuiWindowBottom200: cGuiWindowBottom200,
+        cGuiWindowMid200: cGuiWindowMid200,
+        cGuiWindowTop248: cGuiWindowTop248,
+        cGuiWindowBottom248: cGuiWindowBottom248,
+        cGuiWindowMid248: cGuiWindowMid248,
+        cGuiWindowTop547: cGuiWindowTop547,
+        cGuiWindowBottom547: cGuiWindowBottom547,
+        cGuiWindowMid547: cGuiWindowMid547,
+        cGuiWindowLeft800: cGuiWindowLeft800,
+        cGuiWindowRight800: cGuiWindowRight800,
+        cGuiWindowMid800: cGuiWindowMid800,
+        cGuiWindowLeft600: cGuiWindowLeft600,
+        cGuiWindowRight600: cGuiWindowRight600,
+        cGuiWindowMid600: cGuiWindowMid600,
+        cGuiWindowLeft700: cGuiWindowLeft700,
+        cGuiWindowRight700: cGuiWindowRight700,
+        cGuiWindowMid700: cGuiWindowMid700,
+        cGuiWindowLinebox: cGuiWindowLinebox,
+        cGuiWindowLine: cGuiWindowLine,
+
+        // GUI Check box resources
+        cGuiCheckboxABase: cGuiCheckboxABase,
+        cGuiCheckboxARoll: cGuiCheckboxARoll,
+        cGuiCheckboxAClick: cGuiCheckboxAClick,
+        cGuiCheckboxADisabled: cGuiCheckboxADisabled,
+        cGuiCheckboxBBase: cGuiCheckboxBBase,
+        cGuiCheckboxBRoll: cGuiCheckboxBRoll,
+        cGuiCheckboxBClick: cGuiCheckboxBClick,
+        cGuiCheckboxBDisabled: cGuiCheckboxBDisabled,
+
+        // GUI text area resources
+        cGuiTextAreaBase: cGuiTextAreaBase,
+        cGuiTextAreaRoll: cGuiTextAreaRoll,
+        cGuiTextAreaDisabled: cGuiTextAreaDisabled,
+
+        // GUI Slider resources
+        cGuiSliderGroove: cGuiSliderGroove,
+        cGuiSliderGrooveDisabled: cGuiSliderGrooveDisabled,
+        cGuiSliderThumb: cGuiSliderThumb,
+    }
 
     static cIntro = PIXIsound.Sound.from(cIntro)
     static cRoll = PIXIsound.Sound.from(cRoll)
@@ -121,96 +209,101 @@ export class Resource {
     // Main menu resources
 	static cReplay: any;
 	static cRobot: any;
-    static cMainMenuLogo = cMainMenuLogo;
+    static cMainMenuLogo: Texture;
 
     // Level select resources
-	static cLevelSelectBox1L = cLevelSelectBox1L;
-	static cLevelSelectBox1M = cLevelSelectBox1M;
-	static cLevelSelectBox1R = cLevelSelectBox1R;
-	static cLevelSelectBox2L = cLevelSelectBox2L;
-	static cLevelSelectBox2M = cLevelSelectBox2M;
-	static cLevelSelectBox2R = cLevelSelectBox2R;
-	static cLevelSelectOtherBoxL = cLevelSelectOtherBoxL;
-	static cLevelSelectOtherBoxM = cLevelSelectOtherBoxM;
-	static cLevelSelectOtherBoxR = cLevelSelectOtherBoxR;
-    static cLevelSelectLevelCheckBoxA = cLevelSelectLevelCheckBoxA;
-    static cLevelSelectLevelCheckBoxB = cLevelSelectLevelCheckBoxB;
-	static cLevelSelectStartHereText = cLevelSelectStartHereText;
-    static cLevelSelectStartHereArrow = cLevelSelectStartHereArrow;
+	static cLevelSelectBox1L: Texture;
+	static cLevelSelectBox1M: Texture;
+	static cLevelSelectBox1R: Texture;
+	static cLevelSelectBox2L: Texture;
+	static cLevelSelectBox2M: Texture;
+	static cLevelSelectBox2R: Texture;
+	static cLevelSelectOtherBoxL: Texture;
+	static cLevelSelectOtherBoxM: Texture;
+	static cLevelSelectOtherBoxR: Texture;
+    static cLevelSelectLevelCheckBoxA: Texture;
+    static cLevelSelectLevelCheckBoxB: Texture;
+	static cLevelSelectStartHereText: Texture;
+    static cLevelSelectStartHereArrow: Texture;
 
     // Button resources
-    static cGuiButtonRedBase = cGuiButtonRedBase;
-    static cGuiButtonRedRoll = cGuiButtonRedRoll;
-    static cGuiButtonRedClick = cGuiButtonRedClick;
-    static cGuiButtonPurpleBase = cGuiButtonPurpleBase;
-    static cGuiButtonPurpleRoll = cGuiButtonPurpleRoll;
-    static cGuiButtonPurpleClick = cGuiButtonPurpleClick;
-    static cGuiButtonBlueBase = cGuiButtonBlueBase;
-    static cGuiButtonBlueRoll = cGuiButtonBlueRoll;
-    static cGuiButtonBlueClick = cGuiButtonBlueClick;
-    static cGuiButtonPinkBase = cGuiButtonPinkBase;
-    static cGuiButtonPinkRoll = cGuiButtonPinkRoll;
-    static cGuiButtonPinkClick = cGuiButtonPinkClick;
-    static cGuiButtonOrangeBase = cGuiButtonOrangeBase;
-    static cGuiButtonOrangeRoll = cGuiButtonOrangeRoll;
-    static cGuiButtonOrangeClick = cGuiButtonOrangeClick;
-    static cGuiButtonPlayBase = cGuiButtonPlayBase;
-    static cGuiButtonPlayRoll = cGuiButtonPlayRoll;
-    static cGuiButtonPlayClick = cGuiButtonPlayClick;
-    static cGuiButtonXBase = cGuiButtonXBase;
-    static cGuiButtonXRoll = cGuiButtonXRoll;
-    static cGuiButtonXClick = cGuiButtonXClick;
+    static cGuiButtonRedBase: Texture;
+    static cGuiButtonRedRoll: Texture;
+    static cGuiButtonRedClick: Texture;
+    static cGuiButtonPurpleBase: Texture;
+    static cGuiButtonPurpleRoll: Texture;
+    static cGuiButtonPurpleClick: Texture;
+    static cGuiButtonBlueBase: Texture;
+    static cGuiButtonBlueRoll: Texture;
+    static cGuiButtonBlueClick: Texture;
+    static cGuiButtonPinkBase: Texture;
+    static cGuiButtonPinkRoll: Texture;
+    static cGuiButtonPinkClick: Texture;
+    static cGuiButtonOrangeBase: Texture;
+    static cGuiButtonOrangeRoll: Texture;
+    static cGuiButtonOrangeClick: Texture;
+    static cGuiButtonPlayBase: Texture;
+    static cGuiButtonPlayRoll: Texture;
+    static cGuiButtonPlayClick: Texture;
+    static cGuiButtonXBase: Texture;
+    static cGuiButtonXRoll: Texture;
+    static cGuiButtonXClick: Texture;
 
     // Window resources
-    static cGuiWindowTop120 = cGuiWindowTop120;
-    static cGuiWindowBottom120 = cGuiWindowBottom120;
-    static cGuiWindowMid120 = cGuiWindowMid120;
-    static cGuiWindowTop154 = cGuiWindowTop154;
-    static cGuiWindowBottom154 = cGuiWindowBottom154;
-    static cGuiWindowMid154 = cGuiWindowMid154;
-    static cGuiWindowTop200 = cGuiWindowTop200;
-    static cGuiWindowBottom200 = cGuiWindowBottom200;
-    static cGuiWindowMid200 = cGuiWindowMid200;
-    static cGuiWindowTop248 = cGuiWindowTop248;
-    static cGuiWindowBottom248 = cGuiWindowBottom248;
-    static cGuiWindowMid248 = cGuiWindowMid248;
-    static cGuiWindowTop547 = cGuiWindowTop547;
-    static cGuiWindowBottom547 = cGuiWindowBottom547;
-    static cGuiWindowMid547 = cGuiWindowMid547;
-    static cGuiWindowLeft800 = cGuiWindowLeft800;
-    static cGuiWindowRight800 = cGuiWindowRight800;
-    static cGuiWindowMid800 = cGuiWindowMid800;
-    static cGuiWindowLeft600 = cGuiWindowLeft600;
-    static cGuiWindowRight600 = cGuiWindowRight600;
-    static cGuiWindowMid600 = cGuiWindowMid600;
-    static cGuiWindowLeft700 = cGuiWindowLeft700;
-    static cGuiWindowRight700 = cGuiWindowRight700;
-    static cGuiWindowMid700 = cGuiWindowMid700;
-    static cGuiWindowLinebox = cGuiWindowLinebox;
-    static cGuiWindowLine = cGuiWindowLine;
+    static cGuiWindowTop120: Texture;
+    static cGuiWindowBottom120: Texture;
+    static cGuiWindowMid120: Texture;
+    static cGuiWindowTop154: Texture;
+    static cGuiWindowBottom154: Texture;
+    static cGuiWindowMid154: Texture;
+    static cGuiWindowTop200: Texture;
+    static cGuiWindowBottom200: Texture;
+    static cGuiWindowMid200: Texture;
+    static cGuiWindowTop248: Texture;
+    static cGuiWindowBottom248: Texture;
+    static cGuiWindowMid248: Texture;
+    static cGuiWindowTop547: Texture;
+    static cGuiWindowBottom547: Texture;
+    static cGuiWindowMid547: Texture;
+    static cGuiWindowLeft800: Texture;
+    static cGuiWindowRight800: Texture;
+    static cGuiWindowMid800: Texture;
+    static cGuiWindowLeft600: Texture;
+    static cGuiWindowRight600: Texture;
+    static cGuiWindowMid600: Texture;
+    static cGuiWindowLeft700: Texture;
+    static cGuiWindowRight700: Texture;
+    static cGuiWindowMid700: Texture;
+    static cGuiWindowLinebox: Texture;
+    static cGuiWindowLine: Texture;
 
     // GUI Check box resources
-    static cGuiCheckboxABase = cGuiCheckboxABase;
-    static cGuiCheckboxARoll = cGuiCheckboxARoll;
-    static cGuiCheckboxAClick = cGuiCheckboxAClick;
-    static cGuiCheckboxADisabled = cGuiCheckboxADisabled;
-    static cGuiCheckboxBBase = cGuiCheckboxBBase;
-    static cGuiCheckboxBRoll = cGuiCheckboxBRoll;
-    static cGuiCheckboxBClick = cGuiCheckboxBClick;
-    static cGuiCheckboxBDisabled = cGuiCheckboxBDisabled;
+    static cGuiCheckboxABase: Texture;
+    static cGuiCheckboxARoll: Texture;
+    static cGuiCheckboxAClick: Texture;
+    static cGuiCheckboxADisabled: Texture;
+    static cGuiCheckboxBBase: Texture;
+    static cGuiCheckboxBRoll: Texture;
+    static cGuiCheckboxBClick: Texture;
+    static cGuiCheckboxBDisabled: Texture;
 
     // GUI text area resources
-    static cGuiTextAreaBase = cGuiTextAreaBase;
-    static cGuiTextAreaRoll = cGuiTextAreaRoll;
-    static cGuiTextAreaDisabled = cGuiTextAreaDisabled;
+    static cGuiTextAreaBase: Texture;
+    static cGuiTextAreaRoll: Texture;
+    static cGuiTextAreaDisabled: Texture;
 
     // GUI Slider resources
-    static cGuiSliderGroove = cGuiSliderGroove;
-    static cGuiSliderGrooveDisabled = cGuiSliderGrooveDisabled;
+    static cGuiSliderGroove: Texture;
+    static cGuiSliderGrooveDisabled: Texture;
+    static cGuiSliderThumb: Texture;
 
     static async load() {
         for (const key in Resource.paths) {
             Resource[key] = await fetch(Resource.paths[key]).then(res => res.blob())
+        }
+
+        for (const key in Resource.textures) {
+            Resource[key] = await Texture.fromURL(Resource.textures[key])
         }
     }
 

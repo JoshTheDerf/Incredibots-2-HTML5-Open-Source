@@ -35,22 +35,22 @@ export class GuiCheckBox extends Container
 		this.icon = new Sprite()
 
 		this.on('click', (e:InteractionEvent) => this.mouseClick(e))
-		this.load()
-	}
 
-	private async load() {
 		this.textures = {
-			upIcon: await Texture.fromURL(Resource.cGuiCheckboxABase),
-			overIcon: await Texture.fromURL(Resource.cGuiCheckboxARoll),
-			downIcon: await Texture.fromURL(Resource.cGuiCheckboxAClick),
-			disabledIcon: await Texture.fromURL(Resource.cGuiCheckboxADisabled),
-			selectedUpIcon: await Texture.fromURL(Resource.cGuiCheckboxBBase),
-			selectedOverIcon: await Texture.fromURL(Resource.cGuiCheckboxBRoll),
-			selectedDownIcon: await Texture.fromURL(Resource.cGuiCheckboxBClick),
-			selectedDisabledIcon: await Texture.fromURL(Resource.cGuiCheckboxBDisabled),
+			upIcon: Resource.cGuiCheckboxABase,
+			overIcon: Resource.cGuiCheckboxARoll,
+			downIcon: Resource.cGuiCheckboxAClick,
+			disabledIcon: Resource.cGuiCheckboxADisabled,
+			selectedUpIcon: Resource.cGuiCheckboxBBase,
+			selectedOverIcon: Resource.cGuiCheckboxBRoll,
+			selectedDownIcon: Resource.cGuiCheckboxBClick,
+			selectedDisabledIcon: Resource.cGuiCheckboxBDisabled,
 		}
 
 		this.icon.texture = this.textures.upIcon;
+	}
+
+	private async load() {
 	}
 
 	private mouseClick(e:InteractionEvent):void {

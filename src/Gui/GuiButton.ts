@@ -32,41 +32,38 @@ export class GuiButton extends Container
 	private overTexture: Texture;
 	private downTexture: Texture;
 
-	constructor(text:string, xPos:number, yPos:number, w:number, h:number, clickListener:Function, colour:number, style:TextStyle|null = null, addCheckbox:boolean = false, checkboxSelected:boolean = false)
+	constructor(text:String, xPos:number, yPos:number, w:number, h:number, clickListener:Function, colour:number, style:TextStyle|null = null, addCheckbox:boolean = false, checkboxSelected:boolean = false)
 	{
 		super()
-		this.load(text, xPos, yPos, w, h, clickListener, colour, style, addCheckbox, checkboxSelected)
-	}
 
-	async load(text:string, xPos:number, yPos:number, w:number, h:number, clickListener:Function, colour:number, style:TextStyle|null = null, addCheckbox:boolean = false, checkboxSelected:boolean = false) {
 		if (colour == GuiButton.PURPLE) {
-			this.upTexture = await Texture.fromURL(GuiButton.purpleButtonBase())
-			this.overTexture = await Texture.fromURL(GuiButton.purpleButtonRoll())
-			this.downTexture = await Texture.fromURL(GuiButton.purpleButtonClick())
+			this.upTexture = GuiButton.purpleButtonBase()
+			this.overTexture = GuiButton.purpleButtonRoll()
+			this.downTexture = GuiButton.purpleButtonClick()
 		} else if (colour == GuiButton.RED) {
-			this.upTexture = await Texture.fromURL(GuiButton.redButtonBase())
-			this.overTexture = await Texture.fromURL(GuiButton.redButtonRoll())
-			this.downTexture = await Texture.fromURL(GuiButton.redButtonClick())
+			this.upTexture = GuiButton.redButtonBase()
+			this.overTexture = GuiButton.redButtonRoll()
+			this.downTexture = GuiButton.redButtonClick()
 		} else if (colour == GuiButton.BLUE) {
-			this.upTexture = await Texture.fromURL(GuiButton.blueButtonBase())
-			this.overTexture = await Texture.fromURL(GuiButton.blueButtonRoll())
-			this.downTexture = await Texture.fromURL(GuiButton.blueButtonClick())
+			this.upTexture = GuiButton.blueButtonBase()
+			this.overTexture = GuiButton.blueButtonRoll()
+			this.downTexture = GuiButton.blueButtonClick()
 		} else if (colour == GuiButton.PINK) {
-			this.upTexture = await Texture.fromURL(GuiButton.pinkButtonBase())
-			this.overTexture = await Texture.fromURL(GuiButton.pinkButtonRoll())
-			this.downTexture = await Texture.fromURL(GuiButton.pinkButtonClick())
+			this.upTexture = GuiButton.pinkButtonBase()
+			this.overTexture = GuiButton.pinkButtonRoll()
+			this.downTexture = GuiButton.pinkButtonClick()
 		} else if (colour == GuiButton.ORANGE) {
-			this.upTexture = await Texture.fromURL(GuiButton.orangeButtonBase())
-			this.overTexture = await Texture.fromURL(GuiButton.orangeButtonRoll())
-			this.downTexture = await Texture.fromURL(GuiButton.orangeButtonClick())
+			this.upTexture = GuiButton.orangeButtonBase()
+			this.overTexture = GuiButton.orangeButtonRoll()
+			this.downTexture = GuiButton.orangeButtonClick()
 		} else if (colour == GuiButton.PLAY) {
-			this.upTexture = await Texture.fromURL(GuiButton.playButtonBase())
-			this.overTexture = await Texture.fromURL(GuiButton.playButtonRoll())
-			this.downTexture = await Texture.fromURL(GuiButton.playButtonClick())
+			this.upTexture = GuiButton.playButtonBase()
+			this.overTexture = GuiButton.playButtonRoll()
+			this.downTexture = GuiButton.playButtonClick()
 		} else if (colour == GuiButton.X) {
-			this.upTexture = await Texture.fromURL(GuiButton.xButtonBase())
-			this.overTexture = await Texture.fromURL(GuiButton.xButtonRoll())
-			this.downTexture = await Texture.fromURL(GuiButton.xButtonClick())
+			this.upTexture = GuiButton.xButtonBase()
+			this.overTexture = GuiButton.xButtonRoll()
+			this.downTexture = GuiButton.xButtonClick()
 		}
 
 		if (!style) {
@@ -174,89 +171,89 @@ export class GuiButton extends Container
 		}
 	}
 
-	public static redButtonBase():string {
+	public static redButtonBase():Texture {
 		return Resource.cGuiButtonRedBase;
 	}
 
-	public static redButtonRoll():string {
+	public static redButtonRoll():Texture {
 		return Resource.cGuiButtonRedRoll;
 	}
 
-	public static redButtonClick():string {
+	public static redButtonClick():Texture {
 		return Resource.cGuiButtonRedClick;
 	}
 
-	public static blueButtonBase():string {
+	public static blueButtonBase():Texture {
 		return Resource.cGuiButtonBlueBase;
 	}
 
-	public static blueButtonRoll():string {
+	public static blueButtonRoll():Texture {
 		return Resource.cGuiButtonBlueRoll;
 	}
 
-	public static blueButtonClick():string {
+	public static blueButtonClick():Texture {
 		return Resource.cGuiButtonBlueClick;
 	}
 
-	public static purpleButtonBase():string {
+	public static purpleButtonBase():Texture {
 		return Resource.cGuiButtonPurpleBase;
 	}
 
-	public static purpleButtonRoll():string {
+	public static purpleButtonRoll():Texture {
 		return Resource.cGuiButtonPurpleRoll;
 	}
 
-	public static purpleButtonClick():string {
+	public static purpleButtonClick():Texture {
 		return Resource.cGuiButtonPurpleClick;
 	}
 
-	public static pinkButtonBase():string {
+	public static pinkButtonBase():Texture {
 		return Resource.cGuiButtonPinkBase;
 	}
 
-	public static pinkButtonRoll():string {
+	public static pinkButtonRoll():Texture {
 		return Resource.cGuiButtonPinkRoll;
 	}
 
-	public static pinkButtonClick():string {
+	public static pinkButtonClick():Texture {
 		return Resource.cGuiButtonPinkClick;
 	}
 
-	public static orangeButtonBase():string {
+	public static orangeButtonBase():Texture {
 		return Resource.cGuiButtonOrangeBase;
 
 	}
 
-	public static orangeButtonRoll():string {
+	public static orangeButtonRoll():Texture {
 		return Resource.cGuiButtonOrangeRoll;
 
 	}
 
-	public static orangeButtonClick():string {
+	public static orangeButtonClick():Texture {
 		return Resource.cGuiButtonOrangeClick;
 	}
 
-	public static playButtonBase():string {
+	public static playButtonBase():Texture {
 		return Resource.cGuiButtonPlayBase;
 	}
 
-	public static playButtonRoll():string {
+	public static playButtonRoll():Texture {
 		return Resource.cGuiButtonPlayRoll;
 	}
 
-	public static playButtonClick():string {
+	public static playButtonClick():Texture {
 		return Resource.cGuiButtonPlayClick;
 	}
 
-	public static xButtonBase():string {
+	public static xButtonBase():Texture {
 		return Resource.cGuiButtonXBase;
 	}
 
-	public static xButtonRoll():string {
+	public static xButtonRoll():Texture {
 		return Resource.cGuiButtonXRoll;
 	}
 
-	public static xButtonClick():string {
+	public static xButtonClick():Texture {
 		return Resource.cGuiButtonXClick;
 	}
 }

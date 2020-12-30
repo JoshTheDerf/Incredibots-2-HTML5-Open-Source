@@ -14,56 +14,56 @@ export class GuiWindow extends Graphics
 			var m:Matrix;
 			this.lineStyle(0, 0, 0);
 			if (width == 800) {
-				this.beginTextureFill({ texture: Texture.from(Resource.cGuiWindowMid800) });
+				this.beginTextureFill({ texture: Resource.cGuiWindowMid800 });
 				this.drawRect(17, 0, width - 34, height);
 				this.endFill();
-				this.beginTextureFill({ texture: Texture.from(Resource.cGuiWindowRight800) });
+				this.beginTextureFill({ texture: Resource.cGuiWindowRight800 });
 				this.drawRect(width - 17, 0, 17, height);
 				this.endFill();
 				m = new Matrix();
 				m.translate(-1, 0);
-				this.beginTextureFill({texture: Texture.from(Resource.cGuiWindowLeft800), matrix: m });
+				this.beginTextureFill({texture: Resource.cGuiWindowLeft800, matrix: m });
 				this.drawRect(-1, 0, 18, height);
 				this.endFill();
 			} else if (width == 720) {
-				this.beginTextureFill({texture: Texture.from(Resource.cGuiWindowMid700) });
+				this.beginTextureFill({texture: Resource.cGuiWindowMid700 });
 				this.drawRect(24, 0, width - 48, height);
 				this.endFill();
-				this.beginTextureFill({texture: Texture.from(Resource.cGuiWindowRight700) });
+				this.beginTextureFill({texture: Resource.cGuiWindowRight700 });
 				this.drawRect(width - 24, 0, 24, height);
 				this.endFill();
-				this.beginTextureFill({texture: Texture.from(Resource.cGuiWindowLeft700) });
+				this.beginTextureFill({texture: Resource.cGuiWindowLeft700 });
 				this.drawRect(0, 0, 24, height);
 				this.endFill();
 				m = new Matrix();
 				m.translate(12, 287);
-				this.beginTextureFill({texture: Texture.from(Resource.cGuiWindowLine), matrix: m });
+				this.beginTextureFill({texture: Resource.cGuiWindowLine, matrix: m });
 				this.drawRect(12, 287, 684, 6);
 				this.endFill();
 				m = new Matrix();
 				m.translate(53, 20);
-				this.beginTextureFill({texture: Texture.from(Resource.cGuiWindowLinebox), matrix: m });
+				this.beginTextureFill({texture: Resource.cGuiWindowLinebox, matrix: m });
 				this.drawRect(53, 20, 602, 80);
 				this.endFill();
 				m = new Matrix();
 				m.translate(53, 315);
-				this.beginTextureFill({texture: Texture.from(Resource.cGuiWindowLinebox), matrix: m });
+				this.beginTextureFill({texture: Resource.cGuiWindowLinebox, matrix: m });
 				this.drawRect(53, 313, 602, 80);
 				this.endFill();
 			} else if (width == 600 || width == 312) {
-				this.beginTextureFill({texture: Texture.from(Resource.cGuiWindowMid600) });
+				this.beginTextureFill({texture: Resource.cGuiWindowMid600 });
 				this.drawRect(24, 0, width - 48, height);
 				this.endFill();
-				this.beginTextureFill({texture: Texture.from(Resource.cGuiWindowRight600) });
+				this.beginTextureFill({texture: Resource.cGuiWindowRight600 });
 				this.drawRect(width - 24, 0, 24, height);
 				this.endFill();
-				this.beginTextureFill({texture: Texture.from(Resource.cGuiWindowLeft600) });
+				this.beginTextureFill({texture: Resource.cGuiWindowLeft600 });
 				this.drawRect(0, 0, 24, height);
 				this.endFill();
 				if (addLine && width == 312) {
 					m = new Matrix();
 					m.translate(12, 287);
-					this.beginTextureFill({texture: Texture.from(Resource.cGuiWindowLine), matrix: m });
+					this.beginTextureFill({texture: Resource.cGuiWindowLine, matrix: m });
 					this.drawRect(12, 275, 274, 6);
 					this.endFill();
 				}
@@ -90,15 +90,15 @@ export class GuiWindow extends Graphics
 					midClass = Resource.cGuiWindowMid547;
 					bottomClass = Resource.cGuiWindowBottom547;
 				}
-				this.beginTextureFill({ texture: Texture.from(midClass) });
+				this.beginTextureFill({ texture: midClass });
 				this.drawRect(-1, 15, width + 10, height - 30);
 				this.endFill();
-				this.beginTextureFill({ texture: Texture.from(topClass) });
+				this.beginTextureFill({ texture: topClass });
 				this.drawRect(-1, 0, width + 10, 15);
 				this.endFill();
 				m = new Matrix();
 				m.translate(0, height - 15);
-				this.beginTextureFill({ texture: Texture.from(bottomClass), matrix: m });
+				this.beginTextureFill({ texture: bottomClass, matrix: m });
 				this.drawRect(-1, height - 15, width + 10, 24);
 				this.endFill();
 			}

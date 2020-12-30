@@ -3,14 +3,46 @@ import { Container, Text, TextStyle, Texture, Sprite } from 'pixi.js'
 import { Resource } from '../Game/Graphics/Resource'
 import { Main } from '../Main'
 
-export class GuiTextArea extends Stage
+export class GuiTextInput extends Stage
 {
 	private baseSkin:Texture;
 	private rollSkin:Texture;
 
-	public text: String = ''
+	public textInput: TextInput;
 
-	constructor(xPos:number, yPos:number, w:number, h:number, format:TextStyle|null = null)
+	set maxLength (value: number) {
+		this.textInput.maxLength = value || 0
+	}
+
+	get maxLength (): number {
+		return this.textInput.maxLength
+	}
+
+	get enabled (): boolean {
+		return this.textInput.interactive
+	}
+
+	set enabled (value: boolean) {
+		this.textInput.interactive = value
+	}
+
+	get editable (): boolean {
+		return this.textInput.interactive
+	}
+
+	set editable (value: boolean) {
+		this.textInput.interactive = value
+	}
+
+	get text (): string {
+		return this.textInput.text
+	}
+
+	set text (value: string) {
+		this.textInput.text = value
+	}
+
+	constructor(xPos:number, yPos:number, w:number, h: number, format:TextStyle|null = null)
 	{
 		super(w, h)
 		this.x = xPos
@@ -32,41 +64,40 @@ export class GuiTextArea extends Stage
 		backgroundSprite.height = h
 		backgroundContainer.addChild(backgroundSprite)
 
-		const textInput = new TextInput({
-			multiLine: true,
+		this.textInput = new TextInput({
 			value: '',
 			width: w,
 			height: h,
 			style: format || new TextStyle(),
 			background: backgroundContainer
 		})
-		textInput.setPadding(5, 5)
 
 		this.on('mouseover', () => {
 			backgroundSprite.texture = this.rollSkin
 		})
 		this.on('mouseout', () => {
-			if (textInput.isFocused) return
+			if (this.textInput.isFocused) return
 			backgroundSprite.texture = this.baseSkin
 		})
 
-		textInput.on('focus', () => {
+		this.textInput.on('focus', () => {
 			backgroundSprite.texture = this.rollSkin
 		})
-		textInput.on('blur', () => {
+		this.textInput.on('blur', () => {
 			backgroundSprite.texture = this.baseSkin
 		})
-		textInput.on('change', () => {
-			this.text = textInput.text
+		this.textInput.on('change', () => {
+			this.emit('change', this.textInput.text)
+			this.text = this.textInput.text
 		})
 
-		textInput.setLayoutOptions(
+		this.textInput.setLayoutOptions(
 			new FastLayoutOptions({
 				width: 0.9999,
 				height: 0.9999
 			})
 		)
 
-		this.addChild(textInput)
+		this.addChild(this.textInput)
 	}
 }

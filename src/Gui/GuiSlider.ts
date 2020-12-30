@@ -1,27 +1,52 @@
-import { Texture } from 'pixi.js'
-import { Slider, Sprite } from '@puxi/core'
+import { Container, Text, Texture } from 'pixi.js'
+import { FastLayoutOptions, ISliderOptions, LayoutOptions, Slider, Sprite, Stage } from '@puxi/core'
 import { Resource } from '../Game/Graphics/Resource'
 
-type SliderTextures = {
-	groove: Texture,
-	grooveDisabled: Texture,
-}
+export class GuiSlider extends Stage {
+	private slider: Slider;
+	private trackSprite: Sprite;
 
-export class GuiSlider extends Slider {
-  private textures: SliderTextures|null = null;
+	set minValue(value: number) {
+		this.slider.minValue = value
+	}
 
-  constructor(options?: object) {
-    super(options || {})
+	get minValue(): number {
+		return this.slider.minValue
+	}
 
-    this.load()
-  }
+	set maxValue(value: number) {
+		this.slider.maxValue = value
+	}
 
-	private async load() {
-		this.textures = {
-			groove: await Texture.fromURL(Resource.cGuiSliderGroove),
-			grooveDisabled: await Texture.fromURL(Resource.cGuiSliderGrooveDisabled),
+	get maxValue(): number {
+		return this.slider.maxValue
+	}
+
+	set value(value: number) {
+		this.slider.value = value
+	}
+
+	get value(): number {
+		return this.slider.value
+	}
+
+  constructor(options: ISliderOptions) {
+		super(128, 20)
+
+		this.trackSprite = new Sprite(Resource.cGuiSliderGroove)
+
+		if (!options) {
+			options = {
+				track: this.trackSprite,
+				handle: new Sprite(Resource.cGuiSliderThumb)
+			}
 		}
 
-		this.track = new Sprite(this.textures.groove);
-	}
+		this.slider = new Slider(options)
+		this.addChild(this.slider)
+
+		this.slider.on('change', (value: number) => {
+			this.emit('change', value)
+		})
+  }
 }

@@ -34,26 +34,26 @@ export class DropDownMenuItem extends Graphics
 
 		if (checkBox) {
 			if (checkBoxChecked) {
-				this.m_checkBoxBase = new Resource.cGuiMenuCheckBoxBBase();
+				this.m_checkBoxBase = Resource.cGuiMenuCheckBoxBBase;
 				this.m_checkBoxBase.smoothing = true;
 				this.addChild(this.m_checkBoxBase);
-				this.m_checkBoxRoll = new Resource.cGuiMenuCheckBoxBRoll();
+				this.m_checkBoxRoll = Resource.cGuiMenuCheckBoxBRoll;
 				this.m_checkBoxRoll.smoothing = true;
 				this.m_checkBoxRoll.visible = false;
 				this.addChild(this.m_checkBoxRoll);
-				this.m_checkBoxClick = new Resource.cGuiMenuCheckBoxBClick();
+				this.m_checkBoxClick = Resource.cGuiMenuCheckBoxBClick;
 				this.m_checkBoxClick.smoothing = true;
 				this.m_checkBoxClick.visible = false;
 				this.addChild(this.m_checkBoxClick);
 			} else {
-				this.m_checkBoxBase = Texture.from(Resource.cGuiMenuCheckBoxABase);
+				this.m_checkBoxBase = Resource.cGuiMenuCheckBoxABase;
 				this.m_checkBoxBase.smoothing = true;
 				this.addChild(this.m_checkBoxBase);
-				this.m_checkBoxRoll = Texture.from(Resource.cGuiMenuCheckBoxARoll);
+				this.m_checkBoxRoll = Resource.cGuiMenuCheckBoxARoll;
 				this.m_checkBoxRoll.smoothing = true;
 				this.m_checkBoxRoll.visible = false;
 				this.addChild(this.m_checkBoxRoll);
-				this.m_checkBoxClick = Texture.from(Resource.cGuiMenuCheckBoxAClick);
+				this.m_checkBoxClick = Resource.cGuiMenuCheckBoxAClick;
 				this.m_checkBoxClick.smoothing = true;
 				this.m_checkBoxClick.visible = false;
 				this.addChild(this.m_checkBoxClick);

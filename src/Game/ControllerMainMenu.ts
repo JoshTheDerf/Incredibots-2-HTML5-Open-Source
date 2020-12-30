@@ -3,6 +3,7 @@ import { Container, DisplayObject, Graphics, Matrix, Sprite, Text, TextStyle, Te
 import { Database } from "../General/Database";
 import { LSOManager } from "../General/LSOManager";
 import { Util } from "../General/Util";
+import { AdvancedSandboxWindow } from "../Gui/AdvancedSandboxWindow";
 import { GuiButton } from "../Gui/GuiButton";
 import { ImportWindow } from "../Gui/ImportWindow";
 import { Main } from "../Main";
@@ -149,12 +150,13 @@ export class ControllerMainMenu extends Controller
 
 		var style:TextStyle = new TextStyle({
 			fontFamily: Main.GLOBAL_FONT,
-			align: 'right'
+			fontSize: 11,
+			align: 'right',
+			fill: '#ffffff'
 		});
 		this.versionText = new Text("Version " + Main.VERSION_STRING);
 		this.versionText.x = 700;
 		this.versionText.y = 580;
-		this.versionText.width = 100;
 		this.versionText.style = style;
 		this.addChild(this.versionText);
 
@@ -170,7 +172,7 @@ export class ControllerMainMenu extends Controller
 		this.fader.visible = (straightToLevelSelect || Main.premiumMode);
 		this.addChild(this.fader);
 
-		this.sLogo = Sprite.from(Resource.cMainMenuLogo);
+		this.sLogo = new Sprite(Resource.cMainMenuLogo);
 		this.sLogo.smoothing = true;
 		if (straightToLevelSelect) {
 			this.sLogo.width = this.sLogo.measuredWidth * 0.6;
@@ -196,11 +198,11 @@ export class ControllerMainMenu extends Controller
 
 		this.levelSelectGui = new Sprite();
 		this.levelSelectGui.visible = straightToLevelSelect;
-		var img:Sprite = Sprite.from(Resource.cLevelSelectBox1L);
+		var img:Sprite = new Sprite(Resource.cLevelSelectBox1L);
 		img.x = 210;
 		img.y = 105;
 		this.levelSelectGui.addChild(img);
-		img = Sprite.from(Resource.cLevelSelectBox1R);
+		img = new Sprite(Resource.cLevelSelectBox1R);
 		img.x = 576;
 		img.y = 105;
 		this.levelSelectGui.addChild(img);
@@ -209,31 +211,31 @@ export class ControllerMainMenu extends Controller
 		this.levelSelectGui.addChild(graphics)
 		let m:Matrix = new Matrix();
 		m.translate(0, 105);
-		graphics.beginTextureFill({ texture: Texture.from(Resource.cLevelSelectBox1M), matrix: m });
+		graphics.beginTextureFill({ texture: Resource.cLevelSelectBox1M, matrix: m });
 		graphics.drawRect(234, 105, 342, 135);
-		img = Sprite.from(Resource.cLevelSelectBox2L);
+		img = new Sprite(Resource.cLevelSelectBox2L);
 		img.x = 315;
 		img.y = 260;
 		this.levelSelectGui.addChild(img);
-		img = Sprite.from(Resource.cLevelSelectBox2R);
+		img = new Sprite(Resource.cLevelSelectBox2R);
 		img.x = 472;
 		img.y = 260;
 		this.levelSelectGui.addChild(img);
 		m = new Matrix();
 		m.translate(0, 260);
-		graphics.beginTextureFill({ texture: Texture.from(Resource.cLevelSelectBox2M), matrix: m});
+		graphics.beginTextureFill({ texture: Resource.cLevelSelectBox2M, matrix: m});
 		graphics.drawRect(339, 260, 133, 194);
-		img = Sprite.from(Resource.cLevelSelectOtherBoxL);
+		img = new Sprite(Resource.cLevelSelectOtherBoxL);
 		img.x = 617;
 		img.y = 449;
 		this.levelSelectGui.addChild(img);
-		img = Sprite.from(Resource.cLevelSelectOtherBoxR);
+		img = new Sprite(Resource.cLevelSelectOtherBoxR);
 		img.x = 763;
 		img.y = 449;
 		this.levelSelectGui.addChild(img);
 		m = new Matrix();
 		m.translate(0, 449);
-		graphics.beginTextureFill({ texture: Texture.from(Resource.cLevelSelectOtherBoxM), matrix: m});
+		graphics.beginTextureFill({ texture: Resource.cLevelSelectOtherBoxM, matrix: m});
 		graphics.drawRect(641, 449, 122, 144);
 
 		style = new TextStyle();
@@ -298,13 +300,13 @@ export class ControllerMainMenu extends Controller
 		this.levelSelectGui.addChild(this.userText);
 
 		if (!LSOManager.IsAnythingDone()) {
-			this.startHereArrow = Sprite.from(Resource.cLevelSelectStartHereArrow);
+			this.startHereArrow = new Sprite(Resource.cLevelSelectStartHereArrow);
 			this.startHereArrow.smoothing = true;
 			this.startHereArrow.x = 130;
 			this.startHereArrow.y = 117;
 			this.levelSelectGui.addChild(this.startHereArrow);
 			this.arrowX = 130;
-			this.startHereText = Sprite.from(Resource.cLevelSelectStartHereText);
+			this.startHereText = new Sprite(Resource.cLevelSelectStartHereText);
 			this.startHereText.smoothing = true;
 			this.startHereText.x = 75;
 			this.startHereText.y = 145;
