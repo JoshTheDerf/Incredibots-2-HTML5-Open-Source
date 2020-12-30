@@ -5,7 +5,7 @@ import { Main } from "../Main";
 type Sound = PIXIsound.Sound
 
 type ComboBoxItem = {
-	label: String
+	label: string
 }
 
 export class GuiCombobox extends Container
@@ -50,7 +50,7 @@ export class GuiCombobox extends Container
 		style.fontSize = 11;
 		style.fill = "#573D40";
 		style.fontFamily = Main.GLOBAL_FONT;
-		style.align = 'center';
+		style.align = 'left';
 
 		this.width = w;
 		this.height = h;
@@ -65,8 +65,8 @@ export class GuiCombobox extends Container
 
 		this.label.text = 'TEST'
 		this.label.style = style
-		this.label.anchor.set(0.5)
-		this.label.x = w / 2
+		this.label.anchor.set(0, 0.5)
+		this.label.x = 10
 		this.label.y = h / 2
 		this.addChild(this.label)
 
@@ -82,6 +82,8 @@ export class GuiCombobox extends Container
 
 	addItem(item: ComboBoxItem) {
 		this.items.push(item)
+
+		this.label.text = this.items[this.selectedIndex].label
 	}
 
 	public bDown(e:MouseEvent):void {

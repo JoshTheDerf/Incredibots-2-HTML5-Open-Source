@@ -30,7 +30,7 @@ export class GuiSlider extends Stage {
 		return this.slider.value
 	}
 
-  constructor(options: ISliderOptions) {
+  constructor(options?: ISliderOptions) {
 		super(128, 20)
 
 		this.trackSprite = new Sprite(Resource.cGuiSliderGroove)

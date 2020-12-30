@@ -95,6 +95,11 @@ import cGuiSliderGroove from '../../../resource/slider_groove.png'
 import cGuiSliderGrooveDisabled from '../../../resource/slider_groove_disabled.png'
 import cGuiSliderThumb from '../../../resource/slider_arrow.png'
 
+// // GUI Combo box resources
+import cGuiComboboxBase from '../../../resource/button_purplearrow_base.png'
+import cGuiComboboxRoll from '../../../resource/button_purplearrow_roll.png'
+import cGuiComboboxClick from '../../../resource/button_purplearrow_click.png'
+
 
 export class MouseCursor {
     // Css style for icons
@@ -200,6 +205,10 @@ export class Resource {
         cGuiSliderGroove: cGuiSliderGroove,
         cGuiSliderGrooveDisabled: cGuiSliderGrooveDisabled,
         cGuiSliderThumb: cGuiSliderThumb,
+
+        cGuiComboboxBase: cGuiComboboxBase,
+        cGuiComboboxRoll: cGuiComboboxRoll,
+        cGuiComboboxClick: cGuiComboboxClick,
     }
 
     static cIntro = PIXIsound.Sound.from(cIntro)
@@ -296,6 +305,11 @@ export class Resource {
     static cGuiSliderGroove: Texture;
     static cGuiSliderGrooveDisabled: Texture;
     static cGuiSliderThumb: Texture;
+
+    // GUI Combobox resources
+    static cGuiComboboxBase: Texture;
+    static cGuiComboboxRoll: Texture;
+    static cGuiComboboxClick: Texture;
 
     static async load() {
         for (const key in Resource.paths) {

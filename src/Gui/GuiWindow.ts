@@ -10,6 +10,8 @@ export class GuiWindow extends Graphics
 			super()
 			this.x = xPos;
 			this.y = yPos;
+			// Use this to prevent clicks from going through the parent.
+			this.interactive = true;
 
 			var m:Matrix;
 			this.lineStyle(0, 0, 0);
