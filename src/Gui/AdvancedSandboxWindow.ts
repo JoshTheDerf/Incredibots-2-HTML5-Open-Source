@@ -33,6 +33,7 @@ export class AdvancedSandboxWindow extends GuiWindow
 	{
 		super(276, 90, 248, 430);
 		this.cont = contr;
+		this.sortableChildren = true;
 		var format:TextStyle = new TextStyle();
 
 		var t:Text = new Text('');
@@ -144,11 +145,6 @@ export class AdvancedSandboxWindow extends GuiWindow
 		format.fontSize = 12;
 		format.fill = '#573D40';
 		this.sizeBox.label.style = format;
-		format = new TextStyle();
-		format.fontFamily = Main.GLOBAL_FONT;
-		format.fontSize = 10;
-		format.fill = '#4C3D57';
-		this.sizeBox.menuTextStyle = format;
 		// this.sizeBox.dropdown.addEventListener(Event.ADDED_TO_STAGE, this.refreshMouse, false, 0, true);
 		if (defaults) this.sizeBox.selectedIndex = defaults.size;
 		this.addChild(this.sizeBox);
@@ -162,11 +158,6 @@ export class AdvancedSandboxWindow extends GuiWindow
 		format.fontSize = 12;
 		format.fill = '#573D40';
 		this.shapeBox.label.style = format;
-		format = new TextStyle();
-		format.fontFamily = Main.GLOBAL_FONT;
-		format.fontSize = 10;
-		format.fill = '#4C3D57';
-		this.shapeBox.menuTextStyle = format;
 		// this.shapeBox.dropdown.addEventListener(Event.ADDED_TO_STAGE, this.refreshMouse, false, 0, true);
 		if (defaults) this.shapeBox.selectedIndex = defaults.terrainType;
 		this.addChild(this.shapeBox);
@@ -184,11 +175,6 @@ export class AdvancedSandboxWindow extends GuiWindow
 		format.fontSize = 12;
 		format.fill = '#573D40';
 		this.themeBox.label.style = format;
-		format = new TextStyle();
-		format.fontFamily = Main.GLOBAL_FONT;
-		format.fontSize = 10;
-		format.fill = '#4C3D57';
-		this.themeBox.menuTextStyle = format;
 		if (defaults) this.themeBox.selectedIndex = defaults.terrainTheme;
 		this.addChild(this.themeBox);
 
@@ -205,13 +191,7 @@ export class AdvancedSandboxWindow extends GuiWindow
 		format.fontSize = 12;
 		format.fill = '#573D40';
 		this.bgBox.label.style = format;
-		format = new TextStyle();
-		format.fontFamily = Main.GLOBAL_FONT;
-		format.fontSize = 10;
-		format.fill = '#4C3D57';
-		this.bgBox.menuTextStyle = format;
-		// this.bgBox.dropdown.addEventListener(Event.CHANGE, this.bgBoxChanged, false, 0, true);
-		// this.bgBox.dropdown.addEventListener(Event.ADDED_TO_STAGE, this.refreshMouse, false, 0, true);
+		this.bgBox.on('change', (event: any) => this.bgBoxChanged(event))
 		if (defaults) this.bgBox.selectedIndex = defaults.background;
 		this.addChild(this.bgBox);
 
@@ -296,9 +276,6 @@ export class AdvancedSandboxWindow extends GuiWindow
 		this.redArea.editable = (this.bgBox.selectedIndex == 6);
 		this.greenArea.editable = (this.bgBox.selectedIndex == 6);
 		this.blueArea.editable = (this.bgBox.selectedIndex == 6);
-		this.redArea.focusEnabled = (this.bgBox.selectedIndex == 6);
-		this.greenArea.focusEnabled = (this.bgBox.selectedIndex == 6);
-		this.blueArea.focusEnabled = (this.bgBox.selectedIndex == 6);
 	}
 
 	private redText(text: any):void {

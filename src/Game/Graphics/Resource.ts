@@ -100,6 +100,14 @@ import cGuiComboboxBase from '../../../resource/button_purplearrow_base.png'
 import cGuiComboboxRoll from '../../../resource/button_purplearrow_roll.png'
 import cGuiComboboxClick from '../../../resource/button_purplearrow_click.png'
 
+    // // GUI List box resources
+import cGuiListboxBase from '../../../resource/listboxentry_base.png'
+import cGuiListboxRoll from '../../../resource/listboxentry_roll.png'
+import cGuiListboxClick from '../../../resource/listboxentry_active.png'
+import cGuiListboxWideBase from '../../../resource/listboxentry_wide_base.png'
+import cGuiListboxWideRoll from '../../../resource/listboxentry_wide_roll.png'
+import cGuiListboxWideClick from '../../../resource/listboxentry_wide_active.png'
+
 
 export class MouseCursor {
     // Css style for icons
@@ -206,9 +214,18 @@ export class Resource {
         cGuiSliderGrooveDisabled: cGuiSliderGrooveDisabled,
         cGuiSliderThumb: cGuiSliderThumb,
 
+        // GUI Combobox resources
         cGuiComboboxBase: cGuiComboboxBase,
         cGuiComboboxRoll: cGuiComboboxRoll,
         cGuiComboboxClick: cGuiComboboxClick,
+
+        // GUI Listbox resources
+        cGuiListboxBase: cGuiListboxBase,
+        cGuiListboxRoll: cGuiListboxRoll,
+        cGuiListboxClick: cGuiListboxClick,
+        cGuiListboxWideBase: cGuiListboxWideBase,
+        cGuiListboxWideRoll: cGuiListboxWideRoll,
+        cGuiListboxWideClick: cGuiListboxWideClick,
     }
 
     static cIntro = PIXIsound.Sound.from(cIntro)
@@ -310,6 +327,14 @@ export class Resource {
     static cGuiComboboxBase: Texture;
     static cGuiComboboxRoll: Texture;
     static cGuiComboboxClick: Texture;
+
+    // GUI Listbox resources
+    static cGuiListboxBase: Texture;
+    static cGuiListboxRoll: Texture;
+    static cGuiListboxClick: Texture;
+    static cGuiListboxWideBase: Texture;
+    static cGuiListboxWideRoll: Texture;
+    static cGuiListboxWideClick: Texture;
 
     static async load() {
         for (const key in Resource.paths) {

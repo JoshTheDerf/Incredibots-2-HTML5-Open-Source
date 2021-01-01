@@ -3,6 +3,8 @@ import { Container, Text, TextStyle, Texture, Sprite } from 'pixi.js'
 import { Resource } from '../Game/Graphics/Resource'
 import { Main } from '../Main'
 
+const TextInputs: Array<GuiTextInput> = []
+
 export class GuiTextInput extends Stage
 {
 	private baseSkin:Texture;
@@ -19,19 +21,19 @@ export class GuiTextInput extends Stage
 	}
 
 	get enabled (): boolean {
-		return this.textInput.interactive
+		return this.interactive
 	}
 
 	set enabled (value: boolean) {
-		this.textInput.interactive = value
+		this.interactive = value
 	}
 
 	get editable (): boolean {
-		return this.textInput.interactive
+		return this.interactive
 	}
 
 	set editable (value: boolean) {
-		this.textInput.interactive = value
+		this.interactive = value
 	}
 
 	get text (): string {
@@ -50,6 +52,8 @@ export class GuiTextInput extends Stage
 		this.width = w
 		this.height = h
 		this.interactive = true
+
+		TextInputs.push(this)
 
 		this.baseSkin = Resource.cGuiTextAreaBase
 		this.rollSkin = Resource.cGuiTextAreaRoll
@@ -81,6 +85,9 @@ export class GuiTextInput extends Stage
 		})
 
 		this.textInput.on('focus', () => {
+			TextInputs.forEach(input => {
+				if (input !== this) input.textInput.blur()
+			})
 			backgroundSprite.texture = this.rollSkin
 		})
 		this.textInput.on('blur', () => {

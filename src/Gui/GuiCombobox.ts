@@ -1,12 +1,16 @@
-import { Container, Sprite, Text, TextStyle, Texture } from "pixi.js";
-import PIXIsound from 'pixi-sound'
+import { Container, Graphics, Sprite, Text, TextStyle, Texture } from "pixi.js";
 import { Resource } from "../Game/Graphics/Resource";
 import { Main } from "../Main";
+import { AnchorLayout, AnchorLayoutOptions, Button, FastLayout, FastLayoutOptions, ScrollBar, ScrollWidget, Stage, Style } from "@puxi/core";
+import PIXIsound from 'pixi-sound'
+import { GuiComboboxItem } from "./GuiComboboxItem";
 type Sound = PIXIsound.Sound
 
 type ComboBoxItem = {
 	label: string
 }
+
+const ComboBoxes: Array<GuiCombobox> = []
 
 export class GuiCombobox extends Container
 {
@@ -17,21 +21,46 @@ export class GuiCombobox extends Container
 
 	public label:Text = new Text('');
 	public background: Sprite = new Sprite();
-	public menuTextStyle: TextStyle|null = null;
+	public itemsTextStyle: TextStyle|null = null;
+	public itemsContainer: Container;
+	public itemsContainerBackground: Graphics;
 
 	private upTexture: Texture;
 	private overTexture: Texture;
 	private downTexture: Texture;
 
 	private _selectedIndex:number = 0;
+	private _menuOpen: boolean = false;
 	private items: Array<ComboBoxItem> = [];
+	private itemsWidgets: Array<GuiComboboxItem> = [];
 
 	set selectedIndex(value: number) {
 		this._selectedIndex = value
+		this.itemsWidgets.forEach((widget, index) => {
+			if (index === this._selectedIndex) {
+				widget.selected = true
+				this.label.text = widget.text
+			} else {
+				widget.selected = false
+			}
+		})
+
+		this.menuOpen = false
+		this.emit('change', this._selectedIndex)
 	}
 
 	get selectedIndex(): number {
 		return this._selectedIndex
+	}
+
+	set menuOpen(value: boolean) {
+		this._menuOpen = value
+		this.zIndex = this._menuOpen ? 1000 : 0
+		this.itemsContainer.visible = this._menuOpen
+	}
+
+	get menuOpen(): boolean {
+		return this._menuOpen
 	}
 
 	constructor(xPos:number, yPos:number, w:number, h:number)
@@ -42,15 +71,17 @@ export class GuiCombobox extends Container
 		this.x = xPos;
 		this.y = yPos;
 
+		ComboBoxes.push(this)
+
 		this.upTexture = Resource.cGuiComboboxBase
 		this.overTexture = Resource.cGuiComboboxRoll
 		this.downTexture = Resource.cGuiComboboxClick
 
-		const style = new TextStyle();
-		style.fontSize = 11;
-		style.fill = "#573D40";
-		style.fontFamily = Main.GLOBAL_FONT;
-		style.align = 'left';
+		this.itemsTextStyle = new TextStyle();
+		this.itemsTextStyle.fontSize = 11;
+		this.itemsTextStyle.fill = "#573D40";
+		this.itemsTextStyle.fontFamily = Main.GLOBAL_FONT;
+		this.itemsTextStyle.align = 'left';
 
 		this.width = w;
 		this.height = h;
@@ -63,57 +94,93 @@ export class GuiCombobox extends Container
 		this.background.height = h
 		this.addChild(this.background)
 
-		this.label.text = 'TEST'
-		this.label.style = style
+		this.label.text = ''
+		this.label.style = this.itemsTextStyle
 		this.label.anchor.set(0, 0.5)
 		this.label.x = 10
 		this.label.y = h / 2
 		this.addChild(this.label)
 
-		this
-			.on('click', (event: any) => this.openMenu(event))
-			.on('mousedown', this.bDown)
-			.on('mouseover', this.mouseOver)
-			.on('mouseout', this.bUp)
-	}
+		this.itemsContainer = new Container()
+		this.itemsContainer.x = 5
+		this.itemsContainer.width = w - 10
+		this.itemsContainer.height = h
+		this.itemsContainer.y = h
+		this.itemsContainer.visible = this._menuOpen
+		this.addChild(this.itemsContainer)
 
-	async load(xPos:number, yPos:number, w:number, h:number) {
+		this.itemsContainerBackground = new Graphics()
+		this.itemsContainerBackground.height = h
+		this.itemsContainerBackground.beginFill(0x0000ff)
+		this.itemsContainerBackground.drawRect(0, 0, w - 10, h)
+		this.itemsContainerBackground.endFill()
+		this.itemsContainer.addChild(this.itemsContainerBackground)
+
+		this
+			.on('click', (event: any) => {
+				if (event.target !== this) return
+
+				this.openMenu()
+				if (Main.enableSound) {
+					GuiCombobox.clickSound.volume = 0.8
+					GuiCombobox.clickSound.play()
+				}
+			})
+			.on('mousedown', (event: any) => {
+				this.background.texture = this.downTexture
+
+				if (this.buttonOffset) return
+				this.x += 2;
+				this.y += 2;
+				this.buttonOffset = true;
+			})
+			.on('mouseover', (event: any) => {
+				this.background.texture = this.overTexture
+
+				if (Main.enableSound) {
+					GuiCombobox.rolloverSound.stop()
+					GuiCombobox.rolloverSound.volume = 0.2
+					GuiCombobox.rolloverSound.play()
+				}
+			})
+			.on('mouseout', (event: any) => {
+				if (this.menuOpen) return
+				this.background.texture = this.upTexture
+
+				if (!this.buttonOffset) return
+				this.x -= 2;
+				this.y -= 2;
+				this.buttonOffset = false;
+			})
+
+		this.zIndex = 0
 	}
 
 	addItem(item: ComboBoxItem) {
 		this.items.push(item)
 
 		this.label.text = this.items[this.selectedIndex].label
+
+		this.itemsContainer.removeChild(...this.itemsWidgets)
+		this.itemsContainerBackground.height = this.items.length * 20
+		this.itemsWidgets = []
+
+		this.items.forEach((item, i) => {
+			const itemWidget = new GuiComboboxItem(item.label, 0, i * 20, this.itemsContainer.width, 20)
+			itemWidget.on('select', () => {
+				this.selectedIndex = i
+			})
+			this.itemsContainer.addChild(itemWidget)
+			this.itemsWidgets.push(itemWidget)
+		})
 	}
 
-	public bDown(e:MouseEvent):void {
-		if (!e.target.buttonOffset) {
-			e.target.x += 2;
-			e.target.y += 2;
-			e.target.buttonOffset = true;
-		}
-	}
-
-	public bUp(e:MouseEvent):void {
-		if (this.buttonOffset) {
-			this.x -= 2;
-			this.y -= 2;
-			this.buttonOffset = false;
-		}
-	}
-
-	private mouseOver(e:MouseEvent):void {
-		if (Main.enableSound) {
-			GuiCombobox.rolloverSound.stop()
-			GuiCombobox.rolloverSound.volume = 0.2
-			GuiCombobox.rolloverSound.play()
-		}
-	}
-
-	private mouseClick(e:MouseEvent):void {
-		if (Main.enableSound) {
-			GuiCombobox.clickSound.volume = 0.8
-			GuiCombobox.clickSound.play()
-		}
+	openMenu() {
+		// Close all other combo boxes to avoid overlap.
+		ComboBoxes.forEach(box => {
+			if (box === this) return
+			box.menuOpen = false
+		})
+		this.menuOpen = !this.menuOpen
 	}
 }
