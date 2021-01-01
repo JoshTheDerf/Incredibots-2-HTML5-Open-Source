@@ -4,15 +4,15 @@ export class Gradient {
   static getLinearGradientTexture([startColor, endColor]: Array<string>): Texture {
     const quality = 512
     const canvas = document.createElement('canvas')
-    canvas.width = quality;
-    canvas.height = 1
+    canvas.width = 1;
+    canvas.height = quality
     const ctx = canvas.getContext('2d')
-    const gradient = ctx.createLinearGradient(0, 0, quality, 0)
+    const gradient = ctx.createLinearGradient(0, 0, 0, quality)
     gradient.addColorStop(0, startColor)
     gradient.addColorStop(1, endColor)
 
     ctx.fillStyle = gradient
-    ctx.fillRect(0, 0, quality, 1)
+    ctx.fillRect(0, 0, 1, quality)
 
     return Texture.from(canvas)
   }

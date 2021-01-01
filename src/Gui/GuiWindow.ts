@@ -106,8 +106,8 @@ export class GuiWindow extends Graphics
 			}
 
 			this.fader = new Graphics();
-			this.fader.beginFill(0, 0.2);
-			this.fader.lineStyle(0, 0, 0.2);
+			this.fader.beginFill(0, 1);
+			this.fader.lineStyle(0, 0, 1);
 			this.fader.moveTo(0, 0);
 			this.fader.lineTo(width - 1, 0);
 			this.fader.lineTo(width - 1, height - 1);
@@ -115,6 +115,8 @@ export class GuiWindow extends Graphics
 			this.fader.lineTo(0, 0);
 			this.fader.endFill();
 			this.fader.visible = false;
+			this.fader.interactive = true;
+			this.fader.buttonMode = true;
 			this.addChild(this.fader);
 		}
 

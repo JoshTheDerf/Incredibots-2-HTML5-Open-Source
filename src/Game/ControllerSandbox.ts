@@ -6,22 +6,23 @@ import { Part } from "../Parts/Part";
 import { Rectangle } from "../Parts/Rectangle";
 import { TextPart } from "../Parts/TextPart";
 import { ControllerGame } from "./ControllerGame";
+import { Gradient } from "./Graphics/Gradient";
 import { Sky } from "./Graphics/Sky";
 import { SandboxSettings } from "./SandboxSettings";
 
 export class ControllerSandbox extends ControllerGame
 {
-	private static terrainTopColours:Array<any>     = [0x65CD4E, Util.HexColour(191, 131, 83), Util.HexColour(214, 189, 100), Util.HexColour(181, 197, 201), Util.HexColour(224, 238, 253), Util.HexColour(198, 196, 205), Util.HexColour(249, 172, 101)];
-	private static terrainBottomColours:Array<any>  = [0x5AC043, Util.HexColour(155, 89, 38), Util.HexColour(187, 163, 78), Util.HexColour(156, 171, 175), Util.HexColour(159, 196, 239), Util.HexColour(160, 158, 171), Util.HexColour(240, 70, 45)];
-	private static terrainTopOutlines:Array<any>    = [0x2DA12E, Util.HexColour(144, 99, 62), Util.HexColour(185, 163, 86), Util.HexColour(153, 166, 169), Util.HexColour(247, 251, 255), Util.HexColour(139, 138, 144), Util.HexColour(177, 102, 46)];
-	private static terrainBottomOutlines:Array<any> = [0x2DA12E, Util.HexColour(117, 67, 29), Util.HexColour(161, 141, 67), Util.HexColour(132, 144, 148), Util.HexColour(247, 251, 255), Util.HexColour(115, 114, 122), Util.HexColour(171, 59, 34)];
-	private static rockOutlines:Array<any>          = [0x6BB05A, 0xA66B52, 0xB1A058, 0x98A4A8, 0xBDCBD7, 0x94939D, 0xBA643D];
-	private static rock1TopColours:Array<any>       = [0x8EDB82, Util.HexColour(210, 157, 111), Util.HexColour(219, 206, 135), Util.HexColour(178, 187, 191), Util.HexColour(217, 230, 245), Util.HexColour(180, 180, 189), Util.HexColour(194, 130, 87)];
-	private static rock1BottomColours:Array<any>    = [0x7FBF72, Util.HexColour(183, 133, 96), Util.HexColour(190, 176, 119), Util.HexColour(164, 173, 174), Util.HexColour(201, 210, 225), Util.HexColour(158, 158, 167), Util.HexColour(172,	114,	77)];
-	private static rock2TopColours:Array<any>       = [0x80D970, Util.HexColour(206, 148, 90), Util.HexColour(215, 202, 116), Util.HexColour(169, 177, 182), Util.HexColour(204, 217, 236), Util.HexColour(170, 165, 179), Util.HexColour(197,	115,	66)];
-	private static rock2BottomColours:Array<any>    = [0x6DBE5D, Util.HexColour(183, 122, 72), Util.HexColour(188, 175, 97), Util.HexColour(153, 162, 166), Util.HexColour(183, 196, 217), Util.HexColour(149, 145, 154), Util.HexColour(175,	103,	58)];
-	private static rock3TopColours:Array<any>       = [0x70C160, Util.HexColour(207, 150, 92), Util.HexColour(216, 203, 117), Util.HexColour(173, 182, 186), Util.HexColour(205, 217, 237), Util.HexColour(172, 168, 181), Util.HexColour(198,	121,	69)];
-	private static rock3BottomColours:Array<any>    = [0x63AB52, Util.HexColour(184, 123, 76), Util.HexColour(189, 176, 98), Util.HexColour(157, 166, 170), Util.HexColour(186, 198, 218), Util.HexColour(148, 148, 157), Util.HexColour(179,	105,	57)];
+	private static terrainTopColours:Array<any>     = ['#65CD4E', Util.HexColourString(191, 131, 83), Util.HexColourString(214, 189, 100), Util.HexColourString(181, 197, 201), Util.HexColourString(224, 238, 253), Util.HexColourString(198, 196, 205), Util.HexColourString(249, 172, 101)];
+	private static terrainBottomColours:Array<any>  = ['#5AC043', Util.HexColourString(155, 89, 38), Util.HexColourString(187, 163, 78), Util.HexColourString(156, 171, 175), Util.HexColourString(159, 196, 239), Util.HexColourString(160, 158, 171), Util.HexColourString(240, 70, 45)];
+	private static terrainTopOutlines:Array<any>    = ['#2DA12E', Util.HexColourString(144, 99, 62), Util.HexColourString(185, 163, 86), Util.HexColourString(153, 166, 169), Util.HexColourString(247, 251, 255), Util.HexColourString(139, 138, 144), Util.HexColourString(177, 102, 46)];
+	private static terrainBottomOutlines:Array<any> = ['#2DA12E', Util.HexColourString(117, 67, 29), Util.HexColourString(161, 141, 67), Util.HexColourString(132, 144, 148), Util.HexColourString(247, 251, 255), Util.HexColourString(115, 114, 122), Util.HexColourString(171, 59, 34)];
+	private static rockOutlines:Array<any>          = ['#6BB05A', '#A66B52', '#B1A058', '#98A4A8', '#BDCBD7', '#94939D', '#BA643D'];
+	private static rock1TopColours:Array<any>       = ['#8EDB82', Util.HexColourString(210, 157, 111), Util.HexColourString(219, 206, 135), Util.HexColourString(178, 187, 191), Util.HexColourString(217, 230, 245), Util.HexColourString(180, 180, 189), Util.HexColourString(194, 130, 87)];
+	private static rock1BottomColours:Array<any>    = ['#7FBF72', Util.HexColourString(183, 133, 96), Util.HexColourString(190, 176, 119), Util.HexColourString(164, 173, 174), Util.HexColourString(201, 210, 225), Util.HexColourString(158, 158, 167), Util.HexColourString(172,	114,	77)];
+	private static rock2TopColours:Array<any>       = ['#80D970', Util.HexColourString(206, 148, 90), Util.HexColourString(215, 202, 116), Util.HexColourString(169, 177, 182), Util.HexColourString(204, 217, 236), Util.HexColourString(170, 165, 179), Util.HexColourString(197,	115,	66)];
+	private static rock2BottomColours:Array<any>    = ['#6DBE5D', Util.HexColourString(183, 122, 72), Util.HexColourString(188, 175, 97), Util.HexColourString(153, 162, 166), Util.HexColourString(183, 196, 217), Util.HexColourString(149, 145, 154), Util.HexColourString(175,	103,	58)];
+	private static rock3TopColours:Array<any>       = ['#70C160', Util.HexColourString(207, 150, 92), Util.HexColourString(216, 203, 117), Util.HexColourString(173, 182, 186), Util.HexColourString(205, 217, 237), Util.HexColourString(172, 168, 181), Util.HexColourString(198,	121,	69)];
+	private static rock3BottomColours:Array<any>    = ['#63AB52', Util.HexColourString(184, 123, 76), Util.HexColourString(189, 176, 98), Util.HexColourString(157, 166, 170), Util.HexColourString(186, 198, 218), Util.HexColourString(148, 148, 157), Util.HexColourString(179,	105,	57)];
 
 	protected sGround:Graphics = new Graphics();
 	public static settings:SandboxSettings;
@@ -200,11 +201,10 @@ export class ControllerSandbox extends ControllerGame
 				this.DrawGroundOutlineCircle(0, 0, 150);
 				this.DrawGroundOutlineCircle(12000, 0, 150);
 				var m:Matrix = new Matrix();
-				// m.createGradientBox(1, 300, Math.PI / 2, 0, 0);
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(144, -6, 12012, 312);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(150, 0, 12000, 300);
 				this.sGround.endFill();
 				this.DrawGroundCircle(0, 0, 150);
@@ -259,11 +259,10 @@ export class ControllerSandbox extends ControllerGame
 				this.DrawGroundOutlineCircle(0, 0, 150);
 				this.DrawGroundOutlineCircle(8000, 0, 150);
 				m = new Matrix();
-				m.createGradientBox(1, 300, Math.PI / 2, 0, 0);
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(144, -6, 8012, 312);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(150, 0, 8000, 300);
 				this.sGround.endFill();
 				this.DrawGroundCircle(0, 0, 150);
@@ -302,11 +301,10 @@ export class ControllerSandbox extends ControllerGame
 				this.DrawGroundOutlineCircle(0, 0, 150);
 				this.DrawGroundOutlineCircle(4000, 0, 150);
 				m = new Matrix();
-				m.createGradientBox(1, 300, Math.PI / 2, 0, 0);
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(144, -6, 4012, 312);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(150, 0, 4000, 300);
 				this.sGround.endFill();
 				this.DrawGroundCircle(0, 0, 150);
@@ -328,85 +326,82 @@ export class ControllerSandbox extends ControllerGame
 		} else if (ControllerSandbox.settings.terrainType == SandboxSettings.TERRAIN_BOX) {
 			if (ControllerSandbox.settings.size == SandboxSettings.SIZE_LARGE) {
 				m = new Matrix();
-				m.createGradientBox(1, 1264, Math.PI / 2, 0, 0);
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(0, 0, 500, 1264);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(3500, 0, 500, 1264);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(0, 0, 4000, 200);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(0, 1064, 4000, 200);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(0, 0, 498.5, 1264);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(3501.5, 0, 498.5, 1264);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(0, 0, 4000, 198.5);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(0, 1065.5, 4000, 198.5);
 				this.sGround.endFill();
 				this.DrawRocksForBox(4000, 1264, 500, 200, 1.5);
 			} else if (ControllerSandbox.settings.size == SandboxSettings.SIZE_MEDIUM) {
 				m = new Matrix();
-				m.createGradientBox(1, 615, Math.PI / 2, 0, 0);
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(0, 0, 400, 615);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(1600, 0, 400, 615);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(0, 0, 2000, 100);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(0, 515, 2000, 100);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(0, 0, 399, 615);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(1601, 0, 399, 615);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(0, 0, 2000, 99);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(0, 516, 2000, 99);
 				this.sGround.endFill();
 				this.DrawRocksForBox(2000, 615, 400, 100, 1);
 			} else {
 				m = new Matrix();
-				m.createGradientBox(1, 339, Math.PI / 2, 0, 0);
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(0, 0, 200, 339);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(800, 0, 200, 339);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(0, 0, 1000, 39);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(0, 300, 1000, 39);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(0, 0, 198, 339);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(802, 0, 198, 339);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(0, 0, 1000, 37);
 				this.sGround.endFill();
-				this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+				this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 				this.sGround.drawRect(0, 302, 1000, 37);
 				this.sGround.endFill();
 				this.DrawRocksForBox(1000, 339, 200, 39, 2);
@@ -565,16 +560,14 @@ export class ControllerSandbox extends ControllerGame
 
 	public DrawGroundOutlineCircle(xPos:number, yPos:number, radius:number):void {
 		var m:Matrix = new Matrix();
-		m.createGradientBox(1, radius * 2, Math.PI / 2, 0, 0);
-		this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+		this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopOutlines[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomOutlines[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 		this.sGround.drawCircle(xPos + radius, yPos + radius, radius + 6);
 		this.sGround.endFill();
 	}
 
 	public DrawGroundCircle(xPos:number, yPos:number, radius:number):void {
 		var m:Matrix = new Matrix();
-		m.createGradientBox(1, radius * 2, Math.PI / 2, 0, 0);
-		this.sGround.beginGradientFill(GradientType.LINEAR, [ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]], [1, 1], [0, 255], m);
+		this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture([ControllerSandbox.terrainTopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.terrainBottomColours[ControllerSandbox.settings.terrainTheme]]), matrix: m });
 		this.sGround.drawCircle(xPos + radius, yPos + radius, radius);
 		this.sGround.endFill();
 	}
@@ -582,8 +575,7 @@ export class ControllerSandbox extends ControllerGame
 	public DrawRock(type:number, xPos:number, yPos:number, radius:number, outlineThickness:number = 6):void {
 		this.sGround.lineStyle(outlineThickness, ControllerSandbox.rockOutlines[ControllerSandbox.settings.terrainTheme]);
 		var m:Matrix = new Matrix();
-		m.createGradientBox(radius * 2, radius * 2, Math.PI / 2, xPos, yPos);
-		this.sGround.beginGradientFill(GradientType.LINEAR, (type == 0 ? [ControllerSandbox.rock1TopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.rock1BottomColours[ControllerSandbox.settings.terrainTheme]] : (type == 1 ? [ControllerSandbox.rock2TopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.rock2BottomColours[ControllerSandbox.settings.terrainTheme]] : [ControllerSandbox.rock3TopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.rock3BottomColours[ControllerSandbox.settings.terrainTheme]])), [1, 1], [0, 255], m);
+		this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture((type == 0 ? [ControllerSandbox.rock1TopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.rock1BottomColours[ControllerSandbox.settings.terrainTheme]] : (type == 1 ? [ControllerSandbox.rock2TopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.rock2BottomColours[ControllerSandbox.settings.terrainTheme]] : [ControllerSandbox.rock3TopColours[ControllerSandbox.settings.terrainTheme], ControllerSandbox.rock3BottomColours[ControllerSandbox.settings.terrainTheme]]))), matrix: m });
 		this.sGround.drawCircle(xPos + radius, yPos + radius, radius);
 		this.sGround.endFill();
 	}
