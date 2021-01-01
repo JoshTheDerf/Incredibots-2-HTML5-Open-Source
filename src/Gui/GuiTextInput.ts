@@ -84,14 +84,20 @@ export class GuiTextInput extends Stage
 			backgroundSprite.texture = this.baseSkin
 		})
 
-		this.textInput.on('focus', () => {
+		this.textInput.on('click', (event: any) => {
+			this.emit('click', event)
+		})
+
+		this.textInput.on('focus', (event: any) => {
 			TextInputs.forEach(input => {
 				if (input !== this) input.textInput.blur()
 			})
 			backgroundSprite.texture = this.rollSkin
+			this.emit('focus', event)
 		})
-		this.textInput.on('blur', () => {
+		this.textInput.on('blur', (event: any) => {
 			backgroundSprite.texture = this.baseSkin
+			this.emit('blur', event)
 		})
 		this.textInput.on('change', () => {
 			this.emit('change', this.textInput.text)
@@ -106,5 +112,9 @@ export class GuiTextInput extends Stage
 		)
 
 		this.addChild(this.textInput)
+	}
+
+	public setSelection(startIndex: number, endIndex: number) {
+		this.textInput.selectRange(startIndex, endIndex)
 	}
 }

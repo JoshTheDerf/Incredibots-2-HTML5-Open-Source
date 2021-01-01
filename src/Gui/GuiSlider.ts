@@ -30,6 +30,14 @@ export class GuiSlider extends Stage {
 		return this.slider.value
 	}
 
+	set enabled(value: boolean) {
+		this.interactive = value
+	}
+
+	get enabled(): boolean {
+		return this.interactive
+	}
+
   constructor(options?: ISliderOptions) {
 		super(128, 20)
 

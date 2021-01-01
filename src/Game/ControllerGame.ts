@@ -43,7 +43,7 @@ export class ControllerGame extends Controller {
 		public m_timeStep:number = 1.0/30;
 		public m_physScale:number = ControllerGameGlobals.INIT_PHYS_SCALE;
 		// Sprite to draw in to
-		public m_canvas:Sprite;
+		public m_canvas:Graphics;
 		public m_buildAreas:Array<any> = new Array();
 		public m_badBuildAreas:Array<any> = new Array();
 		public m_selectedBuildAreas:Array<any> = new Array();
@@ -165,7 +165,7 @@ export class ControllerGame extends Controller {
 			Input.m_currController = this;
 			Action.m_controller = this;
 
-			this.m_canvas = new Sprite();
+			this.m_canvas = new Graphics();
 			this.m_guiPanel = new MainEditPanel(this);
 			this.m_guiMenu = new DropDownMenu(this);
 			this.m_sidePanel = new PartEditWindow(this);
@@ -248,7 +248,7 @@ export class ControllerGame extends Controller {
 			this.draw.m_drawYOff = -100;
 			if (ControllerGameGlobals.showColours) this.draw.m_fillAlpha = 1.0;
 			else this.draw.m_fillAlpha = 0.5;
-			this.draw.m_drawFlags = b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit;
+			// TODO: Figure out if we need this at all. this.draw.m_drawFlags = b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit;
 
 			if (ControllerGameGlobals.playingReplay) {
 				ControllerGameGlobals.replay.cont = this;
@@ -494,7 +494,7 @@ export class ControllerGame extends Controller {
 				}
 
 				// Update physics
-				var physStart:uint = getTimer();
+				var physStart:number = Date.now();
 				if (!this.paused) {
 					if (!ControllerGameGlobals.playingReplay) {
 						if (this.frameCounter % ControllerGameGlobals.REPLAY_SYNC_FRAMES == 0) this.AddSyncPoint();
@@ -542,8 +542,8 @@ export class ControllerGame extends Controller {
 				}
 			}
 			if (this.hasPanned || this.hasZoomed || !this.paused || this.draggingPart || this.curAction != -1 || this.redrawRobot) {
-				this.m_canvas.graphics.clear();
-				this.draw.DrawWorld(this.allParts, this.selectedParts, this.m_world, !this.simStarted, false, ControllerGameGlobals.showJoints, ControllerGameGlobals.showOutlines, ((this instanceof ControllerChallenge) ? ControllerChallenge.challenge : null));
+				this.m_canvas.clear();
+				this.draw.DrawWorld(this.allParts, this.selectedParts, this.m_world, !this.simStarted, false, ControllerGameGlobals.showJoints, ControllerGameGlobals.showOutlines, ((this.constructor.name === 'ControllerChallenge') ? this.challenge : undefined));
 				this.redrawRobot = false;
 			}
 			var snapPart:ShapePart = this.FindPartToSnapTo();

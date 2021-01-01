@@ -90,17 +90,13 @@ import cGuiTextAreaBase from '../../../resource/txtbox_base.png'
 import cGuiTextAreaRoll from '../../../resource/txtbox_roll.png'
 import cGuiTextAreaDisabled from '../../../resource/txtbox_base_disabled.png'
 
-// GUI Slider resources
-import cGuiSliderGroove from '../../../resource/slider_groove.png'
-import cGuiSliderGrooveDisabled from '../../../resource/slider_groove_disabled.png'
-import cGuiSliderThumb from '../../../resource/slider_arrow.png'
 
 // // GUI Combo box resources
 import cGuiComboboxBase from '../../../resource/button_purplearrow_base.png'
 import cGuiComboboxRoll from '../../../resource/button_purplearrow_roll.png'
 import cGuiComboboxClick from '../../../resource/button_purplearrow_click.png'
 
-    // // GUI List box resources
+// // GUI List box resources
 import cGuiListboxBase from '../../../resource/listboxentry_base.png'
 import cGuiListboxRoll from '../../../resource/listboxentry_roll.png'
 import cGuiListboxClick from '../../../resource/listboxentry_active.png'
@@ -108,6 +104,22 @@ import cGuiListboxWideBase from '../../../resource/listboxentry_wide_base.png'
 import cGuiListboxWideRoll from '../../../resource/listboxentry_wide_roll.png'
 import cGuiListboxWideClick from '../../../resource/listboxentry_wide_active.png'
 
+// GUI Slider resources
+import cGuiSliderGroove from '../../../resource/slider_groove.png'
+import cGuiSliderGrooveDisabled from '../../../resource/slider_groove_disabled.png'
+import cGuiSliderThumb from '../../../resource/slider_arrow.png'
+
+// // Cloud resources
+import cCloud0 from '../../../resource/cloud_0.png'
+import cCloud1 from '../../../resource/cloud_1.png'
+import cCloud2 from '../../../resource/cloud_2.png'
+import cCloud3 from '../../../resource/cloud_3.png'
+import cCloud4 from '../../../resource/cloud_4.png'
+import cCloud5 from '../../../resource/cloud_5.png'
+import cCloud6 from '../../../resource/cloud_6.png'
+import cCloud7 from '../../../resource/cloud_7.png'
+import cCloud8 from '../../../resource/cloud_8.png'
+import cCloud9 from '../../../resource/cloud_9.png'
 
 export class MouseCursor {
     // Css style for icons
@@ -209,11 +221,6 @@ export class Resource {
         cGuiTextAreaRoll: cGuiTextAreaRoll,
         cGuiTextAreaDisabled: cGuiTextAreaDisabled,
 
-        // GUI Slider resources
-        cGuiSliderGroove: cGuiSliderGroove,
-        cGuiSliderGrooveDisabled: cGuiSliderGrooveDisabled,
-        cGuiSliderThumb: cGuiSliderThumb,
-
         // GUI Combobox resources
         cGuiComboboxBase: cGuiComboboxBase,
         cGuiComboboxRoll: cGuiComboboxRoll,
@@ -226,6 +233,23 @@ export class Resource {
         cGuiListboxWideBase: cGuiListboxWideBase,
         cGuiListboxWideRoll: cGuiListboxWideRoll,
         cGuiListboxWideClick: cGuiListboxWideClick,
+
+        // GUI Slider resources
+        cGuiSliderGroove: cGuiSliderGroove,
+        cGuiSliderGrooveDisabled: cGuiSliderGrooveDisabled,
+        cGuiSliderThumb: cGuiSliderThumb,
+
+        // Cloud resources
+        cCloud0: cCloud0,
+        cCloud1: cCloud1,
+        cCloud2: cCloud2,
+        cCloud3: cCloud3,
+        cCloud4: cCloud4,
+        cCloud5: cCloud5,
+        cCloud6: cCloud6,
+        cCloud7: cCloud7,
+        cCloud8: cCloud8,
+        cCloud9: cCloud9,
     }
 
     static cIntro = PIXIsound.Sound.from(cIntro)
@@ -318,11 +342,6 @@ export class Resource {
     static cGuiTextAreaRoll: Texture;
     static cGuiTextAreaDisabled: Texture;
 
-    // GUI Slider resources
-    static cGuiSliderGroove: Texture;
-    static cGuiSliderGrooveDisabled: Texture;
-    static cGuiSliderThumb: Texture;
-
     // GUI Combobox resources
     static cGuiComboboxBase: Texture;
     static cGuiComboboxRoll: Texture;
@@ -335,6 +354,23 @@ export class Resource {
     static cGuiListboxWideBase: Texture;
     static cGuiListboxWideRoll: Texture;
     static cGuiListboxWideClick: Texture;
+
+    // GUI Slider resources
+    static cGuiSliderGroove: Texture;
+    static cGuiSliderGrooveDisabled: Texture;
+    static cGuiSliderThumb: Texture;
+
+    // Cloud resources
+    static cCloud0: Texture;
+    static cCloud1: Texture;
+    static cCloud2: Texture;
+    static cCloud3: Texture;
+    static cCloud4: Texture;
+    static cCloud5: Texture;
+    static cCloud6: Texture;
+    static cCloud7: Texture;
+    static cCloud8: Texture;
+    static cCloud9: Texture;
 
     static async load() {
         for (const key in Resource.paths) {

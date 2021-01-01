@@ -12,6 +12,7 @@ import { TextPart } from "../Parts/TextPart";
 import { Thrusters } from "../Parts/Thrusters";
 import { Triangle } from "../Parts/Triangle";
 import { Challenge } from "./Challenge";
+import { ControllerGameGlobals } from "./Globals/ControllerGameGlobals";
 
 export class Draw
 {
@@ -23,6 +24,12 @@ export class Draw
 	private static s_staticColor:b2Color = new b2Color(0.4, 0.9, 0.4);
 	private static s_staticEditableColor:b2Color = new b2Color(0.6, 0.8, 0.6);
 	private m_world:b2World;
+
+	// Box2D Debug Draw Variables, replicated here.
+	public drawColours: boolean = true;
+	public m_fillAlpha: number = 1;
+	public m_drawXOff: number = 0;
+	public m_drawYOff: number = 0;
 
 	public DrawWorld(allParts:Array<any>, selectedParts:Array<any>, world:b2World, notStarted:boolean, drawStatic:boolean = true, showJoints:boolean = true, showOutlines:boolean = true, challenge:Challenge = null):void {
 		this.m_world = world;
@@ -37,7 +44,7 @@ export class Draw
 					vertices[1] = new b2Vec2(challenge.winConditions[i].minX, challenge.winConditions[i].maxY);
 					vertices[2] = new b2Vec2(challenge.winConditions[i].maxX, challenge.winConditions[i].maxY);
 					vertices[3] = new b2Vec2(challenge.winConditions[i].maxX, challenge.winConditions[i].minY);
-					if (drawColours) m_fillAlpha = 0.2;
+					if (this.drawColours) this.m_fillAlpha = 0.2;
 					DrawSolidPolygon(vertices, 4, new b2Color(0.5, 0.8, 0.5));
 				} else if (challenge.winConditions[i].object < 5) {
 					DrawSolidSegment(new b2Vec2(challenge.winConditions[i].minX, challenge.winConditions[i].minY), new b2Vec2(challenge.winConditions[i].maxX, challenge.winConditions[i].maxY), DarkenColour(new b2Color(0.5, 0.8, 0.5)));
@@ -50,7 +57,7 @@ export class Draw
 					vertices[1] = new b2Vec2(challenge.lossConditions[i].minX, challenge.lossConditions[i].maxY);
 					vertices[2] = new b2Vec2(challenge.lossConditions[i].maxX, challenge.lossConditions[i].maxY);
 					vertices[3] = new b2Vec2(challenge.lossConditions[i].maxX, challenge.lossConditions[i].minY);
-					if (drawColours) m_fillAlpha = 0.2;
+					if (this.drawColours) this.m_fillAlpha = 0.2;
 					DrawSolidPolygon(vertices, 4, new b2Color(0.7, 0.7, 0.8));
 				} else if (challenge.lossConditions[i].object < 5) {
 					DrawSolidSegment(new b2Vec2(challenge.lossConditions[i].minX, challenge.lossConditions[i].minY), new b2Vec2(challenge.lossConditions[i].maxX, challenge.lossConditions[i].maxY), DarkenColour(new b2Color(0.7, 0.7, 0.8)));
@@ -59,13 +66,13 @@ export class Draw
 		}
 
 		if (notStarted) {
-			if (drawColours && showOutlines) {
+			if (this.drawColours && showOutlines) {
 				for (i = 0; i < allParts.length; i++) {
 					if (!allParts[i].isStatic || allParts[i].isEditable || drawStatic || allParts[i].drawAnyway) {
 						if (allParts[i] instanceof ShapePart && allParts[i].terrain && allParts[i].outline) {
 							var myColor:b2Color = Draw.s_normalColor;
 							var isHighlighted:boolean = false;
-							if (drawColours) {
+							if (this.drawColours) {
 								myColor = new b2Color(allParts[i].blue / 255.0, allParts[i].green / 255.0, allParts[i].red / 255.0);
 								if ((allParts[i] instanceof ShapePart && allParts[i].highlightForJoint) || Util.ObjectInArray(allParts[i], selectedParts)) isHighlighted = true;
 							} else {
@@ -81,19 +88,19 @@ export class Draw
 							var thickness:number = Math.max(0.1, (m_lineThickness * Math.pow(m_drawScale, 0.5)) / 8);
 							if (allParts[i] instanceof Circle) {
 								var circ:Circle = (allParts[i] as Circle);
-								m_fillAlpha = circ.opacity / 255.0;
+								this.m_fillAlpha = circ.opacity / 255.0;
 								DrawSolidCircle(new b2Vec2(circ.centerX, circ.centerY), circ.radius + thickness * 0.8, new b2Vec2(Math.cos(circ.angle), Math.sin(circ.angle)), myColor, false, false);
 							} else if (allParts[i] instanceof Rectangle) {
 								var rect:Rectangle = (allParts[i] as Rectangle);
-								m_fillAlpha = rect.opacity / 255.0;
+								this.m_fillAlpha = rect.opacity / 255.0;
 								DrawSolidPolygon(rect.GetVerticesForOutline(thickness), 4, myColor, false, false);
 							} else if (allParts[i] instanceof Triangle) {
 								var tri:Triangle = (allParts[i] as Triangle);
-								m_fillAlpha = tri.opacity / 255.0;
+								this.m_fillAlpha = tri.opacity / 255.0;
 								DrawSolidPolygon(tri.GetVerticesForOutline(thickness), 3, myColor, false, false);
 							} else if (allParts[i] instanceof Cannon) {
 								var ca:Cannon = (allParts[i] as Cannon);
-								m_fillAlpha = ca.opacity / 255.0;
+								this.m_fillAlpha = ca.opacity / 255.0;
 								DrawSolidPolygon(ca.GetVerticesForOutline(thickness), 4, myColor, false, false);
 							}
 						}
@@ -105,7 +112,7 @@ export class Draw
 					if (allParts[i] instanceof ShapePart || allParts[i] instanceof PrismaticJoint) {
 						myColor = Draw.s_normalColor;
 						isHighlighted = false;
-						if (drawColours) {
+						if (this.drawColours) {
 							myColor = new b2Color(allParts[i].blue / 255.0, allParts[i].green / 255.0, allParts[i].red / 255.0);
 							if ((allParts[i] instanceof ShapePart && allParts[i].highlightForJoint) || Util.ObjectInArray(allParts[i], selectedParts)) isHighlighted = true;
 						} else {
@@ -119,20 +126,20 @@ export class Draw
 
 						if (allParts[i] instanceof Circle) {
 							circ = (allParts[i] as Circle);
-							if (drawColours) m_fillAlpha = circ.opacity / 255.0;
-							DrawSolidCircle(new b2Vec2(circ.centerX, circ.centerY), circ.radius, new b2Vec2(Math.cos(circ.angle), Math.sin(circ.angle)), myColor, isHighlighted, circ.outline && (!circ.terrain || !drawColours) && showOutlines);
+							if (this.drawColours) this.m_fillAlpha = circ.opacity / 255.0;
+							DrawSolidCircle(new b2Vec2(circ.centerX, circ.centerY), circ.radius, new b2Vec2(Math.cos(circ.angle), Math.sin(circ.angle)), myColor, isHighlighted, circ.outline && (!circ.terrain || !this.drawColours) && showOutlines);
 						} else if (allParts[i] instanceof Rectangle) {
 							rect = (allParts[i] as Rectangle);
-							if (drawColours) m_fillAlpha = rect.opacity / 255.0;
-							DrawSolidPolygon(rect.GetVertices(), 4, myColor, isHighlighted, rect.outline && (!rect.terrain || !drawColours) && showOutlines);
+							if (this.drawColours) this.m_fillAlpha = rect.opacity / 255.0;
+							DrawSolidPolygon(rect.GetVertices(), 4, myColor, isHighlighted, rect.outline && (!rect.terrain || !this.drawColours) && showOutlines);
 						} else if (allParts[i] instanceof Triangle) {
 							tri = (allParts[i] as Triangle);
-							if (drawColours) m_fillAlpha = tri.opacity / 255.0;
-							DrawSolidPolygon(tri.GetVertices(), 3, myColor, isHighlighted, tri.outline && (!tri.terrain || !drawColours) && showOutlines);
+							if (this.drawColours) this.m_fillAlpha = tri.opacity / 255.0;
+							DrawSolidPolygon(tri.GetVertices(), 3, myColor, isHighlighted, tri.outline && (!tri.terrain || !this.drawColours) && showOutlines);
 						} else if (allParts[i] instanceof Cannon) {
 							ca = (allParts[i] as Cannon);
-							if (drawColours) m_fillAlpha = ca.opacity / 255.0;
-							DrawSolidCannon(ca.GetVertices(), 4, myColor, isHighlighted, ca.outline && (!ca.terrain || !drawColours) && showOutlines);
+							if (this.drawColours) this.m_fillAlpha = ca.opacity / 255.0;
+							DrawSolidCannon(ca.GetVertices(), 4, myColor, isHighlighted, ca.outline && (!ca.terrain || !this.drawColours) && showOutlines);
 						} else if (allParts[i] instanceof PrismaticJoint) {
 							var pjoint:PrismaticJoint = (allParts[i] as PrismaticJoint);
 							var x1:number = pjoint.anchorX - pjoint.axis.x * pjoint.initLength / 2;
@@ -142,7 +149,7 @@ export class Draw
 
 							var angle:number = Math.atan2(pjoint.axis.y, pjoint.axis.x);
 
-							if (drawColours) m_fillAlpha = pjoint.opacity / 255.0;
+							if (this.drawColours) this.m_fillAlpha = pjoint.opacity / 255.0;
 
 							verts = new Array();
 							verts[0] = new b2Vec2(x1 - 0.25, y1 - 0.05);
@@ -305,7 +312,7 @@ export class Draw
 			var bp:b2BroadPhase;
 			var xf:b2XForm;
 
-			if (drawColours && showOutlines) {
+			if (this.drawColours && showOutlines) {
 				for (i = 0; i < allParts.length; i++) {
 					if (!allParts[i].isStatic || allParts[i].isEditable || drawStatic || allParts[i].drawAnyway) {
 						if (allParts[i] instanceof ShapePart && allParts[i].terrain && allParts[i].outline) {
@@ -320,7 +327,7 @@ export class Draw
 				if (!allParts[i].isStatic || allParts[i].isEditable || drawStatic || allParts[i].drawAnyway) {
 					if (allParts[i] instanceof ShapePart) {
 						xf = allParts[i].GetBody().GetXForm();
-						if (drawColours) {
+						if (this.drawColours) {
 							if (allParts[i] instanceof Cannon) this.DrawCannon(allParts[i].GetShape(), xf, new b2Color(allParts[i].blue / 255.0, allParts[i].green / 255.0, allParts[i].red / 255.0), allParts[i].opacity / 255.0, showOutlines);
 							else this.DrawShape(allParts[i].GetShape(), xf, new b2Color(allParts[i].blue / 255.0, allParts[i].green / 255.0, allParts[i].red / 255.0), allParts[i].opacity / 255.0, showOutlines);
 						} else if (allParts[i].isStatic) {
@@ -334,7 +341,7 @@ export class Draw
 						var shapes:Array<any> = allParts[i].GetShapes();
 						for (j = 0; j < shapes.length; j++) {
 							xf = shapes[j].GetBody().GetXForm();
-							if (drawColours) {
+							if (this.drawColours) {
 								this.DrawShape(shapes[j], xf, new b2Color(allParts[i].blue / 255.0, allParts[i].green / 255.0, allParts[i].red / 255.0), allParts[i].opacity / 255.0, showOutlines);
 							} else if (allParts[i].isStatic) {
 								this.DrawShape(shapes[j], xf, Draw.s_staticColor, 1, showOutlines);
@@ -348,7 +355,7 @@ export class Draw
 				if (allParts[i] instanceof Cannon) {
 					for (j = 0; j < allParts[i].cannonballs.length; j++) {
 						xf = allParts[i].cannonballs[j].GetXForm();
-						if (drawColours) {
+						if (this.drawColours) {
 							this.DrawShape(allParts[i].cannonballs[j].GetShapeList(), xf, new b2Color(allParts[i].blue / 255.0, allParts[i].green / 255.0, allParts[i].red / 255.0), allParts[i].opacity / 255.0, showOutlines, true);
 						} else {
 							this.DrawShape(allParts[i].cannonballs[j].GetShapeList(), xf, Draw.s_normalColor, 1, showOutlines, true);
@@ -445,8 +452,8 @@ export class Draw
 				var radius:number = circle.GetRadius();
 				var axis:b2Vec2 = xf.R.col1;
 
-				if (drawColours) m_fillAlpha = alpha;
-				DrawSolidCircle(center, radius, axis, color, false, circle.GetUserData().outline && (!drawColours || !circle.GetUserData().terrain) && showOutlines, cannonball);
+				if (this.drawColours) this.m_fillAlpha = alpha;
+				DrawSolidCircle(center, radius, axis, color, false, circle.GetUserData().outline && (!this.drawColours || !circle.GetUserData().terrain) && showOutlines, cannonball);
 			}
 			break;
 
@@ -464,8 +471,8 @@ export class Draw
 				{
 					vertices[i] = b2Math.b2MulX(xf, localVertices[i]);
 				}
-				if (drawColours) m_fillAlpha = alpha;
-				DrawSolidPolygon(vertices, vertexCount, color, false, poly.GetUserData().outline && (!drawColours || !poly.GetUserData().terrain) && showOutlines);
+				if (this.drawColours) this.m_fillAlpha = alpha;
+				DrawSolidPolygon(vertices, vertexCount, color, false, poly.GetUserData().outline && (!this.drawColours || !poly.GetUserData().terrain) && showOutlines);
 			}
 			break;
 		}
@@ -479,8 +486,8 @@ export class Draw
 			vertices[i] = b2Math.b2MulX(xf, localVertices[i]);
 		}
 
-		if (drawColours) m_fillAlpha = alpha;
-		DrawSolidCannon(vertices, 4, color, false, poly.GetUserData().outline && (!drawColours || !poly.GetUserData().terrain) && showOutlines);
+		if (this.drawColours) this.m_fillAlpha = alpha;
+		DrawSolidCannon(vertices, 4, color, false, poly.GetUserData().outline && (!this.drawColours || !poly.GetUserData().terrain) && showOutlines);
 	}
 
 	public DrawShapeForOutline(shape:b2Shape, xf:b2XForm, color:b2Color, alpha:number) : void {
@@ -496,7 +503,7 @@ export class Draw
 				var radius:number = circle.GetRadius() + thickness;
 				var axis:b2Vec2 = xf.R.col1;
 
-				if (drawColours) m_fillAlpha = alpha;
+				if (this.drawColours) this.m_fillAlpha = alpha;
 				DrawSolidCircle(center, radius, axis, color, false, false);
 			}
 			break;
@@ -516,7 +523,7 @@ export class Draw
 					vertices[i] = b2Math.b2MulX(xf, localVertices[i]);
 				}
 				vertices = ShapePart.GetOutlineVertices(vertices, vertexCount, thickness);
-				if (drawColours) m_fillAlpha = alpha;
+				if (this.drawColours) this.m_fillAlpha = alpha;
 				DrawSolidPolygon(vertices, vertexCount, color, false, false);
 			}
 			break;
@@ -535,20 +542,20 @@ export class Draw
 			vertices[i] = b2Math.b2MulX(xf, localVertices[i]);
 		}
 		vertices = ShapePart.GetOutlineVertices(vertices, 4, thickness);
-		if (drawColours) m_fillAlpha = alpha;
+		if (this.drawColours) this.m_fillAlpha = alpha;
 		DrawSolidCannon(vertices, 4, color, false, false);
 	}
 
 	public DrawTempShape(creatingItem:number, actionStep:number, firstClickX:number, firstClickY:number, secondClickX:number, secondClickY:number, mouseX:number, mouseY:number):void {
 		var vertices:Array<any>;
-		if (drawColours) m_fillAlpha = 1;
-		else m_fillAlpha = 0.5;
+		if (this.drawColours) this.m_fillAlpha = 1;
+		else this.m_fillAlpha = 0.5;
 		if (creatingItem == ControllerGameGlobals.NEW_CIRCLE && actionStep == 1) {
 			var rad:number = Util.GetDist(firstClickX, firstClickY, mouseX, mouseY);
 			if (rad < Circle.MIN_RADIUS) rad = Circle.MIN_RADIUS;
 			if (rad > Circle.MAX_RADIUS) rad = Circle.MAX_RADIUS;
-			if (drawColours) m_fillAlpha = ControllerGameGlobals.defaultO / 255.0;
-			DrawSolidCircle(new b2Vec2(firstClickX, firstClickY), rad, new b2Vec2((mouseX - firstClickX) / rad, (mouseY - firstClickY) / rad), (drawColours ? new b2Color(ControllerGameGlobals.defaultB / 255.0, ControllerGameGlobals.defaultG / 255.0, ControllerGameGlobals.defaultR / 255.0) : Draw.s_selectedColor));
+			if (this.drawColours) this.m_fillAlpha = ControllerGameGlobals.defaultO / 255.0;
+			DrawSolidCircle(new b2Vec2(firstClickX, firstClickY), rad, new b2Vec2((mouseX - firstClickX) / rad, (mouseY - firstClickY) / rad), (this.drawColours ? new b2Color(ControllerGameGlobals.defaultB / 255.0, ControllerGameGlobals.defaultG / 255.0, ControllerGameGlobals.defaultR / 255.0) : Draw.s_selectedColor));
 		} else if (creatingItem == ControllerGameGlobals.NEW_RECT && actionStep == 1) {
 			var w:number = mouseX - firstClickX;
 			var h:number = mouseY - firstClickY;
@@ -574,8 +581,8 @@ export class Draw
 			vertices[1] = new b2Vec2(firstClickX + w, firstClickY);
 			vertices[2] = new b2Vec2(firstClickX + w, firstClickY + h);
 			vertices[3] = new b2Vec2(firstClickX, firstClickY + h);
-			if (drawColours) m_fillAlpha = ControllerGameGlobals.defaultO / 255.0;
-			DrawSolidPolygon(vertices, 4, (drawColours ? new b2Color(ControllerGameGlobals.defaultB / 255.0, ControllerGameGlobals.defaultG / 255.0, ControllerGameGlobals.defaultR / 255.0) : Draw.s_selectedColor));
+			if (this.drawColours) this.m_fillAlpha = ControllerGameGlobals.defaultO / 255.0;
+			DrawSolidPolygon(vertices, 4, (this.drawColours ? new b2Color(ControllerGameGlobals.defaultB / 255.0, ControllerGameGlobals.defaultG / 255.0, ControllerGameGlobals.defaultR / 255.0) : Draw.s_selectedColor));
 		} else if (creatingItem == ControllerGameGlobals.NEW_CANNON && actionStep == 1) {
 			var positive:boolean = (mouseX >= firstClickX || mouseY >= firstClickY);
 			w = (positive ? Math.max(mouseX - firstClickX, 2 * (mouseY - firstClickY)) : Math.min(mouseX - firstClickX, 2 * (mouseY - firstClickY)));
@@ -593,8 +600,8 @@ export class Draw
 			vertices[1] = new b2Vec2(firstClickX + w, firstClickY);
 			vertices[2] = new b2Vec2(firstClickX + w, firstClickY + w / 2);
 			vertices[3] = new b2Vec2(firstClickX, firstClickY + w / 2);
-			if (drawColours) m_fillAlpha = ControllerGameGlobals.defaultO / 255.0;
-			DrawSolidCannon(vertices, 4, (drawColours ? new b2Color(ControllerGameGlobals.defaultB / 255.0, ControllerGameGlobals.defaultG / 255.0, ControllerGameGlobals.defaultR / 255.0) : Draw.s_selectedColor));
+			if (this.drawColours) this.m_fillAlpha = ControllerGameGlobals.defaultO / 255.0;
+			DrawSolidCannon(vertices, 4, (this.drawColours ? new b2Color(ControllerGameGlobals.defaultB / 255.0, ControllerGameGlobals.defaultG / 255.0, ControllerGameGlobals.defaultR / 255.0) : Draw.s_selectedColor));
 		} else if (creatingItem == ControllerGameGlobals.NEW_TRIANGLE && actionStep == 1) {
 			var x2:number = mouseX;
 			var y2:number = mouseY;
@@ -610,7 +617,7 @@ export class Draw
 				x2 = firstClickX + Triangle.MAX_SIDE_LENGTH * Math.cos(angle);
 				y2 = firstClickY - Triangle.MAX_SIDE_LENGTH * Math.sin(angle);
 			}
-			DrawSegment(new b2Vec2(firstClickX, firstClickY), new b2Vec2(x2, y2), (drawColours ? new b2Color(0.0666, 0.0666, 0.0666) : Draw.s_selectedColor));
+			DrawSegment(new b2Vec2(firstClickX, firstClickY), new b2Vec2(x2, y2), (this.drawColours ? new b2Color(0.0666, 0.0666, 0.0666) : Draw.s_selectedColor));
 		} else if (creatingItem == ControllerGameGlobals.NEW_TRIANGLE && actionStep == 2) {
 			var sideLen1:number = Util.GetDist(firstClickX, firstClickY, mouseX, mouseY);
 			var sideLen2:number = Util.GetDist(secondClickX, secondClickY, mouseX, mouseY);
@@ -624,10 +631,10 @@ export class Draw
 				vertices[0] = new b2Vec2(firstClickX, firstClickY);
 				vertices[1] = new b2Vec2(secondClickX, secondClickY);
 				vertices[2] = new b2Vec2(mouseX, mouseY);
-				if (drawColours) m_fillAlpha = ControllerGameGlobals.defaultO / 255.0;
-				DrawSolidPolygon(vertices, 3, (drawColours ? new b2Color(ControllerGameGlobals.defaultB / 255.0, ControllerGameGlobals.defaultG / 255.0, ControllerGameGlobals.defaultR / 255.0) : Draw.s_selectedColor));
+				if (this.drawColours) this.m_fillAlpha = ControllerGameGlobals.defaultO / 255.0;
+				DrawSolidPolygon(vertices, 3, (this.drawColours ? new b2Color(ControllerGameGlobals.defaultB / 255.0, ControllerGameGlobals.defaultG / 255.0, ControllerGameGlobals.defaultR / 255.0) : Draw.s_selectedColor));
 			} else {
-				DrawSegment(new b2Vec2(firstClickX, firstClickY), new b2Vec2(secondClickX, secondClickY), (drawColours ? new b2Color(0.0666, 0.0666, 0.0666) : Draw.s_selectedColor));
+				DrawSegment(new b2Vec2(firstClickX, firstClickY), new b2Vec2(secondClickX, secondClickY), (this.drawColours ? new b2Color(0.0666, 0.0666, 0.0666) : Draw.s_selectedColor));
 			}
 		} else if (creatingItem == ControllerGameGlobals.NEW_FIXED_JOINT || creatingItem == ControllerGameGlobals.NEW_REVOLUTE_JOINT || creatingItem == ControllerGameGlobals.NEW_PRISMATIC_JOINT || creatingItem == ControllerGameGlobals.FINALIZING_JOINT) {
 			DrawCircle(new b2Vec2(mouseX, mouseY), 0.075 * 30 / m_drawScale, Draw.s_selectedColor);
@@ -643,7 +650,7 @@ export class Draw
 			vertices[1] = new b2Vec2(firstClickX, mouseY);
 			vertices[2] = new b2Vec2(mouseX, mouseY);
 			vertices[3] = new b2Vec2(mouseX, firstClickY);
-			if (drawColours) m_fillAlpha = 0.5;
+			if (this.drawColours) this.m_fillAlpha = 0.5;
 			DrawSolidPolygon(vertices, 4, new b2Color(0.5, 0.5, 0.8));
 		} else if (creatingItem == ControllerGameGlobals.NEW_THRUSTERS) {
 			DrawCircle(new b2Vec2(mouseX, mouseY), 0.075 * 30 / m_drawScale, Draw.s_selectedColor);

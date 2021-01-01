@@ -1,4 +1,3 @@
-import { Button } from "@puxi/core";
 import { TextStyle, Text, Sprite } from "pixi.js";
 import { Controller } from "../Game/Controller";
 import { ControllerGame } from "../Game/ControllerGame";
@@ -11,7 +10,6 @@ import { GuiCombobox } from "./GuiCombobox";
 import { GuiSlider } from "./GuiSlider";
 import { GuiTextInput } from "./GuiTextInput";
 import { GuiWindow } from "./GuiWindow";
-import { MainEditPanel } from "./MainEditPanel";
 
 export class AdvancedSandboxWindow extends GuiWindow
 {
@@ -26,8 +24,8 @@ export class AdvancedSandboxWindow extends GuiWindow
 	private blueArea:GuiTextInput;
 	private gravitySlider:GuiSlider;
 	private gravityArea:GuiTextInput;
-	private okButton:Button;
-	private cancelButton:Button;
+	private okButton:GuiButton;
+	private cancelButton:GuiButton;
 
 	constructor(contr:Controller, defaults:SandboxSettings|null = null)
 	{
@@ -145,7 +143,6 @@ export class AdvancedSandboxWindow extends GuiWindow
 		format.fontSize = 12;
 		format.fill = '#573D40';
 		this.sizeBox.label.style = format;
-		// this.sizeBox.dropdown.addEventListener(Event.ADDED_TO_STAGE, this.refreshMouse, false, 0, true);
 		if (defaults) this.sizeBox.selectedIndex = defaults.size;
 		this.addChild(this.sizeBox);
 
@@ -158,7 +155,6 @@ export class AdvancedSandboxWindow extends GuiWindow
 		format.fontSize = 12;
 		format.fill = '#573D40';
 		this.shapeBox.label.style = format;
-		// this.shapeBox.dropdown.addEventListener(Event.ADDED_TO_STAGE, this.refreshMouse, false, 0, true);
 		if (defaults) this.shapeBox.selectedIndex = defaults.terrainType;
 		this.addChild(this.shapeBox);
 

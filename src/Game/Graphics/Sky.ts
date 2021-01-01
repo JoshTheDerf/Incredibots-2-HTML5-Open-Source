@@ -31,7 +31,7 @@ export class Sky
     this.sky = new Container();
 
     const gradientSprite = new Sprite(Gradient.getLinearGradientTexture(
-      type == SandboxSettings.BACKGROUND_SOLID_COLOUR ? [Util.HexColour(r, g, b), Util.HexColour(r, g, b)] : [Sky.topColours[type], Sky.bottomColours[type]]
+      type == SandboxSettings.BACKGROUND_SOLID_COLOUR ? [Util.HexColourString(r, g, b), Util.HexColourString(r, g, b)] : [Sky.topColours[type], Sky.bottomColours[type]]
       ))
       gradientSprite.position.set(0, 0)
       gradientSprite.width = 800
@@ -45,19 +45,18 @@ export class Sky
       if (type == 0) {
         this.numClouds = Math.min((this.cont.GetMaxX() - this.cont.GetMinX()) / 10.0, 15);
         for (var i:number = 0; i < this.numClouds; i++) {
-          var cloud:BitmapAsset;
+          var cloud:Sprite = new Sprite();
           var rand:number = Math.random() * 10;
-          if (rand == 0) cloud = new Resource.cCloud0();
-          if (rand == 1) cloud = new Resource.cCloud1();
-          if (rand == 2) cloud = new Resource.cCloud2();
-          if (rand == 3) cloud = new Resource.cCloud3();
-          if (rand == 4) cloud = new Resource.cCloud4();
-          if (rand == 5) cloud = new Resource.cCloud5();
-          if (rand == 6) cloud = new Resource.cCloud6();
-          if (rand == 7) cloud = new Resource.cCloud7();
-          if (rand == 8) cloud = new Resource.cCloud8();
-          if (rand >= 9) cloud = new Resource.cCloud9();
-          cloud.smoothing = true;
+          if (rand == 0) cloud.texture = Resource.cCloud0;
+          if (rand == 1) cloud.texture = Resource.cCloud1;
+          if (rand == 2) cloud.texture = Resource.cCloud2;
+          if (rand == 3) cloud.texture = Resource.cCloud3;
+          if (rand == 4) cloud.texture = Resource.cCloud4;
+          if (rand == 5) cloud.texture = Resource.cCloud5;
+          if (rand == 6) cloud.texture = Resource.cCloud6;
+          if (rand == 7) cloud.texture = Resource.cCloud7;
+          if (rand == 8) cloud.texture = Resource.cCloud8;
+          if (rand >= 9) cloud.texture = Resource.cCloud9;
           this.cont.addChild(cloud);
           this.lastCloudIndex = this.cont.getChildIndex(cloud);
           this.sClouds.push(cloud);

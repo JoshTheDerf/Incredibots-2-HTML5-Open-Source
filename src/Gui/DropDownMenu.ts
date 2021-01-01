@@ -101,9 +101,9 @@ export class DropDownMenu extends Graphics
 		this.fileText.width = 40;
 		this.fileText.height = 20;
 		this.fileText.style = format;
-		this.fileText.addEventListener(MouseEvent.MOUSE_DOWN, this.file, false, 0, true);
-		this.fileText.addEventListener(MouseEvent.MOUSE_OVER, this.maybeFile, false, 0, true);
-		this.fileText.addEventListener(MouseEvent.MOUSE_OUT, this.noFile, false, 0, true);
+		this.fileText.on('mousedown', (event: any) => this.file(event));
+		this.fileText.on('mouseover', (event: any) => this.maybeFile(event));
+		this.fileText.on('mouseout', (event: any) => this.noFile(event));
 		this.addChild(this.fileText);
 		this.editText = new Text("Edit");
 		this.editText.x = 40;
@@ -111,9 +111,9 @@ export class DropDownMenu extends Graphics
 		this.editText.width = 40;
 		this.editText.height = 20;
 		this.editText.style = format;
-		this.editText.addEventListener(MouseEvent.MOUSE_DOWN, this.edit, false, 0, true);
-		this.editText.addEventListener(MouseEvent.MOUSE_OVER, this.maybeEdit, false, 0, true);
-		this.editText.addEventListener(MouseEvent.MOUSE_OUT, this.noEdit, false, 0, true);
+		this.editText.on('mousedown', (event: any) => this.edit(event));
+		this.editText.on('mouseover', (event: any) => this.maybeEdit(event));
+		this.editText.on('mouseout', (event: any) => this.noEdit(event));
 		this.addChild(this.editText);
 		this.viewText = new Text("View");
 		this.viewText.x = 80;
@@ -121,9 +121,9 @@ export class DropDownMenu extends Graphics
 		this.viewText.width = 40;
 		this.viewText.height = 20;
 		this.viewText.style = format;
-		this.viewText.addEventListener(MouseEvent.MOUSE_DOWN, this.view, false, 0, true);
-		this.viewText.addEventListener(MouseEvent.MOUSE_OVER, this.maybeView, false, 0, true);
-		this.viewText.addEventListener(MouseEvent.MOUSE_OUT, this.noView, false, 0, true);
+		this.viewText.on('mousedown', (event: any) => this.view(event));
+		this.viewText.on('mouseover', (event: any) => this.maybeView(event));
+		this.viewText.on('mouseout', (event: any) => this.noView(event));
 		this.addChild(this.viewText);
 		this.commentText = new Text("Share!");
 		this.commentText.x = 120;
@@ -131,9 +131,9 @@ export class DropDownMenu extends Graphics
 		this.commentText.width = 60;
 		this.commentText.height = 20;
 		this.commentText.style = format;
-		this.commentText.addEventListener(MouseEvent.MOUSE_DOWN, this.comment, false, 0, true);
-		this.commentText.addEventListener(MouseEvent.MOUSE_OVER, this.maybeComment, false, 0, true);
-		this.commentText.addEventListener(MouseEvent.MOUSE_OUT, this.noComment, false, 0, true);
+		this.commentText.on('mousedown', (event: any) => this.comment(event));
+		this.commentText.on('mouseover', (event: any) => this.maybeComment(event));
+		this.commentText.on('mouseout', (event: any) => this.noComment(event));
 		this.addChild(this.commentText);
 		this.helpText = new Text("Help");
 		this.helpText.x = 180;
@@ -141,9 +141,9 @@ export class DropDownMenu extends Graphics
 		this.helpText.width = 40;
 		this.helpText.height = 20;
 		this.helpText.style = format;
-		this.helpText.addEventListener(MouseEvent.MOUSE_DOWN, this.help, false, 0, true);
-		this.helpText.addEventListener(MouseEvent.MOUSE_OVER, this.maybeHelp, false, 0, true);
-		this.helpText.addEventListener(MouseEvent.MOUSE_OUT, this.noHelp, false, 0, true);
+		this.helpText.on('mousedown', (event: any) => this.help(event));
+		this.helpText.on('mouseover', (event: any) => this.maybeHelp(event));
+		this.helpText.on('mouseout', (event: any) => this.noHelp(event));
 		this.addChild(this.helpText);
 		this.aboutText = new Text("About");
 		this.aboutText.x = 750;
@@ -151,9 +151,9 @@ export class DropDownMenu extends Graphics
 		this.aboutText.width = 50;
 		this.aboutText.height = 20;
 		this.aboutText.style = format;
-		this.aboutText.addEventListener(MouseEvent.MOUSE_DOWN, this.about, false, 0, true);
-		this.aboutText.addEventListener(MouseEvent.MOUSE_OVER, this.maybeAbout, false, 0, true);
-		this.aboutText.addEventListener(MouseEvent.MOUSE_OUT, this.noAbout, false, 0, true);
+		this.aboutText.on('mousedown', (event: any) => this.about(event));
+		this.aboutText.on('mouseover', (event: any) => this.maybeAbout(event));
+		this.aboutText.on('mouseout', (event: any) => this.noAbout(event));
 		this.addChild(this.aboutText);
 		this.extrasText = new Text("Extras");
 		this.extrasText.x = 220;
@@ -161,13 +161,13 @@ export class DropDownMenu extends Graphics
 		this.extrasText.width = 50;
 		this.extrasText.height = 20;
 		this.extrasText.style = format;
-		this.extrasText.addEventListener(MouseEvent.MOUSE_DOWN, this.extras, false, 0, true);
-		this.extrasText.addEventListener(MouseEvent.MOUSE_OVER, this.maybeExtras, false, 0, true);
-		this.extrasText.addEventListener(MouseEvent.MOUSE_OUT, this.noExtras, false, 0, true);
+		this.extrasText.on('mousedown', (event: any) => this.extras(event));
+		this.extrasText.on('mouseover', (event: any) => this.maybeExtras(event));
+		this.extrasText.on('mouseout', (event: any) => this.noExtras(event));
 		this.addChild(this.extrasText);
 	}
 
-	public Update():void {
+	public Update(): void {
 
 	}
 

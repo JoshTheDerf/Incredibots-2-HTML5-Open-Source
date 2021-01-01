@@ -55,7 +55,7 @@ export class Util {
 	}
 
 	public static HexColourString(r:number, g:number, b:number):string {
-		return `#${(b | (g << 8) | (r << 16))}`;
+		return `#${[r, g, b].map(x => x.toString(16).padStart(2, '0')).join('')}`
 	}
 
 	public static ObjectInArray(obj:Object, array:Array<any>):boolean {
