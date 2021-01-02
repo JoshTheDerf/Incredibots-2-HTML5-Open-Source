@@ -11,10 +11,10 @@ export class Action {
 	}
 
 	public UndoAction():void {
-		throw new IllegalOperationError("abstract function Action.UndoAction() called");
+		throw new IllegalOperationError("abstract Action.UndoAction() called");
 	}
 
 	public RedoAction():void {
-		throw new IllegalOperationError("abstract function Action.RedoAction() called");
+		throw new IllegalOperationError("abstract Action.RedoAction() called");
 	}
 };
