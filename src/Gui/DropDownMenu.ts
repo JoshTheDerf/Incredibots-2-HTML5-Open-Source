@@ -1,4 +1,4 @@
-import { Sprite, Text, Texture, TextStyle, Graphics } from "pixi.js";
+import { Sprite, Text, Texture, TextStyle, Graphics, Container } from "pixi.js";
 import { ControllerGame } from "../Game/ControllerGame";
 import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals";
 import { Resource } from "../Game/Graphics/Resource";
@@ -10,8 +10,8 @@ export class DropDownMenu extends Graphics
 	private cont:ControllerGame;
 	private mouseDown:boolean = false;
 
-	private menuBitmap:BitmapData;
-	private menuBitmapRoll:BitmapData;
+	private menuBitmap:Texture;
+	private menuBitmapRoll:Texture;
 
 	private fileText:Text;
 	private editText:Text;
@@ -28,6 +28,7 @@ export class DropDownMenu extends Graphics
 		super()
 		this.cont = contr;
 		this.m_currentMenu = null;
+		this.interactive = true;
 
 		this.menuBitmap = Resource.cGuiMenuBar;
 		this.menuBitmapRoll = Resource.cGuiMenuBarRoll;
@@ -35,131 +36,82 @@ export class DropDownMenu extends Graphics
 		this.beginTextureFill({ texture: this.menuBitmap });
 		this.drawRect(0, 0, 800, 21);
 
-		var format:TextStyle = new TextStyle();
-		format.align = 'center';
-		format.fontFamily = Main.GLOBAL_FONT;
-		format.fill = '#343550';
-		this.fileText = new Text("File");
-		this.fileText.x = 1;
-		this.fileText.y = 4;
-		this.fileText.width = 40;
-		this.fileText.height = 20;
-		this.fileText.style = format;
-		this.addChild(this.fileText);
-		this.editText = new Text("Edit");
-		this.editText.x = 41;
-		this.editText.y = 4;
-		this.editText.width = 40;
-		this.editText.height = 20;
-		this.editText.style = format;
-		this.addChild(this.editText);
-		this.viewText = new Text("View");
-		this.viewText.x = 81;
-		this.viewText.y = 4;
-		this.viewText.width = 40;
-		this.viewText.height = 20;
-		this.viewText.style = format;
-		this.addChild(this.viewText);
-		this.commentText = new Text("Share!");
-		this.commentText.x = 121;
-		this.commentText.y = 4;
-		this.commentText.width = 60;
-		this.commentText.height = 20;
-		this.commentText.style = format;
-		this.addChild(this.commentText);
-		this.helpText = new Text("Help");
-		this.helpText.x = 181;
-		this.helpText.y = 4;
-		this.helpText.width = 40;
-		this.helpText.height = 20;
-		this.helpText.style = format;
-		this.addChild(this.helpText);
-		this.aboutText = new Text("About");
-		this.aboutText.x = 751;
-		this.aboutText.y = 4;
-		this.aboutText.width = 50;
-		this.aboutText.height = 20;
-		this.aboutText.style = format;
-		this.addChild(this.aboutText);
-		this.extrasText = new Text("Extras");
-		this.extrasText.x = 221;
-		this.extrasText.y = 4;
-		this.extrasText.width = 50;
-		this.extrasText.height = 20;
-		this.extrasText.style = format;
-		this.addChild(this.extrasText);
-
-		format = new TextStyle();
+		const format = new TextStyle();
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.align = 'center';
 		format.fill = '#E1E1EA';
+		format.fontSize = 12;
+		format.dropShadow = true;
+		format.dropShadowColor = '#343550';
+		format.dropShadowDistance = 1;
 
 		this.fileText = new Text("File");
-		this.fileText.x = 0;
-		this.fileText.y = 3;
-		this.fileText.width = 40;
-		this.fileText.height = 20;
+		this.fileText.interactive = true;
+		this.fileText.anchor.set(0.5, 0);
 		this.fileText.style = format;
+		this.fileText.x = 20
+		this.fileText.y = 3;
 		this.fileText.on('mousedown', (event: any) => this.file(event));
 		this.fileText.on('mouseover', (event: any) => this.maybeFile(event));
 		this.fileText.on('mouseout', (event: any) => this.noFile(event));
-		this.addChild(this.fileText);
+		this.addChild(this.fileText)
+
 		this.editText = new Text("Edit");
-		this.editText.x = 40;
-		this.editText.y = 3;
-		this.editText.width = 40;
-		this.editText.height = 20;
+		this.editText.interactive = true;
+		this.editText.anchor.set(0.5, 0);
 		this.editText.style = format;
+		this.editText.x = 40 + (40 / 2);
+		this.editText.y = 3;
 		this.editText.on('mousedown', (event: any) => this.edit(event));
 		this.editText.on('mouseover', (event: any) => this.maybeEdit(event));
 		this.editText.on('mouseout', (event: any) => this.noEdit(event));
 		this.addChild(this.editText);
 		this.viewText = new Text("View");
-		this.viewText.x = 80;
-		this.viewText.y = 3;
-		this.viewText.width = 40;
-		this.viewText.height = 20;
+		this.viewText.interactive = true;
+		this.viewText.anchor.set(0.5, 0);
 		this.viewText.style = format;
+		this.viewText.x = 80 + (40 / 2);
+		this.viewText.y = 3;
 		this.viewText.on('mousedown', (event: any) => this.view(event));
 		this.viewText.on('mouseover', (event: any) => this.maybeView(event));
 		this.viewText.on('mouseout', (event: any) => this.noView(event));
 		this.addChild(this.viewText);
 		this.commentText = new Text("Share!");
-		this.commentText.x = 120;
-		this.commentText.y = 3;
-		this.commentText.width = 60;
-		this.commentText.height = 20;
+		this.commentText.interactive = true;
 		this.commentText.style = format;
+		this.commentText.anchor.set(0.5, 0);
+		this.commentText.x = 120 + (60 / 2);
+		this.commentText.y = 3;
 		this.commentText.on('mousedown', (event: any) => this.comment(event));
 		this.commentText.on('mouseover', (event: any) => this.maybeComment(event));
 		this.commentText.on('mouseout', (event: any) => this.noComment(event));
 		this.addChild(this.commentText);
 		this.helpText = new Text("Help");
-		this.helpText.x = 180;
-		this.helpText.y = 3;
-		this.helpText.width = 40;
-		this.helpText.height = 20;
+		this.helpText.interactive = true;
 		this.helpText.style = format;
+		this.helpText.anchor.set(0.5, 0);
+		this.helpText.x = 180 + (45 / 2);
+		this.helpText.y = 3;
 		this.helpText.on('mousedown', (event: any) => this.help(event));
 		this.helpText.on('mouseover', (event: any) => this.maybeHelp(event));
 		this.helpText.on('mouseout', (event: any) => this.noHelp(event));
 		this.addChild(this.helpText);
 		this.aboutText = new Text("About");
-		this.aboutText.x = 750;
-		this.aboutText.y = 3;
-		this.aboutText.width = 50;
-		this.aboutText.height = 20;
+		this.aboutText.interactive = true;
 		this.aboutText.style = format;
+		this.aboutText.anchor.set(0.5, 0);
+		this.aboutText.x = 750 + (50 / 2);
+		this.aboutText.y = 3;
 		this.aboutText.on('mousedown', (event: any) => this.about(event));
 		this.aboutText.on('mouseover', (event: any) => this.maybeAbout(event));
 		this.aboutText.on('mouseout', (event: any) => this.noAbout(event));
 		this.addChild(this.aboutText);
 		this.extrasText = new Text("Extras");
-		this.extrasText.x = 220;
-		this.extrasText.y = 3;
-		this.extrasText.width = 50;
-		this.extrasText.height = 20;
+		this.extrasText.interactive = true;
 		this.extrasText.style = format;
+		this.extrasText.anchor.set(0.5, 0);
+		this.extrasText.x = 220 + (50 / 2);
+		this.extrasText.y = 3;
 		this.extrasText.on('mousedown', (event: any) => this.extras(event));
 		this.extrasText.on('mouseover', (event: any) => this.maybeExtras(event));
 		this.extrasText.on('mouseout', (event: any) => this.noExtras(event));
@@ -179,8 +131,9 @@ export class DropDownMenu extends Graphics
 	private BuildFileMenu():void {
 		if (this.m_currentMenu) this.removeChild(this.m_currentMenu);
 		this.m_currentMenu = new Graphics();
+		this.m_currentMenu.interactive = true;
 		this.m_currentMenu.x = 0;
-		this.m_currentMenu.y = 21;
+		this.m_currentMenu.y = 20;
 		this.m_currentMenu.beginFill(0xFDF9EA, 1);
 		this.m_currentMenu.lineStyle(1, 0x43366F);
 		this.m_currentMenu.moveTo(0, 0);
@@ -221,8 +174,9 @@ export class DropDownMenu extends Graphics
 	private BuildEditMenu():void {
 		if (this.m_currentMenu) this.removeChild(this.m_currentMenu);
 		this.m_currentMenu = new Graphics();
+		this.m_currentMenu.interactive = true;
 		this.m_currentMenu.x = 40;
-		this.m_currentMenu.y = 21;
+		this.m_currentMenu.y = 20;
 		this.m_currentMenu.beginFill(0xFDF9EA, 1);
 		this.m_currentMenu.lineStyle(1, 0x43366F);
 		this.m_currentMenu.moveTo(0, 0);
@@ -263,6 +217,7 @@ export class DropDownMenu extends Graphics
 	private BuildViewMenu():void {
 		if (this.m_currentMenu) this.removeChild(this.m_currentMenu);
 		this.m_currentMenu = new Graphics();
+		this.m_currentMenu.interactive = true;
 		this.m_currentMenu.x = 80;
 		this.m_currentMenu.y = 21;
 		this.m_currentMenu.beginFill(0xFDF9EA, 1);
@@ -296,6 +251,7 @@ export class DropDownMenu extends Graphics
 	private BuildCommentMenu():void {
 		if (this.m_currentMenu) this.removeChild(this.m_currentMenu);
 		this.m_currentMenu = new Graphics();
+		this.m_currentMenu.interactive = true;
 		this.m_currentMenu.x = 120;
 		this.m_currentMenu.y = 21;
 		this.m_currentMenu.beginFill(0xFDF9EA, 1);
@@ -339,6 +295,7 @@ export class DropDownMenu extends Graphics
 	private BuildHelpMenu():void {
 		if (this.m_currentMenu) this.removeChild(this.m_currentMenu);
 		this.m_currentMenu = new Graphics();
+		this.m_currentMenu.interactive = true;
 		this.m_currentMenu.x = 180;
 		this.m_currentMenu.y = 21;
 		this.m_currentMenu.beginFill(0xFDF9EA, 1);
@@ -357,6 +314,7 @@ export class DropDownMenu extends Graphics
 	private BuildAboutMenu():void {
 		if (this.m_currentMenu) this.removeChild(this.m_currentMenu);
 		this.m_currentMenu = new Graphics();
+		this.m_currentMenu.interactive = true;
 		this.m_currentMenu.x = 670;
 		this.m_currentMenu.y = 21;
 		this.m_currentMenu.beginFill(0xFDF9EA, 1);
@@ -375,6 +333,7 @@ export class DropDownMenu extends Graphics
 	private BuildExtrasMenu():void {
 		if (this.m_currentMenu) this.removeChild(this.m_currentMenu);
 		this.m_currentMenu = new Graphics();
+		this.m_currentMenu.interactive = true;
 		this.m_currentMenu.x = 220;
 		this.m_currentMenu.y = 21;
 		this.m_currentMenu.beginFill(0xFDF9EA, 1);
@@ -435,7 +394,8 @@ export class DropDownMenu extends Graphics
 	}
 
 	private noFile(e:MouseEvent):void {
-		if (this.m_currentMenu && !this.MouseOverMenu(e.stageX, e.stageY)) {
+		if (e.target === this || e.target === this.m_currentMenu) return
+		if (this.m_currentMenu && !this.MouseOverMenu(e.data.global.x, e.data.global.y)) {
 			this.beginTextureFill({ texture: this.menuBitmap });
 			this.drawRect(0, 0, 40, 21);
 			this.removeChild(this.m_currentMenu);
@@ -473,6 +433,7 @@ export class DropDownMenu extends Graphics
 	}
 
 	private noEdit(e:MouseEvent):void {
+		if (e.target === this || e.target === this.m_currentMenu) return
 		if (this.m_currentMenu && !this.MouseOverMenu(e.stageX, e.stageY)) {
 			this.beginTextureFill({ texture: this.menuBitmap});
 			this.drawRect(40, 0, 40, 21);
@@ -511,6 +472,7 @@ export class DropDownMenu extends Graphics
 	}
 
 	private noView(e:MouseEvent):void {
+		if (e.target === this || e.target === this.m_currentMenu) return
 		if (this.m_currentMenu && !this.MouseOverMenu(e.stageX, e.stageY)) {
 			this.beginTextureFill({ texture: this.menuBitmap});
 			this.drawRect(80, 0, 40, 21);
@@ -535,7 +497,7 @@ export class DropDownMenu extends Graphics
 			this.noAbout(e);
 			this.MakeDummyMenu();
 			this.noExtras(e);
-			this.beginBitmapFill({ texture: this.menuBitmapRoll });
+			this.beginTextureFill({ texture: this.menuBitmapRoll });
 			this.drawRect(120, 0, 60, 21);
 			this.mouseDown = true;
 			this.BuildCommentMenu();
@@ -549,6 +511,7 @@ export class DropDownMenu extends Graphics
 	}
 
 	private noComment(e:MouseEvent):void {
+		if (e.target === this || e.target === this.m_currentMenu) return
 		if (this.m_currentMenu && !this.MouseOverMenu(e.stageX, e.stageY)) {
 			this.beginTextureFill({ texture: this.menuBitmap});
 			this.drawRect(120, 0, 60, 21);
@@ -587,6 +550,7 @@ export class DropDownMenu extends Graphics
 	}
 
 	private noHelp(e:MouseEvent):void {
+		if (e.target === this || e.target === this.m_currentMenu) return
 		if (this.m_currentMenu && !this.MouseOverMenu(e.stageX, e.stageY)) {
 			this.beginTextureFill({ texture: this.menuBitmap});
 			this.drawRect(180, 0, 40, 21);
@@ -625,6 +589,7 @@ export class DropDownMenu extends Graphics
 	}
 
 	private noAbout(e:MouseEvent):void {
+		if (e.target === this || e.target === this.m_currentMenu) return
 		if (this.m_currentMenu && !this.MouseOverMenu(e.stageX, e.stageY)) {
 			this.beginTextureFill({ texture: this.menuBitmap});
 			this.drawRect(750, 0, 50, 21);
@@ -663,6 +628,7 @@ export class DropDownMenu extends Graphics
 	}
 
 	private noExtras(e:MouseEvent):void {
+		if (e.target === this || e.target === this.m_currentMenu) return
 		if (this.m_currentMenu && !this.MouseOverMenu(e.stageX, e.stageY)) {
 			this.beginTextureFill({ texture: this.menuBitmap});
 			this.drawRect(220, 0, 50, 21);

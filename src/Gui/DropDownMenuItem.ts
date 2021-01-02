@@ -18,19 +18,19 @@ export class DropDownMenuItem extends Graphics
 		super()
 		var style:TextStyle = new TextStyle();
 		style.fontFamily = Main.GLOBAL_FONT;
+		style.fontSize = 12;
 		style.fill = '#242930';
+		this.interactive = true;
 		this.m_width = w;
 		this.m_Text = new Text((checkBox ? "  " : "") + str);
 		this.m_Text.x = 10;
 		this.m_Text.y = 3;
-		this.m_Text.width = w - 20;
-		this.m_Text.height = 20;
 		this.m_Text.style = style;
 		this.addChild(this.m_Text);
-		addEventListener(MouseEvent.MOUSE_UP, callback, false, 0, true);
-		addEventListener(MouseEvent.MOUSE_UP, m.HideAll, false, 0, true);
-		addEventListener(MouseEvent.MOUSE_OVER, this.highlight, false, 0, true);
-		addEventListener(MouseEvent.MOUSE_OUT, this.deHighlight, false, 0, true);
+		this.on('mouseup', () => callback())
+		this.on('mouseup', (event: any) => m.HideAll(event))
+		this.on('mouseover', (event: any) => this.highlight(event))
+		this.on('mouseout', (event: any) => this.deHighlight(event))
 
 		if (checkBox) {
 			if (checkBoxChecked) {
