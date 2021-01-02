@@ -6,6 +6,7 @@ import { Rectangle } from "../../Parts/Rectangle";
 import { Circle } from "../../Parts/Circle"
 import { ControllerChallenge } from "../ControllerChallenge";
 import { WinCondition } from "../WinCondition";
+import { Gradient } from "../Graphics/Gradient";
 
 export class ControllerMonkeyBars extends ControllerChallenge
 {
@@ -339,14 +340,13 @@ export class ControllerMonkeyBars extends ControllerChallenge
 		p.drawAnyway = false;
 		this.allParts.push(p);
 
-		this.sGround1 = new Sprite();
-		this.sGround2 = new Sprite();
+		this.sGround1 = new Graphics();
+		this.sGround2 = new Graphics();
 
 		// cave walls
 		this.sGround1.lineStyle(6, 0x889598, 1);
 		var m:Matrix = new Matrix();
-		m.createGradientBox(3786, 1110, Math.PI / 2, 981, 279);
-		this.sGround1.beginGradientFill(GradientType.LINEAR, [0xB6C6CA, 0x9AA9AD], [1, 1], [0, 255], m);
+		this.sGround1.beginTextureFill({texture: Gradient.getLinearGradientTexture(['#B6C6CA', '#9AA9AD']), matrix: m });
 		this.sGround1.moveTo(1101, 1364);
 		this.sGround1.lineTo(1085, 1294);
 		this.sGround1.lineTo(1035, 1207);
@@ -408,7 +408,7 @@ export class ControllerMonkeyBars extends ControllerChallenge
 		this.sGround1.endFill();
 
 		this.sGround2.lineStyle(6, 0x889598, 1);
-		this.sGround2.beginGradientFill(GradientType.LINEAR, [0xB6C6CA, 0x9AA9AD], [1, 1], [0, 255], m);
+		this.sGround2.beginTextureFill({texture: Gradient.getLinearGradientTexture(['#B6C6CA', '#9AA9AD']), matrix: m });
 		this.sGround2.moveTo(4167, 1380);
 		this.sGround2.lineTo(4293, 1324);
 		this.sGround2.lineTo(4322, 1252);
@@ -520,11 +520,10 @@ export class ControllerMonkeyBars extends ControllerChallenge
 
 		// body
 		m = new Matrix();
-		m.createGradientBox(3744, 546, Math.PI / 2, 1029, 1278);
-		this.sGround1.beginGradientFill(GradientType.LINEAR, [0x6BD354, 0x54BA3D], [1, 1], [0, 255], m);
+		this.sGround1.beginTextureFill({texture: Gradient.getLinearGradientTexture(['#6BD354', '#54BA3D']), matrix: m });
 		this.sGround1.drawRect(1550, 1391, 600, 100);
 		this.sGround1.endFill();
-		this.sGround2.beginGradientFill(GradientType.LINEAR, [0x6BD354, 0x54BA3D], [1, 1], [0, 255], m);
+		this.sGround2.beginTextureFill({texture: Gradient.getLinearGradientTexture(['#6BD354', '#54BA3D']), matrix: m });
 		this.sGround2.drawRect(3483, 1375, 1071, 185);
 		this.sGround2.endFill();
 		this.DrawGroundCircle(1029, 1353, 63);
@@ -615,8 +614,7 @@ export class ControllerMonkeyBars extends ControllerChallenge
 	public DrawGroundCircle(xPos:number, yPos:number, radius:number):void {
 		var sGround:Graphics = (xPos < 3000 ? this.sGround1 : this.sGround2);
 		var m:Matrix = new Matrix();
-		m.createGradientBox(3744, 546, Math.PI / 2, 1029, 1278);
-		sGround.beginGradientFill(GradientType.LINEAR, [0x6BD354, 0x54BA3D], [1, 1], [0, 255], m);
+		sGround.beginTextureFill({texture: Gradient.getLinearGradientTexture(['#6BD354', '#54BA3D']), matrix: m });
 		sGround.drawCircle(xPos + radius, yPos + radius, radius);
 		sGround.endFill();
 	}
@@ -624,8 +622,7 @@ export class ControllerMonkeyBars extends ControllerChallenge
 	public DrawCaveRock(x1:number, y1:number, x2:number, y2:number, x3:number, y3:number):void {
 		var sGround:Graphics = (x1 < 3000 ? this.sGround1 : this.sGround2);
 		var m:Matrix = new Matrix();
-		m.createGradientBox(3602, 969, Math.PI / 2, 1099, 352);
-		sGround.beginGradientFill(GradientType.LINEAR, [0xAAB9BD, 0x95A1A5], [1, 1], [0, 255], m);
+		sGround.beginTextureFill({texture: Gradient.getLinearGradientTexture(['#AAB9BD', '#95A1A5']), matrix: m });
 		sGround.moveTo(x1, y1);
 		sGround.lineTo(x2, y2);
 		sGround.lineTo(x3, y3);
@@ -637,8 +634,7 @@ export class ControllerMonkeyBars extends ControllerChallenge
 		var sGround:Graphics = (xPos < 3000 ? this.sGround1 : this.sGround2);
 		sGround.lineStyle(6, 0x6BB05A);
 		var m:Matrix = new Matrix();
-		m.createGradientBox(radius * 2, radius * 2, Math.PI / 2, xPos, yPos);
-		sGround.beginGradientFill(GradientType.LINEAR, (type == 0 ? [0x8EDB82, 0x7FBF72] : (type == 1 ? [0x80D970, 0x6DBE5D] : [0x70C160, 0x63AB52])), [1, 1], [0, 255], m);
+		sGround.beginTextureFill({texture: Gradient.getLinearGradientTexture((type == 0 ? ['#8EDB82', '#7FBF72'] : (type == 1 ? ['#80D970', '#6DBE5D'] : ['#70C160', '#63AB52']))), matrix: m });
 		sGround.drawCircle(xPos + radius, yPos + radius, radius);
 		sGround.endFill();
 	}
