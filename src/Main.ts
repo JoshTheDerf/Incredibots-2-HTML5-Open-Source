@@ -56,6 +56,7 @@ export class Main {
 	constructor(renderer: Application) {
 		this.renderer = renderer
 		Main.theRoot = this.renderer.stage
+		Main.theRoot.interactive = true
 
 		var urlString:string = window.location.href;
 		var urlStart:number = urlString.indexOf("://") + 3;

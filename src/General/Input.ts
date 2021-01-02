@@ -71,11 +71,11 @@ export class Input {
 		// Input.m_stageMc.stage.addEventListener(KeyboardEvent.KEY_UP, this.keyRelease, false, 0, true);
 
 		// mouse listeners
-		// Input.m_stageMc.stage.addEventListener(MouseEvent.MOUSE_DOWN, this.mousePress, false, 0, true);
-		// Input.m_stageMc.stage.addEventListener(MouseEvent.MOUSE_UP, this.mouseRelease, false, 0, true);
-		// Input.m_stageMc.stage.addEventListener(MouseEvent.MOUSE_MOVE, this.mouseMove, false, 0, true);
-		// Input.m_stageMc.stage.addEventListener(MouseEvent.MOUSE_WHEEL, this.mouseWheel, false, 0, true);
-		// Input.m_stageMc.stage.addEventListener(Event.MOUSE_LEAVE, this.mouseLeave, false, 0, true);
+		Input.m_stageMc.on('mousedown', (event: any) => this.mousePress(event))
+		Input.m_stageMc.on('mouseup', (event: any) => this.mouseRelease(event))
+		Input.m_stageMc.on('mousemove', (event: any) => this.mouseMove(event))
+		Input.m_stageMc.on('mousewheel', (event: any) => this.mouseWheel(event))
+		Input.m_stageMc.on('mouseout', (event: any) => this.mouseLeave(event))
 	}
 
 
@@ -171,23 +171,17 @@ export class Input {
 			mouseDragY = 0;
 		}*/
 
-		Input.mouseX = e.stageX - Input.m_stageMc.x;
-		Input.mouseY = e.stageY - Input.m_stageMc.y;
+		Input.mouseX = e.data.global.x - Input.m_stageMc.x;
+		Input.mouseY = e.data.global.y - Input.m_stageMc.y;
 		// Store offset
-		Input.mouseOffsetX = Input.mouseX - Input.mouse.x;
-		Input.mouseOffsetY = Input.mouseY - Input.mouse.y;
+		// Input.mouseOffsetX = Input.mouseX - Input.mouse.x;
+		// Input.mouseOffsetY = Input.mouseY - Input.mouse.y;
 		// Update drag
 		if (Input.mouseDown){
 			Input.mouseDragX += Input.mouseOffsetX;
 			Input.mouseDragY += Input.mouseOffsetY;
 		}
 		if (Input.m_currController) Input.m_currController.mouseMove(Input.mouseX, Input.mouseY);
-		if (Main.m_curController instanceof ControllerMainMenu) {
-			Main.mouseCursor.x = Input.mouseX;
-			Main.mouseCursor.y = Input.mouseY;
-			Main.mouseHourglass.x = Input.mouseX;
-			Main.mouseHourglass.y = Input.mouseY;
-		}
 	}
 
 

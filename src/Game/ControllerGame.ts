@@ -29,10 +29,39 @@ import { PartEditWindow } from "../Gui/PartEditWindow";
 import { LSOManager } from "../General/LSOManager";
 import { AdvancedSandboxWindow } from "../Gui/AdvancedSandboxWindow";
 import { ImportWindow } from "../Gui/ImportWindow";
+// FIXME: Causes import loop for some reason. import { ControllerChallenge } from "./ControllerChallenge";
 import { ControllerSandbox } from "./ControllerSandbox";
 import { KeyPress } from "./KeyPress";
 import { ReplaySyncPoint } from "./ReplaySyncPoint";
 import { b2AABB, b2Body, b2ContactPoint, b2MouseJoint, b2MouseJointDef, b2Shape, b2Vec2, b2World } from "../Box2D";
+
+import { CameraAction } from "../Actions/CameraAction";
+import { ChangeSliderAction } from "../Actions/ChangeSliderAction";
+import { ClearAction } from "../Actions/ClearAction";
+import { ColourChangeAction } from "../Actions/ColourChangeAction";
+import { ControlKeyAction } from "../Actions/ControlKeyAction";
+import { CreateAction } from "../Actions/CreateAction";
+import { DeleteAction } from "../Actions/DeleteAction";
+import { EnterTextAction } from "../Actions/EnterTextAction";
+import { JointCheckboxAction } from "../Actions/JointCheckboxAction";
+import { LimitChangeAction } from "../Actions/LimitChangeAction";
+import { MassCreateAction } from "../Actions/MassCreateAction";
+import { MoveAction } from "../Actions/MoveAction";
+import { MoveZAction } from "../Actions/MoveZAction";
+import { MultiCollideAction } from "../Actions/MultiCollideAction";
+import { MultiColourChangeAction } from "../Actions/MultiColourChangeAction";
+import { MultiFixateAction } from "../Actions/MultiFixateAction";
+import { MultiOutlineAction } from "../Actions/MultiOutlineAction";
+import { MultiTerrainAction } from "../Actions/MultiTerrainAction";
+import { MultiUndragableAction } from "../Actions/MultiUndragableAction";
+import { ResizeShapesAction } from "../Actions/ResizeShapesAction";
+import { ResizeTextAction } from "../Actions/ResizeTextAction";
+import { RotateAction } from "../Actions/RotateAction";
+import { ShapeCheckboxAction } from "../Actions/ShapeCheckboxAction";
+import { TextCheckboxAction } from "../Actions/TextCheckboxAction";
+import { TextSizeChangeAction } from "../Actions/TextSizeChangeAction";
+import { ContactFilter } from "./ContactFilter";
+import { ContactListener } from "./ContactListener";
 
 export class ControllerGame extends Controller {
 		//======================
@@ -569,7 +598,7 @@ export class ControllerGame extends Controller {
 				}
 			}
 
-			//Main.m_fpsCounter.updatePhys(physStart);
+			Main.m_fpsCounter.updatePhys(physStart);
 
 			if (Database.errorOccurred) {
 				this.m_progressDialog.StopTimer();
@@ -901,8 +930,8 @@ export class ControllerGame extends Controller {
 
 			this.partsFit = true;
 
-			if (this instanceof ControllerSandbox && !(this instanceof ControllerChallenge)) return;
-			if (this instanceof ControllerChallenge && !ControllerChallenge.playChallengeMode) return;
+			if (this.controllerType === 'sandbox') return;
+			if (this.controllerType === 'challenge' && !ControllerChallenge.playChallengeMode) return;
 			if (numAreas == 0) return;
 
 			// Make sure the parts fit in the allowed building area
@@ -1553,10 +1582,10 @@ export class ControllerGame extends Controller {
 		}
 
 		public mouseMove(x:number, y:number):void {
-			Main.mouseCursor.x = x;
-			Main.mouseCursor.y = y;
-			Main.mouseHourglass.x = x;
-			Main.mouseHourglass.y = y;
+			// Main.mouseCursor.x = x;
+			// Main.mouseCursor.y = y;
+			// Main.mouseHourglass.x = x;
+			// Main.mouseHourglass.y = y;
 		}
 
 		public mouseClick(up:boolean):void {
@@ -1658,7 +1687,7 @@ export class ControllerGame extends Controller {
 
 			if (up && this.selectedParts.length == 1 && ControllerGameGlobals.centerOnSelected) {
 				this.CenterOnSelected();
-			} else if (this.selectedParts.length == 0 && this.curAction == -1 && this instanceof ControllerChallenge && !ControllerChallenge.playChallengeMode) {
+			} else if (this.selectedParts.length == 0 && this.curAction == -1 && this.controllerType === 'challenge' && !ControllerChallenge.playChallengeMode) {
 				for (i = 0; i < ControllerChallenge.challenge.buildAreas.length; i++) {
 					if (ControllerGameGlobals.mouseXWorldPhys > ControllerChallenge.challenge.buildAreas[i].lowerBound.x && ControllerGameGlobals.mouseXWorldPhys < ControllerChallenge.challenge.buildAreas[i].upperBound.x && ControllerGameGlobals.mouseYWorldPhys > ControllerChallenge.challenge.buildAreas[i].lowerBound.y && ControllerGameGlobals.mouseYWorldPhys < ControllerChallenge.challenge.buildAreas[i].upperBound.y) {
 						this.selectedBuildArea = ControllerChallenge.challenge.buildAreas[i];

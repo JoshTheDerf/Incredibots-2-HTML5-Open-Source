@@ -1127,14 +1127,15 @@ export class PartEditWindow extends GuiWindow
 		this.m_multiEditPanel.visible = false;
 		this.m_buildBoxPanel.visible = false;
 		this.m_cannonPanel.visible = false;
+		console.log(shape)
 		this.m_densitySlider.value = shape.density;
 		this.m_densitySlider.minValue = ControllerGameGlobals.minDensity;
 		this.m_densitySlider.maxValue = ControllerGameGlobals.maxDensity;
 		this.m_densityArea.text = shape.density.toString();
 		this.m_collisionBox.selected = shape.collide;
-		this.m_collisionBox.visible = ((this.cont instanceof ControllerSandbox) && !(this.cont instanceof ControllerChallenge)) || ((this.cont instanceof ControllerChallenge) && (ControllerChallenge.challenge.nonCollidingAllowed || !ControllerChallenge.playChallengeMode));
+		this.m_collisionBox.visible = (this.cont.controllerType === 'sandbox') || ((this.cont.controllerType === 'challenge') && (ControllerChallenge.challenge.nonCollidingAllowed || !ControllerChallenge.playChallengeMode));
 		this.m_fixateBox.selected = shape.isStatic;
-		this.m_fixateBox.visible = ((this.cont instanceof ControllerSandbox) && !(this.cont instanceof ControllerChallenge)) || ((this.cont instanceof ControllerChallenge) && (ControllerChallenge.challenge.fixateAllowed || !ControllerChallenge.playChallengeMode));
+		this.m_fixateBox.visible = (this.cont.conditionsButton === 'sandbox') || ((this.cont.controllerType === 'challenge') && (ControllerChallenge.challenge.fixateAllowed || !ControllerChallenge.playChallengeMode));
 		this.m_cameraBox.selected = shape.isCameraFocus;
 		this.m_outlineBox.selected = shape.outline;
 		this.m_terrainBox.selected = shape.terrain;

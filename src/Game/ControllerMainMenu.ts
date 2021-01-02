@@ -145,7 +145,7 @@ export class ControllerMainMenu extends Controller
 		this.sGround.width = this.World2ScreenX(85) - this.World2ScreenX(0);
 		this.sGround.scale.y = this.sGround.scale.x;
 
-		this.sCanvas = new Container();
+		this.sCanvas = new Graphics();
 		this.draw.m_sprite = this.sCanvas;
 		this.addChild(this.sCanvas);
 
@@ -1210,10 +1210,9 @@ export class ControllerMainMenu extends Controller
 			this.frameCounter++;
 		}
 		// FIXME: World drawing
-		// this.sCanvas.clear();
-		// this.draw.DrawWorld(this.allParts, new Array(), this.world, false, false, false, true);
+		this.draw.DrawWorld(this.allParts, new Array(), this.world, false, false, false, true);
 		this.sSky.Update(false, this.hasPanned);
-		//Main.m_fpsCounter.updatePhys(physStart);
+		Main.m_fpsCounter.updatePhys(physStart);
 
 		if (!this.levelSelectGui.visible) {
 			this.sLogo.width = this.sLogo.texture.width * ControllerMainMenu.LOGO_STRETCH_WIDTHS[this.logoFrame] / 100.0;

@@ -1,9 +1,9 @@
 import { b2AABB } from "../Box2D";
+import { ControllerSandbox } from "./ControllerSandbox";
 import { Database } from "../General/Database";
 import { Main } from "../Main";
 import { TextPart } from "../Parts/TextPart";
 import { Challenge } from "./Challenge";
-import { ControllerSandbox } from "./ControllerSandbox";
 import { Replay } from "./Replay";
 import { Robot } from "./Robot";
 
