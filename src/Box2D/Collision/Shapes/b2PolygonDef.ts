@@ -20,8 +20,9 @@ import { b2ShapeDef, b2Shape, b2Settings, b2Vec2, b2Mat22 } from "../..";
 
 export class b2PolygonDef extends b2ShapeDef
 {
-	public b2PolygonDef()
+	constructor()
 	{
+		super()
 		this.type = b2Shape.e_polygonShape;
 		this.vertexCount = 0;
 

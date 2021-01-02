@@ -64,7 +64,7 @@ export class Circle extends ShapePart
 		//CE FIX
 		circ.density = (this.density + 5.0) / 10.0;
 
-		if (this.m_collisionGroup != int.MIN_VALUE) circ.filter.groupIndex = this.m_collisionGroup;
+		if (this.m_collisionGroup != Number.MIN_VALUE) circ.filter.groupIndex = this.m_collisionGroup;
 
 		var bodyStatic:boolean = false;
 

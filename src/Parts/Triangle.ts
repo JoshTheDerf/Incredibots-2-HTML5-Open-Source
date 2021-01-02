@@ -1,4 +1,4 @@
-import { b2Vec2, b2World, b2Body, b2BodyDef, b2MassData } from "../Box2D";
+import { b2Vec2, b2World, b2Body, b2BodyDef, b2MassData, b2PolygonDef } from "../Box2D";
 import { Util } from "../General/Util";
 import { FixedJoint } from "./FixedJoint";
 import { ShapePart } from "./ShapePart";
@@ -146,7 +146,7 @@ export class Triangle extends ShapePart
 		sd.density = (this.density + 5.0) / 10.0;
 
 		sd.vertexCount = 3;
-		if (this.m_collisionGroup != int.MIN_VALUE) sd.filter.groupIndex = this.m_collisionGroup;
+		if (this.m_collisionGroup != Number.MIN_VALUE) sd.filter.groupIndex = this.m_collisionGroup;
 		sd.vertices = this.GetVertices();
 
 		var bodyStatic:boolean = false;

@@ -943,7 +943,7 @@ export class b2BroadPhase
 		var high:number = count - 1;
 		while (low <= high)
 		{
-			var mid:number = ((low + high) / 2);
+			var mid:number = Math.floor(((low + high) / 2));
 			var bound:b2Bound = bounds[mid];
 			if (bound.value > value)
 			{

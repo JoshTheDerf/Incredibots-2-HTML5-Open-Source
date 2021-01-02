@@ -610,7 +610,7 @@ export class b2Body
 
 
 	// Constructor
-	public b2Body(bd:b2BodyDef, world:b2World){
+	constructor(bd:b2BodyDef, world:b2World){
 		//b2Settings.b2Assert(world.m_lock == false);
 
 		this.m_flags = 0;

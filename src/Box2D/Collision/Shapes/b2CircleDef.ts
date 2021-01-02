@@ -21,10 +21,11 @@ import { b2ShapeDef, b2Shape, b2Vec2 } from "../..";
 /// This structure is used to build circle shapes.
 export class b2CircleDef extends b2ShapeDef
 {
-	public b2CircleDef()
+	constructor()
 	{
-		type = b2Shape.e_circleShape;
-		radius = 1.0;
+		super()
+		this.type = b2Shape.e_circleShape;
+		this.radius = 1.0;
 	}
 
 	public localPosition:b2Vec2 = new b2Vec2(0.0, 0.0);

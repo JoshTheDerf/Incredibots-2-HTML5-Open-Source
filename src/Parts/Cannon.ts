@@ -132,7 +132,7 @@ import { ShapePart } from "./ShapePart";
 			sd.density = (this.density + 5.0) / 10.0;
 
 			sd.vertexCount = 4;
-			if (this.m_collisionGroup != int.MIN_VALUE) sd.filter.groupIndex = this.m_collisionGroup;
+			if (this.m_collisionGroup != Number.MIN_VALUE) sd.filter.groupIndex = this.m_collisionGroup;
 			sd.vertices = this.GetVertices();
 
 			var bodyStatic:boolean = false;
@@ -210,7 +210,7 @@ import { ShapePart } from "./ShapePart";
 			//CE FIX
 			circ.density = (this.density + 5.0) / 10.0;
 
-			if (this.m_collisionGroup != int.MIN_VALUE) circ.filter.groupIndex = this.m_collisionGroup;
+			if (this.m_collisionGroup != Number.MIN_VALUE) circ.filter.groupIndex = this.m_collisionGroup;
 			var bd:b2BodyDef = new b2BodyDef();
 			var localPoint:b2Vec2 = this.GetSpawnPoint();
 			localPoint.Subtract(Util.Vector(this.centerX, this.centerY));

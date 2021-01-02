@@ -241,6 +241,7 @@ export class b2PairManager
 		//b2Settings.b2Assert(m_pairCount < b2Settings.b2_maxPairs && m_freePair != b2_nullPair);
 
 		var pIndex:number = this.m_freePair;
+		console.log(this.m_pairs)
 		pair = this.m_pairs[pIndex];
 		this.m_freePair = pair.next;
 

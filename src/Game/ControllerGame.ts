@@ -440,11 +440,9 @@ export class ControllerGame extends Controller {
 
 		public PlayShapeSound():void {
 			if (Main.enableSound) {
-				var soundNum:number = int(Util.RangedRandom(0, 5));
+				var soundNum:number = Math.floor(Util.RangedRandom(0, 5));
 				var sound:Sound = (soundNum == 0 ? ControllerGameGlobals.shapeSound1 : (soundNum == 1 ? ControllerGameGlobals.shapeSound2 : (soundNum == 2 ? ControllerGameGlobals.shapeSound3 : (soundNum == 3 ? ControllerGameGlobals.shapeSound4 : ControllerGameGlobals.shapeSound5))));
-				ControllerGameGlobals.channel = sound.play();
-				var st:SoundTransform = new SoundTransform(0.7);
-				ControllerGameGlobals.channel.soundTransform = st;
+				sound.play();
 			}
 		}
 
@@ -452,9 +450,7 @@ export class ControllerGame extends Controller {
 			if (Main.enableSound) {
 				var soundNum:number = Math.floor(Util.RangedRandom(0, 5));
 				var sound:Sound = (soundNum == 0 ? ControllerGameGlobals.jointSound1 : (soundNum == 1 ? ControllerGameGlobals.jointSound2 : (soundNum == 2 ? ControllerGameGlobals.jointSound3 : (soundNum == 3 ? ControllerGameGlobals.jointSound4 : ControllerGameGlobals.jointSound5))));
-				ControllerGameGlobals.channel = sound.play();
-				var st:SoundTransform = new SoundTransform(0.7);
-				ControllerGameGlobals.channel.soundTransform = st;
+				sound.play();
 			}
 		}
 

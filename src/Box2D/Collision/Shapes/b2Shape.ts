@@ -218,7 +218,7 @@ export class b2Shape
 
 		//b2Settings.b2Assert(m_proxyId == b2_nullProxy);
 
-		var aabb:b2AABB = this.s_proxyAABB;
+		var aabb:b2AABB = b2Shape.s_proxyAABB;
 		this.ComputeAABB(aabb, transform);
 
 		var inRange:boolean = broadPhase.InRange(aabb);
@@ -283,7 +283,7 @@ export class b2Shape
 
 		broadPhase.DestroyProxy(this.m_proxyId);
 
-		var aabb:b2AABB = this.s_resetAABB;
+		var aabb:b2AABB = b2Shape.s_resetAABB;
 		this.ComputeAABB(aabb, transform);
 
 		var inRange:boolean = broadPhase.InRange(aabb);

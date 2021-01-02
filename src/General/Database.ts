@@ -1767,8 +1767,8 @@ export class Database
 			Database.WriteFloat(b, replay.cameraMovements[i].y / 100);
 			Database.WriteFloat(b, replay.cameraMovements[i].scale);
 		}
-		Database.WriteInt(b, int.MIN_VALUE);
-		Database.WriteInt(b, int.MIN_VALUE);
+		Database.WriteInt(b, Number.MIN_VALUE);
+		Database.WriteInt(b, Number.MIN_VALUE);
 		for (i = 0; i < replay.syncPoints.length; i++) {
 			Database.WriteInt(b, replay.syncPoints[i].frame);
 			for (var j:number = 0; j < replay.syncPoints[i].positions.length; j++) {
@@ -1790,14 +1790,14 @@ export class Database
 				Database.WriteFloat(b, Number.NEGATIVE_INFINITY);
 			}
 		}
-		Database.WriteInt(b, int.MIN_VALUE);
+		Database.WriteInt(b, Number.MIN_VALUE);
 		b.writeObject(replay.version);
 		Database.WriteInt(b, replay.numFrames);
 		for (i = 0; i < replay.keyPresses.length; i++) {
 			Database.WriteInt(b, replay.keyPresses[i].frame);
 			Database.WriteInt(b, replay.keyPresses[i].key);
 		}
-		Database.WriteInt(b, int.MIN_VALUE);
+		Database.WriteInt(b, Number.MIN_VALUE);
 		return b;
 	}
 
@@ -1807,7 +1807,7 @@ export class Database
 		var cameraMovements:Array<any> = new Array();
 		while (true) {
 			var frame:number = Database.ReadInt(data);
-			if (frame == int.MIN_VALUE) break;
+			if (frame == Number.MIN_VALUE) break;
 			var x:number = Database.ReadFloat(data) * 100;
 			var y:number = Database.ReadFloat(data) * 100;
 			var scale:number = Database.ReadFloat(data);
@@ -1818,7 +1818,7 @@ export class Database
 		var divideAngles:boolean = false;
 		var firstIter:boolean = true;
 		frame = Database.ReadInt(data);
-		if (frame == int.MIN_VALUE) {
+		if (frame == Number.MIN_VALUE) {
 			divideAngles = true;
 			firstIter = false;
 		}
@@ -1826,7 +1826,7 @@ export class Database
 		while (true) {
 			if (!firstIter) frame = Database.ReadInt(data);
 			firstIter = false;
-			if (frame == int.MIN_VALUE) break;
+			if (frame == Number.MIN_VALUE) break;
 			else if (frame == -1) {
 				while (true) {
 					x = Database.ReadFloat(data);
@@ -1874,7 +1874,7 @@ export class Database
 		if (data.position != data.length) {
 			while (true) {
 				frame = Database.ReadInt(data);
-				if (frame == int.MIN_VALUE) break;
+				if (frame == Number.MIN_VALUE) break;
 				var key:number = Database.ReadInt(data);
 				keyPresses.push(new KeyPress(frame, key));
 			}
@@ -1902,7 +1902,7 @@ export class Database
 	}
 
 	private static WriteInt(b:ByteArray, i:number):void {
-		if (i == int.MIN_VALUE) {
+		if (i == Number.MIN_VALUE) {
 			b.writeByte(-1);
 			b.writeByte(-1);
 		} else if (i == -1) {
@@ -1929,7 +1929,7 @@ export class Database
 	private static ReadInt(b:ByteArray):number {
 		var b1:number = b.readByte();
 		var b2:number = b.readByte();
-		if (b1 == -1 && b2 == -1) return int.MIN_VALUE;
+		if (b1 == -1 && b2 == -1) return Number.MIN_VALUE;
 		if (b1 == 0 && b2 == -1) return -1;
 		else return (b1 * 128 + b2);
 	}
