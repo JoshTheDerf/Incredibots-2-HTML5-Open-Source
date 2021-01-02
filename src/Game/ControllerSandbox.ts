@@ -1,5 +1,5 @@
-import { b2Vec2, b2AABB } from "@box2d/core";
-import { Sprite, Matrix, Graphics, Text } from "pixi.js";
+import { Matrix, Graphics, Text } from "pixi.js";
+import { b2Vec2 } from "../Box2D";
 import { Util } from "../General/Util";
 import { Circle } from "../Parts/Circle";
 import { Part } from "../Parts/Part";

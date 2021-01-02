@@ -1,4 +1,3 @@
-import { b2AABB } from "@box2d/core";
 import { Graphics, Sprite, Matrix } from "pixi.js";
 import { Part } from "../../Parts/Part";
 import { Triangle } from "../../Parts/Triangle";
@@ -7,6 +6,7 @@ import { Circle } from "../../Parts/Circle"
 import { ControllerChallenge } from "../ControllerChallenge";
 import { WinCondition } from "../WinCondition";
 import { Gradient } from "../Graphics/Gradient";
+import { b2AABB } from "../../Box2D";
 
 export class ControllerMonkeyBars extends ControllerChallenge
 {

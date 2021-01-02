@@ -1,5 +1,4 @@
-﻿import { b2World, b2MouseJoint, b2AABB, b2Body, b2MouseJointDef, b2Vec2, b2Shape } from "@box2d/core";
-import { Sprite, Matrix, Circle, Rectangle, Graphics, TextStyle, Text } from "pixi.js";
+﻿import { Sprite, Matrix, Circle, Rectangle, Graphics, TextStyle, Text } from "pixi.js";
 import { Database } from "../General/Database";
 import { Util } from "../General/Util";
 import { Main } from "../Main";
@@ -27,6 +26,13 @@ import { Action } from "../Actions/Action";
 import { MainEditPanel } from "../Gui/MainEditPanel";
 import { DropDownMenu } from "../Gui/DropDownMenu";
 import { PartEditWindow } from "../Gui/PartEditWindow";
+import { LSOManager } from "../General/LSOManager";
+import { AdvancedSandboxWindow } from "../Gui/AdvancedSandboxWindow";
+import { ImportWindow } from "../Gui/ImportWindow";
+import { ControllerSandbox } from "./ControllerSandbox";
+import { KeyPress } from "./KeyPress";
+import { ReplaySyncPoint } from "./ReplaySyncPoint";
+import { b2AABB, b2Body, b2ContactPoint, b2MouseJoint, b2MouseJointDef, b2Shape, b2Vec2, b2World } from "../Box2D";
 
 export class ControllerGame extends Controller {
 		//======================
@@ -148,7 +154,7 @@ export class ControllerGame extends Controller {
 		protected vertLineText:Text;
 		protected shapeText:Text;
 		private newText:Object;
-		private oldText:String = "";
+		private oldText:string = "";
 
 		public potentialJointPart1:ShapePart;
 		public potentialJointPart2:ShapePart;
@@ -1932,7 +1938,7 @@ export class ControllerGame extends Controller {
 
 		// BUTTON LISTENERS
 
-		public circleButton(e:MouseEvent):void {
+		public circleButton():void {
 			if (!ControllerGameGlobals.curRobotEditable || this.selectingCondition) return;
 			if (this.curAction == ControllerGameGlobals.NEW_CIRCLE) {
 				this.curAction = -1;
@@ -1945,7 +1951,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public rectButton(e:MouseEvent):void {
+		public rectButton():void {
 			if (!ControllerGameGlobals.curRobotEditable || this.selectingCondition) return;
 			if (this.curAction == ControllerGameGlobals.NEW_RECT) {
 				this.curAction = -1;
@@ -1958,7 +1964,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public triangleButton(e:MouseEvent):void {
+		public triangleButton():void {
 			if (!ControllerGameGlobals.curRobotEditable || this.selectingCondition) return;
 			if (this.curAction == ControllerGameGlobals.NEW_TRIANGLE) {
 				this.curAction = -1;
@@ -1971,7 +1977,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public fjButton(e:MouseEvent):void {
+		public fjButton():void {
 			if (!ControllerGameGlobals.curRobotEditable || this.selectingCondition) return;
 			if (this.curAction == ControllerGameGlobals.NEW_FIXED_JOINT) {
 				this.curAction = -1;
@@ -1987,7 +1993,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public rjButton(e:MouseEvent):void {
+		public rjButton():void {
 			if (!ControllerGameGlobals.curRobotEditable || this.selectingCondition) return;
 			if (this.curAction == ControllerGameGlobals.NEW_REVOLUTE_JOINT) {
 				this.curAction = -1;
@@ -2003,7 +2009,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public pjButton(e:MouseEvent):void {
+		public pjButton():void {
 			if (!ControllerGameGlobals.curRobotEditable || this.selectingCondition) return;
 			if (this.curAction == ControllerGameGlobals.NEW_PRISMATIC_JOINT) {
 				this.curAction = -1;
@@ -2019,7 +2025,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public textButton(e:MouseEvent):void {
+		public textButton():void {
 			if (!ControllerGameGlobals.curRobotEditable || this.selectingCondition) return;
 			if (this.curAction == ControllerGameGlobals.NEW_TEXT) {
 				this.curAction = -1;
@@ -2032,7 +2038,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public thrustersButton(e:MouseEvent):void {
+		public thrustersButton():void {
 			if (/*Main.premiumMode*/ true) {
 				if (!ControllerGameGlobals.curRobotEditable || this.selectingCondition) return;
 				this.curAction = ControllerGameGlobals.NEW_THRUSTERS;
@@ -2046,7 +2052,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public cannonButton(e:MouseEvent):void {
+		public cannonButton():void {
 			if (/*Main.premiumMode*/ true) {
 				if (!ControllerGameGlobals.curRobotEditable || this.selectingCondition) return;
 				this.curAction = ControllerGameGlobals.NEW_CANNON;
@@ -2068,7 +2074,7 @@ export class ControllerGame extends Controller {
 			this.playButton(new MouseEvent(""), false);
 		}
 
-		public playButton(e:MouseEvent, maybeShowAd:boolean = true):void {
+		public playButton(maybeShowAd:boolean = true):void {
 			if (this.selectingCondition) return;
 			/*var time:number = getTimer();
 			if (!Main.DEBUG_VERSION && !Main.premiumMode && maybeShowAd && time > Main.lastAdTime + 30 * 60 * 1000) {
@@ -2142,23 +2148,23 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public editButton(e:MouseEvent, confirmed:boolean = false):void {
+		public editButton(confirmed:boolean = false):void {
 
 		}
 
-		public pauseButton(e:MouseEvent):void {
+		public pauseButton():void {
 			if (ControllerGameGlobals.playingReplay && ControllerGameGlobals.replay.Update(this.frameCounter)) this.ShowPostReplayWindow();
 			this.m_guiPanel.ShowPausePanel(!ControllerGameGlobals.playingReplay);
 			this.paused = true;
 		}
 
-		public resetButton(e:MouseEvent, rateRobot:boolean = true):void {
+		public resetButton(rateRobot:boolean = true):void {
 			if (ControllerGameGlobals.playingReplay) {
 				for (var i:number = 0; i < this.allParts.length; i++) {
 					this.allParts[i].UnInit(this.m_world);
 				}
 				this.simStarted = false;
-				this.playButton(e, false);
+				this.playButton(false);
 			} else {
 				this.m_guiPanel.ShowEditPanel();
 				this.paused = true;
@@ -2191,10 +2197,10 @@ export class ControllerGame extends Controller {
 			this.redrawBuildArea = true;
 		}
 
-		public rewindButton(e:MouseEvent, makeThemRate:boolean = true):void {
+		public rewindButton(makeThemRate:boolean = true):void {
 			if (!ControllerGameGlobals.playingReplay) {
-				this.resetButton(e, false);
-				this.playButton(e);
+				this.resetButton(false);
+				this.playButton();
 			} else if (ControllerGameGlobals.viewingUnsavedReplay) {
 				this.paused = true;
 				this.simStarted = false;
@@ -2228,12 +2234,12 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public reportButton(e:MouseEvent):void {
+		public reportButton():void {
 			if (this.selectingCondition) return;
 			if (ControllerGameGlobals.playingReplay && ControllerGameGlobals.curReplayID != "" && ControllerGameGlobals.curReplayPublic) {
 				if (ControllerGameGlobals.userName == "_Public") {
 					this.clickedReport = true;
-					this.loginButton(e, true, false);
+					this.loginButton(true, false);
 				} else {
 					if (this.m_reportWindow) this.removeChild(this.m_reportWindow);
 					this.m_reportWindow = new ReportWindow(this, 1, ControllerGameGlobals.curReplayID);
@@ -2257,7 +2263,7 @@ export class ControllerGame extends Controller {
 			} else if (ControllerGameGlobals.curRobotID != "" && ControllerGameGlobals.curRobotPublic) {
 				if (ControllerGameGlobals.userName == "_Public") {
 					this.clickedReport = true;
-					this.loginButton(e, true, false);
+					this.loginButton(true, false);
 				} else {
 					if (this.m_reportWindow) this.removeChild(this.m_reportWindow);
 					this.m_reportWindow = new ReportWindow(this, 0, ControllerGameGlobals.curRobotID);
@@ -2274,7 +2280,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishReporting(e:Event):void {
+		public finishReporting():void {
 			var threadID:number = Database.FinishReporting(e);
 			if (threadID != -1) {
 				this.ShowDialog3("Thank you, the moderators have been notified.");
@@ -2284,7 +2290,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public featureButton(e:MouseEvent):void {
+		public featureButton():void {
 			if (this.selectingCondition) return;
 			if (ControllerGameGlobals.playingReplay && ControllerGameGlobals.curReplayID != "" && ControllerGameGlobals.curReplayPublic) {
 				Database.FeatureReplay(ControllerGameGlobals.curReplayID, !ControllerGameGlobals.curReplayFeatured, this.finishFeaturing);
@@ -2309,7 +2315,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		private finishFeaturing(e:Event):void {
+		private finishFeaturing():void {
 			var retVal:boolean = Database.FinishFeaturing(e);
 			if (retVal) {
 				this.m_progressDialog.SetMessage("Success!");
@@ -2322,7 +2328,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public rateButton(e:MouseEvent):void {
+		public rateButton():void {
 			if (this.selectingCondition) return;
 			if (ControllerGameGlobals.curRobotID != "" && ControllerGameGlobals.curRobotPublic && !LSOManager.HasRatedRobot(ControllerGameGlobals.curRobotID)) {
 				this.m_fader.visible = true;
@@ -2358,7 +2364,7 @@ export class ControllerGame extends Controller {
 			this.curAction = -1;
 		}
 
-		public conditionsButton(e:MouseEvent):void {
+		public conditionsButton():void {
 			this.curAction = -1;
 			this.boxText.visible = false;
 			this.horizLineText.visible = false;
@@ -2371,7 +2377,7 @@ export class ControllerGame extends Controller {
 			this.m_fader.visible = true;
 		}
 
-		public restrictionsButton(e:MouseEvent):void {
+		public restrictionsButton():void {
 			if (this.selectingCondition) return;
 			this.m_sidePanel.visible = false;
 			if (this.m_restrictionsDialog) this.removeChild(this.m_restrictionsDialog);
@@ -2381,7 +2387,7 @@ export class ControllerGame extends Controller {
 			this.saveAfterRestrictions = false;
 		}
 
-		public buildBoxButton(e:MouseEvent):void {
+		public buildBoxButton():void {
 			if (this.selectingCondition) return;
 			/*if (ControllerChallenge.challenge.buildAreas.length != 0) {
 				m_fader.visible = true;
@@ -2394,7 +2400,7 @@ export class ControllerGame extends Controller {
 			this.actionStep = 0;
 		}
 
-		public sandboxSettingsButton(e:MouseEvent):void {
+		public sandboxSettingsButton():void {
 			if (!ControllerGameGlobals.curRobotEditable || this.selectingCondition) return;
 			if (!this.simStarted) {
 				if (this instanceof ControllerSandbox && (!(this instanceof ControllerChallenge) || !ControllerChallenge.playOnlyMode)) {
@@ -2410,7 +2416,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public commentButton(e:MouseEvent, robotID:String = "", robotPublic:boolean = false):void {
+		public commentButton(robotID:string = "", robotPublic:boolean = false):void {
 			if (this.selectingCondition) return;
 			if (robotID == "") {
 				robotID = ControllerGameGlobals.curRobotID;
@@ -2430,9 +2436,9 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishCommenting(e:Event):void {
+		public finishCommenting():void {
 			if (!Database.waitingForResponse || (Database.curTransactionType != Database.ACTION_COMMENT_ROBOT && Database.curTransactionType != Database.ACTION_COMMENT_REPLAY)) return;
-			var threadID:number = Database.FinishCommenting(e);
+			var threadID:number = Database.FinishCommenting();
 			if (threadID != -1) {
 				if (this.m_chooserWindow && this.m_chooserWindow.visible) this.m_chooserWindow.HideFader();
 				else this.m_fader.visible = false;
@@ -2442,9 +2448,9 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishRatingRobot(e:Event):void {
+		public finishRatingRobot():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_RATE_ROBOT) return;
-			var retVal:boolean = Database.FinishRating(e);
+			var retVal:boolean = Database.FinishRating();
 			if (retVal) {
 				LSOManager.SetRobotRated(ControllerGameGlobals.curRobotID);
 				this.m_progressDialog.SetMessage("Success!");
@@ -2455,20 +2461,20 @@ export class ControllerGame extends Controller {
 				Main.ShowMouse();
 			}
 			if (this.redirectAfterRating == 1) {
-				this.loadButton(new MouseEvent(""));
+				this.loadButton();
 			} else if (this.redirectAfterRating == 2) {
-				this.loadRobotButton(new MouseEvent(""));
+				this.loadRobotButton();
 			} else if (this.redirectAfterRating == 3) {
-				this.loadReplayButton(new MouseEvent(""));
+				this.loadReplayButton();
 			} else if (this.redirectAfterRating == 4) {
-				this.loadChallengeButton(new MouseEvent(""));
+				this.loadChallengeButton();
 			} else if (this.redirectAfterRating == 5) {
-				this.rewindButton(new MouseEvent(""));
+				this.rewindButton();
 			}
 			this.redirectAfterRating = 0;
 		}
 
-		public finishRatingReplay(e:Event):void {
+		public finishRatingReplay():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_RATE_REPLAY) return;
 			var retVal:boolean = Database.FinishRating(e);
 			if (retVal) {
@@ -2481,22 +2487,22 @@ export class ControllerGame extends Controller {
 				Main.ShowMouse();
 			}
 			if (this.redirectAfterRating == 1) {
-				this.loadButton(new MouseEvent(""));
+				this.loadButton();
 			} else if (this.redirectAfterRating == 2) {
-				this.loadRobotButton(new MouseEvent(""));
+				this.loadRobotButton();
 			} else if (this.redirectAfterRating == 3) {
-				this.loadReplayButton(new MouseEvent(""));
+				this.loadReplayButton();
 			} else if (this.redirectAfterRating == 4) {
-				this.loadChallengeButton(new MouseEvent(""));
+				this.loadChallengeButton();
 			} else if (this.redirectAfterRating == 5) {
-				this.rewindButton(new MouseEvent(""));
+				this.rewindButton();
 			}
 			this.redirectAfterRating = 0;
 		}
 
-		public finishRatingChallenge(e:Event):void {
+		public finishRatingChallenge():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_RATE_CHALLENGE) return;
-			var retVal:boolean = Database.FinishRating(e);
+			var retVal:boolean = Database.FinishRating();
 			if (retVal) {
 				LSOManager.SetChallengeRated(ControllerGameGlobals.curChallengeID);
 				this.m_progressDialog.SetMessage("Success!");
@@ -2507,20 +2513,20 @@ export class ControllerGame extends Controller {
 				Main.ShowMouse();
 			}
 			if (this.redirectAfterRating == 1) {
-				this.loadButton(new MouseEvent(""));
+				this.loadButton();
 			} else if (this.redirectAfterRating == 2) {
-				this.loadRobotButton(new MouseEvent(""));
+				this.loadRobotButton();
 			} else if (this.redirectAfterRating == 3) {
-				this.loadReplayButton(new MouseEvent(""));
+				this.loadReplayButton();
 			} else if (this.redirectAfterRating == 4) {
-				this.loadChallengeButton(new MouseEvent(""));
+				this.loadChallengeButton();
 			} else if (this.redirectAfterRating == 5) {
-				this.rewindButton(new MouseEvent(""));
+				this.rewindButton();
 			}
 			this.redirectAfterRating = 0;
 		}
 
-		public embedButton(e:MouseEvent, robotID:String = "", robotPublic:boolean = false):void {
+		public embedButton(robotID:string = "", robotPublic:boolean = false):void {
 			if (this.selectingCondition) return;
 			if (robotID == "") {
 				robotID = ControllerGameGlobals.curRobotID;
@@ -2537,7 +2543,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public linkButton(e:MouseEvent, robotID:String = "", robotPublic:boolean = false):void {
+		public linkButton(robotID:string = "", robotPublic:boolean = false):void {
 			if (this.selectingCondition) return;
 			if (robotID == "") {
 				robotID = ControllerGameGlobals.curRobotID;
@@ -2554,7 +2560,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public rateReplayButton(e:MouseEvent):void {
+		public rateReplayButton():void {
 			if (this.selectingCondition) return;
 			if (ControllerGameGlobals.curReplayID != "" && ControllerGameGlobals.curReplayPublic && !LSOManager.HasRatedReplay(ControllerGameGlobals.curReplayID)) {
 				this.m_fader.visible = true;
@@ -2574,7 +2580,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public commentReplayButton(e:MouseEvent, replayID:String = "", replayPublic:boolean = false):void {
+		public commentReplayButton(replayID:string = "", replayPublic:boolean = false):void {
 			if (replayID == "") {
 				replayID = ControllerGameGlobals.curReplayID;
 				replayPublic = ControllerGameGlobals.curReplayPublic;
@@ -2593,7 +2599,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public embedReplayButton(e:MouseEvent, replayID:String = "", replayPublic:boolean = false):void {
+		public embedReplayButton(replayID:string = "", replayPublic:boolean = false):void {
 			if (replayID == "") {
 				replayID = ControllerGameGlobals.curReplayID;
 				replayPublic = ControllerGameGlobals.curReplayPublic;
@@ -2609,7 +2615,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public linkReplayButton(e:MouseEvent, replayID:String = "", replayPublic:boolean = false):void {
+		public linkReplayButton(replayID:string = "", replayPublic:boolean = false):void {
 			if (replayID == "") {
 				replayID = ControllerGameGlobals.curReplayID;
 				replayPublic = ControllerGameGlobals.curReplayPublic;
@@ -2625,7 +2631,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public rateChallengeButton(e:MouseEvent):void {
+		public rateChallengeButton():void {
 			if (this.selectingCondition) return;
 			if (ControllerGameGlobals.curChallengeID != "" && ControllerGameGlobals.curChallengePublic && !LSOManager.HasRatedChallenge(ControllerGameGlobals.curChallengeID)) {
 				this.m_fader.visible = true;
@@ -2645,7 +2651,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public commentChallengeButton(e:MouseEvent, challengeID:String = "", challengePublic:boolean = false):void {
+		public commentChallengeButton(challengeID:string = "", challengePublic:boolean = false):void {
 			if (this.selectingCondition) return;
 			if (challengeID == "") {
 				challengeID = ControllerGameGlobals.curChallengeID;
@@ -2665,7 +2671,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public embedChallengeButton(e:MouseEvent, challengeID:String = "", challengePublic:boolean = false):void {
+		public embedChallengeButton(challengeID:string = "", challengePublic:boolean = false):void {
 			if (this.selectingCondition) return;
 			if (challengeID == "") {
 				challengeID = ControllerGameGlobals.curChallengeID;
@@ -2682,7 +2688,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public linkChallengeButton(e:MouseEvent, challengeID:String = "", challengePublic:boolean = false):void {
+		public linkChallengeButton(challengeID:string = "", challengePublic:boolean = false):void {
 			if (this.selectingCondition) return;
 			if (challengeID == "") {
 				challengeID = ControllerGameGlobals.curChallengeID;
@@ -2699,14 +2705,14 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public tutorialButton(e:MouseEvent):void {
+		public tutorialButton():void {
 			if (this.m_tutorialDialog) {
 				this.m_tutorialDialog.visible = true;
 				this.m_tutorialDialog.ResetPosition();
 			}
 		}
 
-		public rotateButton(e:MouseEvent):void {
+		public rotateButton():void {
 			if (!ControllerGameGlobals.curRobotEditable) return;
 			for (var i:number = this.selectedParts.length - 1; i >= 0; i--) {
 				if (this.selectedParts[i] instanceof TextPart) {
@@ -2746,7 +2752,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public mirrorHorizontal(e:MouseEvent):void {
+		public mirrorHorizontal():void {
 			if (/*Main.premiumMode*/ true) {
 				if (!ControllerGameGlobals.curRobotEditable || this.selectingCondition) return;
 				if (this.simStarted) return;
@@ -2921,7 +2927,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public mirrorVertical(e:MouseEvent):void {
+		public mirrorVertical():void {
 			if (/*Main.premiumMode*/ true) {
 				if (!ControllerGameGlobals.curRobotEditable || this.selectingCondition) return;
 				if (this.simStarted) return;
@@ -3096,7 +3102,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public scaleButton(e:MouseEvent):void {
+		public scaleButton():void {
 			if (/*Main.premiumMode*/ true) {
 				if (!ControllerGameGlobals.curRobotEditable || this.selectingCondition) return;
 				if (this.simStarted) return;
@@ -3121,7 +3127,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public deleteButton(e:MouseEvent):void {
+		public deleteButton():void {
 			if (!ControllerGameGlobals.curRobotEditable) return;
 			if (this.simStarted) return;
 			if (this.selectedParts.length == 1) {
@@ -3133,7 +3139,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public deleteBuildBoxButton(e:MouseEvent):void {
+		public deleteBuildBoxButton():void {
 			if (!ControllerGameGlobals.curRobotEditable) return;
 			if (this.simStarted) return;
 			if (this.selectedBuildArea) {
@@ -3144,7 +3150,7 @@ export class ControllerGame extends Controller {
 			this.m_sidePanel.visible = false;
 		}
 
-		public multiDeleteButton(e:MouseEvent):void {
+		public multiDeleteButton():void {
 			if (!ControllerGameGlobals.curRobotEditable) return;
 			if (this.simStarted) return;
 			var affectedJoints:Array<any> = new Array();
@@ -3168,20 +3174,20 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public densitySlider(e:Event):void {
+		public densitySlider(value: number):void {
 			if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof ShapePart) {
 				var oldDensity:number = (this.selectedParts[0] as ShapePart).density;
-				(this.selectedParts[0] as ShapePart).density = e.target.value;
+				(this.selectedParts[0] as ShapePart).density = value;
 				ControllerGameGlobals.curRobotID = "";
-				this.m_sidePanel.SetDensity(e.target.value);
-				if (oldDensity != e.target.value) this.AddAction(new ChangeSliderAction(this.selectedParts[0], ChangeSliderAction.DENSITY_TYPE, e.target.value - oldDensity));
+				this.m_sidePanel.SetDensity(value);
+				if (oldDensity != value) this.AddAction(new ChangeSliderAction(this.selectedParts[0], ChangeSliderAction.DENSITY_TYPE, value - oldDensity));
 			}
 		}
 
-		public densityText(e:Event):void {
+		public densityText(value: string):void {
 			if (this.lastSelectedShape instanceof ShapePart) {
 				var oldDensity:number = (this.lastSelectedShape as ShapePart).density;
-				var density:number = Number(e.target.text);
+				var density:number = parseInt(value);
 				if (density < ControllerGameGlobals.minDensity) density = ControllerGameGlobals.minDensity;
 				if (density > ControllerGameGlobals.maxDensity) density = ControllerGameGlobals.maxDensity;
 				if (isNaN(density)) {
@@ -3201,12 +3207,12 @@ export class ControllerGame extends Controller {
 			this.m_sidePanel.TextAreaLostFocus();
 		}
 
-		public strengthText(e:Event):void {
+		public strengthText(value: string):void {
 			if (this.lastSelectedJoint instanceof JointPart) {
 				var oldStrength:number;
 				if (this.lastSelectedJoint instanceof RevoluteJoint) oldStrength = (this.lastSelectedJoint as RevoluteJoint).motorStrength;
 				if (this.lastSelectedJoint instanceof PrismaticJoint) oldStrength = (this.lastSelectedJoint as PrismaticJoint).pistonStrength;
-				var strength:number = Number(e.target.text);
+				var strength:number = parseInt(value);
 				if (this.lastSelectedJoint instanceof RevoluteJoint) {
 					if (strength < 1.0) strength = 1.0;
 					if (strength > ControllerGameGlobals.maxRJStrength) strength = ControllerGameGlobals.maxRJStrength;
@@ -3226,12 +3232,12 @@ export class ControllerGame extends Controller {
 			this.m_sidePanel.TextAreaLostFocus();
 		}
 
-		public speedText(e:Event):void {
+		public speedText(value: string):void {
 			if (this.lastSelectedJoint instanceof JointPart) {
 				var oldSpeed:number;
 				if (this.lastSelectedJoint instanceof RevoluteJoint) oldSpeed = (this.lastSelectedJoint as RevoluteJoint).motorSpeed;
 				if (this.lastSelectedJoint instanceof PrismaticJoint) oldSpeed = (this.lastSelectedJoint as PrismaticJoint).pistonSpeed;
-				var speed:number = Number(e.target.text);
+				var speed:number = parseInt(value);
 				if (this.lastSelectedJoint instanceof RevoluteJoint) {
 					if (speed < 1.0) speed = 1.0;
 					if (speed > ControllerGameGlobals.maxRJSpeed) speed = ControllerGameGlobals.maxRJSpeed;
@@ -3251,11 +3257,11 @@ export class ControllerGame extends Controller {
 			this.m_sidePanel.TextAreaLostFocus();
 		}
 
-		public thrustText(e:Event):void {
+		public thrustText(value: string):void {
 			if (this.lastSelectedThrusters instanceof Thrusters) {
 				var oldStrength:number;
 				oldStrength = this.lastSelectedThrusters.strength;
-				var strength:number = Number(e.target.text);
+				var strength:number = parseInt(value);
 				if (strength < 1.0) strength = 1.0;
 				if (strength > ControllerGameGlobals.maxThrusterStrength) strength = ControllerGameGlobals.maxThrusterStrength;
 				if (isNaN(strength)) strength = Math.min(15.0, ControllerGameGlobals.maxThrusterStrength);
@@ -3267,11 +3273,11 @@ export class ControllerGame extends Controller {
 			this.m_sidePanel.TextAreaLostFocus();
 		}
 
-		public cannonText(e:Event):void {
+		public cannonText(value: string):void {
 			if (this.lastSelectedShape instanceof Cannon) {
 				var oldStrength:number;
 				oldStrength = (this.lastSelectedShape as Cannon).strength;
-				var strength:number = Number(e.target.text);
+				var strength:number = parseInt(value);
 				if (strength < 1.0) strength = 1.0;
 				if (strength > 30) strength = 30;
 				if (isNaN(strength)) strength = 15;
@@ -3283,12 +3289,12 @@ export class ControllerGame extends Controller {
 			this.m_sidePanel.TextAreaLostFocus();
 		}
 
-		public cameraBox(e:Event):void {
+		public cameraBox(value: boolean):void {
 			if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof ShapePart) {
-				(this.selectedParts[0] as ShapePart).isCameraFocus = e.target.selected;
+				(this.selectedParts[0] as ShapePart).isCameraFocus = value;
 				ControllerGameGlobals.curRobotID = "";
 				var oldCameraPart:ShapePart = null;
-				if (e.target.selected) {
+				if (value) {
 					for (var i:number = 0; i < this.allParts.length; i++) {
 						if (this.allParts[i] instanceof ShapePart && this.allParts[i] != this.selectedParts[0]) {
 							if (this.allParts[i].isCameraFocus) {
@@ -3298,123 +3304,123 @@ export class ControllerGame extends Controller {
 						}
 					}
 				}
-				this.AddAction(new CameraAction(this.selectedParts[0], e.target.selected, oldCameraPart));
+				this.AddAction(new CameraAction(this.selectedParts[0], value, oldCameraPart));
 			}
 		}
 
-		public collisionBox(e:Event):void {
+		public collisionBox(value: boolean):void {
 			if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof ShapePart) {
-				(this.selectedParts[0] as ShapePart).collide = e.target.selected;
+				(this.selectedParts[0] as ShapePart).collide = value;
 				ControllerGameGlobals.curRobotID = "";
-				this.AddAction(new ShapeCheckboxAction(this.selectedParts[0], ShapeCheckboxAction.COLLIDE_TYPE, e.target.selected));
+				this.AddAction(new ShapeCheckboxAction(this.selectedParts[0], ShapeCheckboxAction.COLLIDE_TYPE, value));
 			} else if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof PrismaticJoint) {
-				(this.selectedParts[0] as PrismaticJoint).collide = e.target.selected;
+				(this.selectedParts[0] as PrismaticJoint).collide = value;
 				ControllerGameGlobals.curRobotID = "";
-				this.AddAction(new ShapeCheckboxAction(this.selectedParts[0], ShapeCheckboxAction.COLLIDE_TYPE, e.target.selected));
+				this.AddAction(new ShapeCheckboxAction(this.selectedParts[0], ShapeCheckboxAction.COLLIDE_TYPE, value));
 			} else if (this.selectedParts.length > 1) {
 				var affectedParts:Array<any> = new Array();
 				for (var i:number = 0; i < this.selectedParts.length; i++) {
-					if ((this.selectedParts[i] instanceof ShapePart || this.selectedParts[i] instanceof PrismaticJoint) && this.selectedParts[i].collide != e.target.selected) {
-						this.selectedParts[i].collide = e.target.selected;
+					if ((this.selectedParts[i] instanceof ShapePart || this.selectedParts[i] instanceof PrismaticJoint) && this.selectedParts[i].collide != value) {
+						this.selectedParts[i].collide = value;
 						affectedParts.push(this.selectedParts[i]);
 					}
 				}
 				if (affectedParts.length > 0) {
 					ControllerGameGlobals.curRobotID = "";
 					this.redrawRobot = true;
-					this.AddAction(new MultiCollideAction(affectedParts, e.target.selected));
+					this.AddAction(new MultiCollideAction(affectedParts, value));
 				}
 			}
 		}
 
-		public fixateBox(e:Event):void {
+		public fixateBox(value: boolean):void {
 			if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof ShapePart) {
-				(this.selectedParts[0] as ShapePart).isStatic = e.target.selected;
+				(this.selectedParts[0] as ShapePart).isStatic = valueed;
 				ControllerGameGlobals.curRobotID = "";
 				this.redrawRobot = true;
-				this.AddAction(new ShapeCheckboxAction(this.selectedParts[0], ShapeCheckboxAction.FIXATE_TYPE, e.target.selected));
+				this.AddAction(new ShapeCheckboxAction(this.selectedParts[0], ShapeCheckboxAction.FIXATE_TYPE, value));
 			} else if (this.selectedParts.length > 1) {
 				var affectedParts:Array<any> = new Array();
 				for (var i:number = 0; i < this.selectedParts.length; i++) {
-					if (this.selectedParts[i] instanceof ShapePart && this.selectedParts[i].isStatic != e.target.selected) {
-						this.selectedParts[i].isStatic = e.target.selected;
+					if (this.selectedParts[i] instanceof ShapePart && this.selectedParts[i].isStatic != value) {
+						this.selectedParts[i].isStatic = value;
 						affectedParts.push(this.selectedParts[i]);
 					}
 				}
 				if (affectedParts.length > 0) {
 					ControllerGameGlobals.curRobotID = "";
 					this.redrawRobot = true;
-					this.AddAction(new MultiFixateAction(affectedParts, e.target.selected));
+					this.AddAction(new MultiFixateAction(affectedParts, value));
 				}
 			}
 		}
 
-		public outlineBox(e:Event):void {
+		public outlineBox(value: boolean):void {
 			if (this.selectedParts.length == 1 && (this.selectedParts[0] instanceof ShapePart || this.selectedParts[0] instanceof PrismaticJoint)) {
-				this.selectedParts[0].outline = e.target.selected;
+				this.selectedParts[0].outline = value;
 				ControllerGameGlobals.curRobotID = "";
 				this.redrawRobot = true;
-				this.AddAction(new ShapeCheckboxAction(this.selectedParts[0], ShapeCheckboxAction.OUTLINE_TYPE, e.target.selected));
+				this.AddAction(new ShapeCheckboxAction(this.selectedParts[0], ShapeCheckboxAction.OUTLINE_TYPE, value));
 			} else if (this.selectedParts.length > 1) {
 				var affectedParts:Array<any> = new Array();
 				for (var i:number = 0; i < this.selectedParts.length; i++) {
-					if ((this.selectedParts[i] instanceof ShapePart || this.selectedParts[i] instanceof PrismaticJoint) && this.selectedParts[i].outline != e.target.selected) {
-						this.selectedParts[i].outline = e.target.selected;
+					if ((this.selectedParts[i] instanceof ShapePart || this.selectedParts[i] instanceof PrismaticJoint) && this.selectedParts[i].outline != value) {
+						this.selectedParts[i].outline = value;
 						affectedParts.push(this.selectedParts[i]);
 					}
 				}
 				if (affectedParts.length > 0) {
 					ControllerGameGlobals.curRobotID = "";
 					this.redrawRobot = true;
-					this.AddAction(new MultiOutlineAction(affectedParts, e.target.selected));
+					this.AddAction(new MultiOutlineAction(affectedParts, value));
 				}
 			}
 		}
 
-		public terrainBox(e:Event):void {
+		public terrainBox(value: boolean):void {
 			if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof ShapePart) {
-				this.selectedParts[0].terrain = e.target.selected;
+				this.selectedParts[0].terrain = value;
 				ControllerGameGlobals.curRobotID = "";
 				this.redrawRobot = true;
-				this.AddAction(new ShapeCheckboxAction(this.selectedParts[0], ShapeCheckboxAction.TERRAIN_TYPE, e.target.selected));
+				this.AddAction(new ShapeCheckboxAction(this.selectedParts[0], ShapeCheckboxAction.TERRAIN_TYPE, value));
 			} else if (this.selectedParts.length > 1) {
 				var affectedParts:Array<any> = new Array();
 				for (var i:number = 0; i < this.selectedParts.length; i++) {
-					if ((this.selectedParts[i] instanceof ShapePart) && this.selectedParts[i].terrain != e.target.selected) {
-						this.selectedParts[i].terrain = e.target.selected;
+					if ((this.selectedParts[i] instanceof ShapePart) && this.selectedParts[i].terrain != value) {
+						this.selectedParts[i].terrain = value;
 						affectedParts.push(this.selectedParts[i]);
 					}
 				}
 				if (affectedParts.length > 0) {
 					ControllerGameGlobals.curRobotID = "";
 					this.redrawRobot = true;
-					this.AddAction(new MultiTerrainAction(affectedParts, e.target.selected));
+					this.AddAction(new MultiTerrainAction(affectedParts, value));
 				}
 			}
 		}
 
-		public undragableBox(e:Event):void {
+		public undragableBox(value: boolean):void {
 			if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof ShapePart) {
-				this.selectedParts[0].undragable = e.target.selected;
+				this.selectedParts[0].undragable = value;
 				ControllerGameGlobals.curRobotID = "";
-				this.AddAction(new ShapeCheckboxAction(this.selectedParts[0], ShapeCheckboxAction.UNDRAGABLE_TYPE, e.target.selected));
+				this.AddAction(new ShapeCheckboxAction(this.selectedParts[0], ShapeCheckboxAction.UNDRAGABLE_TYPE, value));
 			} else if (this.selectedParts.length > 1) {
 				var affectedParts:Array<any> = new Array();
 				for (var i:number = 0; i < this.selectedParts.length; i++) {
-					if ((this.selectedParts[i] instanceof ShapePart) && this.selectedParts[i].undragable != e.target.selected) {
-						this.selectedParts[i].undragable = e.target.selected;
+					if ((this.selectedParts[i] instanceof ShapePart) && this.selectedParts[i].undragable != value) {
+						this.selectedParts[i].undragable = value;
 						affectedParts.push(this.selectedParts[i]);
 					}
 				}
 				if (affectedParts.length > 0) {
 					ControllerGameGlobals.curRobotID = "";
 					this.redrawRobot = true;
-					this.AddAction(new MultiUndragableAction(affectedParts, e.target.selected));
+					this.AddAction(new MultiUndragableAction(affectedParts, value));
 				}
 			}
 		}
 
-		public frontButton(e:MouseEvent):void {
+		public frontButton():void {
 			if (this.simStarted) return;
 			if (this.selectedParts.length == 1 && (this.selectedParts[0] instanceof ShapePart || this.selectedParts[0] instanceof PrismaticJoint)) {
 				var oldIndex:number = -1;
@@ -3436,7 +3442,7 @@ export class ControllerGame extends Controller {
 			this.redrawRobot = true;
 		}
 
-		public backButton(e:MouseEvent):void {
+		public backButton():void {
 			if (this.simStarted) return;
 			if (this.selectedParts.length == 1 && (this.selectedParts[0] instanceof ShapePart || this.selectedParts[0] instanceof PrismaticJoint)) {
 				var oldIndex:number = -1;
@@ -3467,26 +3473,26 @@ export class ControllerGame extends Controller {
 			this.redrawRobot = true;
 		}
 
-		public scaleWithZoomBox(e:Event):void {
+		public scaleWithZoomBox():void {
 			if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof TextPart) {
-				(this.selectedParts[0] as TextPart).scaleWithZoom = e.target.selected;
+				(this.selectedParts[0] as TextPart).scaleWithZoom = value;
 				ControllerGameGlobals.curRobotID = "";
-				this.AddAction(new TextCheckboxAction(this.selectedParts[0], TextCheckboxAction.SCALE_TYPE, e.target.selected));
+				this.AddAction(new TextCheckboxAction(this.selectedParts[0], TextCheckboxAction.SCALE_TYPE, value));
 			}
 		}
 
-		public alwaysVisibleBox(e:Event):void {
+		public alwaysVisibleBox():void {
 			if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof TextPart) {
-				(this.selectedParts[0] as TextPart).alwaysVisible = e.target.selected;
+				(this.selectedParts[0] as TextPart).alwaysVisible = value;
 				ControllerGameGlobals.curRobotID = "";
-				this.m_sidePanel.EnableTextStuff(!e.target.selected);
-				this.AddAction(new TextCheckboxAction(this.selectedParts[0], TextCheckboxAction.DISPLAY_TYPE, e.target.selected));
+				this.m_sidePanel.EnableTextStuff(!value);
+				this.AddAction(new TextCheckboxAction(this.selectedParts[0], TextCheckboxAction.DISPLAY_TYPE, value));
 			}
 		}
 
 		public textKeyBox(e:KeyboardEvent):void {
 			if (e.currentTarget.enabled) {
-				var str:String;
+				var str:string;
 				if (this.selectedParts[0] instanceof TextPart) {
 					var oldKey:number = (this.selectedParts[0] as TextPart).displayKey;
 					(this.selectedParts[0] as TextPart).displayKey = e.keyCode;
@@ -3500,7 +3506,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public textEntered(e:Event):void {
+		public textEntered():void {
 			if (this.selectedParts[0] instanceof ShapePart) {
 				this.lastSelectedShape = this.selectedParts[0];
 			} else if (this.selectedParts[0] instanceof JointPart) {
@@ -3567,7 +3573,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public textTextStart(e:Event):void {
+		public textTextStart():void {
 			if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof TextPart) {
 				this.oldText = this.selectedParts[0].text;
 			}
@@ -3582,13 +3588,13 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public textTextFinish(e:Event):void {
+		public textTextFinish():void {
 			if (this.lastSelectedText instanceof TextPart) {
 				this.AddAction(new EnterTextAction(this.lastSelectedText, this.oldText, this.lastSelectedText.text));
 			}
 		}
 
-		public sizeText(e:Event):void {
+		public sizeText(e: Event):void {
 			if (this.lastSelectedText instanceof TextPart) {
 				var oldSize:number = this.lastSelectedText.size;
 				this.lastSelectedText.size = parseInt(e.target.text);
@@ -3644,7 +3650,7 @@ export class ControllerGame extends Controller {
 
 		public controlKeyText1(e:KeyboardEvent):void {
 			if (e.currentTarget.enabled) {
-				var str:String;
+				var str:string;
 				var oldKey:number;
 				if (this.selectedParts[0] instanceof RevoluteJoint) {
 					oldKey = (this.selectedParts[0] as RevoluteJoint).motorCWKey;
@@ -3665,7 +3671,7 @@ export class ControllerGame extends Controller {
 
 		public controlKeyText2(e:KeyboardEvent):void {
 			if (e.currentTarget.enabled) {
-				var str:String;
+				var str:string;
 				var oldKey:number;
 				if (this.selectedParts[0] instanceof RevoluteJoint) {
 					oldKey = (this.selectedParts[0] as RevoluteJoint).motorCCWKey;
@@ -3686,7 +3692,7 @@ export class ControllerGame extends Controller {
 
 		public thrustKeyText(e:KeyboardEvent):void {
 			if (e.currentTarget.enabled) {
-				var str:String;
+				var str:string;
 				var oldKey:number;
 				if (this.selectedParts[0] instanceof Thrusters) {
 					oldKey = (this.selectedParts[0] as Thrusters).thrustKey;
@@ -3703,7 +3709,7 @@ export class ControllerGame extends Controller {
 
 		public fireKeyText(e:KeyboardEvent):void {
 			if (e.currentTarget.enabled) {
-				var str:String;
+				var str:string;
 				var oldKey:number;
 				if (this.selectedParts[0] instanceof Cannon) {
 					oldKey = (this.selectedParts[0] as Cannon).fireKey;
@@ -3718,109 +3724,109 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public autoBox1(e:MouseEvent):void  {
+		public autoBox1(value: boolean):void  {
 			if (this.selectedParts[0] instanceof RevoluteJoint) {
-				var sideEffect:boolean = (e.target.selected && (this.selectedParts[0] as RevoluteJoint).autoCCW);
-				(this.selectedParts[0] as RevoluteJoint).autoCW = e.target.selected;
-				if (e.target.selected) {
+				var sideEffect:boolean = (value && (this.selectedParts[0] as RevoluteJoint).autoCCW);
+				(this.selectedParts[0] as RevoluteJoint).autoCW = value;
+				if (value) {
 					(this.selectedParts[0] as RevoluteJoint).autoCCW = false;
 					this.m_sidePanel.deselectBox2();
 				}
-				this.AddAction(new JointCheckboxAction(this.selectedParts[0], JointCheckboxAction.AUTO_CW_TYPE, e.target.selected, sideEffect));
+				this.AddAction(new JointCheckboxAction(this.selectedParts[0], JointCheckboxAction.AUTO_CW_TYPE, value, sideEffect));
 			} else if (this.selectedParts[0] instanceof PrismaticJoint) {
-				(this.selectedParts[0] as PrismaticJoint).autoOscillate = e.target.selected;
-				this.AddAction(new JointCheckboxAction(this.selectedParts[0], JointCheckboxAction.AUTO_OSCILLATE_TYPE, e.target.selected));
+				(this.selectedParts[0] as PrismaticJoint).autoOscillate = value;
+				this.AddAction(new JointCheckboxAction(this.selectedParts[0], JointCheckboxAction.AUTO_OSCILLATE_TYPE, value));
 			} else if (this.selectedParts[0] instanceof Thrusters) {
-				(this.selectedParts[0] as Thrusters).autoOn = e.target.selected;
-				this.AddAction(new JointCheckboxAction(this.selectedParts[0], JointCheckboxAction.AUTO_ON_TYPE, e.target.selected));
+				(this.selectedParts[0] as Thrusters).autoOn = value;
+				this.AddAction(new JointCheckboxAction(this.selectedParts[0], JointCheckboxAction.AUTO_ON_TYPE, value));
 			}
 			ControllerGameGlobals.curRobotID = "";
 		}
 
-		public autoBox2(e:MouseEvent):void  {
+		public autoBox2(value: boolean):void  {
 			if (this.selectedParts[0] instanceof RevoluteJoint) {
-				var sideEffect:boolean = (e.target.selected && (this.selectedParts[0] as RevoluteJoint).autoCW);
-				(this.selectedParts[0] as RevoluteJoint).autoCCW = e.target.selected;
-				if (e.target.selected) {
+				var sideEffect:boolean = (value && (this.selectedParts[0] as RevoluteJoint).autoCW);
+				(this.selectedParts[0] as RevoluteJoint).autoCCW = value;
+				if (value) {
 					(this.selectedParts[0] as RevoluteJoint).autoCW = false;
 					this.m_sidePanel.deselectBox1();
 				}
-				this.AddAction(new JointCheckboxAction(this.selectedParts[0], JointCheckboxAction.AUTO_CCW_TYPE, e.target.selected, sideEffect));
+				this.AddAction(new JointCheckboxAction(this.selectedParts[0], JointCheckboxAction.AUTO_CCW_TYPE, value, sideEffect));
 			}
 			ControllerGameGlobals.curRobotID = "";
 		}
 
-		public motorBox(e:MouseEvent):void {
+		public motorBox(value: boolean):void {
 			if (this.selectedParts[0] instanceof RevoluteJoint) {
-				(this.selectedParts[0] as RevoluteJoint).enableMotor = e.target.selected;
+				(this.selectedParts[0] as RevoluteJoint).enableMotor = value;
 			} else if (this.selectedParts[0] instanceof PrismaticJoint) {
-				(this.selectedParts[0] as PrismaticJoint).enablePiston = e.target.selected;
+				(this.selectedParts[0] as PrismaticJoint).enablePiston = value;
 			}
-			this.m_sidePanel.EnableMotorStuff(e.target.selected);
+			this.m_sidePanel.EnableMotorStuff(value);
 			ControllerGameGlobals.curRobotID = "";
-			this.AddAction(new JointCheckboxAction(this.selectedParts[0], JointCheckboxAction.ENABLE_TYPE, e.target.selected));
+			this.AddAction(new JointCheckboxAction(this.selectedParts[0], JointCheckboxAction.ENABLE_TYPE, value));
 		}
 
-		public rigidBox(e:MouseEvent):void {
+		public rigidBox(value: boolean):void {
 			if (this.selectedParts[0] instanceof RevoluteJoint) {
-				(this.selectedParts[0] as RevoluteJoint).isStiff = !e.target.selected;
+				(this.selectedParts[0] as RevoluteJoint).isStiff = !value;
 			} else if (this.selectedParts[0] instanceof PrismaticJoint) {
-				(this.selectedParts[0] as PrismaticJoint).isStiff = !e.target.selected;
+				(this.selectedParts[0] as PrismaticJoint).isStiff = !value;
 			}
 			ControllerGameGlobals.curRobotID = "";
-			this.AddAction(new JointCheckboxAction(this.selectedParts[0], JointCheckboxAction.RIGID_TYPE, e.target.selected));
+			this.AddAction(new JointCheckboxAction(this.selectedParts[0], JointCheckboxAction.RIGID_TYPE, value));
 		}
 
-		public strengthSlider(e:Event):void {
+		public strengthSlider(value: number):void {
 			var oldStrength:number;
 			if (this.selectedParts[0] instanceof RevoluteJoint) {
 				oldStrength = (this.selectedParts[0] as RevoluteJoint).motorStrength;
-				(this.selectedParts[0] as RevoluteJoint).motorStrength = e.target.value;
-				if (oldStrength != e.target.value) this.AddAction(new ChangeSliderAction(this.selectedParts[0], ChangeSliderAction.STRENGTH_TYPE, e.target.value - oldStrength));
+				(this.selectedParts[0] as RevoluteJoint).motorStrength = value;
+				if (oldStrength != value) this.AddAction(new ChangeSliderAction(this.selectedParts[0], ChangeSliderAction.STRENGTH_TYPE, value - oldStrength));
 			} else if (this.selectedParts[0] instanceof PrismaticJoint) {
 				oldStrength = (this.selectedParts[0] as PrismaticJoint).pistonStrength;
-				(this.selectedParts[0] as PrismaticJoint).pistonStrength = e.target.value;
-				if (oldStrength != e.target.value) this.AddAction(new ChangeSliderAction(this.selectedParts[0], ChangeSliderAction.STRENGTH_TYPE, e.target.value - oldStrength));
+				(this.selectedParts[0] as PrismaticJoint).pistonStrength = value;
+				if (oldStrength != value) this.AddAction(new ChangeSliderAction(this.selectedParts[0], ChangeSliderAction.STRENGTH_TYPE, value - oldStrength));
 			}
 			ControllerGameGlobals.curRobotID = "";
-			this.m_sidePanel.SetStrength(e.target.value);
+			this.m_sidePanel.SetStrength(value);
 		}
 
-		public speedSlider(e:Event):void {
+		public speedSlider(value: number):void {
 			var oldSpeed:number;
 			if (this.selectedParts[0] instanceof RevoluteJoint) {
 				oldSpeed = (this.selectedParts[0] as RevoluteJoint).motorSpeed;
-				(this.selectedParts[0] as RevoluteJoint).motorSpeed = e.target.value;
-				if (oldSpeed != e.target.value) this.AddAction(new ChangeSliderAction(this.selectedParts[0], ChangeSliderAction.SPEED_TYPE, e.target.value - oldSpeed));
+				(this.selectedParts[0] as RevoluteJoint).motorSpeed = value;
+				if (oldSpeed != value) this.AddAction(new ChangeSliderAction(this.selectedParts[0], ChangeSliderAction.SPEED_TYPE, value - oldSpeed));
 			} else if (this.selectedParts[0] instanceof PrismaticJoint) {
 				oldSpeed = (this.selectedParts[0] as PrismaticJoint).pistonSpeed;
-				(this.selectedParts[0] as PrismaticJoint).pistonSpeed = e.target.value;
-				if (oldSpeed != e.target.value) this.AddAction(new ChangeSliderAction(this.selectedParts[0], ChangeSliderAction.SPEED_TYPE, e.target.value - oldSpeed));
+				(this.selectedParts[0] as PrismaticJoint).pistonSpeed = value;
+				if (oldSpeed != value) this.AddAction(new ChangeSliderAction(this.selectedParts[0], ChangeSliderAction.SPEED_TYPE, this.m_checkBoxRoll - oldSpeed));
 			}
 			ControllerGameGlobals.curRobotID = "";
-			this.m_sidePanel.SetSpeed(e.target.value);
+			this.m_sidePanel.SetSpeed(value);
 		}
 
-		public thrustSlider(e:Event):void {
+		public thrustSlider(value: number):void {
 			var oldStrength:number;
 			if (this.selectedParts[0] instanceof Thrusters) {
 				oldStrength = (this.selectedParts[0] as Thrusters).strength;
-				(this.selectedParts[0] as Thrusters).strength = e.target.value;
-				if (oldStrength != e.target.value) this.AddAction(new ChangeSliderAction(this.selectedParts[0], ChangeSliderAction.STRENGTH_TYPE, e.target.value - oldStrength));
+				(this.selectedParts[0] as Thrusters).strength = value;
+				if (oldStrength != value) this.AddAction(new ChangeSliderAction(this.selectedParts[0], ChangeSliderAction.STRENGTH_TYPE, value - oldStrength));
 			}
 			ControllerGameGlobals.curRobotID = "";
-			this.m_sidePanel.SetThrust(e.target.value);
+			this.m_sidePanel.SetThrust(value);
 		}
 
-		public cannonSlider(e:Event):void {
+		public cannonSlider(value: number):void {
 			var oldStrength:number;
 			if (this.selectedParts[0] instanceof Cannon) {
 				oldStrength = (this.selectedParts[0] as Cannon).strength;
-				(this.selectedParts[0] as Cannon).strength = e.target.value;
-				if (oldStrength != e.target.value) this.AddAction(new ChangeSliderAction(this.selectedParts[0], ChangeSliderAction.STRENGTH_TYPE, e.target.value - oldStrength));
+				(this.selectedParts[0] as Cannon).strength = value;
+				if (oldStrength != value) this.AddAction(new ChangeSliderAction(this.selectedParts[0], ChangeSliderAction.STRENGTH_TYPE, value - oldStrength));
 			}
 			ControllerGameGlobals.curRobotID = "";
-			this.m_sidePanel.SetCannon(e.target.value);
+			this.m_sidePanel.SetCannon(value);
 		}
 
 		public zoomInButton(e:MouseEvent):void {
@@ -4445,7 +4451,7 @@ export class ControllerGame extends Controller {
 
 		public finishSaving(e:Event):void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_SAVE_ROBOT) return;
-			var robotID:String = Database.FinishSavingRobot(e);
+			var robotID:string = Database.FinishSavingRobot(e);
 			if (robotID != "") {
 				ControllerGameGlobals.curRobotID = robotID;
 				ControllerGameGlobals.ratedCurRobot = true;
@@ -4572,7 +4578,7 @@ export class ControllerGame extends Controller {
 
 		public finishDeleting(e:Event):void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_DELETE_ROBOT) return;
-			var id:String = Database.FinishDeletingRobot(e);
+			var id:string = Database.FinishDeletingRobot(e);
 			if (id != "") {
 				if (ControllerGameGlobals.curRobotID == id) ControllerGameGlobals.curRobotID = "";
 				this.m_progressDialog.SetMessage("Delete successful!");
@@ -4586,7 +4592,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishExporting(exportStr:String, robotStr:String):void {
+		public finishExporting(exportStr:string, robotStr:string):void {
 			if (this.m_chooserWindow) this.m_chooserWindow.visible = false;
 			if (this.m_exportDialog) this.removeChild(this.m_exportDialog);
 			this.m_exportDialog = new ExportWindow(this, exportStr, robotStr);
@@ -4706,19 +4712,19 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public LoadReplayNow(replayID:String):void {
+		public LoadReplayNow(replayID:string):void {
 			Database.LoadReplayByID(replayID, this.finishLoadingReplay);
 			this.ShowDialog("Loading Replay...");
 			this.m_fader.visible = true;
 		}
 
-		public LoadRobotNow(robotID:String):void {
+		public LoadRobotNow(robotID:string):void {
 			Database.LoadRobotByID(robotID, this.finishLoading);
 			this.ShowDialog("Loading Robot...");
 			this.m_fader.visible = true;
 		}
 
-		public LoadChallengeNow(challengeID:String):void {
+		public LoadChallengeNow(challengeID:string):void {
 			Database.LoadChallengeByID(challengeID, this.finishLoadingChallenge);
 			this.ShowDialog("Loading Challenge...");
 			this.m_fader.visible = true;
@@ -4765,7 +4771,7 @@ export class ControllerGame extends Controller {
 
 		public finishAddingUser(e:Event):void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_ADD_USER) return;
-			var retVal:String = Database.FinishAddingUser(e);
+			var retVal:string = Database.FinishAddingUser(e);
 			if (retVal != "") {
 				this.m_progressDialog.SetMessage("Success!");
 				this.m_progressDialog.HideInXSeconds(1);
@@ -4783,7 +4789,7 @@ export class ControllerGame extends Controller {
 
 		public finishLoggingIn(e:Event):void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_LOGIN) return;
-			var retVal:String = Database.FinishLoggingIn(e);
+			var retVal:string = Database.FinishLoggingIn(e);
 			if (retVal != "") {
 				this.m_progressDialog.SetMessage("Success!");
 				this.m_progressDialog.HideInXSeconds(1);
@@ -4803,7 +4809,7 @@ export class ControllerGame extends Controller {
 
 		public finishSavingReplay(e:Event):void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_SAVE_REPLAY) return;
-			var robotID:String = Database.FinishSavingReplay(e);
+			var robotID:string = Database.FinishSavingReplay(e);
 			if (robotID != "") {
 				ControllerGameGlobals.curRobotID = robotID;
 				ControllerGameGlobals.ratedCurRobot = true;
@@ -4905,7 +4911,7 @@ export class ControllerGame extends Controller {
 
 		public finishSavingChallenge(e:Event):void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_SAVE_CHALLENGE) return;
-			var challengeID:String = Database.FinishSavingChallenge(e);
+			var challengeID:string = Database.FinishSavingChallenge(e);
 			if (challengeID != "") {
 				ControllerGameGlobals.curChallengeID = challengeID;
 				ControllerGameGlobals.ratedCurChallenge = true;
@@ -5044,7 +5050,7 @@ export class ControllerGame extends Controller {
 			this.addChild(this.m_importDialog);
 		}
 
-		public ShowConfirmDialog(msg:String, type:number):void {
+		public ShowConfirmDialog(msg:string, type:number):void {
 			if (this.m_progressDialog) this.removeChild(this.m_progressDialog);
 			this.m_progressDialog = new DialogWindow(this, msg, true, false, (type == 8));
 			this.addChild(this.m_progressDialog);
@@ -5060,19 +5066,19 @@ export class ControllerGame extends Controller {
 			this.addChild(this.m_progressDialog);
 		}
 
-		public ShowDialog(msg:String):void {
+		public ShowDialog(msg:string):void {
 			if (this.m_progressDialog) this.removeChild(this.m_progressDialog);
 			this.m_progressDialog = new DialogWindow(this, msg);
 			this.addChild(this.m_progressDialog);
 		}
 
-		public ShowDialog2(msg:String):void {
+		public ShowDialog2(msg:string):void {
 			if (this.m_progressDialog) this.removeChild(this.m_progressDialog);
 			this.m_progressDialog = new DialogWindow(this, msg, true, true);
 			this.addChild(this.m_progressDialog);
 		}
 
-		public ShowDialog3(msg:String):void {
+		public ShowDialog3(msg:string):void {
 			if (this.m_progressDialog) this.removeChild(this.m_progressDialog);
 			this.m_progressDialog = new DialogWindow(this, msg, true);
 			this.addChild(this.m_progressDialog);
@@ -5088,7 +5094,7 @@ export class ControllerGame extends Controller {
 			this.m_tutorialDialog.visible = false;
 		}
 
-		public ShowLinkDialog(msg1:String, msg2:String, isEmbedReplay:boolean = false, id:String = "", isEmbedChallenge:boolean = false):void {
+		public ShowLinkDialog(msg1:string, msg2:string, isEmbedReplay:boolean = false, id:string = "", isEmbedChallenge:boolean = false):void {
 			if (this.m_linkDialog) this.removeChild(this.m_linkDialog);
 			this.m_linkDialog = new LinkWindow(this, msg1, msg2, isEmbedReplay, id, isEmbedChallenge);
 			this.addChild(this.m_linkDialog);

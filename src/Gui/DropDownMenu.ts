@@ -21,7 +21,7 @@ export class DropDownMenu extends Graphics
 	private aboutText:Text;
 	private extrasText:Text;
 
-	private m_currentMenu:Graphics;
+	private m_currentMenu:Graphics|null;
 
 	constructor(contr:ControllerGame)
 	{
@@ -124,7 +124,7 @@ export class DropDownMenu extends Graphics
 
 	public MouseClick(up:boolean, x:number, y:number):void {
 		if (y > 20 && (!this.m_currentMenu || !this.MouseOverMenu(x, y))) {
-			this.HideAll(new MouseEvent(""));
+			this.HideAll();
 		}
 	}
 
@@ -361,10 +361,11 @@ export class DropDownMenu extends Graphics
 	}
 
 	public MouseOverMenu(x:number, y:number):boolean {
+		if (!this.m_currentMenu) return false
 		return (this.m_currentMenu && x >= this.m_currentMenu.x && x < this.m_currentMenu.x + this.m_currentMenu.width && y >= this.m_currentMenu.y && y < this.m_currentMenu.y + this.m_currentMenu.height);
 	}
 
-	private file(e:MouseEvent, callback:boolean = true):void {
+	private file(e:any, callback:boolean = true):void {
 		if (this.mouseDown && callback) {
 			this.noFile(e);
 			this.mouseDown = false;
@@ -387,13 +388,13 @@ export class DropDownMenu extends Graphics
 		}
 	}
 
-	private maybeFile(e:MouseEvent):void {
+	private maybeFile(e:any):void {
 		if (this.mouseDown) {
 			this.file(e, false);
 		}
 	}
 
-	private noFile(e:MouseEvent):void {
+	private noFile(e:any):void {
 		if (e.target === this || e.target === this.m_currentMenu) return
 		if (this.m_currentMenu && !this.MouseOverMenu(e.data.global.x, e.data.global.y)) {
 			this.beginTextureFill({ texture: this.menuBitmap });
@@ -403,7 +404,7 @@ export class DropDownMenu extends Graphics
 		}
 	}
 
-	private edit(e:MouseEvent, callback:boolean = true):void {
+	private edit(e:any, callback:boolean = true):void {
 		if (this.mouseDown && callback) {
 			this.noEdit(e);
 			this.mouseDown = false;
@@ -426,13 +427,13 @@ export class DropDownMenu extends Graphics
 		}
 	}
 
-	private maybeEdit(e:MouseEvent):void {
+	private maybeEdit(e:any):void {
 		if (this.mouseDown) {
 			this.edit(e, false);
 		}
 	}
 
-	private noEdit(e:MouseEvent):void {
+	private noEdit(e:any):void {
 		if (e.target === this || e.target === this.m_currentMenu) return
 		if (this.m_currentMenu && !this.MouseOverMenu(e.stageX, e.stageY)) {
 			this.beginTextureFill({ texture: this.menuBitmap});
@@ -442,7 +443,7 @@ export class DropDownMenu extends Graphics
 		}
 	}
 
-	private view(e:MouseEvent, callback:boolean = true):void {
+	private view(e:any, callback:boolean = true):void {
 		if (this.mouseDown && callback) {
 			this.noView(e);
 			this.mouseDown = false;
@@ -465,13 +466,13 @@ export class DropDownMenu extends Graphics
 		}
 	}
 
-	private maybeView(e:MouseEvent):void {
+	private maybeView(e:any):void {
 		if (this.mouseDown) {
 			this.view(e, false);
 		}
 	}
 
-	private noView(e:MouseEvent):void {
+	private noView(e:any):void {
 		if (e.target === this || e.target === this.m_currentMenu) return
 		if (this.m_currentMenu && !this.MouseOverMenu(e.stageX, e.stageY)) {
 			this.beginTextureFill({ texture: this.menuBitmap});
@@ -481,7 +482,7 @@ export class DropDownMenu extends Graphics
 		}
 	}
 
-	private comment(e:MouseEvent, callback:boolean = true):void {
+	private comment(e:any, callback:boolean = true):void {
 		if (this.mouseDown && callback) {
 			this.noComment(e);
 			this.mouseDown = false;
@@ -504,13 +505,13 @@ export class DropDownMenu extends Graphics
 		}
 	}
 
-	private maybeComment(e:MouseEvent):void {
+	private maybeComment(e:any):void {
 		if (this.mouseDown) {
 			this.comment(e, false);
 		}
 	}
 
-	private noComment(e:MouseEvent):void {
+	private noComment(e:any):void {
 		if (e.target === this || e.target === this.m_currentMenu) return
 		if (this.m_currentMenu && !this.MouseOverMenu(e.stageX, e.stageY)) {
 			this.beginTextureFill({ texture: this.menuBitmap});
@@ -520,7 +521,7 @@ export class DropDownMenu extends Graphics
 		}
 	}
 
-	private help(e:MouseEvent, callback:boolean = true):void {
+	private help(e:any, callback:boolean = true):void {
 		if (this.mouseDown && callback) {
 			this.noHelp(e);
 			this.mouseDown = false;
@@ -543,13 +544,13 @@ export class DropDownMenu extends Graphics
 		}
 	}
 
-	private maybeHelp(e:MouseEvent):void {
+	private maybeHelp(e:any):void {
 		if (this.mouseDown) {
 			this.help(e, false);
 		}
 	}
 
-	private noHelp(e:MouseEvent):void {
+	private noHelp(e:any):void {
 		if (e.target === this || e.target === this.m_currentMenu) return
 		if (this.m_currentMenu && !this.MouseOverMenu(e.stageX, e.stageY)) {
 			this.beginTextureFill({ texture: this.menuBitmap});
@@ -559,7 +560,7 @@ export class DropDownMenu extends Graphics
 		}
 	}
 
-	private about(e:MouseEvent, callback:boolean = true):void {
+	private about(e:any, callback:boolean = true):void {
 		if (this.mouseDown && callback) {
 			this.noAbout(e);
 			this.mouseDown = false;
@@ -582,13 +583,13 @@ export class DropDownMenu extends Graphics
 		}
 	}
 
-	private maybeAbout(e:MouseEvent):void {
+	private maybeAbout(e:any):void {
 		if (this.mouseDown) {
 			this.about(e, false);
 		}
 	}
 
-	private noAbout(e:MouseEvent):void {
+	private noAbout(e:any):void {
 		if (e.target === this || e.target === this.m_currentMenu) return
 		if (this.m_currentMenu && !this.MouseOverMenu(e.stageX, e.stageY)) {
 			this.beginTextureFill({ texture: this.menuBitmap});
@@ -598,7 +599,7 @@ export class DropDownMenu extends Graphics
 		}
 	}
 
-	private extras(e:MouseEvent, callback:boolean = true):void {
+	private extras(e:any, callback:boolean = true):void {
 		if (this.mouseDown && callback) {
 			this.noExtras(e);
 			this.mouseDown = false;
@@ -621,13 +622,13 @@ export class DropDownMenu extends Graphics
 		}
 	}
 
-	private maybeExtras(e:MouseEvent):void {
+	private maybeExtras(e:any):void {
 		if (this.mouseDown) {
 			this.extras(e, false);
 		}
 	}
 
-	private noExtras(e:MouseEvent):void {
+	private noExtras(e:any):void {
 		if (e.target === this || e.target === this.m_currentMenu) return
 		if (this.m_currentMenu && !this.MouseOverMenu(e.stageX, e.stageY)) {
 			this.beginTextureFill({ texture: this.menuBitmap});
@@ -637,7 +638,7 @@ export class DropDownMenu extends Graphics
 		}
 	}
 
-	public HideAll(e:MouseEvent):void {
+	public HideAll():void {
 		if (this.m_currentMenu) {
 			this.removeChild(this.m_currentMenu);
 			this.m_currentMenu = null;
@@ -648,42 +649,42 @@ export class DropDownMenu extends Graphics
 	}
 
 	private MakeDummyMenu():void {
-		this.m_currentMenu = new Sprite();
+		this.m_currentMenu = new Graphics();
 		this.addChild(this.m_currentMenu);
 	}
 
-	private pasteButton(e:MouseEvent):void {
+	private pasteButton(e:any):void {
 		this.cont.ignoreAClick = true;
 		this.cont.pasteButton(e);
 	}
 
-	private mirrorHorizontalButton(e:MouseEvent):void {
+	private mirrorHorizontalButton(e:any):void {
 		this.cont.ignoreAClick = true;
 		this.cont.mirrorHorizontal(e);
 	}
 
-	private mirrorVerticalButton(e:MouseEvent):void {
+	private mirrorVerticalButton(e:any):void {
 		this.cont.ignoreAClick = true;
 		this.cont.mirrorVertical(e);
 	}
 
-	private soundButton(e:MouseEvent):void {
+	private soundButton(e:any):void {
 		Main.enableSound = !Main.enableSound;
 	}
 
-	private credits(e:Event):void {
+	private credits(e:any):void {
 		Main.BrowserRedirect("http://www.incredifriends.com/", true);
 	}
 
-	private grubby(e:Event):void {
+	private grubby(e:any):void {
 		Main.BrowserRedirect("http://www.grubbygames.com", true);
 	}
 
-	private helpButton(e:Event):void {
+	private helpButton(e:any):void {
 		Main.BrowserRedirect("http://www.incredifriends.com/", true);
 	}
 
-	private forumsButton(e:Event):void {
+	private forumsButton(e:any):void {
 		Main.BrowserRedirect("http://www.incredifriends.com/", true);
 	}
 }

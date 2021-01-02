@@ -1,5 +1,5 @@
-import { b2Vec2 } from "@box2d/core";
 import { Container, Graphics, Sprite } from "pixi.js";
+import { b2Vec2 } from "../../Box2D";
 import { Util } from "../../General/Util";
 import { Controller } from "../Controller";
 import { ControllerMainMenu } from "../ControllerMainMenu";

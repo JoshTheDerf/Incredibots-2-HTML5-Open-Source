@@ -1,5 +1,4 @@
-import { b2Color } from "@box2d/core";
-import { Text, Sprite, TextStyle, Graphics, utils } from "pixi.js";
+import { Text, TextStyle, Graphics, utils } from "pixi.js";
 import { ControllerGame } from "../Game/ControllerGame";
 import { Main } from "../Main";
 import { Part } from "../Parts/Part";

@@ -1,4 +1,4 @@
-import { b2Vec2, b2World, b2Body, b2PrismaticJointDef, b2PrismaticJoint } from "@box2d/core";
+import { b2Vec2, b2World, b2Body, b2PrismaticJointDef, b2PrismaticJoint } from "../Box2D";
 import { ControllerGame } from "../Game/ControllerGame";
 import { Util } from "../General/Util";
 import { JointPart } from "./JointPart";

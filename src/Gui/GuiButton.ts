@@ -116,7 +116,6 @@ export class GuiButton extends Container
 
 	public SetState(down:boolean):void {
 		if (down) {
-			setMouseState("down");
 			if (!this.buttonOffset) {
 				this.x += 2;
 				this.y += 2;
@@ -125,7 +124,6 @@ export class GuiButton extends Container
 			this.depressed = true;
 			this.background.texture = this.downTexture
 		} else {
-			setMouseState("up");
 			if (this.buttonOffset) {
 				this.x -= 2;
 				this.y -= 2;
@@ -136,7 +134,7 @@ export class GuiButton extends Container
 		}
 	}
 
-	private bDown(e:MouseEvent):void {
+	private bDown():void {
 		if (!this.buttonOffset) {
 			this.x += 2;
 			this.y += 2;
@@ -145,7 +143,7 @@ export class GuiButton extends Container
 		this.background.texture = this.downTexture
 	}
 
-	private bUp(e:MouseEvent):void {
+	private bUp():void {
 		if (this.buttonOffset) {
 			this.x -= 2;
 			this.y -= 2;
@@ -154,7 +152,7 @@ export class GuiButton extends Container
 		this.background.texture = this.upTexture
 	}
 
-	private mouseOver(e:MouseEvent):void {
+	private mouseOver():void {
 		if (Main.enableSound && GuiButton.lastRolloverFrame != Math.floor(Date.now() / 150)) {
 			GuiButton.rolloverSound.stop()
 			GuiButton.rolloverSound.volume = 0.2
@@ -164,7 +162,7 @@ export class GuiButton extends Container
 		this.background.texture = this.overTexture
 	}
 
-	private mouseClick(e:MouseEvent):void {
+	private mouseClick():void {
 		if (Main.enableSound) {
 			GuiButton.clickSound.volume = 0.8
 			GuiButton.clickSound.play()

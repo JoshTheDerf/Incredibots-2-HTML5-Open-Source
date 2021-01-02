@@ -1,4 +1,4 @@
-import { b2Contact, b2ContactListener } from "@box2d/core";
+import { b2Contact, b2ContactListener } from "../Box2D";
 import { ControllerGame } from "./ControllerGame";
 
 export class ContactListener extends b2ContactListener

@@ -1,4 +1,4 @@
-import { b2Vec2, b2World, b2Body, b2BodyDef, b2MassData } from "@box2d/core";
+import { b2Vec2, b2World, b2Body, b2PolygonDef, b2BodyDef, b2MassData, b2CircleDef } from "../Box2D";
 import { Util } from "../General/Util";
 import { FixedJoint } from "./FixedJoint";
 import { ShapePart } from "./ShapePart";

@@ -1,4 +1,4 @@
-import { b2AABB } from "@box2d/core";
+import { b2AABB } from "../Box2D";
 import { Database } from "../General/Database";
 import { Main } from "../Main";
 import { TextPart } from "../Parts/TextPart";

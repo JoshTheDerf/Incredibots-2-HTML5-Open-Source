@@ -1,4 +1,4 @@
-import { b2Mat22, b2Vec2 } from "@box2d/core";
+import { b2Mat22, b2Vec2 } from "../Box2D";
 
 export class Util {
 	public static Vector(x:number, y:number):b2Vec2 {

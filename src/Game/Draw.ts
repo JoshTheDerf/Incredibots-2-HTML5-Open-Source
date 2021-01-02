@@ -1,5 +1,6 @@
-import { b2Color, b2World, b2Vec2, b2Body, b2Shape, b2Joint, b2BroadPhase, b2RevoluteJoint, b2CircleShape, b2PolygonShape } from "@box2d/core";
+import { b2DebugDraw, b2Color, b2World, b2Vec2, b2Body, b2Shape, b2Joint, b2BroadPhase, b2XForm, b2CircleShape, b2Math, b2PolygonShape, b2Settings } from "../Box2D";
 import { Util } from "../General/Util";
+import { Main } from "../Main";
 import { Cannon } from "../Parts/Cannon";
 import { Circle } from "../Parts/Circle";
 import { FixedJoint } from "../Parts/FixedJoint";
@@ -14,7 +15,7 @@ import { Triangle } from "../Parts/Triangle";
 import { Challenge } from "./Challenge";
 import { ControllerGameGlobals } from "./Globals/ControllerGameGlobals";
 
-export class Draw
+export class Draw extends b2DebugDraw
 {
 	private static s_jointColor:b2Color = new b2Color(0.4, 0.8, 0.8);
 	private static s_selectedColor:b2Color = new b2Color(0.9, 0.4, 0.4);

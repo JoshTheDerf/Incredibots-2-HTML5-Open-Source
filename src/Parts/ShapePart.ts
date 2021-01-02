@@ -1,4 +1,4 @@
-import { b2Body, b2Shape, b2World, b2Vec2 } from "@box2d/core";
+import { b2Body, b2Shape, b2World, b2Vec2 } from "../Box2D";
 import { ControllerGame } from "../Game/ControllerGame";
 import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals";
 import { Util } from "../General/Util";

@@ -1,4 +1,4 @@
-import { b2World, b2Body, b2RevoluteJointDef, b2Vec2, b2RevoluteJoint } from "@box2d/core";
+import { b2World, b2Body, b2RevoluteJointDef, b2Vec2, b2RevoluteJoint } from "../Box2D";
 import { ControllerGame } from "../Game/ControllerGame";
 import { Util } from "../General/Util";
 import { JointPart } from "./JointPart";

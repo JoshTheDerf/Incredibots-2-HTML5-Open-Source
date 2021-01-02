@@ -1,4 +1,3 @@
-import { b2AABB } from "@box2d/core";
 import { Graphics, Matrix } from "pixi.js";
 import { Rectangle } from "../../Parts/Rectangle";
 import { Circle } from "../../Parts/Circle";
@@ -6,6 +5,7 @@ import { ShapePart } from "../../Parts/ShapePart";
 import { ControllerChallenge } from "../ControllerChallenge";
 import { Gradient } from "../Graphics/Gradient";
 import { WinCondition } from "../WinCondition";
+import { b2AABB } from "../../Box2D";
 
 export class ControllerClimb extends ControllerChallenge
 {

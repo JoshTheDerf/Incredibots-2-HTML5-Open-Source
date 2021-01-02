@@ -1,4 +1,4 @@
-import { Graphics, Text, TextStyle, Texture } from "pixi.js";
+import { Graphics, Sprite, Text, TextStyle, Texture } from "pixi.js";
 import { Resource } from "../Game/Graphics/Resource";
 import { Input } from "../General/Input";
 import { Main } from "../Main";
@@ -9,9 +9,9 @@ export class DropDownMenuItem extends Graphics
 	private m_Text:Text;
 	private m_width:number;
 
-	private m_checkBoxBase:BitmapAsset = null;
-	private m_checkBoxRoll:BitmapAsset = null;
-	private m_checkBoxClick:BitmapAsset = null;
+	private m_checkBoxBase:Sprite = new Sprite();
+	private m_checkBoxRoll:Sprite = new Sprite();
+	private m_checkBoxClick:Sprite = new Sprite();
 
 	constructor(m:DropDownMenu, str:string, w:number, callback:Function, checkBox:boolean = false, checkBoxChecked:boolean = false)
 	{
@@ -28,44 +28,38 @@ export class DropDownMenuItem extends Graphics
 		this.m_Text.style = style;
 		this.addChild(this.m_Text);
 		this.on('mouseup', () => callback())
-		this.on('mouseup', (event: any) => m.HideAll(event))
-		this.on('mouseover', (event: any) => this.highlight(event))
-		this.on('mouseout', (event: any) => this.deHighlight(event))
+		this.on('mouseup', () => m.HideAll())
+		this.on('mouseover', () => this.highlight())
+		this.on('mouseout', () => this.deHighlight())
 
 		if (checkBox) {
 			if (checkBoxChecked) {
-				this.m_checkBoxBase = Resource.cGuiMenuCheckBoxBBase;
-				this.m_checkBoxBase.smoothing = true;
+				this.m_checkBoxBase.texture = Resource.cGuiMenuCheckBoxBBase;
 				this.addChild(this.m_checkBoxBase);
-				this.m_checkBoxRoll = Resource.cGuiMenuCheckBoxBRoll;
-				this.m_checkBoxRoll.smoothing = true;
+				this.m_checkBoxRoll.texture = Resource.cGuiMenuCheckBoxBRoll;
 				this.m_checkBoxRoll.visible = false;
 				this.addChild(this.m_checkBoxRoll);
-				this.m_checkBoxClick = Resource.cGuiMenuCheckBoxBClick;
-				this.m_checkBoxClick.smoothing = true;
+				this.m_checkBoxClick.texture = Resource.cGuiMenuCheckBoxBClick;
 				this.m_checkBoxClick.visible = false;
 				this.addChild(this.m_checkBoxClick);
 			} else {
-				this.m_checkBoxBase = Resource.cGuiMenuCheckBoxABase;
-				this.m_checkBoxBase.smoothing = true;
+				this.m_checkBoxBase.texture = Resource.cGuiMenuCheckBoxABase;
 				this.addChild(this.m_checkBoxBase);
-				this.m_checkBoxRoll = Resource.cGuiMenuCheckBoxARoll;
-				this.m_checkBoxRoll.smoothing = true;
+				this.m_checkBoxRoll.texture = Resource.cGuiMenuCheckBoxARoll;
 				this.m_checkBoxRoll.visible = false;
 				this.addChild(this.m_checkBoxRoll);
-				this.m_checkBoxClick = Resource.cGuiMenuCheckBoxAClick;
-				this.m_checkBoxClick.smoothing = true;
+				this.m_checkBoxClick.texture = Resource.cGuiMenuCheckBoxAClick;
 				this.m_checkBoxClick.visible = false;
 				this.addChild(this.m_checkBoxClick);
 			}
 			this.m_checkBoxBase.x = 3;
 			this.m_checkBoxRoll.x = 3;
 			this.m_checkBoxClick.x = 3;
-			addEventListener(MouseEvent.MOUSE_DOWN, this.click, false, 0, true);
+			this.on('mousedown', () => this.click());
 		}
 	}
 
-	private highlight(e:MouseEvent):void {
+	private highlight():void {
 		this.beginFill(0xFEB584, 1);
 		this.lineStyle(0, 0xFEB584);
 		this.drawRect(1, 1, this.m_width - 2, 18);
@@ -76,7 +70,7 @@ export class DropDownMenuItem extends Graphics
 		}
 	}
 
-	private deHighlight(e:MouseEvent):void {
+	private deHighlight():void {
 		this.beginFill(0xFDF9EA, 1);
 		this.lineStyle(0, 0xFDF9EA);
 		this.drawRect(1, 1, this.m_width - 2, 18);
@@ -87,7 +81,7 @@ export class DropDownMenuItem extends Graphics
 		}
 	}
 
-	private click(e:MouseEvent):void {
+	private click():void {
 		this.m_checkBoxBase.visible = false;
 		this.m_checkBoxRoll.visible = false;
 		this.m_checkBoxClick.visible = true;

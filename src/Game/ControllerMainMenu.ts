@@ -1,5 +1,5 @@
-import { b2AABB, b2Vec2, b2World } from "@box2d/core";
-import { Container, DisplayObject, Graphics, Matrix, Sprite, Text, TextStyle, Texture } from "pixi.js";
+import { Container, DisplayObject, Graphics, Matrix, Sprite, Text, TextStyle } from "pixi.js";
+import { b2World, b2AABB, b2Vec2 } from "../Box2D";
 import { Database } from "../General/Database";
 import { LSOManager } from "../General/LSOManager";
 import { Util } from "../General/Util";
@@ -14,6 +14,7 @@ import { Thrusters } from "../Parts/Thrusters";
 import { Challenge } from "./Challenge";
 import { ContactFilter } from "./ContactFilter";
 import { Controller } from "./Controller";
+import { ControllerChallenge } from "./ControllerChallenge";
 import { ControllerSandbox } from "./ControllerSandbox";
 import { Draw } from "./Draw";
 import { ControllerGameGlobals } from "./Globals/ControllerGameGlobals";

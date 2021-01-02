@@ -1,4 +1,5 @@
-import { b2CircleShape, b2PolygonShape, b2Vec2 } from "@box2d/core";
+import { b2CircleShape, b2ContactPoint, b2PolygonShape, b2Vec2, b2Math } from "../Box2D";
+import { Part } from "../Parts/Part";
 import { ShapePart } from "../Parts/ShapePart";
 
 export class Condition
