@@ -1,5 +1,5 @@
 import { b2Vec2, b2AABB } from "@box2d/core";
-import { Sprite, Matrix, Graphics } from "pixi.js";
+import { Sprite, Matrix, Graphics, Text } from "pixi.js";
 import { Util } from "../General/Util";
 import { Circle } from "../Parts/Circle";
 import { Part } from "../Parts/Part";
@@ -23,6 +23,8 @@ export class ControllerSandbox extends ControllerGame
 	private static rock2BottomColours:Array<any>    = ['#6DBE5D', Util.HexColourString(183, 122, 72), Util.HexColourString(188, 175, 97), Util.HexColourString(153, 162, 166), Util.HexColourString(183, 196, 217), Util.HexColourString(149, 145, 154), Util.HexColourString(175,	103,	58)];
 	private static rock3TopColours:Array<any>       = ['#70C160', Util.HexColourString(207, 150, 92), Util.HexColourString(216, 203, 117), Util.HexColourString(173, 182, 186), Util.HexColourString(205, 217, 237), Util.HexColourString(172, 168, 181), Util.HexColourString(198,	121,	69)];
 	private static rock3BottomColours:Array<any>    = ['#63AB52', Util.HexColourString(184, 123, 76), Util.HexColourString(189, 176, 98), Util.HexColourString(157, 166, 170), Util.HexColourString(186, 198, 218), Util.HexColourString(148, 148, 157), Util.HexColourString(179,	105,	57)];
+
+	public controllerType: string = 'sandbox';
 
 	protected sGround:Graphics = new Graphics();
 	public static settings:SandboxSettings;
@@ -419,7 +421,7 @@ export class ControllerSandbox extends ControllerGame
 			if (this.allParts[i] instanceof Text) {
 				try {
 					this.removeChild(this.allParts[i].m_textField);
-				} catch (arg:Error) {
+				} catch (arg:any) {
 
 				}
 			}
@@ -693,7 +695,7 @@ export class ControllerSandbox extends ControllerGame
 		return 10000;
 	}
 
-	public submitButton(e:MouseEvent):void {
+	public submitButton(e:any):void {
 		if (this.m_scoreWindow && this.m_scoreWindow.visible) this.m_scoreWindow.ShowFader();
 		this.ShowDisabledDialog();
 	}

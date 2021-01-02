@@ -32,6 +32,8 @@ export class ControllerGame extends Controller {
 		//======================
 		// Member Data
 		//======================
+		public controllerType: string = 'game';
+
 		private replaySplineXs:Array<any>;
 		private replaySplineYs:Array<any>;
 		private replaySplineAngles:Array<any>;
@@ -256,10 +258,10 @@ export class ControllerGame extends Controller {
 				ControllerGameGlobals.viewingUnsavedReplay = false;
 			}
 
-			addEventListener(Event.ADDED_TO_STAGE, this.Init);
+			this.on('added', (e: any) => this.Init(e) )
 		}
 
-		public Init(e:Event):void {
+		public Init(e: any):void {
 			this.addChild(this.m_canvas);
 			this.addChild(this.uneditableText);
 			this.addChild(this.rotatingText);
@@ -289,7 +291,7 @@ export class ControllerGame extends Controller {
 			}
 
 			if (ControllerGameGlobals.loadedParts) {
-				if (this instanceof ControllerChallenge && ControllerChallenge.playChallengeMode && !ControllerGameGlobals.justLoadedRobotWithChallenge) {
+				if (this.controllerType === 'challenge' && ControllerChallenge.playChallengeMode && !ControllerGameGlobals.justLoadedRobotWithChallenge) {
 					for (i = 0; i < ControllerGameGlobals.loadedParts.length; i++) {
 						ControllerGameGlobals.loadedParts[i].isEditable = false;
 					}
@@ -320,7 +322,7 @@ export class ControllerGame extends Controller {
 					this.draw.m_drawXOff = ControllerGameGlobals.initX;
 					this.draw.m_drawYOff = ControllerGameGlobals.initY;
 					this.m_physScale = ControllerGameGlobals.initZoom;
-				} else if (!(this instanceof ControllerChallenge)) {
+				} else if (!(this.controllerType === 'challenge')) {
 					this.CenterOnLoadedRobot();
 				}
 			} else if (!ControllerGameGlobals.playingReplay) {
@@ -333,14 +335,14 @@ export class ControllerGame extends Controller {
 			ControllerGameGlobals.initY = Number.MAX_VALUE;
 			ControllerGameGlobals.initZoom = Number.MAX_VALUE;
 
-			if (this instanceof ControllerChallenge) {
-				ControllerGameGlobals.minDensity = (ControllerChallenge.challenge.minDensity == -Number.MAX_VALUE ? 1 : ControllerChallenge.challenge.minDensity);
-				ControllerGameGlobals.maxDensity = (ControllerChallenge.challenge.maxDensity == Number.MAX_VALUE ? 30 : ControllerChallenge.challenge.maxDensity);
-				ControllerGameGlobals.maxRJStrength = (ControllerChallenge.challenge.maxRJStrength == Number.MAX_VALUE ? 30 : ControllerChallenge.challenge.maxRJStrength);
-				ControllerGameGlobals.maxRJSpeed = (ControllerChallenge.challenge.maxRJSpeed == Number.MAX_VALUE ? 30 : ControllerChallenge.challenge.maxRJSpeed);
-				ControllerGameGlobals.maxSJStrength = (ControllerChallenge.challenge.maxSJStrength == Number.MAX_VALUE ? 30 : ControllerChallenge.challenge.maxSJStrength);
-				ControllerGameGlobals.maxSJSpeed = (ControllerChallenge.challenge.maxSJSpeed == Number.MAX_VALUE ? 30 : ControllerChallenge.challenge.maxSJSpeed);
-				ControllerGameGlobals.maxThrusterStrength = (ControllerChallenge.challenge.maxThrusterStrength == Number.MAX_VALUE ? 30 : ControllerChallenge.challenge.maxThrusterStrength);
+			if (this.controllerType === 'challenge') {
+				ControllerGameGlobals.minDensity = (this.challenge.minDensity == -Number.MAX_VALUE ? 1 : this.challenge.minDensity);
+				ControllerGameGlobals.maxDensity = (this.challenge.maxDensity == Number.MAX_VALUE ? 30 : this.challenge.maxDensity);
+				ControllerGameGlobals.maxRJStrength = (this.challenge.maxRJStrength == Number.MAX_VALUE ? 30 : this.challenge.maxRJStrength);
+				ControllerGameGlobals.maxRJSpeed = (this.challenge.maxRJSpeed == Number.MAX_VALUE ? 30 : this.challenge.maxRJSpeed);
+				ControllerGameGlobals.maxSJStrength = (this.challenge.maxSJStrength == Number.MAX_VALUE ? 30 : this.challenge.maxSJStrength);
+				ControllerGameGlobals.maxSJSpeed = (this.challenge.maxSJSpeed == Number.MAX_VALUE ? 30 : this.challenge.maxSJSpeed);
+				ControllerGameGlobals.maxThrusterStrength = (this.challenge.maxThrusterStrength == Number.MAX_VALUE ? 30 : this.challenge.maxThrusterStrength);
 			} else {
 				ControllerGameGlobals.minDensity = 1;
 				ControllerGameGlobals.maxDensity = 30;

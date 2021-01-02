@@ -1,6 +1,5 @@
 import { Sprite, Text, Texture, TextStyle, Graphics } from "pixi.js";
 import { ControllerGame } from "../Game/ControllerGame";
-import { ControllerSandbox } from "../Game/ControllerSandbox";
 import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals";
 import { Resource } from "../Game/Graphics/Resource";
 import { Main } from "../Main";

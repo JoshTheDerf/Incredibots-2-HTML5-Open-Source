@@ -75,6 +75,16 @@ import cGuiWindowMid700 from '../../../resource/chall_ed_winloss_box_M.png'
 import cGuiWindowLinebox from '../../../resource/chall_ed_winloss_box_linebox.png'
 import cGuiWindowLine from '../../../resource/chall_ed_winloss_box_linehoriz.png'
 
+// Drop down menu resources
+import cGuiMenuBar from '../../../resource/menubar.png'
+import cGuiMenuBarRoll from '../../../resource/menubar_roll.png'
+import cGuiMenuCheckBoxABase from '../../../resource/menubox_chkboxA_base.png'
+import cGuiMenuCheckBoxARoll from '../../../resource/menubox_chkboxA_roll.png'
+import cGuiMenuCheckBoxAClick from '../../../resource/menubox_chkboxA_click.png'
+import cGuiMenuCheckBoxBBase from '../../../resource/menubox_chkboxB_base.png'
+import cGuiMenuCheckBoxBRoll from '../../../resource/menubox_chkboxB_roll.png'
+import cGuiMenuCheckBoxBClick from '../../../resource/menubox_chkboxB_click.png'
+
 // GUI Check box resources
 import cGuiCheckboxABase from '../../../resource/chkboxA_base.png'
 import cGuiCheckboxARoll from '../../../resource/chkboxA_roll.png'
@@ -206,6 +216,16 @@ export class Resource {
         cGuiWindowLinebox: cGuiWindowLinebox,
         cGuiWindowLine: cGuiWindowLine,
 
+        // Drop down menu resources
+        cGuiMenuBar: cGuiMenuBar,
+        cGuiMenuBarRoll: cGuiMenuBarRoll,
+        cGuiMenuCheckBoxABase: cGuiMenuCheckBoxABase,
+        cGuiMenuCheckBoxARoll: cGuiMenuCheckBoxARoll,
+        cGuiMenuCheckBoxAClick: cGuiMenuCheckBoxAClick,
+        cGuiMenuCheckBoxBBase: cGuiMenuCheckBoxBBase,
+        cGuiMenuCheckBoxBRoll: cGuiMenuCheckBoxBRoll,
+        cGuiMenuCheckBoxBClick: cGuiMenuCheckBoxBClick,
+
         // GUI Check box resources
         cGuiCheckboxABase: cGuiCheckboxABase,
         cGuiCheckboxARoll: cGuiCheckboxARoll,
@@ -326,6 +346,16 @@ export class Resource {
     static cGuiWindowMid700: Texture;
     static cGuiWindowLinebox: Texture;
     static cGuiWindowLine: Texture;
+
+    // Drop down menu resources
+    static cGuiMenuBar: Texture;
+    static cGuiMenuBarRoll: Texture;
+    static cGuiMenuCheckBoxABase: Texture;
+    static cGuiMenuCheckBoxARoll: Texture;
+    static cGuiMenuCheckBoxAClick: Texture;
+    static cGuiMenuCheckBoxBBase: Texture;
+    static cGuiMenuCheckBoxBRoll: Texture;
+    static cGuiMenuCheckBoxBClick: Texture;
 
     // GUI Check box resources
     static cGuiCheckboxABase: Texture;

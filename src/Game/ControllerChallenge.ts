@@ -13,6 +13,8 @@ export class ControllerChallenge extends ControllerSandbox
 		public static playChallengeMode:boolean = false;
 		public static playOnlyMode:boolean = false;
 
+		public controllerType: string = 'challenge';
+
 		constructor()
 		{
 			super()
