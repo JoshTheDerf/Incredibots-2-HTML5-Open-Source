@@ -1,5 +1,5 @@
 import { Matrix, Graphics, Text } from "pixi.js";
-import { b2Vec2 } from "../Box2D";
+import { b2Vec2 } from "@box2d/core";
 import { Util } from "../General/Util";
 import { Circle } from "../Parts/Circle";
 import { Part } from "../Parts/Part";
@@ -16,13 +16,13 @@ export class ControllerSandbox extends ControllerGame
 	private static terrainBottomColours:Array<any>  = ['#5AC043', Util.HexColourString(155, 89, 38), Util.HexColourString(187, 163, 78), Util.HexColourString(156, 171, 175), Util.HexColourString(159, 196, 239), Util.HexColourString(160, 158, 171), Util.HexColourString(240, 70, 45)];
 	private static terrainTopOutlines:Array<any>    = ['#2DA12E', Util.HexColourString(144, 99, 62), Util.HexColourString(185, 163, 86), Util.HexColourString(153, 166, 169), Util.HexColourString(247, 251, 255), Util.HexColourString(139, 138, 144), Util.HexColourString(177, 102, 46)];
 	private static terrainBottomOutlines:Array<any> = ['#2DA12E', Util.HexColourString(117, 67, 29), Util.HexColourString(161, 141, 67), Util.HexColourString(132, 144, 148), Util.HexColourString(247, 251, 255), Util.HexColourString(115, 114, 122), Util.HexColourString(171, 59, 34)];
-	private static rockOutlines:Array<any>          = ['#6BB05A', '#A66B52', '#B1A058', '#98A4A8', '#BDCBD7', '#94939D', '#BA643D'];
 	private static rock1TopColours:Array<any>       = ['#8EDB82', Util.HexColourString(210, 157, 111), Util.HexColourString(219, 206, 135), Util.HexColourString(178, 187, 191), Util.HexColourString(217, 230, 245), Util.HexColourString(180, 180, 189), Util.HexColourString(194, 130, 87)];
 	private static rock1BottomColours:Array<any>    = ['#7FBF72', Util.HexColourString(183, 133, 96), Util.HexColourString(190, 176, 119), Util.HexColourString(164, 173, 174), Util.HexColourString(201, 210, 225), Util.HexColourString(158, 158, 167), Util.HexColourString(172,	114,	77)];
 	private static rock2TopColours:Array<any>       = ['#80D970', Util.HexColourString(206, 148, 90), Util.HexColourString(215, 202, 116), Util.HexColourString(169, 177, 182), Util.HexColourString(204, 217, 236), Util.HexColourString(170, 165, 179), Util.HexColourString(197,	115,	66)];
 	private static rock2BottomColours:Array<any>    = ['#6DBE5D', Util.HexColourString(183, 122, 72), Util.HexColourString(188, 175, 97), Util.HexColourString(153, 162, 166), Util.HexColourString(183, 196, 217), Util.HexColourString(149, 145, 154), Util.HexColourString(175,	103,	58)];
 	private static rock3TopColours:Array<any>       = ['#70C160', Util.HexColourString(207, 150, 92), Util.HexColourString(216, 203, 117), Util.HexColourString(173, 182, 186), Util.HexColourString(205, 217, 237), Util.HexColourString(172, 168, 181), Util.HexColourString(198,	121,	69)];
 	private static rock3BottomColours:Array<any>    = ['#63AB52', Util.HexColourString(184, 123, 76), Util.HexColourString(189, 176, 98), Util.HexColourString(157, 166, 170), Util.HexColourString(186, 198, 218), Util.HexColourString(148, 148, 157), Util.HexColourString(179,	105,	57)];
+	private static rockOutlines:Array<any>          = [0x6BB05A, 0xA66B52, 0xB1A058, 0x98A4A8, 0xBDCBD7, 0x94939D, 0xBA643D];
 
 	public controllerType: string = 'sandbox';
 

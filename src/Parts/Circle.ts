@@ -1,4 +1,4 @@
-import { b2World, b2Body, b2CircleDef, b2Vec2, b2BodyDef, b2MassData } from "../Box2D";
+import { b2World, b2Body, b2CircleDef, b2Vec2, b2BodyDef, b2MassData, b2CircleShape, b2BodyType } from "@box2d/core";
 import { Util } from "../General/Util";
 import { FixedJoint } from "./FixedJoint";
 import { ShapePart } from "./ShapePart";
@@ -49,32 +49,23 @@ export class Circle extends ShapePart
 		return circ;
 	}
 
-	public Init(world:b2World, body:b2Body = null):void {
+	public Init(world:b2World, body:b2Body|null = null):void {
 		if (this.isInitted) return;
 		super.Init(world);
 
-		var circ:b2CircleDef = new b2CircleDef();
-		circ.radius = this.radius;
-		circ.friction = 0.4;
-		circ.restitution = 0.3;
-
-		//CE PROBLEM
-		//circ.density = (Math.max(1, Math.min(30, density)) + 5.0) / 10.0;
-
-		//CE FIX
-		circ.density = (this.density + 5.0) / 10.0;
-
-		if (this.m_collisionGroup != Number.MIN_VALUE) circ.filter.groupIndex = this.m_collisionGroup;
+		var circ:b2CircleShape = new b2CircleShape();
+		circ.Set({x: this.centerX, y: this.centerY}, this.radius)
 
 		var bodyStatic:boolean = false;
 
 		if (body) {
-			circ.localPosition = new b2Vec2(this.centerX - body.GetPosition().x, this.centerY - body.GetPosition().y);
+			circ.Set({x: this.centerX - body.GetPosition().x, y: this.centerY - body.GetPosition().y});
 			this.m_body = body;
-			bodyStatic = body.IsStatic();
+			bodyStatic = body.GetType() === b2BodyType.b2_staticBody;
 		} else {
-			var bd:b2BodyDef = new b2BodyDef();
-			bd.position.Set(this.centerX, this.centerY);
+			var bd:b2BodyDef = {
+				position: { x: this.centerX, y: this.centerY }
+			};
 			if (this.isEditable) {
 				var hasJoints:boolean = false;
 				for (var j:number = 0; j < this.m_joints.length; j++) {
@@ -83,25 +74,37 @@ export class Circle extends ShapePart
 						break;
 					}
 				}
-				if (!hasJoints) bd.isBullet = true;
+				if (!hasJoints) bd.bullet = true;
 			}
-			if (this.isBullet) bd.isBullet = true;
+			if (this.isBullet) bd.bullet = true;
 			this.m_body = world.CreateBody(bd);
 		}
-		circ.userData = new Object();
-		circ.userData.collide = this.collide;
-		circ.userData.editable = this.isEditable;
-		circ.userData.red = this.red;
-		circ.userData.green = this.green;
-		circ.userData.blue = this.blue;
-		circ.userData.outline = this.outline;
-		circ.userData.terrain = this.terrain;
-		circ.userData.undragable = this.undragable;
-		circ.userData.isPiston = -1;
-		circ.userData.isSandbox = this.isSandbox;
-		this.m_shape = this.m_body.CreateShape(circ);
-		if (this.isStatic || bodyStatic) this.m_body.SetMass(new b2MassData());
-		else this.m_body.SetMassFromShapes();
+
+		const fixture = this.m_body.CreateFixture({
+			shape: circ,
+			friction: 0.4,
+			restitution: 0.3,
+			//CE PROBLEM
+			// density: (Math.max(1, Math.min(30, this.density)) + 5.0) / 10.0;
+			//CE FIX
+			density: (this.density + 5.0) / 10.0,
+		})
+
+		const userData = new Object();
+		userData.collide = this.collide;
+		userData.editable = this.isEditable;
+		userData.red = this.red;
+		userData.green = this.green;
+		userData.blue = this.blue;
+		userData.outline = this.outline;
+		userData.terrain = this.terrain;
+		userData.undragable = this.undragable;
+		userData.isPiston = -1;
+		userData.isSandbox = this.isSandbox;
+
+		this.m_shape = circ;
+		if (this.isStatic || bodyStatic) this.m_body.SetMassData(new b2MassData());
+		else this.m_body.ResetMassData();
 
 		for (var i:number = 0; i < this.m_joints.length; i++) {
 			if (this.m_joints[i].isEnabled && this.m_joints[i] instanceof FixedJoint) {

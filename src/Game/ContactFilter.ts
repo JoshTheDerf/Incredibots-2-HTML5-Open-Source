@@ -1,4 +1,4 @@
-import { b2Shape, b2ContactFilter } from "../Box2D";
+import { b2Shape, b2ContactFilter } from "@box2d/core";
 
 export class ContactFilter extends b2ContactFilter
 {

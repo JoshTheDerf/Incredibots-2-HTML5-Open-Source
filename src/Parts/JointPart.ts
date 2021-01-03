@@ -1,4 +1,4 @@
-import { b2Joint, b2World } from "../Box2D";
+import { b2Joint, b2World } from "@box2d/core";
 import { Util } from "../General/Util";
 import { IllegalOperationError, Part } from "./Part";
 import { ShapePart } from "./ShapePart";

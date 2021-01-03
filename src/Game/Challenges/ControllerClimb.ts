@@ -5,7 +5,7 @@ import { ShapePart } from "../../Parts/ShapePart";
 import { ControllerChallenge } from "../ControllerChallenge";
 import { Gradient } from "../Graphics/Gradient";
 import { WinCondition } from "../WinCondition";
-import { b2AABB } from "../../Box2D";
+import { b2AABB } from "@box2d/core";
 
 export class ControllerClimb extends ControllerChallenge
 {

@@ -2,9 +2,21 @@ import { Application, Texture } from 'pixi.js'
 import PIXIsound from 'pixi-sound'
 
 // Sounds
-import cIntro from '../../../resource/Incredibots_Intro.mp3'
 import cRoll from '../../../resource/roll_01.mp3'
 import cClick from '../../../resource/click_02.mp3'
+import cShape1 from '../../../resource/create_shape_1.mp3'
+import cShape2 from '../../../resource/create_shape_2.mp3'
+import cShape3 from '../../../resource/create_shape_3.mp3'
+import cShape4 from '../../../resource/create_shape_4.mp3'
+import cShape5 from '../../../resource/create_shape_5.mp3'
+import cJoint1 from '../../../resource/create_joint_1.mp3'
+import cJoint2 from '../../../resource/create_joint_2.mp3'
+import cJoint3 from '../../../resource/create_joint_3.mp3'
+import cJoint4 from '../../../resource/create_joint_4.mp3'
+import cJoint5 from '../../../resource/create_joint_5.mp3'
+import cIntro from '../../../resource/Incredibots_Intro.mp3'
+import cWin from '../../../resource/Incredibots_Win_r1.mp3'
+import cLose from '../../../resource/Incredibots_Lose_r2.mp3'
 
 // Main Menu Resources
 import cMainMenuLogo from '../../../resource/incredibots2_logo.png'
@@ -272,9 +284,22 @@ export class Resource {
         cCloud9: cCloud9,
     }
 
-    static cIntro = PIXIsound.Sound.from(cIntro)
-    static cRoll = PIXIsound.Sound.from(cRoll)
-    static cClick = PIXIsound.Sound.from(cClick)
+    // Sounds
+    static cRoll = PIXIsound.Sound.from(cRoll);
+    static cClick = PIXIsound.Sound.from(cClick);
+    static cShape1 = PIXIsound.Sound.from(cShape1);
+    static cShape2 = PIXIsound.Sound.from(cShape2);
+    static cShape3 = PIXIsound.Sound.from(cShape3);
+    static cShape4 = PIXIsound.Sound.from(cShape4);
+    static cShape5 = PIXIsound.Sound.from(cShape5);
+    static cJoint1 = PIXIsound.Sound.from(cJoint1);
+    static cJoint2 = PIXIsound.Sound.from(cJoint2);
+    static cJoint3 = PIXIsound.Sound.from(cJoint3);
+    static cJoint4 = PIXIsound.Sound.from(cJoint4);
+    static cJoint5 = PIXIsound.Sound.from(cJoint5);
+    static cIntro = PIXIsound.Sound.from(cIntro);
+    static cWin = PIXIsound.Sound.from(cWin);
+    static cLose = PIXIsound.Sound.from(cLose);
 
     // Main menu resources
 	static cReplay: any;

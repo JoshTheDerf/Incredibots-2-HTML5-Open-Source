@@ -1,4 +1,4 @@
-import { b2CircleShape, b2ContactPoint, b2PolygonShape, b2Vec2, b2Math } from "../Box2D";
+import { b2CircleShape, b2ContactPoint, b2PolygonShape, b2Vec2, b2Math } from "@box2d/core";
 import { Part } from "../Parts/Part";
 import { ShapePart } from "../Parts/ShapePart";
 

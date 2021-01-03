@@ -1,4 +1,4 @@
-import { Container, Sprite, Text, TextStyle, Texture } from 'pixi.js'
+import { Container, InteractionEvent, Sprite, Text, TextStyle, Texture } from 'pixi.js'
 import { Resource } from '../Game/Graphics/Resource';
 import { Main } from '../Main';
 import PIXIsound from 'pixi-sound'
@@ -93,8 +93,10 @@ export class GuiButton extends Container
 		this.addChild(this.label)
 
 		this
-			.on('click', clickListener)
-			.on('tap', clickListener)
+			.on('click', (event: InteractionEvent) => {
+				clickListener(event)
+			})
+			.on('tap', (event: InteractionEvent) => clickListener(event))
 			.on('mousedown', this.bDown)
 			.on('mouseover', this.mouseOver)
 			.on('mouseout', this.bUp)

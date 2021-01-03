@@ -1,5 +1,5 @@
-import { b2Vec2, b2World, b2Body, b2PrismaticJointDef, b2PrismaticJoint } from "../Box2D";
-import { ControllerGame } from "../Game/ControllerGame";
+import { b2Vec2, b2World, b2Body, b2PrismaticJointDef, b2PrismaticJoint } from "@box2d/core";
+import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals";
 import { Util } from "../General/Util";
 import { JointPart } from "./JointPart";
 import { ShapePart } from "./ShapePart";

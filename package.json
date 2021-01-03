@@ -6,6 +6,7 @@
         "last 1 chrome version"
     ],
     "dependencies": {
+        "@box2d/core": "^0.8.0",
         "@puxi/core": "^1.0.2",
         "box2d": "^1.0.0",
         "pixi-sound": "^3.0.5",

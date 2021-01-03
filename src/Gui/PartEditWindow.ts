@@ -1,12 +1,15 @@
-import { Sprite, Circle, Rectangle, Text, TextStyle } from "pixi.js";
+import { Sprite, Text, TextStyle } from "pixi.js";
 import { ControllerGame } from "../Game/ControllerGame";
 import { ControllerSandbox } from "../Game/ControllerSandbox";
 import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals";
 import { Input } from "../General/Input";
 import { Main } from "../Main";
 import { Cannon } from "../Parts/Cannon";
+import { Circle } from "../Parts/Circle";
 import { JointPart } from "../Parts/JointPart";
 import { PrismaticJoint } from "../Parts/PrismaticJoint";
+import { Rectangle } from "../Parts/Rectangle";
+import { RevoluteJoint } from "../Parts/RevoluteJoint";
 import { ShapePart } from "../Parts/ShapePart";
 import { TextPart } from "../Parts/TextPart";
 import { Thrusters } from "../Parts/Thrusters";
@@ -18,7 +21,6 @@ import { GuiSlider } from "./GuiSlider";
 import { GuiTextArea } from "./GuiTextArea";
 import { GuiTextInput } from "./GuiTextInput";
 import { GuiWindow } from "./GuiWindow";
-import { MainEditPanel } from "./MainEditPanel";
 
 export class PartEditWindow extends GuiWindow
 {
@@ -151,24 +153,23 @@ export class PartEditWindow extends GuiWindow
 		disabledFormat.fontSize = 9;
 		disabledFormat.fill = '#666570';
 		this.m_shapeHeader = new Text('');
+		this.m_shapeHeader.anchor.set(0.5)
 		this.m_shapeHeader.text = "Circle";
-		this.m_shapeHeader.width = 110;
-		this.m_shapeHeader.height = 20;
-		this.m_shapeHeader.x = 5;
-		this.m_shapeHeader.y = 15;
+		this.m_shapeHeader.x = 5 + 110 / 2;
+		this.m_shapeHeader.y = 15 + 20 / 2;
 		this.m_shapeHeader.style = format;
 		this.m_objectEditPanel.addChild(this.m_shapeHeader);
-		this.m_backButton = new GuiButton("X", 90, -5, 35, 35, this.backButton, GuiButton.X);
+		this.m_backButton = new GuiButton("X", 90, -5, 35, 35, () => this.backButton(), GuiButton.X);
 		this.m_objectEditPanel.addChild(this.m_backButton);
-		this.m_deleteButton = new GuiButton("Delete", 10, 30, 100, 35, this.cont.deleteButton, GuiButton.ORANGE);
+		this.m_deleteButton = new GuiButton("Delete", 10, 30, 100, 35, () => this.cont.deleteButton(), GuiButton.ORANGE);
 		this.m_objectEditPanel.addChild(this.m_deleteButton);
-		this.m_cutButton = new GuiButton("Cut", 10, 60, 100, 35, this.cont.cutButton, GuiButton.ORANGE);
+		this.m_cutButton = new GuiButton("Cut", 10, 60, 100, 35, () => this.cont.cutButton(), GuiButton.ORANGE);
 		this.m_objectEditPanel.addChild(this.m_cutButton);
-		this.m_copyButton = new GuiButton("Copy", 10, 90, 100, 35, this.cont.copyButton, GuiButton.ORANGE);
+		this.m_copyButton = new GuiButton("Copy", 10, 90, 100, 35, () => this.cont.copyButton(), GuiButton.ORANGE);
 		this.m_objectEditPanel.addChild(this.m_copyButton);
-		this.m_pasteButton = new GuiButton("Paste", 10, 120, 100, 35, this.cont.pasteButton, GuiButton.ORANGE);
+		this.m_pasteButton = new GuiButton("Paste", 10, 120, 100, 35, () => this.cont.pasteButton(), GuiButton.ORANGE);
 		this.m_objectEditPanel.addChild(this.m_pasteButton);
-		this.m_rotateButton = new GuiButton("Rotate", 10, 150, 100, 35, this.cont.rotateButton, GuiButton.BLUE);
+		this.m_rotateButton = new GuiButton("Rotate", 10, 150, 100, 35, () => this.cont.rotateButton(), GuiButton.BLUE);
 		this.m_objectEditPanel.addChild(this.m_rotateButton);
 		format = new TextStyle();
 		format.fontFamily = Main.GLOBAL_FONT;
@@ -187,7 +188,7 @@ export class PartEditWindow extends GuiWindow
 		this.m_densitySlider.minValue = 1.0;
 		this.m_densitySlider.maxValue = 30.0;
 		this.m_densitySlider.value = 15.0;
-		this.m_densitySlider.on('change', (event: any) => this.cont.densitySlider(event);
+		this.m_densitySlider.on('change', (event: any) => this.cont.densitySlider(event))
 		// this.m_densitySlider.addEventListener(SliderEvent.THUMB_PRESS, this.sliderClicked(event));
 		// this.m_densitySlider.addEventListener(SliderEvent.THUMB_RELEASE, this.sliderReleased(event));
 		this.m_objectEditPanel.addChild(this.m_densitySlider);
@@ -198,7 +199,7 @@ export class PartEditWindow extends GuiWindow
 		this.m_densityArea.maxLength = 5;
 		this.m_densityArea.on('click', (event: any) => this.densityFocus(event))
 		this.m_densityArea.on('focus', (event: any) => this.TextAreaGotFocus(event))
-		this.m_densityArea.on('change', (event: any) => this.cont.textEntered(event))
+		this.m_densityArea.on('change', (event: any) => this.cont.textEntered())
 		this.m_densityArea.on('blur', (event: any) => this.cont.densityText(event))
 		this.m_objectEditPanel.addChild(this.m_densityArea);
 		format = new TextStyle();
@@ -234,11 +235,11 @@ export class PartEditWindow extends GuiWindow
 		this.m_fixateBox.selected = false;
 		this.m_fixateBox.on('click', (event: any) => this.cont.fixateBox(event));
 		this.m_objectEditPanel.addChild(this.m_fixateBox);
-		this.m_colourButton = new GuiButton("Change Color", 5, 320, 110, 35, this.colourButton, GuiButton.BLUE);
+		this.m_colourButton = new GuiButton("Change Color", 5, 320, 110, 35, () => this.colourButton(), GuiButton.BLUE);
 		this.m_objectEditPanel.addChild(this.m_colourButton);
-		this.m_frontButton = new GuiButton("Move to Front", 5, 350, 110, 35, this.cont.frontButton, GuiButton.PINK);
+		this.m_frontButton = new GuiButton("Move to Front", 5, 350, 110, 35, () => this.cont.frontButton(), GuiButton.PINK);
 		this.m_objectEditPanel.addChild(this.m_frontButton);
-		this.m_backButton = new GuiButton("Move to Back", 5, 380, 110, 35, this.cont.backButton, GuiButton.PINK);
+		this.m_backButton = new GuiButton("Move to Back", 5, 380, 110, 35, () => this.cont.backButton(), GuiButton.PINK);
 		this.m_objectEditPanel.addChild(this.m_backButton);
 		this.m_outlineBox = new GuiCheckBox();
 		this.m_outlineBox.style = format
@@ -283,15 +284,15 @@ export class PartEditWindow extends GuiWindow
 		this.m_cannonHeader.y = 15;
 		this.m_cannonHeader.style = format;
 		this.m_cannonPanel.addChild(this.m_cannonHeader);
-		this.m_backButton = new GuiButton("X", 90, -5, 35, 35, this.backButton, GuiButton.X);
+		this.m_backButton = new GuiButton("X", 90, -5, 35, 35, () => this.backButton(), GuiButton.X);
 		this.m_cannonPanel.addChild(this.m_backButton);
-		this.m_deleteButton = new GuiButton("Delete", 10, 30, 100, 35, this.cont.deleteButton, GuiButton.ORANGE);
+		this.m_deleteButton = new GuiButton("Delete", 10, 30, 100, 35, () => this.cont.deleteButton(), GuiButton.ORANGE);
 		this.m_cannonPanel.addChild(this.m_deleteButton);
-		this.m_cutButton = new GuiButton("Cut", 10, 60, 100, 35, this.cont.cutButton, GuiButton.ORANGE);
+		this.m_cutButton = new GuiButton("Cut", 10, 60, 100, 35, () => this.cont.cutButton(), GuiButton.ORANGE);
 		this.m_cannonPanel.addChild(this.m_cutButton);
-		this.m_copyButton = new GuiButton("Copy", 10, 90, 100, 35, this.cont.copyButton, GuiButton.ORANGE);
+		this.m_copyButton = new GuiButton("Copy", 10, 90, 100, 35, () => this.cont.copyButton(), GuiButton.ORANGE);
 		this.m_cannonPanel.addChild(this.m_copyButton);
-		this.m_rotateButton = new GuiButton("Rotate", 10, 120, 100, 35, this.cont.rotateButton, GuiButton.BLUE);
+		this.m_rotateButton = new GuiButton("Rotate", 10, 120, 100, 35, () => this.cont.rotateButton(), GuiButton.BLUE);
 		this.m_cannonPanel.addChild(this.m_rotateButton);
 		format = new TextStyle();
 		format.fontFamily = Main.GLOBAL_FONT;
@@ -321,7 +322,7 @@ export class PartEditWindow extends GuiWindow
 		this.m_densityArea7.maxLength = 5;
 		this.m_densityArea7.on('click', (event: any) => this.densityFocus(event));
 		this.m_densityArea7.on('focus', (event: any) => this.TextAreaGotFocus(event));
-		this.m_densityArea7.on('change', (event: any) => this.cont.textEntered(event));
+		this.m_densityArea7.on('change', (event: any) => this.cont.textEntered());
 		this.m_densityArea7.on('blur', (event: any) => this.cont.densityText(event));
 		this.m_densityArea7.on('hide', (event: any) => this.cont.densityText(event));
 		this.m_cannonPanel.addChild(this.m_densityArea7);
@@ -348,11 +349,11 @@ export class PartEditWindow extends GuiWindow
 		this.m_fixateBox7.selected = false;
 		this.m_fixateBox7.on('click', (event: any) => this.cont.fixateBox(event));
 		this.m_cannonPanel.addChild(this.m_fixateBox7);
-		this.m_colourButton = new GuiButton("Change Color", 5, 270, 110, 35, this.colourButton, GuiButton.BLUE);
+		this.m_colourButton = new GuiButton("Change Color", 5, 270, 110, 35, () => this.colourButton(), GuiButton.BLUE);
 		this.m_cannonPanel.addChild(this.m_colourButton);
-		this.m_frontButton = new GuiButton("Move to Front", 5, 300, 110, 35, this.cont.frontButton, GuiButton.PINK);
+		this.m_frontButton = new GuiButton("Move to Front", 5, 300, 110, 35, () => this.cont.frontButton(), GuiButton.PINK);
 		this.m_cannonPanel.addChild(this.m_frontButton);
-		this.m_backButton = new GuiButton("Move to Back", 5, 330, 110, 35, this.cont.backButton, GuiButton.PINK);
+		this.m_backButton = new GuiButton("Move to Back", 5, 330, 110, 35, () => this.cont.backButton(), GuiButton.PINK);
 		this.m_cannonPanel.addChild(this.m_backButton);
 		this.m_outlineBox7 = new GuiCheckBox();
 		this.m_outlineBox7.style = format
@@ -445,24 +446,23 @@ export class PartEditWindow extends GuiWindow
 		format.fontSize = 14;
 		format.fill = "#242930"
 		this.m_jointHeader = new Text('');
+		this.m_jointHeader.anchor.set(0.5)
 		this.m_jointHeader.text = "Multiple Objects";
-		this.m_jointHeader.width = 110;
-		this.m_jointHeader.height = 20;
-		this.m_jointHeader.x = 5;
-		this.m_jointHeader.y = 15;
+		this.m_jointHeader.x = 5 + 110 / 2;
+		this.m_jointHeader.y = 15 + 20 / 2;
 		this.m_jointHeader.style = format;
 		this.m_multiEditPanel.addChild(this.m_jointHeader);
-		this.m_backButton = new GuiButton("X", 90, -5, 35, 35, this.backButton, GuiButton.X);
+		this.m_backButton = new GuiButton("X", 90, -5, 35, 35, () => this.backButton(), GuiButton.X);
 		this.m_multiEditPanel.addChild(this.m_backButton);
-		this.m_deleteButton = new GuiButton("Delete", 10, 30, 100, 35, this.cont.multiDeleteButton, GuiButton.ORANGE);
+		this.m_deleteButton = new GuiButton("Delete", 10, 30, 100, 35, () => this.cont.multiDeleteButton(), GuiButton.ORANGE);
 		this.m_multiEditPanel.addChild(this.m_deleteButton);
-		this.m_cutButton = new GuiButton("Cut", 10, 60, 100, 35, this.cont.cutButton, GuiButton.ORANGE);
+		this.m_cutButton = new GuiButton("Cut", 10, 60, 100, 35, () => this.cont.cutButton(), GuiButton.ORANGE);
 		this.m_multiEditPanel.addChild(this.m_cutButton);
-		this.m_copyButton = new GuiButton("Copy", 10, 90, 100, 35, this.cont.copyButton, GuiButton.ORANGE);
+		this.m_copyButton = new GuiButton("Copy", 10, 90, 100, 35, () => this.cont.copyButton(), GuiButton.ORANGE);
 		this.m_multiEditPanel.addChild(this.m_copyButton);
-		this.m_pasteButton = new GuiButton("Paste", 10, 120, 100, 35, this.cont.pasteButton, GuiButton.ORANGE);
+		this.m_pasteButton = new GuiButton("Paste", 10, 120, 100, 35, () => this.cont.pasteButton(), GuiButton.ORANGE);
 		this.m_multiEditPanel.addChild(this.m_pasteButton);
-		this.m_rotateButton = new GuiButton("Rotate", 10, 150, 100, 35, this.cont.rotateButton, GuiButton.BLUE);
+		this.m_rotateButton = new GuiButton("Rotate", 10, 150, 100, 35, () => this.cont.rotateButton(), GuiButton.BLUE);
 		this.m_multiEditPanel.addChild(this.m_rotateButton);
 		format = new TextStyle();
 		format.fontFamily = Main.GLOBAL_FONT;
@@ -486,7 +486,7 @@ export class PartEditWindow extends GuiWindow
 		this.m_terrainBox3.selected = false;
 		this.m_terrainBox3.on('click', (event: any) => this.cont.terrainBox(event));
 		this.m_multiEditPanel.addChild(this.m_terrainBox3);
-		this.m_colourButton = new GuiButton("Change Color", 5, 260, 110, 35, this.colourButton, GuiButton.BLUE);
+		this.m_colourButton = new GuiButton("Change Color", 5, 260, 110, 35, () => this.colourButton(), GuiButton.BLUE);
 		this.m_multiEditPanel.addChild(this.m_colourButton);
 		this.m_collisionBox2 = new GuiCheckBox();
 		this.m_collisionBox2.style = format
@@ -523,26 +523,24 @@ export class PartEditWindow extends GuiWindow
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.align = 'center';
 		format.fontSize = 14;
+		format.fill = "#242930"
 		this.m_jointHeader = new Text('');
 		this.m_jointHeader.text = "Text";
-		this.m_jointHeader.width = 110;
-		this.m_jointHeader.height = 20;
-		this.m_jointHeader.textColor = 0x242930;
-		this.m_jointHeader.x = 5;
-		this.m_jointHeader.y = 15;
+		this.m_jointHeader.x = 5 + 110 /2;
+		this.m_jointHeader.y = 15 + 20 /2;
 		this.m_jointHeader.style = format;
 		this.m_textEditPanel.addChild(this.m_jointHeader);
-		this.m_backButton = new GuiButton("X", 90, -5, 35, 35, this.backButton, GuiButton.X);
+		this.m_backButton = new GuiButton("X", 90, -5, 35, 35, () => this.backButton(), GuiButton.X);
 		this.m_textEditPanel.addChild(this.m_backButton);
-		this.m_deleteButton = new GuiButton("Delete", 10, 30, 100, 35, this.cont.deleteButton, GuiButton.ORANGE);
+		this.m_deleteButton = new GuiButton("Delete", 10, 30, 100, 35, () => this.cont.deleteButton(), GuiButton.ORANGE);
 		this.m_textEditPanel.addChild(this.m_deleteButton);
 		format = new TextStyle();
 		format.fontFamily = Main.GLOBAL_FONT;
+		format.fill = "#242930"
 		this.m_textLabel = new Text('');
 		this.m_textLabel.text = "Text:";
 		this.m_textLabel.width = 55;
 		this.m_textLabel.height = 20;
-		this.m_textLabel.textColor = 0x242930;
 		this.m_textLabel.x = 45;
 		this.m_textLabel.y = 68;
 		this.m_textLabel.style = format;
@@ -597,11 +595,11 @@ export class PartEditWindow extends GuiWindow
 		this.m_alwaysVisibleBox.selected = false;
 		this.m_alwaysVisibleBox.on('click', (event: any) => this.cont.alwaysVisibleBox(event));
 		this.m_textEditPanel.addChild(this.m_alwaysVisibleBox);
-		this.m_colourButton = new GuiButton("Change Color", 5, 290, 110, 35, this.colourButton, GuiButton.BLUE);
+		this.m_colourButton = new GuiButton("Change Color", 5, 290, 110, 35, () => this.colourButton(), GuiButton.BLUE);
 		this.m_textEditPanel.addChild(this.m_colourButton);
-		this.m_frontButton = new GuiButton("Move to Front", 5, 320, 110, 35, this.cont.frontButton, GuiButton.PINK);
+		this.m_frontButton = new GuiButton("Move to Front", 5, 320, 110, 35, () => this.cont.frontButton(), GuiButton.PINK);
 		this.m_textEditPanel.addChild(this.m_frontButton);
-		this.m_backButton = new GuiButton("Move to Back", 5, 350, 110, 35, this.cont.backButton, GuiButton.PINK);
+		this.m_backButton = new GuiButton("Move to Back", 5, 350, 110, 35, () => this.cont.backButton(), GuiButton.PINK);
 		this.m_textEditPanel.addChild(this.m_backButton);
 		format = new TextStyle();
 		format.fontSize = 9;
@@ -630,70 +628,65 @@ export class PartEditWindow extends GuiWindow
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.align = 'center';
 		format.fontSize = 14;
+		format.fill = "#242930"
 		this.m_jointHeader = new Text('');
 		this.m_jointHeader.text = "Fixed Joint";
-		this.m_jointHeader.width = 110;
-		this.m_jointHeader.height = 20;
-		this.m_jointHeader.textColor = 0x242930;
-		this.m_jointHeader.x = 5;
-		this.m_jointHeader.y = 15;
+		this.m_jointHeader.anchor.set(0.5)
+		this.m_jointHeader.x = 5 + 110 / 2;
+		this.m_jointHeader.y = 15 + 20 / 2;
 		this.m_jointHeader.style = format;
 		this.m_fixedJointPanel.addChild(this.m_jointHeader);
-		this.m_backButton = new GuiButton("X", 90, -5, 35, 35, this.backButton, GuiButton.X);
+		this.m_backButton = new GuiButton("X", 90, -5, 35, 35, () => this.backButton(), GuiButton.X);
 		this.m_fixedJointPanel.addChild(this.m_backButton);
-		this.m_deleteButton = new GuiButton("Delete", 10, 30, 100, 35, this.cont.deleteButton, GuiButton.ORANGE);
+		this.m_deleteButton = new GuiButton("Delete", 10, 30, 100, 35, () => this.cont.deleteButton(), GuiButton.ORANGE);
 		this.m_fixedJointPanel.addChild(this.m_deleteButton);
 
 		this.m_jointHeader = new Text('');
 		this.m_jointHeader.text = "Build Box";
-		this.m_jointHeader.width = 110;
-		this.m_jointHeader.height = 20;
-		this.m_jointHeader.textColor = 0x242930;
-		this.m_jointHeader.x = 5;
-		this.m_jointHeader.y = 15;
+		this.m_jointHeader.anchor.set(0.5)
+		this.m_jointHeader.x = 5 + 110 / 2;
+		this.m_jointHeader.y = 15 + 20 / 2;
 		this.m_jointHeader.style = format;
 		this.m_buildBoxPanel.addChild(this.m_jointHeader);
-		this.m_backButton = new GuiButton("X", 90, -5, 35, 35, this.backButton, GuiButton.X);
+		this.m_backButton = new GuiButton("X", 90, -5, 35, 35, () => this.backButton(), GuiButton.X);
 		this.m_buildBoxPanel.addChild(this.m_backButton);
-		this.m_deleteButton = new GuiButton("Delete", 10, 30, 100, 35, this.cont.deleteBuildBoxButton, GuiButton.ORANGE);
+		this.m_deleteButton = new GuiButton("Delete", 10, 30, 100, 35, () => this.cont.deleteBuildBoxButton(), GuiButton.ORANGE);
 		this.m_buildBoxPanel.addChild(this.m_deleteButton);
 
 		format = new TextStyle();
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.align = 'center';
 		format.fontSize = 14;
+		format.fill = "#242930"
 		this.m_thrustersHeader = new Text('');
 		this.m_thrustersHeader.text = "Thrusters";
-		this.m_thrustersHeader.width = 110;
-		this.m_thrustersHeader.height = 20;
-		this.m_thrustersHeader.textColor = 0x242930;
-		this.m_thrustersHeader.x = 5;
-		this.m_thrustersHeader.y = 15;
+		this.m_thrustersHeader.anchor.set(0.5)
+		this.m_thrustersHeader.x = 5 + 110 / 2;
+		this.m_thrustersHeader.y = 15 + 20 / 2;
 		this.m_thrustersHeader.style = format;
 		this.m_thrustersEditPanel.addChild(this.m_thrustersHeader);
-		this.m_backButton = new GuiButton("X", 90, -5, 35, 35, this.backButton, GuiButton.X);
+		this.m_backButton = new GuiButton("X", 90, -5, 35, 35, () => this.backButton(), GuiButton.X);
 		this.m_thrustersEditPanel.addChild(this.m_backButton);
-		this.m_deleteButton = new GuiButton("Delete", 10, 30, 100, 35, this.cont.deleteButton, GuiButton.ORANGE);
+		this.m_deleteButton = new GuiButton("Delete", 10, 30, 100, 35, () => this.cont.deleteButton(), GuiButton.ORANGE);
 		this.m_thrustersEditPanel.addChild(this.m_deleteButton);
-		this.m_cutButton = new GuiButton("Cut", 10, 60, 100, 35, this.cont.cutButton, GuiButton.ORANGE);
+		this.m_cutButton = new GuiButton("Cut", 10, 60, 100, 35, () => this.cont.cutButton(), GuiButton.ORANGE);
 		this.m_thrustersEditPanel.addChild(this.m_cutButton);
-		this.m_copyButton = new GuiButton("Copy", 10, 90, 100, 35, this.cont.copyButton, GuiButton.ORANGE);
+		this.m_copyButton = new GuiButton("Copy", 10, 90, 100, 35, () => this.cont.copyButton(), GuiButton.ORANGE);
 		this.m_thrustersEditPanel.addChild(this.m_copyButton);
-		this.m_pasteButton = new GuiButton("Paste", 10, 120, 100, 35, this.cont.pasteButton, GuiButton.ORANGE);
+		this.m_pasteButton = new GuiButton("Paste", 10, 120, 100, 35, () => this.cont.pasteButton(), GuiButton.ORANGE);
 		this.m_thrustersEditPanel.addChild(this.m_pasteButton);
-		this.m_rotateButton = new GuiButton("Rotate", 10, 150, 100, 35, this.cont.rotateButton, GuiButton.BLUE);
+		this.m_rotateButton = new GuiButton("Rotate", 10, 150, 100, 35, () => this.cont.rotateButton(), GuiButton.BLUE);
 		this.m_thrustersEditPanel.addChild(this.m_rotateButton);
 		format = new TextStyle();
 		format.fontSize = 10;
 		format.fontFamily = Main.GLOBAL_FONT;
+		format.fill = "#242930"
 		this.m_thrustLabel = new Text('');
 		this.m_thrustLabel.text = "Thruster Strength";
 		this.m_thrustLabel.style = format;
-		this.m_thrustLabel.width = 120;
-		this.m_thrustLabel.height = 20;
-		this.m_thrustLabel.textColor = 0x242930;
-		this.m_thrustLabel.x = 21;
-		this.m_thrustLabel.y = 190;
+		this.m_thrustLabel.anchor.set(0.5)
+		this.m_thrustLabel.x = 21 + 120 / 2;
+		this.m_thrustLabel.y = 190 + 20 / 2;
 		this.m_thrustLabel.style = format;
 		this.m_thrustersEditPanel.addChild(this.m_thrustLabel);
 		this.m_thrustSlider = new GuiSlider();
@@ -732,11 +725,9 @@ export class PartEditWindow extends GuiWindow
 		format.align = 'right';
 		this.m_thrustKeyLabel = new Text('');
 		this.m_thrustKeyLabel.text = "Activate:";
-		this.m_thrustKeyLabel.width = 55;
-		this.m_thrustKeyLabel.height = 20;
-		this.m_thrustKeyLabel.textColor = 0x242930;
-		this.m_thrustKeyLabel.x = 7;
-		this.m_thrustKeyLabel.y = 258;
+		this.m_thrustKeyLabel.anchor.set(0.5)
+		this.m_thrustKeyLabel.x = 7 + 55 / 2;
+		this.m_thrustKeyLabel.y = 258 + 20;
 		this.m_thrustKeyLabel.style = format;
 		this.m_thrustersEditPanel.addChild(this.m_thrustKeyLabel);
 		format = new TextStyle();
@@ -760,22 +751,20 @@ export class PartEditWindow extends GuiWindow
 		format.fontSize = 14;
 		this.m_jointHeader = new Text('');
 		this.m_jointHeader.text = "Rotating Joint";
-		this.m_jointHeader.width = 110;
-		this.m_jointHeader.height = 20;
-		this.m_jointHeader.textColor = 0x242930;
-		this.m_jointHeader.x = 5;
-		this.m_jointHeader.y = 15;
+		this.m_jointHeader.anchor.set(0.5)
+		this.m_jointHeader.x = 5 + 110 / 2;
+		this.m_jointHeader.y = 15 + 20 / 2;
 		this.m_jointHeader.style = format;
 		this.m_jointEditPanel.addChild(this.m_jointHeader);
-		this.m_backButton = new GuiButton("X", 90, -5, 35, 35, this.backButton, GuiButton.X);
+		this.m_backButton = new GuiButton("X", 90, -5, 35, 35, () => this.backButton(), GuiButton.X);
 		this.m_jointEditPanel.addChild(this.m_backButton);
-		this.m_deleteButton = new GuiButton("Delete", 10, 30, 100, 35, this.cont.deleteButton, GuiButton.ORANGE);
+		this.m_deleteButton = new GuiButton("Delete", 10, 30, 100, 35, () => this.cont.deleteButton(), GuiButton.ORANGE);
 		this.m_jointEditPanel.addChild(this.m_deleteButton);
-		this.m_cutButton = new GuiButton("Cut", 10, 60, 100, 35, this.cont.cutButton, GuiButton.ORANGE);
+		this.m_cutButton = new GuiButton("Cut", 10, 60, 100, 35, () => this.cont.cutButton(), GuiButton.ORANGE);
 		this.m_jointEditPanel.addChild(this.m_cutButton);
-		this.m_copyButton = new GuiButton("Copy", 10, 90, 100, 35, this.cont.copyButton, GuiButton.ORANGE);
+		this.m_copyButton = new GuiButton("Copy", 10, 90, 100, 35, () => this.cont.copyButton(), GuiButton.ORANGE);
 		this.m_jointEditPanel.addChild(this.m_copyButton);
-		this.m_pasteButton = new GuiButton("Paste", 10, 120, 100, 35, this.cont.pasteButton, GuiButton.ORANGE);
+		this.m_pasteButton = new GuiButton("Paste", 10, 120, 100, 35, () => this.cont.pasteButton(), GuiButton.ORANGE);
 		this.m_jointEditPanel.addChild(this.m_pasteButton);
 		format = new TextStyle();
 		format.fontSize = 9;
@@ -784,7 +773,7 @@ export class PartEditWindow extends GuiWindow
 		this.m_minDispArea.maxLength = 4;
 		this.m_minDispArea.on('click', (event: any) => this.minDispFocus(event));
 		this.m_minDispArea.on('focus', (event: any) => this.TextAreaGotFocus(event));
-		this.m_minDispArea.on('change', (event: any) => this.cont.textEntered(event));
+		this.m_minDispArea.on('change', (event: any) => this.cont.textEntered());
 		this.m_minDispArea.on('blur', (event: any) => this.cont.minLimitText(event));
 		this.m_minDispArea.on('hide', (event: any) => this.cont.minLimitText(event));
 		this.m_jointEditPanel.addChild(this.m_minDispArea);
@@ -793,7 +782,7 @@ export class PartEditWindow extends GuiWindow
 		this.m_maxDispArea.maxLength = 4;
 		this.m_maxDispArea.on('click', (event: any) => this.maxDispFocus(event));
 		this.m_maxDispArea.on('focus', (event: any) => this.TextAreaGotFocus(event));
-		this.m_maxDispArea.on('change', (event: any) => this.cont.textEntered(event));
+		this.m_maxDispArea.on('change', (event: any) => this.cont.textEntered());
 		this.m_maxDispArea.on('blur', (event: any) => this.cont.maxLimitText(event));
 		this.m_maxDispArea.on('hide', (event: any) => this.cont.maxLimitText(event));
 		this.m_jointEditPanel.addChild(this.m_maxDispArea);
@@ -964,11 +953,11 @@ export class PartEditWindow extends GuiWindow
 		this.m_inputLabel2.y = 327;
 		this.m_inputLabel2.style = format;
 		this.m_jointEditPanel.addChild(this.m_inputLabel2);
-		this.m_colourButton = new GuiButton("Change Color", 5, 382, 110, 35, this.colourButton, GuiButton.BLUE);
+		this.m_colourButton = new GuiButton("Change Color", 5, 382, 110, 35, () => this.colourButton(), GuiButton.BLUE);
 		this.m_jointEditPanel.addChild(this.m_colourButton);
-		this.m_frontButton = new GuiButton("Move to Front", 5, 412, 110, 35, this.cont.frontButton, GuiButton.PINK);
+		this.m_frontButton = new GuiButton("Move to Front", 5, 412, 110, 35, () => this.cont.frontButton(), GuiButton.PINK);
 		this.m_jointEditPanel.addChild(this.m_frontButton);
-		this.m_backButton = new GuiButton("Move to Back", 5, 442, 110, 35, this.cont.backButton, GuiButton.PINK);
+		this.m_backButton = new GuiButton("Move to Back", 5, 442, 110, 35, () => this.cont.backButton(), GuiButton.PINK);
 		this.m_jointEditPanel.addChild(this.m_backButton);
 		format = new TextStyle();
 		format.fontFamily = Main.GLOBAL_FONT;
@@ -986,11 +975,11 @@ export class PartEditWindow extends GuiWindow
 		this.m_jointEditPanel.addChild(this.m_collisionBox3);
 	}
 
-	public backButton(e:MouseEvent):void {
+	public backButton():void {
 		this.visible = false;
 	}
 
-	private colourButton(e:MouseEvent):void {
+	private colourButton():void {
 		this.m_colourWindow.visible = true;
 		this.m_colourWindow.SetVals();
 	}
@@ -1127,7 +1116,6 @@ export class PartEditWindow extends GuiWindow
 		this.m_multiEditPanel.visible = false;
 		this.m_buildBoxPanel.visible = false;
 		this.m_cannonPanel.visible = false;
-		console.log(shape)
 		this.m_densitySlider.value = shape.density;
 		this.m_densitySlider.minValue = ControllerGameGlobals.minDensity;
 		this.m_densitySlider.maxValue = ControllerGameGlobals.maxDensity;
@@ -1164,9 +1152,9 @@ export class PartEditWindow extends GuiWindow
 		this.m_densitySlider7.value = cannon.density;
 		this.m_densityArea7.text = cannon.density.toString();
 		this.m_collisionBox7.selected = cannon.collide;
-		this.m_collisionBox7.visible = ((this.cont instanceof ControllerSandbox) && !(this.cont instanceof ControllerChallenge)) || ((this.cont instanceof ControllerChallenge) && (ControllerChallenge.challenge.nonCollidingAllowed || !ControllerChallenge.playChallengeMode));
+		this.m_collisionBox7.visible = ((this.cont.controllerType === 'sandbox') && !(this.cont.controllerType === 'challenge')) || ((this.cont.controllerType === 'challenge') && (ControllerChallenge.challenge.nonCollidingAllowed || !ControllerChallenge.playChallengeMode));
 		this.m_fixateBox7.selected = cannon.isStatic;
-		this.m_fixateBox7.visible = ((this.cont instanceof ControllerSandbox) && !(this.cont instanceof ControllerChallenge)) || ((this.cont instanceof ControllerChallenge) && (ControllerChallenge.challenge.fixateAllowed || !ControllerChallenge.playChallengeMode));
+		this.m_fixateBox7.visible = ((this.cont.controllerType === 'sandbox') && !(this.cont.controllerType === 'challenge')) || ((this.cont.controllerType === 'challenge') && (ControllerChallenge.challenge.fixateAllowed || !ControllerChallenge.playChallengeMode));
 		this.m_outlineBox7.selected = cannon.outline;
 		this.m_terrainBox7.selected = cannon.terrain;
 		this.m_undragableBox7.selected = cannon.undragable;
@@ -1219,8 +1207,8 @@ export class PartEditWindow extends GuiWindow
 		this.m_fixateBox2.selected = false;
 		this.m_undragableBox2.selected = false;
 		this.m_collisionBox2.selected = true;
-		this.m_collisionBox2.visible = ((this.cont instanceof ControllerSandbox) && !(this.cont instanceof ControllerChallenge)) || ((this.cont instanceof ControllerChallenge) && (ControllerChallenge.challenge.nonCollidingAllowed || !ControllerChallenge.playChallengeMode));
-		this.m_fixateBox2.visible = ((this.cont instanceof ControllerSandbox) && !(this.cont instanceof ControllerChallenge)) || ((this.cont instanceof ControllerChallenge) && (ControllerChallenge.challenge.fixateAllowed || !ControllerChallenge.playChallengeMode));
+		this.m_collisionBox2.visible = ((this.cont.controllerType === 'sandbox') && !(this.cont.controllerType === 'challenge')) || ((this.cont.controllerType === 'challenge') && (ControllerChallenge.challenge.nonCollidingAllowed || !ControllerChallenge.playChallengeMode));
+		this.m_fixateBox2.visible = ((this.cont.controllerType === 'sandbox') && !(this.cont.controllerType === 'challenge')) || ((this.cont.controllerType === 'challenge') && (ControllerChallenge.challenge.fixateAllowed || !ControllerChallenge.playChallengeMode));
 		this.m_buildBoxPanel.visible = false;
 		for (var i :number = 0; i < parts.length; i++) {
 			if ((parts[i] instanceof ShapePart && !parts[i].outline) || (parts[i] instanceof PrismaticJoint && !parts[i].outline)) this.m_outlineBox3.selected = false;
@@ -1360,7 +1348,7 @@ export class PartEditWindow extends GuiWindow
 			this.m_frontButton.visible = true;
 			this.m_backButton.visible = true;
 			this.m_outlineBox2.visible = true;
-			this.m_collisionBox3.visible = ((this.cont instanceof ControllerSandbox) && !(this.cont instanceof ControllerChallenge)) || ((this.cont instanceof ControllerChallenge) && (ControllerChallenge.challenge.nonCollidingAllowed || !ControllerChallenge.playChallengeMode));
+			this.m_collisionBox3.visible = ((this.cont.controllerType === 'sandbox') && !(this.cont.controllerType === 'challenge')) || ((this.cont.controllerType === 'challenge') && (ControllerChallenge.challenge.nonCollidingAllowed || !ControllerChallenge.playChallengeMode));
 			this.m_collisionBox3.selected = pjoint.collide;
 			this.m_jointHeader.text = "Sliding Joint";
 			format = new TextStyle();
@@ -1392,10 +1380,10 @@ export class PartEditWindow extends GuiWindow
 		this.m_speedLabel.style = format;
 		this.m_strengthLabel.style = format;
 
-		this.m_inputLabel1.visible = !(this.cont instanceof ControllerChallenge) || !ControllerChallenge.playChallengeMode || ((this.cont instanceof ControllerChallenge) && ControllerChallenge.challenge.botControlAllowed);
-		this.m_inputLabel2.visible = !(this.cont instanceof ControllerChallenge) || !ControllerChallenge.playChallengeMode || ((this.cont instanceof ControllerChallenge) && ControllerChallenge.challenge.botControlAllowed);
-		this.m_controlKeyArea1.visible = !(this.cont instanceof ControllerChallenge) || !ControllerChallenge.playChallengeMode || ((this.cont instanceof ControllerChallenge) && ControllerChallenge.challenge.botControlAllowed);
-		this.m_controlKeyArea2.visible = !(this.cont instanceof ControllerChallenge) || !ControllerChallenge.playChallengeMode || ((this.cont instanceof ControllerChallenge) && ControllerChallenge.challenge.botControlAllowed);
+		this.m_inputLabel1.visible = !(this.cont.controllerType === 'challenge') || !ControllerChallenge.playChallengeMode || ((this.cont.controllerType === 'challenge') && ControllerChallenge.challenge.botControlAllowed);
+		this.m_inputLabel2.visible = !(this.cont.controllerType === 'challenge') || !ControllerChallenge.playChallengeMode || ((this.cont.controllerType === 'challenge') && ControllerChallenge.challenge.botControlAllowed);
+		this.m_controlKeyArea1.visible = !(this.cont.controllerType === 'challenge') || !ControllerChallenge.playChallengeMode || ((this.cont.controllerType === 'challenge') && ControllerChallenge.challenge.botControlAllowed);
+		this.m_controlKeyArea2.visible = !(this.cont.controllerType === 'challenge') || !ControllerChallenge.playChallengeMode || ((this.cont.controllerType === 'challenge') && ControllerChallenge.challenge.botControlAllowed);
 	}
 
 	public ShowThrustersPanel(t:Thrusters):void {
@@ -1418,8 +1406,8 @@ export class PartEditWindow extends GuiWindow
 		if (str == null) str = "Unk: " + t.thrustKey;
 		this.m_thrustKeyArea.text = str;
 
-		this.m_thrustKeyLabel.visible = !(this.cont instanceof ControllerChallenge) || !ControllerChallenge.playChallengeMode || ((this.cont instanceof ControllerChallenge) && ControllerChallenge.challenge.botControlAllowed);
-		this.m_thrustKeyArea.visible = !(this.cont instanceof ControllerChallenge) || !ControllerChallenge.playChallengeMode || ((this.cont instanceof ControllerChallenge) && ControllerChallenge.challenge.botControlAllowed);
+		this.m_thrustKeyLabel.visible = !(this.cont.controllerType === 'challenge') || !ControllerChallenge.playChallengeMode || ((this.cont.controllerType === 'challenge') && ControllerChallenge.challenge.botControlAllowed);
+		this.m_thrustKeyArea.visible = !(this.cont.controllerType === 'challenge') || !ControllerChallenge.playChallengeMode || ((this.cont.controllerType === 'challenge') && ControllerChallenge.challenge.botControlAllowed);
 	}
 
 	public ShowBuildBoxPanel():void {

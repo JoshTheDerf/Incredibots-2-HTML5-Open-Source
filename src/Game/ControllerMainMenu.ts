@@ -1,5 +1,5 @@
 import { Container, DisplayObject, Graphics, Matrix, Sprite, Text, TextStyle } from "pixi.js";
-import { b2World, b2AABB, b2Vec2 } from "../Box2D";
+import { b2World, b2AABB, b2Vec2 } from "@box2d/core";
 import { Database } from "../General/Database";
 import { LSOManager } from "../General/LSOManager";
 import { Util } from "../General/Util";

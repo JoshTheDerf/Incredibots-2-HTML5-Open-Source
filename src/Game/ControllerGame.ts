@@ -1,4 +1,4 @@
-﻿import { Sprite, Matrix, Circle, Rectangle, Graphics, TextStyle, Text } from "pixi.js";
+﻿import { Sprite, Matrix, Graphics, TextStyle, Text } from "pixi.js";
 import { Database } from "../General/Database";
 import { Util } from "../General/Util";
 import { Main } from "../Main";
@@ -33,7 +33,7 @@ import { ImportWindow } from "../Gui/ImportWindow";
 import { ControllerSandbox } from "./ControllerSandbox";
 import { KeyPress } from "./KeyPress";
 import { ReplaySyncPoint } from "./ReplaySyncPoint";
-import { b2AABB, b2Body, b2ContactPoint, b2MouseJoint, b2MouseJointDef, b2Shape, b2Vec2, b2World } from "../Box2D";
+import { b2AABB, b2Body, b2ContactPoint, b2Fixture, b2MouseJoint, b2MouseJointDef, b2Shape, b2Vec2, b2World } from "@box2d/core";
 
 import { CameraAction } from "../Actions/CameraAction";
 import { ChangeSliderAction } from "../Actions/ChangeSliderAction";
@@ -62,6 +62,8 @@ import { TextCheckboxAction } from "../Actions/TextCheckboxAction";
 import { TextSizeChangeAction } from "../Actions/TextSizeChangeAction";
 import { ContactFilter } from "./ContactFilter";
 import { ContactListener } from "./ContactListener";
+import { Rectangle } from "../Parts/Rectangle";
+import { Circle } from "../Parts/Circle";
 
 export class ControllerGame extends Controller {
 		//======================
@@ -1403,7 +1405,7 @@ export class ControllerGame extends Controller {
 					(this.draggingPart as TextPart).Resize(ControllerGameGlobals.mouseXWorldPhys - this.initDragX, ControllerGameGlobals.mouseYWorldPhys - this.initDragY);
 					this.redrawRobot = true;
 				}
-			} else if (!this.paused && (((this instanceof ControllerSandbox) && !(this instanceof ControllerChallenge)) || ((this instanceof ControllerChallenge) && ControllerChallenge.challenge.mouseDragAllowed))) {
+			} else if (!this.paused && (((this.controllerType === 'sandbox') && !(this.controllerType === 'challenge')) || ((this.controllerType === 'challenge') && ControllerChallenge.challenge.mouseDragAllowed))) {
 				// mouse press
 				if (Input.mouseDown && !this.m_mouseJoint) {
 					var body:b2Body = this.GetBodyAtMouse();
@@ -1490,40 +1492,40 @@ export class ControllerGame extends Controller {
 
 			if (!this.simStarted && !this.m_sidePanel.EnteringInput() && !this.m_fader.visible) {
 				if (up && key == 49) {
-					this.circleButton(new MouseEvent(""));
+					this.circleButton();
 				} else if (up && key == 50) {
-					this.rectButton(new MouseEvent(""));
+					this.rectButton();
 				} else if (up && key == 51) {
-					this.triangleButton(new MouseEvent(""));
+					this.triangleButton();
 				} else if (up && key == 52) {
-					this.fjButton(new MouseEvent(""));
+					this.fjButton();
 				} else if (up && key == 53) {
-					this.rjButton(new MouseEvent(""));
+					this.rjButton();
 				} else if (up && key == 54) {
-					this.pjButton(new MouseEvent(""));
+					this.pjButton();
 				} else if (up && key == 55) {
-					this.textButton(new MouseEvent(""));
+					this.textButton();
 				} else if (up && key == 82) {
-					this.rotateButton(new MouseEvent(""));
+					this.rotateButton();
 				} else if (up && key == 88) {
-					this.cutButton(new MouseEvent(""));
+					this.cutButton();
 				} else if (up && key == 67) {
-					this.copyButton(new MouseEvent(""));
+					this.copyButton();
 				} else if (up && key == 86) {
-					this.pasteButton(new MouseEvent(""));
+					this.pasteButton();
 				} else if (up && (key == 8 || key == 46)) {
-					if (this.selectedParts.length == 1 && !this.selectedParts[0] instanceof TextPart) this.deleteButton(new MouseEvent(""));
-					else this.multiDeleteButton(new MouseEvent(""));
+					if (this.selectedParts.length == 1 && !this.selectedParts[0] instanceof TextPart) this.deleteButton();
+					else this.multiDeleteButton();
 				} else if (up && key == 89) {
-					this.redoButton(new MouseEvent(""));
+					this.redoButton();
 				} else if (up && key == 90) {
-					this.undoButton(new MouseEvent(""));
+					this.undoButton();
 				} else if (up && (key == 107 || key == 187)) {
-					this.zoomInButton(new MouseEvent(""));
+					this.zoomInButton();
 				} else if (up && (key == 109 || key == 189)) {
-					this.zoomOutButton(new MouseEvent(""));
+					this.zoomOutButton();
 				} else if (up && key == 80) {
-					this.playButton(new MouseEvent(""));
+					this.playButton();
 				}
 			}
 
@@ -2428,7 +2430,7 @@ export class ControllerGame extends Controller {
 		public sandboxSettingsButton():void {
 			if (!ControllerGameGlobals.curRobotEditable || this.selectingCondition) return;
 			if (!this.simStarted) {
-				if (this instanceof ControllerSandbox && (!(this instanceof ControllerChallenge) || !ControllerChallenge.playOnlyMode)) {
+				if (this.controllerType === 'sandbox' && (!(this.controllerType === 'challenge') || !ControllerChallenge.playOnlyMode)) {
 					this.m_sandboxWindow = new AdvancedSandboxWindow(this, ControllerSandbox.settings);
 					this.m_fader.visible = true;
 					this.addChild(this.m_sandboxWindow);
@@ -3854,15 +3856,15 @@ export class ControllerGame extends Controller {
 			this.m_sidePanel.SetCannon(value);
 		}
 
-		public zoomInButton(e:MouseEvent):void {
+		public zoomInButton():void {
 			this.Zoom(true);
 		}
 
-		public zoomOutButton(e:MouseEvent):void {
+		public zoomOutButton():void {
 			this.Zoom(false);
 		}
 
-		public clearButton(e:MouseEvent):void {
+		public clearButton():void {
 			if (this.simStarted) return;
 			if (this.selectingCondition) return;
 			var deletedParts:Array<any> = this.allParts.filter(this.PartIsEditable);
@@ -3881,7 +3883,7 @@ export class ControllerGame extends Controller {
 			if (this.m_sidePanel && this.m_sidePanel.visible) this.m_sidePanel.visible = false;
 		}
 
-		public undoButton(e:MouseEvent):void {
+		public undoButton():void {
 			if (this.selectingCondition) return;
 			if (ControllerGameGlobals.curRobotEditable && this.lastAction != -1 && !this.simStarted) {
 				this.actions[this.lastAction].UndoAction();
@@ -3895,7 +3897,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public redoButton(e:MouseEvent):void {
+		public redoButton():void {
 			if (this.selectingCondition) return;
 			if (ControllerGameGlobals.curRobotEditable && this.lastAction < this.actions.length - 1 && !this.simStarted) {
 				this.actions[this.lastAction + 1].RedoAction();
@@ -3909,7 +3911,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public cutButton(e:MouseEvent):void {
+		public cutButton():void {
 			if (this.selectingCondition) return;
 			if (this.simStarted) return;
 			this.copiedJoint = null;
@@ -3976,7 +3978,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public copyButton(e:MouseEvent):void {
+		public copyButton():void {
 			if (this.selectingCondition) return;
 			if (this.simStarted) return;
 			this.copiedJoint = null;
@@ -4026,7 +4028,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public pasteButton(e:MouseEvent):void {
+		public pasteButton():void {
 			if (this.selectingCondition) return;
 			if (!ControllerGameGlobals.curRobotEditable) return;
 			if (this.simStarted) return;
@@ -4050,7 +4052,7 @@ export class ControllerGame extends Controller {
 				if (ControllerGameGlobals.clipboardParts[i] instanceof Thrusters) hasThrusters = true;
 				if (ControllerGameGlobals.clipboardParts[i] instanceof Cannon) hasCannons = true;
 			}
-			if (this instanceof ControllerChallenge && ControllerChallenge.playChallengeMode && ((hasStatic && !ControllerChallenge.challenge.fixateAllowed) || (hasCircles && !ControllerChallenge.challenge.circlesAllowed) || (hasRects && !ControllerChallenge.challenge.rectanglesAllowed) || (hasTriangles && !ControllerChallenge.challenge.trianglesAllowed) || (hasFJs && !ControllerChallenge.challenge.fixedJointsAllowed) || (hasRJs && !ControllerChallenge.challenge.rotatingJointsAllowed) || (hasSJs && !ControllerChallenge.challenge.slidingJointsAllowed) || (hasThrusters && !ControllerChallenge.challenge.thrustersAllowed) || (hasCannons && !ControllerChallenge.challenge.cannonsAllowed))) {
+			if (this.controllerType === 'challenge' && ControllerChallenge.playChallengeMode && ((hasStatic && !ControllerChallenge.challenge.fixateAllowed) || (hasCircles && !ControllerChallenge.challenge.circlesAllowed) || (hasRects && !ControllerChallenge.challenge.rectanglesAllowed) || (hasTriangles && !ControllerChallenge.challenge.trianglesAllowed) || (hasFJs && !ControllerChallenge.challenge.fixedJointsAllowed) || (hasRJs && !ControllerChallenge.challenge.rotatingJointsAllowed) || (hasSJs && !ControllerChallenge.challenge.slidingJointsAllowed) || (hasThrusters && !ControllerChallenge.challenge.thrustersAllowed) || (hasCannons && !ControllerChallenge.challenge.cannonsAllowed))) {
 				this.m_fader.visible = true;
 				this.ShowDialog3("Sorry, some of the copied parts are not allowed in this challenge!");
 				this.m_progressDialog.ShowOKButton();
@@ -4185,42 +4187,42 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public centerBox(e:MouseEvent):void {
+		public centerBox():void {
 			ControllerGameGlobals.snapToCenter = !ControllerGameGlobals.snapToCenter;
 		}
 
-		public jointBox(e:MouseEvent):void {
+		public jointBox():void {
 			ControllerGameGlobals.showJoints = !ControllerGameGlobals.showJoints
 			this.redrawRobot = true;
 		}
 
-		public globalOutlineBox(e:MouseEvent):void {
+		public globalOutlineBox():void {
 			ControllerGameGlobals.showOutlines = !ControllerGameGlobals.showOutlines;
 			this.redrawRobot = true;
 		}
 
-		public colourBox(e:MouseEvent):void {
+		public colourBox():void {
 			ControllerGameGlobals.showColours = !ControllerGameGlobals.showColours;
 			if (ControllerGameGlobals.showColours) this.draw.m_fillAlpha = 1.0;
 			else this.draw.m_fillAlpha = 0.5;
 			this.redrawRobot = true;
 		}
 
-		public centerOnSelectedBox(e:MouseEvent):void {
+		public centerOnSelectedBox():void {
 			ControllerGameGlobals.centerOnSelected = !ControllerGameGlobals.centerOnSelected;
 			if (ControllerGameGlobals.centerOnSelected && this.selectedParts.length == 1) {
 				this.CenterOnSelected();
 			}
 		}
 
-		public ConfirmNewRobot(e:MouseEvent):void {
+		public ConfirmNewRobot():void {
 			Main.changeControllers = true;
 			Main.nextControllerType = -1;
 			ControllerGameGlobals.playingReplay = false;
 			ControllerGameGlobals.viewingUnsavedReplay = false;
 		}
 
-		public loginButton(e:MouseEvent, displayMessage:boolean = false, backToSave:boolean = false, saveLoadWindowOpen:boolean = false):void {
+		public loginButton(displayMessage:boolean = false, backToSave:boolean = false, saveLoadWindowOpen:boolean = false):void {
 			if (this.selectingCondition) return;
 			if (Main.inIFrame) {
 				this.m_fader.visible = true;
@@ -4235,7 +4237,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public logoutButton(e:MouseEvent):void {
+		public logoutButton():void {
 			this.m_fader.visible = true;
 			this.ShowConfirmDialog("Are you sure you want to log " + ControllerGameGlobals.userName +  " out?", 12);
 		}
@@ -4253,13 +4255,13 @@ export class ControllerGame extends Controller {
 		public loginHidden(e:Event, success:boolean):void {
 			if (this.clickedSave) {
 				this.clickedSave = false;
-				this.saveButton(new MouseEvent(""));
+				this.saveButton();
 			} else if (this.clickedSaveReplay) {
 				this.clickedSaveReplay = false;
-				this.saveReplayButton(new MouseEvent(""));
+				this.saveReplayButton();
 			} else if (this.clickedSaveChallenge) {
 				this.clickedSaveChallenge = false;
-				this.saveButton(new MouseEvent(""));
+				this.saveButton();
 			} else if (this.clickedSubmitScore) {
 				this.AddSyncPoint();
 				if (ControllerGameGlobals.viewingUnsavedReplay) Database.SaveReplay(ControllerGameGlobals.userName, ControllerGameGlobals.password, ControllerGameGlobals.replay, "_ScoreReplay", "This replay instanceof saved for a score", ControllerGameGlobals.curRobotID, new Robot(this.allParts, ControllerSandbox.settings), (this.ChallengeOver() ? this.GetScore() : -1), ControllerGameGlobals.curChallengeID, 1, this.finishSavingReplay);
@@ -4269,12 +4271,12 @@ export class ControllerGame extends Controller {
 				Main.ShowHourglass();
 			} else if (this.clickedReport) {
 				this.clickedReport = false;
-				this.reportButton(new MouseEvent(""));
+				this.reportButton();
 			} else if (this.backToSaveWindow) {
 				this.m_fader.visible = true;
 				if (this.m_chooserWindow.visible) {
 					if (success) {
-						this.m_chooserWindow.reportClicked(new MouseEvent(""));
+						this.m_chooserWindow.reportClicked();
 					} else {
 						this.m_chooserWindow.HideFader();
 					}
@@ -4301,13 +4303,13 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public viewReplayButton(e:MouseEvent):void {
+		public viewReplayButton():void {
 			if (ControllerGameGlobals.viewingUnsavedReplay) {
 				this.m_fader.visible = false;
 				this.m_scoreWindow.visible = false;
-				this.resetButton(e);
+				this.resetButton();
 			} else {
-				this.resetButton(e);
+				this.resetButton();
 				ControllerGameGlobals.replay = new Replay(this.cameraMovements, this.syncPoints, this.keyPresses, this.frameCounter, Database.VERSION_STRING_FOR_REPLAYS);
 				ControllerGameGlobals.replayParts = this.allParts.filter(this.IsPartOfRobot);
 				ControllerGameGlobals.playingReplay = true;
@@ -4316,7 +4318,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public newButton(e:MouseEvent):void {
+		public newButton():void {
 			if (Main.inIFrame) {
 				this.m_fader.visible = true;
 				this.ShowConfirmDialog("Redirect to incredibots2.com?", 7);
@@ -4328,8 +4330,8 @@ export class ControllerGame extends Controller {
 						break;
 					}
 				}
-				if (this instanceof ControllerTutorial || this instanceof ControllerHomeMovies || this instanceof ControllerRubeGoldberg || this instanceof ControllerNewFeatures || this instanceof ControllerChallengeEditor || (ControllerGameGlobals.curRobotID != "" && (!(this instanceof ControllerChallenge) || ControllerGameGlobals.curChallengeID != "")) || (!partsExist && !(this instanceof ControllerChallenge))) {
-					this.ConfirmNewRobot(e);
+				if (this instanceof ControllerTutorial || this instanceof ControllerHomeMovies || this instanceof ControllerRubeGoldberg || this instanceof ControllerNewFeatures || this instanceof ControllerChallengeEditor || (ControllerGameGlobals.curRobotID != "" && (!(this.controllerType === 'challenge') || ControllerGameGlobals.curChallengeID != "")) || (!partsExist && !(this.controllerType === 'challenge'))) {
+					this.ConfirmNewRobot();
 				} else {
 					this.m_fader.visible = true;
 					if (this.m_scoreWindow && this.m_scoreWindow.visible) this.m_scoreWindow.ShowFader();
@@ -4338,7 +4340,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public saveButton(e:MouseEvent):void {
+		public saveButton():void {
 			if (this.selectingCondition) return;
 			if (Main.inIFrame) {
 				this.m_fader.visible = true;
@@ -4366,7 +4368,7 @@ export class ControllerGame extends Controller {
 							}
 						}
 					}
-					if (this instanceof ControllerChallenge && !ControllerChallenge.playChallengeMode) {
+					if (this.controllerType === 'challenge' && !ControllerChallenge.playChallengeMode) {
 						if (this.m_restrictionsDialog) this.removeChild(this.m_restrictionsDialog);
 						this.m_restrictionsDialog = new RestrictionsWindow(this as ControllerChallenge);
 						this.addChild(this.m_restrictionsDialog);
@@ -4386,14 +4388,14 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public loadAndInsertButton(e:MouseEvent):void {
+		public loadAndInsertButton():void {
 			if (ControllerGameGlobals.curRobotEditable && !this.selectingCondition && !ControllerGameGlobals.playingReplay) {
 				ControllerGameGlobals.loadAndInsert = true;
-				this.loadRobotButton(e);
+				this.loadRobotButton();
 			}
 		}
 
-		public loadButton(e:MouseEvent, makeThemRate:boolean = true):void {
+		public loadButton(makeThemRate:boolean = true):void {
 			if (this.selectingCondition) return;
 			if (Main.inIFrame) {
 				this.m_fader.visible = true;
@@ -4434,7 +4436,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public loadRobotButton(e:MouseEvent, makeThemRate:boolean = true):void {
+		public loadRobotButton(makeThemRate:boolean = true):void {
 			if (this.selectingCondition) return;
 			if (Main.inIFrame) {
 				this.m_fader.visible = true;
@@ -4474,7 +4476,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishSaving(e:Event):void {
+		public finishSaving():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_SAVE_ROBOT) return;
 			var robotID:string = Database.FinishSavingRobot(e);
 			if (robotID != "") {
@@ -4491,7 +4493,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishGettingSaveRobotData(e:Event):void {
+		public finishGettingSaveRobotData():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_ROBOT_DATA) return;
 			if (Database.FinishGettingRobotData(e)) {
 				this.m_progressDialog.visible = false;
@@ -4501,7 +4503,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishGettingLoadRobotData(e:Event):void {
+		public finishGettingLoadRobotData():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_ROBOT_DATA) return;
 			if (Database.FinishGettingRobotData(e)) {
 				this.m_progressDialog.visible = false;
@@ -4511,7 +4513,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishLoading(e:Event):void {
+		public finishLoading():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_LOAD_ROBOT) return;
 			var robot:Robot = Database.FinishLoadingRobot(e);
 			this.processLoadedRobot(robot);
@@ -4542,7 +4544,7 @@ export class ControllerGame extends Controller {
 						if (newParts[i] instanceof Thrusters) hasThrusters = true;
 						if (newParts[i] instanceof Cannon) hasCannons = true;
 					}
-					if (this instanceof ControllerChallenge && ((hasStatic && !ControllerChallenge.challenge.fixateAllowed) || (hasCircles && !ControllerChallenge.challenge.circlesAllowed) || (hasRects && !ControllerChallenge.challenge.rectanglesAllowed) || (hasTriangles && !ControllerChallenge.challenge.trianglesAllowed) || (hasFJs && !ControllerChallenge.challenge.fixedJointsAllowed) || (hasRJs && !ControllerChallenge.challenge.rotatingJointsAllowed) || (hasSJs && !ControllerChallenge.challenge.slidingJointsAllowed) || (hasThrusters && !ControllerChallenge.challenge.thrustersAllowed) || (hasCannons && !ControllerChallenge.challenge.cannonsAllowed))) {
+					if (this.controllerType === 'challenge' && ((hasStatic && !ControllerChallenge.challenge.fixateAllowed) || (hasCircles && !ControllerChallenge.challenge.circlesAllowed) || (hasRects && !ControllerChallenge.challenge.rectanglesAllowed) || (hasTriangles && !ControllerChallenge.challenge.trianglesAllowed) || (hasFJs && !ControllerChallenge.challenge.fixedJointsAllowed) || (hasRJs && !ControllerChallenge.challenge.rotatingJointsAllowed) || (hasSJs && !ControllerChallenge.challenge.slidingJointsAllowed) || (hasThrusters && !ControllerChallenge.challenge.thrustersAllowed) || (hasCannons && !ControllerChallenge.challenge.cannonsAllowed))) {
 						this.m_fader.visible = true;
 						ControllerGameGlobals.loadAndInsert = true;
 						this.ShowDialog3("Sorry, that robot contains parts that are not allowed in this challenge!");
@@ -4601,7 +4603,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishDeleting(e:Event):void {
+		public finishDeleting():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_DELETE_ROBOT) return;
 			var id:string = Database.FinishDeletingRobot(e);
 			if (id != "") {
@@ -4625,7 +4627,7 @@ export class ControllerGame extends Controller {
 			this.addChild(this.m_exportDialog);
 		}
 
-		public saveReplayButton(e:MouseEvent):void {
+		public saveReplayButton():void {
 			if (Main.inIFrame) {
 				this.m_fader.visible = true;
 				this.ShowConfirmDialog("Redirect to incredibots2.com?", 7);
@@ -4655,7 +4657,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public loadReplayButton(e:MouseEvent, makeThemRate:boolean = true):void {
+		public loadReplayButton(makeThemRate:boolean = true):void {
 			if (this.selectingCondition) return;
 			if (Main.inIFrame) {
 				this.m_fader.visible = true;
@@ -4696,7 +4698,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public loadChallengeButton(e:MouseEvent, makeThemRate:boolean = true):void {
+		public loadChallengeButton(makeThemRate:boolean = true):void {
 			if (this.selectingCondition) return;
 			if (Main.inIFrame) {
 				this.m_fader.visible = true;
@@ -4755,7 +4757,7 @@ export class ControllerGame extends Controller {
 			this.m_fader.visible = true;
 		}
 
-		public highScoresButton(e:MouseEvent):void {
+		public highScoresButton():void {
 			if (this.selectingCondition) return;
 			if (Main.inIFrame) {
 				this.m_fader.visible = true;
@@ -4774,7 +4776,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public submitButton(e:MouseEvent):void {
+		public submitButton():void {
 			if (Main.inIFrame) {
 				this.m_fader.visible = true;
 				this.ShowConfirmDialog("Redirect to incredibots2.com?", 7);
@@ -4789,12 +4791,12 @@ export class ControllerGame extends Controller {
 					this.clickedSubmitScore = true;
 				} else {
 					this.clickedSubmitScore = true;
-					this.loginButton(e, true, false);
+					this.loginButton(true, false);
 				}
 			}
 		}
 
-		public finishAddingUser(e:Event):void {
+		public finishAddingUser():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_ADD_USER) return;
 			var retVal:string = Database.FinishAddingUser(e);
 			if (retVal != "") {
@@ -4808,11 +4810,11 @@ export class ControllerGame extends Controller {
 				ControllerGameGlobals.password = retVal.substring(retVal.indexOf("password: ") + 10, retVal.indexOf("session: ") - 1);
 				ControllerGameGlobals.sessionID = retVal.substr(retVal.indexOf("session: ") + 9);
 				this.m_guiPanel.ShowLogout();
-				this.loginHidden(e, true);
+				this.loginHidden(true);
 			}
 		}
 
-		public finishLoggingIn(e:Event):void {
+		public finishLoggingIn():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_LOGIN) return;
 			var retVal:string = Database.FinishLoggingIn(e);
 			if (retVal != "") {
@@ -4827,12 +4829,12 @@ export class ControllerGame extends Controller {
 				ControllerGameGlobals.sessionID = retVal.substr(retVal.indexOf("session: ") + 9);
 				//m_guiPanel.ShowFeatureButton();
 				this.m_guiPanel.ShowLogout();
-				this.loginHidden(e, true);
+				this.loginHidden(true);
 			}
 			Main.ShowMouse();
 		}
 
-		public finishSavingReplay(e:Event):void {
+		public finishSavingReplay():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_SAVE_REPLAY) return;
 			var robotID:string = Database.FinishSavingReplay(e);
 			if (robotID != "") {
@@ -4860,9 +4862,9 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishGettingSaveReplayData(e:Event):void {
+		public finishGettingSaveReplayData():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_REPLAY_DATA) return;
-			if (Database.FinishGettingReplayData(e)) {
+			if (Database.FinishGettingReplayData()) {
 				this.m_progressDialog.visible = false;
 				if (this.m_chooserWindow) this.removeChild(this.m_chooserWindow);
 				this.m_chooserWindow = new SaveLoadWindow(this, SaveLoadWindow.SAVE_REPLAY_TYPE);
@@ -4871,9 +4873,9 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishGettingLoadReplayData(e:Event):void {
+		public finishGettingLoadReplayData():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_REPLAY_DATA) return;
-			if (Database.FinishGettingReplayData(e)) {
+			if (Database.FinishGettingReplayData()) {
 				this.m_progressDialog.visible = false;
 				if (this.m_chooserWindow) this.removeChild(this.m_chooserWindow);
 				this.m_chooserWindow = new SaveLoadWindow(this, SaveLoadWindow.LOAD_REPLAY_TYPE);
@@ -4882,7 +4884,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishLoadingReplay(e:Event):void {
+		public finishLoadingReplay():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_LOAD_REPLAY) return;
 			var replayAndRobot:Array<any> = Database.FinishLoadingReplay(e);
 			this.processLoadedReplay(replayAndRobot);
@@ -4920,9 +4922,9 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishDeletingReplay(e:Event):void {
+		public finishDeletingReplay():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_DELETE_REPLAY) return;
-			if (Database.FinishDeletingReplay(e)) {
+			if (Database.FinishDeletingReplay()) {
 				this.m_progressDialog.SetMessage("Delete successful!");
 				this.m_progressDialog.HideInXSeconds(1);
 				var type:number = this.m_chooserWindow.dataType;
@@ -4934,9 +4936,9 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishSavingChallenge(e:Event):void {
+		public finishSavingChallenge():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_SAVE_CHALLENGE) return;
-			var challengeID:string = Database.FinishSavingChallenge(e);
+			var challengeID:string = Database.FinishSavingChallenge();
 			if (challengeID != "") {
 				ControllerGameGlobals.curChallengeID = challengeID;
 				ControllerGameGlobals.ratedCurChallenge = true;
@@ -4957,9 +4959,9 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishLoadingChallenge(e:Event):void {
+		public finishLoadingChallenge():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_LOAD_CHALLENGE) return;
-			var challenge:Challenge = Database.FinishLoadingChallenge(e);
+			var challenge:Challenge = Database.FinishLoadingChallenge();
 			this.processLoadedChallenge(challenge);
 		}
 
@@ -4986,9 +4988,9 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishGettingSaveChallengeData(e:Event):void {
+		public finishGettingSaveChallengeData():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_CHALLENGE_DATA) return;
-			if (Database.FinishGettingChallengeData(e)) {
+			if (Database.FinishGettingChallengeData()) {
 				this.m_progressDialog.visible = false;
 				if (this.m_chooserWindow) this.removeChild(this.m_chooserWindow);
 				this.m_chooserWindow = new SaveLoadWindow(this, SaveLoadWindow.SAVE_CHALLENGE_TYPE);
@@ -4997,9 +4999,9 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishGettingLoadChallengeData(e:Event):void {
+		public finishGettingLoadChallengeData():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_CHALLENGE_DATA) return;
-			if (Database.FinishGettingChallengeData(e)) {
+			if (Database.FinishGettingChallengeData()) {
 				this.m_progressDialog.visible = false;
 				if (this.m_chooserWindow) this.removeChild(this.m_chooserWindow);
 				this.m_chooserWindow = new SaveLoadWindow(this, SaveLoadWindow.LOAD_CHALLENGE_TYPE);
@@ -5008,9 +5010,9 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishGettingLoadChallengeForScoreData(e:Event):void {
+		public finishGettingLoadChallengeForScoreData():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_CHALLENGE_DATA) return;
-			if (Database.FinishGettingChallengeData(e)) {
+			if (Database.FinishGettingChallengeData()) {
 				this.m_progressDialog.visible = false;
 				if (this.m_challengeWindow) this.removeChild(this.m_challengeWindow);
 				this.m_challengeWindow = new ChooseChallengeWindow(this);
@@ -5019,9 +5021,9 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishDeletingChallenge(e:Event):void {
+		public finishDeletingChallenge():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_DELETE_CHALLENGE) return;
-			if (Database.FinishDeletingChallenge(e)) {
+			if (Database.FinishDeletingChallenge()) {
 				this.m_progressDialog.SetMessage("Delete successful!");
 				this.m_progressDialog.HideInXSeconds(1);
 				var type:number = this.m_chooserWindow.dataType;
@@ -5033,9 +5035,9 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public finishGettingScoreData(e:Event):void {
+		public finishGettingScoreData():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_SCORE_DATA) return;
-			if (Database.FinishGettingScoreData(e)) {
+			if (Database.FinishGettingScoreData()) {
 				this.m_progressDialog.visible = false;
 				if (this.m_chooserWindow) this.removeChild(this.m_chooserWindow);
 				this.m_chooserWindow = new SaveLoadWindow(this, SaveLoadWindow.HIGH_SCORE_TYPE);
@@ -5044,28 +5046,28 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public ConfirmSaveRobot(e:MouseEvent):void {
-			this.m_chooserWindow.saveRobotButtonPressed(e, true);
+		public ConfirmSaveRobot():void {
+			this.m_chooserWindow.saveRobotButtonPressed(true);
 		}
 
-		public ConfirmSaveReplay(e:MouseEvent):void {
-			this.m_chooserWindow.saveReplayButtonPressed(e, true);
+		public ConfirmSaveReplay():void {
+			this.m_chooserWindow.saveReplayButtonPressed(true);
 		}
 
-		public ConfirmSaveChallenge(e:MouseEvent):void {
-			this.m_chooserWindow.saveChallengeButtonPressed(e, true);
+		public ConfirmSaveChallenge():void {
+			this.m_chooserWindow.saveChallengeButtonPressed(true);
 		}
 
-		public ConfirmDeleteRobot(e:MouseEvent):void {
-			this.m_chooserWindow.deleteRobotButtonPressed(e, true);
+		public ConfirmDeleteRobot():void {
+			this.m_chooserWindow.deleteRobotButtonPressed(true);
 		}
 
-		public ConfirmDeleteReplay(e:MouseEvent):void {
-			this.m_chooserWindow.deleteReplayButtonPressed(e, true);
+		public ConfirmDeleteReplay():void {
+			this.m_chooserWindow.deleteReplayButtonPressed(true);
 		}
 
-		public ConfirmDeleteChallenge(e:MouseEvent):void {
-			this.m_chooserWindow.deleteChallengeButtonPressed(e, true);
+		public ConfirmDeleteChallenge():void {
+			this.m_chooserWindow.deleteChallengeButtonPressed(true);
 		}
 
 		public ShowImportWindow(type:number):void {
@@ -5125,7 +5127,7 @@ export class ControllerGame extends Controller {
 			this.addChild(this.m_linkDialog);
 		}
 
-		public DialogOK(e:Event):void {
+		public DialogOK():void {
 			this.m_progressDialog.visible = false;
 			if (this.m_chooserWindow && this.m_chooserWindow.visible) this.m_chooserWindow.HideFader();
 			if (this.m_challengeWindow && this.m_challengeWindow.visible) this.m_challengeWindow.HideFader();
@@ -5136,7 +5138,7 @@ export class ControllerGame extends Controller {
 			if (this.m_conditionsDialog && this.m_conditionsDialog.visible) this.m_conditionsDialog.HideFader();
 		}
 
-		public HideDialog(e:Event):void {
+		public HideDialog():void {
 			if (Database.nonfatalErrorOccurred) {
 				Database.nonfatalErrorOccurred = false;
 				if (this.m_chooserWindow) this.m_chooserWindow.HideFader();
@@ -5168,7 +5170,7 @@ export class ControllerGame extends Controller {
 			ControllerGameGlobals.failedChallenge = false;
 		}
 
-		public HideLinkDialog(e:Event):void {
+		public HideLinkDialog():void {
 			this.m_linkDialog.visible = false;
 			if (this.m_chooserWindow && this.m_chooserWindow.visible) {
 				this.m_chooserWindow.HideFader();
@@ -5177,7 +5179,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public HideExportDialog(e:Event):void {
+		public HideExportDialog():void {
 			this.m_exportDialog.visible = false;
 			if (this.m_chooserWindow && this.m_chooserWindow.visible) {
 				this.m_chooserWindow.HideFader();
@@ -5185,12 +5187,12 @@ export class ControllerGame extends Controller {
 			this.m_fader.visible = false;
 		}
 
-		public HideImportDialog(e:Event):void {
+		public HideImportDialog():void {
 			this.m_importDialog.visible = false;
 			this.m_fader.visible = false;
 		}
 
-		public HideConfirmDialog(e:Event):void {
+		public HideConfirmDialog():void {
 			this.m_progressDialog.visible = false;
 			if (this.m_chooserWindow && this.m_chooserWindow.visible) this.m_chooserWindow.HideFader();
 			else if (this.m_scoreWindow && this.m_scoreWindow.visible) this.m_scoreWindow.HideFader();
@@ -5358,7 +5360,7 @@ export class ControllerGame extends Controller {
 
 			for (var i:number = this.allParts.length - 1; i >= 0; i--) {
 				if (this.allParts[i] instanceof ShapePart && this.allParts[i].isEditable && this.allParts[i].isEnabled) {
-					var part:ShapePart = ShapePart(this.allParts[i]);
+					var part:ShapePart = this.allParts[i];
 					if (part.InsideShape(jointX, jointY, this.m_physScale)) {
 						candidateParts.push(part);
 					}
@@ -5419,7 +5421,7 @@ export class ControllerGame extends Controller {
 
 			for (var i:number = this.allParts.length - 1; i >= 0; i--) {
 				if (this.allParts[i] instanceof ShapePart && this.allParts[i].isEditable && this.allParts[i].isEnabled) {
-					var part:ShapePart = ShapePart(this.allParts[i]);
+					var part:ShapePart = this.allParts[i];
 					if (part.InsideShape(jointX, jointY, this.m_physScale)) {
 						candidateParts.push(part);
 					}
@@ -5471,7 +5473,7 @@ export class ControllerGame extends Controller {
 
 			for (var i:number = this.allParts.length - 1; i >= 0; i--) {
 				if (this.allParts[i] instanceof ShapePart && this.allParts[i].isEditable && this.allParts[i].isEnabled) {
-					var part:ShapePart = ShapePart(this.allParts[i]);
+					var part:ShapePart = this.allParts[i];
 					if (part.InsideShape(jointX, jointY, this.m_physScale)) {
 						candidateParts.push(part);
 					}
@@ -5511,7 +5513,7 @@ export class ControllerGame extends Controller {
 
 			for (var i:number = this.allParts.length - 1; i >= 0; i--) {
 				if (this.allParts[i] instanceof ShapePart && this.allParts[i].isEditable && this.allParts[i] != this.jointPart) {
-					var part:ShapePart = ShapePart(this.allParts[i]);
+					var part:ShapePart = this.allParts[i];
 					if (part.InsideShape(jointX, jointY, this.m_physScale)) {
 						candidateParts.push(part);
 					}
@@ -5576,14 +5578,14 @@ export class ControllerGame extends Controller {
 			// Query the world for overlapping shapes.
 			var k_maxCount:number = 10;
 			var shapes:Array<any> = new Array();
-			var count:number = this.m_world.Query(aabb, shapes, k_maxCount);
+			var count:number = this.m_world.QueryAllAABB(aabb, shapes);
 			var body:b2Body = null;
 			for (var i:number = 0; i < count; ++i) {
 				if (shapes[i].m_body.IsStatic() == false && !shapes[i].GetUserData().undragable && shapes[i].GetUserData().isPiston == -1) {
-					var tShape:b2Shape = shapes[i] as b2Shape;
-					var inside:boolean = tShape.TestPoint(tShape.m_body.GetXForm(), mousePVec);
+					var tShape:b2Fixture = shapes[i] as b2Fixture;
+					var inside:boolean = tShape.TestPoint(mousePVec);
 					if (inside) {
-						body = tShape.m_body;
+						body = tShape.GetBody();
 						break;
 					}
 				}

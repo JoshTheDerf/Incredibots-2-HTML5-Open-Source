@@ -187,8 +187,8 @@ export class AdvancedSandboxWindow extends GuiWindow
 		format.fontSize = 12;
 		format.fill = '#573D40';
 		this.bgBox.label.style = format;
-		this.bgBox.on('change', (event: any) => this.bgBoxChanged(event))
 		if (defaults) this.bgBox.selectedIndex = defaults.background;
+		this.bgBox.on('change', () => this.bgBoxChanged())
 		this.addChild(this.bgBox);
 
 		format = new TextStyle();
@@ -259,13 +259,13 @@ export class AdvancedSandboxWindow extends GuiWindow
 		ControllerSandbox.settings = settings;
 		if (this.cont instanceof ControllerMainMenu) Main.changeControllers = true;
 		else {
-			if (this.cont instanceof ControllerChallenge) ControllerChallenge.challenge.settings = settings;
+			if (this.cont.controllerType === 'challenge') ControllerChallenge.challenge.settings = settings;
 			(this.cont as ControllerSandbox).RefreshSandboxSettings();
 			(this.cont as ControllerSandbox).m_fader.visible = false;
 		}
 	}
 
-	private bgBoxChanged(e:Event):void {
+	private bgBoxChanged():void {
 		this.redArea.enabled = (this.bgBox.selectedIndex == 6);
 		this.greenArea.enabled = (this.bgBox.selectedIndex == 6);
 		this.blueArea.enabled = (this.bgBox.selectedIndex == 6);

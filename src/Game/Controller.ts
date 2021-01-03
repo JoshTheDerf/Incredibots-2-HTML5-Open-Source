@@ -6,6 +6,8 @@ class IllegalOperationError extends Error {}
 
 export class Controller extends Container
 {
+    public controllerType: string = 'controller'
+
     public Update():void {
         throw new IllegalOperationError("abstract function Controller.Update() called");
     }

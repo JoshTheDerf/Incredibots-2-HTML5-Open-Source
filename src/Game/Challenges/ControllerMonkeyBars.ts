@@ -6,7 +6,7 @@ import { Circle } from "../../Parts/Circle"
 import { ControllerChallenge } from "../ControllerChallenge";
 import { WinCondition } from "../WinCondition";
 import { Gradient } from "../Graphics/Gradient";
-import { b2AABB } from "../../Box2D";
+import { b2AABB } from "@box2d/core";
 
 export class ControllerMonkeyBars extends ControllerChallenge
 {

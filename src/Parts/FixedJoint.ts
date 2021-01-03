@@ -1,4 +1,4 @@
-import { b2World, b2Body } from "../Box2D";
+import { b2World, b2Body } from "@box2d/core";
 import { Util } from "../General/Util";
 import { JointPart } from "./JointPart";
 import { ShapePart } from "./ShapePart";

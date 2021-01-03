@@ -1,4 +1,4 @@
-import { b2Mat22, b2Vec2 } from "../Box2D";
+import { b2Color, b2Mat22, b2Vec2 } from "@box2d/core";
 
 export class Util {
 	public static Vector(x:number, y:number):b2Vec2 {
@@ -56,6 +56,10 @@ export class Util {
 
 	public static HexColourString(r:number, g:number, b:number):string {
 		return `#${[r, g, b].map(x => x.toString(16).padStart(2, '0')).join('')}`
+	}
+
+	public static b2ColorToHex(color: b2Color):number {
+		return (color.b * 255 | ((color.g * 255) << 8) | ((color.r * 255) << 16));
 	}
 
 	public static ObjectInArray(obj:Object, array:Array<any>):boolean {

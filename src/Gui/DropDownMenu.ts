@@ -138,34 +138,34 @@ export class DropDownMenu extends Graphics
 		this.m_currentMenu.lineStyle(1, 0x43366F);
 		this.m_currentMenu.moveTo(0, 0);
 		this.m_currentMenu.drawRect(0, 0, 155, 200);
-		var item:DropDownMenuItem = new DropDownMenuItem(this, "Main Menu", 155, this.cont.newButton);
+		var item:DropDownMenuItem = new DropDownMenuItem(this, "Main Menu", 155, () => this.cont.newButton());
 		item.y = 0;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Save...", 155, this.cont.saveButton);
+		item = new DropDownMenuItem(this, "Save...", 155, () => this.cont.saveButton());
 		item.y = 20;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Load Robot", 155, this.cont.loadRobotButton);
+		item = new DropDownMenuItem(this, "Load Robot", 155, () => this.cont.loadRobotButton());
 		item.y = 40;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Load And Insert", 155, this.cont.loadAndInsertButton);
+		item = new DropDownMenuItem(this, "Load And Insert", 155, () => this.cont.loadAndInsertButton());
 		item.y = 60;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Load Replay", 155, this.cont.loadReplayButton);
+		item = new DropDownMenuItem(this, "Load Replay", 155, () => this.cont.loadReplayButton());
 		item.y = 80;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Load Challenge", 155, this.cont.loadChallengeButton);
+		item = new DropDownMenuItem(this, "Load Challenge", 155, () => this.cont.loadChallengeButton());
 		item.y = 100;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Log In", 155, this.cont.loginButton);
+		item = new DropDownMenuItem(this, "Log In", 155, () => this.cont.loginButton());
 		item.y = 120;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "View High Scores", 155, this.cont.highScoresButton);
+		item = new DropDownMenuItem(this, "View High Scores", 155, () => this.cont.highScoresButton());
 		item.y = 140;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Report As Inappropriate", 155, this.cont.reportButton);
+		item = new DropDownMenuItem(this, "Report As Inappropriate", 155, () => this.cont.reportButton());
 		item.y = 160;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, (Main.enableSound ? "Disable Sound" : "Enable Sound"), 155, this.soundButton);
+		item = new DropDownMenuItem(this, (Main.enableSound ? "Disable Sound" : "Enable Sound"), 155, () => this.soundButton());
 		item.y = 180;
 		this.m_currentMenu.addChild(item);
 		this.addChild(this.m_currentMenu);
@@ -181,34 +181,34 @@ export class DropDownMenu extends Graphics
 		this.m_currentMenu.lineStyle(1, 0x43366F);
 		this.m_currentMenu.moveTo(0, 0);
 		this.m_currentMenu.drawRect(0, 0, 120, 200);
-		var item:DropDownMenuItem = new DropDownMenuItem(this, "Change Settings", 120, this.cont.sandboxSettingsButton);
+		var item:DropDownMenuItem = new DropDownMenuItem(this, "Change Settings", 120, () => this.cont.sandboxSettingsButton());
 		item.y = 0;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Clear All", 120, this.cont.clearButton);
+		item = new DropDownMenuItem(this, "Clear All", 120, () => this.cont.clearButton());
 		item.y = 20;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Undo", 120, this.cont.undoButton);
+		item = new DropDownMenuItem(this, "Undo", 120, () => this.cont.undoButton());
 		item.y = 40;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Redo", 120, this.cont.redoButton);
+		item = new DropDownMenuItem(this, "Redo", 120, () => this.cont.redoButton());
 		item.y = 60;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Cut", 120, this.cont.cutButton);
+		item = new DropDownMenuItem(this, "Cut", 120, () => this.cont.cutButton());
 		item.y = 80;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Copy", 120, this.cont.copyButton);
+		item = new DropDownMenuItem(this, "Copy", 120, () => this.cont.copyButton());
 		item.y = 100;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Paste", 120, this.pasteButton);
+		item = new DropDownMenuItem(this, "Paste", 120, () => this.pasteButton());
 		item.y = 120;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Delete", 120, this.cont.deleteButton);
+		item = new DropDownMenuItem(this, "Delete", 120, () => this.cont.deleteButton());
 		item.y = 140;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Move to Front", 120, this.cont.frontButton);
+		item = new DropDownMenuItem(this, "Move to Front", 120, () => this.cont.frontButton());
 		item.y = 160;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Move to Back", 120, this.cont.backButton);
+		item = new DropDownMenuItem(this, "Move to Back", 120, () => this.cont.backButton());
 		item.y = 180;
 		this.m_currentMenu.addChild(item);
 		this.addChild(this.m_currentMenu);
@@ -224,25 +224,25 @@ export class DropDownMenu extends Graphics
 		this.m_currentMenu.lineStyle(1, 0x43366F);
 		this.m_currentMenu.moveTo(0, 0);
 		this.m_currentMenu.drawRect(0, 0, 140, 140);
-		var item:DropDownMenuItem = new DropDownMenuItem(this, "Zoom In", 140, this.cont.zoomInButton);
+		var item:DropDownMenuItem = new DropDownMenuItem(this, "Zoom In", 140, () => this.cont.zoomInButton());
 		item.y = 0;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Zoom Out", 140, this.cont.zoomOutButton);
+		item = new DropDownMenuItem(this, "Zoom Out", 140, () => this.cont.zoomOutButton());
 		item.y = 20;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Snap to Center", 140, this.cont.centerBox, true, ControllerGameGlobals.snapToCenter);
+		item = new DropDownMenuItem(this, "Snap to Center", 140, () => this.cont.centerBox(), true, ControllerGameGlobals.snapToCenter);
 		item.y = 40;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Show Joints", 140, this.cont.jointBox, true, ControllerGameGlobals.showJoints);
+		item = new DropDownMenuItem(this, "Show Joints", 140, () => this.cont.jointBox(), true, ControllerGameGlobals.showJoints);
 		item.y = 60;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Show Colors", 140, this.cont.colourBox, true, ControllerGameGlobals.showColours);
+		item = new DropDownMenuItem(this, "Show Colors", 140, () => this.cont.colourBox(), true, ControllerGameGlobals.showColours);
 		item.y = 80;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Show Outlines", 140, this.cont.globalOutlineBox, true, ControllerGameGlobals.showOutlines);
+		item = new DropDownMenuItem(this, "Show Outlines", 140, () => this.cont.globalOutlineBox(), true, ControllerGameGlobals.showOutlines);
 		item.y = 100;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Center on Selection", 140, this.cont.centerOnSelectedBox, true, ControllerGameGlobals.centerOnSelected);
+		item = new DropDownMenuItem(this, "Center on Selection", 140, () => this.cont.centerOnSelectedBox(), true, ControllerGameGlobals.centerOnSelected);
 		item.y = 120;
 		this.m_currentMenu.addChild(item);
 		this.addChild(this.m_currentMenu);
@@ -259,33 +259,33 @@ export class DropDownMenu extends Graphics
 		this.m_currentMenu.moveTo(0, 0);
 		this.m_currentMenu.drawRect(0, 0, 180, 60);
 		if (ControllerGameGlobals.playingReplay) {
-			var item:DropDownMenuItem = new DropDownMenuItem(this, "Comment on this Replay", 180, this.cont.commentReplayButton);
+			var item:DropDownMenuItem = new DropDownMenuItem(this, "Comment on this Replay", 180, () => this.cont.commentReplayButton());
 			item.y = 0;
 			this.m_currentMenu.addChild(item);
-			item = new DropDownMenuItem(this, "Link to this Replay", 180, this.cont.linkReplayButton);
+			item = new DropDownMenuItem(this, "Link to this Replay", 180, () => this.cont.linkReplayButton());
 			item.y = 20;
 			this.m_currentMenu.addChild(item);
-			item = new DropDownMenuItem(this, "Embed this Replay", 180, this.cont.embedReplayButton);
+			item = new DropDownMenuItem(this, "Embed this Replay", 180, () => this.cont.embedReplayButton());
 			item.y = 40;
 			this.m_currentMenu.addChild(item);
 		} else if (this.cont.constructor.name === 'ControllerChallenge' && ControllerGameGlobals.curChallengeID != "" && ControllerGameGlobals.curChallengePublic) {
-			item = new DropDownMenuItem(this, "Comment on this Challenge", 180, this.cont.commentChallengeButton);
+			item = new DropDownMenuItem(this, "Comment on this Challenge", 180, () => this.cont.commentChallengeButton());
 			item.y = 0;
 			this.m_currentMenu.addChild(item);
-			item = new DropDownMenuItem(this, "Link to this Challenge", 180, this.cont.linkChallengeButton);
+			item = new DropDownMenuItem(this, "Link to this Challenge", 180, () => this.cont.linkChallengeButton());
 			item.y = 20;
 			this.m_currentMenu.addChild(item);
-			item = new DropDownMenuItem(this, "Embed this Challenge", 180, this.cont.embedChallengeButton);
+			item = new DropDownMenuItem(this, "Embed this Challenge", 180, () => this.cont.embedChallengeButton());
 			item.y = 40;
 			this.m_currentMenu.addChild(item);
 		} else {
-			item = new DropDownMenuItem(this, "Comment on this Robot", 180, this.cont.commentButton);
+			item = new DropDownMenuItem(this, "Comment on this Robot", 180, () => this.cont.commentButton());
 			item.y = 0;
 			this.m_currentMenu.addChild(item);
-			item = new DropDownMenuItem(this, "Link to this Robot", 180, this.cont.linkButton);
+			item = new DropDownMenuItem(this, "Link to this Robot", 180, () => this.cont.linkButton());
 			item.y = 20;
 			this.m_currentMenu.addChild(item);
-			item = new DropDownMenuItem(this, "Embed this Robot", 180, this.cont.embedButton);
+			item = new DropDownMenuItem(this, "Embed this Robot", 180, () => this.cont.embedButton());
 			item.y = 40;
 			this.m_currentMenu.addChild(item);
 		}
@@ -302,10 +302,10 @@ export class DropDownMenu extends Graphics
 		this.m_currentMenu.lineStyle(1, 0x43366F);
 		this.m_currentMenu.moveTo(0, 0);
 		this.m_currentMenu.drawRect(0, 0, 115, 40);
-		var item:DropDownMenuItem = new DropDownMenuItem(this, "Incredibots Help", 115, this.helpButton);
+		var item:DropDownMenuItem = new DropDownMenuItem(this, "Incredibots Help", 115, () => this.helpButton());
 		item.y = 0;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Forums", 115, this.forumsButton);
+		item = new DropDownMenuItem(this, "Forums", 115, () => this.forumsButton());
 		item.y = 20;
 		this.m_currentMenu.addChild(item);
 		this.addChild(this.m_currentMenu);
@@ -321,10 +321,10 @@ export class DropDownMenu extends Graphics
 		this.m_currentMenu.lineStyle(1, 0x43366F);
 		this.m_currentMenu.moveTo(0, 0);
 		this.m_currentMenu.drawRect(0, 0, 130, 40);
-		var item:DropDownMenuItem = new DropDownMenuItem(this, "Credits", 130, this.credits);
+		var item:DropDownMenuItem = new DropDownMenuItem(this, "Credits", 130, () => this.credits());
 		item.y = 0;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "GrubbyGames.com", 130, this.grubby);
+		item = new DropDownMenuItem(this, "GrubbyGames.com", 130, () => this.grubby());
 		item.y = 20;
 		this.m_currentMenu.addChild(item);
 		this.addChild(this.m_currentMenu);
@@ -340,20 +340,20 @@ export class DropDownMenu extends Graphics
 		this.m_currentMenu.lineStyle(1, 0x43366F);
 		this.m_currentMenu.moveTo(0, 0);
 		this.m_currentMenu.drawRect(0, 0, 115, (this.cont.constructor.name === 'ControllerSandbox' ? 100 : 60));
-		var item:DropDownMenuItem = new DropDownMenuItem(this, "Mirror Horizontal", 115, this.mirrorHorizontalButton);
+		var item:DropDownMenuItem = new DropDownMenuItem(this, "Mirror Horizontal", 115, () => this.mirrorHorizontalButton());
 		item.y = 0;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Mirror Vertical", 115, this.mirrorVerticalButton);
+		item = new DropDownMenuItem(this, "Mirror Vertical", 115, () => this.mirrorVerticalButton());
 		item.y = 20;
 		this.m_currentMenu.addChild(item);
-		item = new DropDownMenuItem(this, "Scale", 115, this.cont.scaleButton);
+		item = new DropDownMenuItem(this, "Scale", 115, () => this.cont.scaleButton());
 		item.y = 40;
 		this.m_currentMenu.addChild(item);
 		if (this.cont.constructor.name === 'ControllerSandbox') {
-			item = new DropDownMenuItem(this, "Thrusters", 115, this.cont.thrustersButton);
+			item = new DropDownMenuItem(this, "Thrusters", 115, () => this.cont.thrustersButton());
 			item.y = 60;
 			this.m_currentMenu.addChild(item);
-			item = new DropDownMenuItem(this, "Cannon", 115, this.cont.cannonButton);
+			item = new DropDownMenuItem(this, "Cannon", 115, () => this.cont.cannonButton());
 			item.y = 80;
 			this.m_currentMenu.addChild(item);
 		}
@@ -653,38 +653,38 @@ export class DropDownMenu extends Graphics
 		this.addChild(this.m_currentMenu);
 	}
 
-	private pasteButton(e:any):void {
+	private pasteButton():void {
 		this.cont.ignoreAClick = true;
-		this.cont.pasteButton(e);
+		this.cont.pasteButton();
 	}
 
-	private mirrorHorizontalButton(e:any):void {
+	private mirrorHorizontalButton():void {
 		this.cont.ignoreAClick = true;
-		this.cont.mirrorHorizontal(e);
+		this.cont.mirrorHorizontal();
 	}
 
-	private mirrorVerticalButton(e:any):void {
+	private mirrorVerticalButton():void {
 		this.cont.ignoreAClick = true;
-		this.cont.mirrorVertical(e);
+		this.cont.mirrorVertical();
 	}
 
-	private soundButton(e:any):void {
+	private soundButton():void {
 		Main.enableSound = !Main.enableSound;
 	}
 
-	private credits(e:any):void {
+	private credits():void {
 		Main.BrowserRedirect("http://www.incredifriends.com/", true);
 	}
 
-	private grubby(e:any):void {
+	private grubby():void {
 		Main.BrowserRedirect("http://www.grubbygames.com", true);
 	}
 
-	private helpButton(e:any):void {
+	private helpButton():void {
 		Main.BrowserRedirect("http://www.incredifriends.com/", true);
 	}
 
-	private forumsButton(e:any):void {
+	private forumsButton():void {
 		Main.BrowserRedirect("http://www.incredifriends.com/", true);
 	}
 }
