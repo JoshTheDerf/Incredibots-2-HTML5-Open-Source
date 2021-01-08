@@ -155,6 +155,7 @@ export class Triangle extends ShapePart
 			}
 			var bd:b2BodyDef = {
 				position: {x: this.centerX, y: this.centerY},
+				type: this.isStatic ? b2BodyType.b2_staticBody : b2BodyType.b2_dynamicBody
 			};
 			if (this.isEditable) {
 				var hasJoints:boolean = false;
@@ -170,7 +171,7 @@ export class Triangle extends ShapePart
 			this.m_body = world.CreateBody(bd);
 		}
 
-		const fixture = this.m_body.CreateFixture({
+		this.m_fixture = this.m_body.CreateFixture({
 			shape: sd,
 			friction: 0.4,
 			restitution: 0.3,
@@ -180,7 +181,7 @@ export class Triangle extends ShapePart
 			density: (this.density + 5.0) / 10.0,
 		})
 
-		if (this.m_collisionGroup != Number.MIN_VALUE) fixture.SetFilterData({ groupIndex: this.m_collisionGroup})
+		if (this.m_collisionGroup != Number.MIN_VALUE) this.m_fixture.SetFilterData({ groupIndex: this.m_collisionGroup})
 
 		const userData = new Object();
 		userData.collide = this.collide;

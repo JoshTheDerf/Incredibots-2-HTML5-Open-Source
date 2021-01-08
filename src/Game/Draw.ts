@@ -1,5 +1,5 @@
 import { TextStyle } from "pixi.js";
-import { b2Color, b2World, b2Vec2, b2Body, b2Shape, b2Joint, b2BroadPhase, b2XForm, b2CircleShape, b2Math, b2PolygonShape, b2Settings } from "@box2d/core";
+import { b2Color, b2World, b2Vec2, b2Body, b2Shape, b2Joint, b2BroadPhase, b2XForm, b2CircleShape, math, b2PolygonShape, b2_maxPolygonVertices, b2ShapeType, b2Transform, b2JointType } from "@box2d/core";
 import { Util } from "../General/Util";
 import { Main } from "../Main";
 import { Cannon } from "../Parts/Cannon";
@@ -325,24 +325,24 @@ export class Draw extends b2DebugDraw
 						xf = allParts[i].GetBody().GetTransform()
 						if (this.drawColours) {
 							if (allParts[i] instanceof Cannon) this.DrawCannon(allParts[i].GetShape(), xf, new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines);
-							else this.DrawShape(allParts[i].GetShape(), xf, new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines);
+							else this.DrawShape(allParts[i].GetShape(), allParts[i].GetUserData(), xf, new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines);
 						} else if (allParts[i].isStatic) {
 							if (allParts[i] instanceof Cannon) this.DrawCannon(allParts[i].GetShape(), xf, Draw.s_staticColor, 1, showOutlines);
-							else this.DrawShape(allParts[i].GetShape(), xf, Draw.s_staticColor, 1, showOutlines);
+							else this.DrawShape(allParts[i].GetShape(), allParts[i].GetUserData(), xf, Draw.s_staticColor, 1, showOutlines);
 						} else {
 							if (allParts[i] instanceof Cannon) this.DrawCannon(allParts[i].GetShape(), xf, Draw.s_normalColor, 1, showOutlines);
-							else this.DrawShape(allParts[i].GetShape(), xf, Draw.s_normalColor, 1, showOutlines);
+							else this.DrawShape(allParts[i].GetShape(), allParts[i].GetUserData(), xf, Draw.s_normalColor, 1, showOutlines);
 						}
 					} else if (allParts[i] instanceof PrismaticJoint) {
 						var shapes:Array<any> = allParts[i].GetShapes();
 						for (j = 0; j < shapes.length; j++) {
 							xf = shapes[j].GetBody().GetTransform();
 							if (this.drawColours) {
-								this.DrawShape(shapes[j], xf, new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines);
+								this.DrawShape(shapes[j], allParts[i].GetUserData(), xf, new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines);
 							} else if (allParts[i].isStatic) {
-								this.DrawShape(shapes[j], xf, Draw.s_staticColor, 1, showOutlines);
+								this.DrawShape(shapes[j], allParts[i].GetUserData(), xf, Draw.s_staticColor, 1, showOutlines);
 							} else {
-								this.DrawShape(shapes[j], xf, Draw.s_normalColor, 1, showOutlines);
+								this.DrawShape(shapes[j], allParts[i].GetUserData(), xf, Draw.s_normalColor, 1, showOutlines);
 							}
 						}
 					}
@@ -352,9 +352,9 @@ export class Draw extends b2DebugDraw
 					for (j = 0; j < allParts[i].cannonballs.length; j++) {
 						xf = allParts[i].cannonballs[j].GetTransform();
 						if (this.drawColours) {
-							this.DrawShape(allParts[i].cannonballs[j].GetShapeList(), xf, new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines, true);
+							this.DrawShape(allParts[i].cannonballs[j].GetShapeList(), allParts[i].GetUserData(), xf, new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines, true);
 						} else {
-							this.DrawShape(allParts[i].cannonballs[j].GetShapeList(), xf, Draw.s_normalColor, 1, showOutlines, true);
+							this.DrawShape(allParts[i].cannonballs[j].GetShapeList(), allParts[i].GetUserData(), xf, Draw.s_normalColor, 1, showOutlines, true);
 						}
 					}
 				}
@@ -397,34 +397,34 @@ export class Draw extends b2DebugDraw
 	}
 
 	public DrawJoint(joint:b2Joint) : void{
-		var b1:b2Body = joint.GetBody1();
-		var b2:b2Body = joint.GetBody2();
+		var b1:b2Body = joint.GetBodyA();
+		var b2:b2Body = joint.GetBodyA();
 		var xf1:b2XForm = b1.GetTransform();
 		var xf2:b2XForm = b2.GetTransform();
 		var x1:b2Vec2 = xf1.position;
 		var x2:b2Vec2 = xf2.position;
-		var p1:b2Vec2 = joint.GetAnchor1();
-		var p2:b2Vec2 = joint.GetAnchor2();
+		var p1:b2Vec2 = joint.GetAnchorA();
+		var p2:b2Vec2 = joint.GetAnchorB();
 
 		var color:b2Color = Draw.s_jointColor;
 
 		switch (joint.GetType())
 		{
-		case b2Joint.e_revoluteJoint:
-			this.DrawCircle(joint.GetAnchor1(), 0.05 * 30 / this.m_drawScale, color);
-			this.DrawCircle(joint.GetAnchor1(), 0.1 * 30 / this.m_drawScale, color);
+		case b2JointType.e_revoluteJoint:
+			this.DrawCircle(joint.GetAnchorA(), 0.05 * 30 / this.m_drawScale, color);
+			this.DrawCircle(joint.GetAnchorB(), 0.1 * 30 / this.m_drawScale, color);
 			break;
 
-		case b2Joint.e_prismaticJoint:
-			var end1:b2Vec2 = joint.GetBody1().GetWorldPoint(joint.GetUserData().localPoint1);
-			var end2:b2Vec2 = joint.GetBody2().GetWorldPoint(joint.GetUserData().localPoint2);
+		case b2JointType.e_prismaticJoint:
+			var end1:b2Vec2 = joint.GetBodyA().GetWorldPoint(joint.GetUserData().localPoint1);
+			var end2:b2Vec2 = joint.GetBodyB().GetWorldPoint(joint.GetUserData().localPoint2);
 			this.DrawSegment(end1, end2, color);
 			var midPoint:b2Vec2 = Util.Midpoint(end1, end2);
 			this.DrawCircle(midPoint, 0.05 * 30 / this.m_drawScale, color);
 			this.DrawCircle(midPoint, 0.1 * 30 / this.m_drawScale, color);
 			break;
 
-		case b2Joint.e_mouseJoint:
+		case b2JointType.e_mouseJoint:
 			this.DrawSegment(p1, p2, color);
 			break;
 
@@ -437,38 +437,40 @@ export class Draw extends b2DebugDraw
 		}
 	}
 
-	public DrawShape(shape:b2Shape, xf:b2XForm, color:b2Color, alpha:number, showOutlines:boolean = true, cannonball:boolean = false) : void{
-		switch (shape.m_type)
+	public DrawShape(shape:b2Shape, userData: any, xf:b2XForm, color:b2Color, alpha:number, showOutlines:boolean = true, cannonball:boolean = false) : void{
+		switch (shape.GetType())
 		{
-		case b2Shape.e_circleShape:
+		case b2ShapeType.e_circle:
 			{
 				var circle:b2CircleShape = (shape as b2CircleShape);
 
-				var center:b2Vec2 = b2Math.b2MulX(xf, circle.GetLocalPosition());
-				var radius:number = circle.GetRadius();
-				var axis:b2Vec2 = xf.R.col1;
+				const center = new b2Vec2()
+				b2Transform.MultiplyVec2(xf, circle.m_p, center);
+				var radius:number = circle.m_radius;
+				var axis:b2Vec2 = xf.q;
 
 				if (this.drawColours) this.m_fillAlpha = alpha;
-				this.DrawSolidCircle(center, radius, axis, color, false, circle.GetUserData().outline && (!this.drawColours || !circle.GetUserData().terrain) && showOutlines, cannonball);
+				this.DrawSolidCircle(center, radius, axis, color, false, userData.outline && (!this.drawColours || !userData.terrain) && showOutlines, cannonball);
 			}
 			break;
 
-		case b2Shape.e_polygonShape:
+		case b2ShapeType.e_polygon:
 			{
 				var i:number;
 				var poly:b2PolygonShape = (shape as b2PolygonShape);
-				var vertexCount:number = poly.GetVertexCount();
-				var localVertices:Array<any> = poly.GetVertices();
+				var vertexCount:number = poly.m_count;
+				var localVertices:Array<any> = poly.m_vertices;
 
-				//b2Assert(vertexCount <= b2_maxPolygonVertices);
-				var vertices:Array<any> = new Array(b2Settings.b2_maxPolygonVertices);
+				var vertices:Array<any> = new Array(b2_maxPolygonVertices);
 
 				for (i = 0; i < vertexCount; ++i)
 				{
-					vertices[i] = b2Math.b2MulX(xf, localVertices[i]);
+					const out = new b2Vec2()
+					b2Transform.MultiplyVec2(xf, localVertices[i], out);
+					vertices[i] = out
 				}
 				if (this.drawColours) this.m_fillAlpha = alpha;
-				this.DrawSolidPolygon(vertices, vertexCount, color, false, poly.GetUserData().outline && (!this.drawColours || !poly.GetUserData().terrain) && showOutlines);
+				this.DrawSolidPolygon(vertices, vertexCount, color, false, userData.outline && (!this.drawColours || !userData.terrain) && showOutlines);
 			}
 			break;
 		}
@@ -491,32 +493,33 @@ export class Draw extends b2DebugDraw
 		var thickness:number = Math.max(0.1, (this.m_lineThickness * Math.pow(this.m_drawScale, 0.5)) / 8);
 		switch (shape.m_type)
 		{
-		case b2Shape.e_circleShape:
+		case b2ShapeType.e_circle:
 			{
 				var circle:b2CircleShape = (shape as b2CircleShape);
 
 				var center:b2Vec2 = b2Math.b2MulX(xf, circle.GetLocalPosition());
 				var radius:number = circle.GetRadius() + thickness;
-				var axis:b2Vec2 = xf.R.col1;
+				var axis:b2Vec2 = xf.q;
 
 				if (this.drawColours) this.m_fillAlpha = alpha;
 				this.DrawSolidCircle(center, radius, axis, color, false, false);
 			}
 			break;
 
-		case b2Shape.e_polygonShape:
+		case b2ShapeType.e_polygon:
 			{
 				var i:number;
 				var poly:b2PolygonShape = (shape as b2PolygonShape);
-				var vertexCount:number = poly.GetVertexCount();
-				var localVertices:Array<any> = poly.GetVertices();
+				var vertexCount:number = poly.m_count;
+				var localVertices:Array<any> = poly.m_vertices;
 
-				//b2Assert(vertexCount <= b2_maxPolygonVertices);
-				var vertices:Array<any> = new Array(b2Settings.b2_maxPolygonVertices);
+				var vertices:Array<any> = new Array(b2_maxPolygonVertices);
 
 				for (i = 0; i < vertexCount; ++i)
 				{
-					vertices[i] = b2Math.b2MulX(xf, localVertices[i]);
+					const out = new b2Vec2()
+					b2Transform.MultiplyVec2(xf, localVertices[i], out);
+					vertices[i] = out
 				}
 				vertices = ShapePart.GetOutlineVertices(vertices, vertexCount, thickness);
 				if (this.drawColours) this.m_fillAlpha = alpha;
@@ -531,11 +534,13 @@ export class Draw extends b2DebugDraw
 		var thickness:number = Math.max(0.1, (this.m_lineThickness * Math.pow(this.m_drawScale, 0.5)) / 8);
 
 		var poly:b2PolygonShape = (shape as b2PolygonShape);
-		var localVertices:Array<any> = poly.GetVertices();
-		var vertices:Array<any> = new Array(b2Settings.b2_maxPolygonVertices);
+		var localVertices:Array<any> = poly.m_vertices;
+		var vertices:Array<any> = new Array(b2_maxPolygonVertices);
 
 		for (var i:number = 0; i < 4; ++i) {
-			vertices[i] = b2Math.b2MulX(xf, localVertices[i]);
+			const out = new b2Vec2()
+			b2Transform.MultiplyVec2(xf, localVertices[i], out);
+			vertices[i] = out
 		}
 		vertices = ShapePart.GetOutlineVertices(vertices, 4, thickness);
 		if (this.drawColours) this.m_fillAlpha = alpha;

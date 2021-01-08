@@ -1,4 +1,4 @@
-import { b2Body, b2Shape, b2World, b2Vec2 } from "@box2d/core";
+import { b2Body, b2Shape, b2World, b2Vec2, b2Fixture } from "@box2d/core";
 import { ControllerGame } from "../Game/ControllerGame";
 import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals";
 import { Util } from "../General/Util";
@@ -25,8 +25,9 @@ export class ShapePart extends Part
 	public outline:boolean;
 	public terrain:boolean;
 	public undragable:boolean;
-	protected m_body:b2Body = null;
-	protected m_shape:b2Shape = null;
+	protected m_body:b2Body|null = null;
+	protected m_shape:b2Shape|null = null;
+	protected m_fixture:b2Fixture|null = null;
 	protected m_joints:Array<any>;
 	protected m_thrusters:Array<any>;
 
@@ -60,6 +61,14 @@ export class ShapePart extends Part
 
 	public GetShape():b2Shape {
 		return this.m_shape;
+	}
+
+	public GetFixture():b2Fixture {
+		return this.m_fixture;
+	}
+
+	public GetUserData(): any {
+		return this.m_body.GetUserData() || {}
 	}
 
 	public AddJoint(j:JointPart):void {
@@ -103,10 +112,10 @@ export class ShapePart extends Part
 		if (!this.isInitted) return;
 		super.UnInit(world);
 		if (this.m_body) {
-			if (!this.m_body.m_userData || !this.m_body.m_userData.deleted) {
+			if (!this.m_body.GetUserData() || !this.m_body.GetUserData().deleted) {
 				world.DestroyBody(this.m_body);
-				if (!this.m_body.m_userData) this.m_body.m_userData = new Object();
-				this.m_body.m_userData.deleted = true;
+				if (!this.m_body.GetUserData()) this.m_body.SetUserData({});
+				this.m_body.GetUserData().deleted = true;
 			}
 			this.m_body = null;
 		}

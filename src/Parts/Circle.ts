@@ -64,7 +64,8 @@ export class Circle extends ShapePart
 			bodyStatic = body.GetType() === b2BodyType.b2_staticBody;
 		} else {
 			var bd:b2BodyDef = {
-				position: { x: this.centerX, y: this.centerY }
+				position: { x: this.centerX, y: this.centerY },
+				type: this.isStatic ? b2BodyType.b2_staticBody : b2BodyType.b2_dynamicBody
 			};
 			if (this.isEditable) {
 				var hasJoints:boolean = false;
@@ -80,7 +81,7 @@ export class Circle extends ShapePart
 			this.m_body = world.CreateBody(bd);
 		}
 
-		const fixture = this.m_body.CreateFixture({
+		this.m_fixture = this.m_body.CreateFixture({
 			shape: circ,
 			friction: 0.4,
 			restitution: 0.3,
@@ -101,6 +102,8 @@ export class Circle extends ShapePart
 		userData.undragable = this.undragable;
 		userData.isPiston = -1;
 		userData.isSandbox = this.isSandbox;
+
+		if (this.m_collisionGroup != Number.MIN_VALUE) this.m_fixture.SetFilterData({ groupIndex: this.m_collisionGroup });
 
 		this.m_shape = circ;
 		if (this.isStatic || bodyStatic) this.m_body.SetMassData(new b2MassData());

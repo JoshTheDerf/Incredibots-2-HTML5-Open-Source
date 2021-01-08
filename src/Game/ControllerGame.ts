@@ -533,8 +533,14 @@ export class ControllerGame extends Controller {
 				if (!this.paused) {
 					if (!ControllerGameGlobals.playingReplay) {
 						if (this.frameCounter % ControllerGameGlobals.REPLAY_SYNC_FRAMES == 0) this.AddSyncPoint();
-						this.m_world.Step(1/60, 5);
-						this.m_world.Step(1/60, this.m_iterations);
+						this.m_world.Step(1/60, {
+							velocityIterations: 5,
+							positionIterations: 5
+						});
+						this.m_world.Step(1/60, {
+							velocityIterations: this.m_iterations,
+							positionIterations: this.m_iterations
+						});
 					}
 					this.frameCounter++;
 					this.m_guiPanel.SetTimer(this.frameCounter);
@@ -5259,7 +5265,8 @@ export class ControllerGame extends Controller {
 			worldAABB.upperBound.Set(300.0, 200.0);
 
 			// Construct a world object
-			this.m_world = new b2World(worldAABB, this.GetGravity(), true);
+
+			this.m_world = b2World.Create(this.GetGravity());
 
 			var filter:ContactFilter = new ContactFilter();
 			this.m_world.SetContactFilter(filter);

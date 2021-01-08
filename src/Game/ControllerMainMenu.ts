@@ -331,7 +331,7 @@ export class ControllerMainMenu extends Controller
 		var aabb:b2AABB = new b2AABB();
 		aabb.lowerBound.Set(-100.0, -100.0);
 		aabb.upperBound.Set(100.0, 100.0);
-		this.world = new b2World(aabb, new b2Vec2(0.0, 15.0), true);
+		this.world = b2World.Create(new b2Vec2(0.0, 15.0));
 		var filter:ContactFilter = new ContactFilter();
 		this.world.SetContactFilter(filter);
 

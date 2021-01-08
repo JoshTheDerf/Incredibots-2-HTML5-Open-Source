@@ -1,4 +1,4 @@
-import { b2Shape, b2ContactFilter } from "@box2d/core";
+import { b2Shape, b2ContactFilter, b2Fixture } from "@box2d/core";
 
 export class ContactFilter extends b2ContactFilter
 {
@@ -6,7 +6,7 @@ export class ContactFilter extends b2ContactFilter
 		super()
 	}
 
-	public ShouldCollide(fixture1:b2Shape, fixture2:b2Shape):boolean {
+	public ShouldCollide(fixture1:b2Fixture, fixture2:b2Fixture):boolean {
 		if ((fixture1.GetUserData() && fixture1.GetUserData().isSandbox) || (fixture2.GetUserData() && fixture2.GetUserData().isSandbox)) return true;
 
 		if (fixture1.GetUserData() && fixture2.GetUserData() && !fixture1.GetUserData().collide && (!fixture1.GetUserData().editable || fixture2.GetUserData().editable) && (fixture1.GetUserData().isPiston == -1 || fixture2.GetUserData().isPiston == -1)) return false;
