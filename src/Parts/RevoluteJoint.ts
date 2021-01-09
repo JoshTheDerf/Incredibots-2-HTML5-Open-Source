@@ -121,8 +121,12 @@ export class RevoluteJoint extends JointPart
 		if (this.m_joint) {
 			var joint:b2RevoluteJoint = (this.m_joint as b2RevoluteJoint);
 
+			const anchorA = new b2Vec2()
+			const anchorB = new b2Vec2()
+			joint.GetAnchorA(anchorA)
+			joint.GetAnchorB(anchorB)
 			// Check joint constraints to see if the joint should break
-			var dist:number = Util.GetDist(joint.GetAnchorA().x, joint.GetAnchorA().y, joint.GetAnchorB().x, joint.GetAnchorB().y);
+			var dist:number = Util.GetDist(anchorA.x, anchorA.y, anchorB.x, anchorB.y);
 			if (dist > 3.0) {
 				world.DestroyJoint(this.m_joint);
 				this.m_joint = null;

@@ -16,6 +16,7 @@ import { Triangle } from "../Parts/Triangle";
 import { Challenge } from "./Challenge";
 import { ControllerGameGlobals } from "./Globals/ControllerGameGlobals";
 import { b2DebugDraw } from './Graphics/b2DebugDraw'
+import { Part } from "../Parts/Part";
 
 export class Draw extends b2DebugDraw
 {
@@ -28,7 +29,7 @@ export class Draw extends b2DebugDraw
 	private static s_staticEditableColor:b2Color = new b2Color(0.6, 0.8, 0.6);
 	private m_world:b2World;
 
-	public DrawWorld(allParts:Array<any>, selectedParts:Array<any>, world:b2World, notStarted:boolean, drawStatic:boolean = true, showJoints:boolean = true, showOutlines:boolean = true, challenge:Challenge = null):void {
+	public DrawWorld(allParts:Array<Part>, selectedParts:Array<any>, world:b2World, notStarted:boolean, drawStatic:boolean = true, showJoints:boolean = true, showOutlines:boolean = true, challenge:Challenge = null):void {
 		this.m_world = world;
 
 		var i:number;
@@ -334,15 +335,16 @@ export class Draw extends b2DebugDraw
 							else this.DrawShape(allParts[i].GetShape(), allParts[i].GetUserData(), xf, Draw.s_normalColor, 1, showOutlines);
 						}
 					} else if (allParts[i] instanceof PrismaticJoint) {
-						var shapes:Array<any> = allParts[i].GetShapes();
+						const pj = (allParts[i] as PrismaticJoint)
+						var shapes:Array<b2PolygonShape> = pj.GetShapes();
 						for (j = 0; j < shapes.length; j++) {
-							xf = shapes[j].GetBody().GetTransform();
+							xf = pj.part2.GetBody().GetTransform();
 							if (this.drawColours) {
-								this.DrawShape(shapes[j], allParts[i].GetUserData(), xf, new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines);
+								this.DrawShape(shapes[j], pj.part2.GetUserData(), xf, new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines);
 							} else if (allParts[i].isStatic) {
-								this.DrawShape(shapes[j], allParts[i].GetUserData(), xf, Draw.s_staticColor, 1, showOutlines);
+								this.DrawShape(shapes[j], pj.part2.GetUserData(), xf, Draw.s_staticColor, 1, showOutlines);
 							} else {
-								this.DrawShape(shapes[j], allParts[i].GetUserData(), xf, Draw.s_normalColor, 1, showOutlines);
+								this.DrawShape(shapes[j], pj.part2.GetUserData(), xf, Draw.s_normalColor, 1, showOutlines);
 							}
 						}
 					}
