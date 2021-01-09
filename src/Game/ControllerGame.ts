@@ -33,7 +33,7 @@ import { ImportWindow } from "../Gui/ImportWindow";
 import { ControllerSandbox } from "./ControllerSandbox";
 import { KeyPress } from "./KeyPress";
 import { ReplaySyncPoint } from "./ReplaySyncPoint";
-import { b2AABB, b2Body, b2ContactPoint, b2Fixture, b2MouseJoint, b2MouseJointDef, b2Shape, b2Vec2, b2World } from "@box2d/core";
+import { b2AABB, b2Body, b2BodyType, b2ContactPoint, b2Fixture, b2MassData, b2MouseJoint, b2MouseJointDef, b2Shape, b2Vec2, b2World } from "@box2d/core";
 
 import { CameraAction } from "../Actions/CameraAction";
 import { ChangeSliderAction } from "../Actions/ChangeSliderAction";
@@ -1418,13 +1418,16 @@ export class ControllerGame extends Controller {
 
 					if (!ControllerGameGlobals.playingReplay && body) {
 						var md:b2MouseJointDef = new b2MouseJointDef();
-						md.body1 = this.m_world.m_groundBody;
-						md.body2 = body;
+						const massData = new b2MassData()
+						body.GetMassData(massData)
+						md.bodyA = this.allParts[0].GetBody();
+						md.bodyB = body;
 						md.target.Set(ControllerGameGlobals.mouseXWorldPhys, ControllerGameGlobals.mouseYWorldPhys);
-						md.maxForce = 300.0 * body.m_mass;
-						md.timeStep = this.m_timeStep;
+						md.maxForce = 300.0 * massData.mass;
+						md.stiffness = 1
+						// md.timeStep = this.m_timeStep;
 						this.m_mouseJoint = this.m_world.CreateJoint(md) as b2MouseJoint;
-						body.WakeUp();
+						body.SetAwake(true);
 					}
 				}
 
@@ -5582,13 +5585,13 @@ export class ControllerGame extends Controller {
 			aabb.lowerBound.Set(ControllerGameGlobals.mouseXWorldPhys - 0.001, ControllerGameGlobals.mouseYWorldPhys - 0.001);
 			aabb.upperBound.Set(ControllerGameGlobals.mouseXWorldPhys + 0.001, ControllerGameGlobals.mouseYWorldPhys + 0.001);
 
+
 			// Query the world for overlapping shapes.
 			var k_maxCount:number = 10;
-			var shapes:Array<any> = new Array();
-			var count:number = this.m_world.QueryAllAABB(aabb, shapes);
+			var shapes:Array<any> = this.m_world.QueryAllAABB(aabb);
 			var body:b2Body = null;
-			for (var i:number = 0; i < count; ++i) {
-				if (shapes[i].m_body.IsStatic() == false && !shapes[i].GetUserData().undragable && shapes[i].GetUserData().isPiston == -1) {
+			for (var i:number = 0; i < shapes.length; ++i) {
+				if (shapes[i].m_body.GetType() != b2BodyType.b2_staticBody && !shapes[i].m_body.GetUserData().undragable && shapes[i].m_body.GetUserData().isPiston == -1) {
 					var tShape:b2Fixture = shapes[i] as b2Fixture;
 					var inside:boolean = tShape.TestPoint(mousePVec);
 					if (inside) {
