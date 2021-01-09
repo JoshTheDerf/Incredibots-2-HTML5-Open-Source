@@ -33,7 +33,7 @@ import { ImportWindow } from "../Gui/ImportWindow";
 import { ControllerSandbox } from "./ControllerSandbox";
 import { KeyPress } from "./KeyPress";
 import { ReplaySyncPoint } from "./ReplaySyncPoint";
-import { b2AABB, b2Body, b2BodyType, b2ContactPoint, b2Fixture, b2MassData, b2MouseJoint, b2MouseJointDef, b2Shape, b2Vec2, b2World } from "@box2d/core";
+import { b2AABB, b2Body, b2BodyType, b2ContactPoint, b2Fixture, b2LinearStiffness, b2MassData, b2MouseJoint, b2MouseJointDef, b2Shape, b2Vec2, b2World } from "@box2d/core";
 
 import { CameraAction } from "../Actions/CameraAction";
 import { ChangeSliderAction } from "../Actions/ChangeSliderAction";
@@ -77,6 +77,7 @@ export class ControllerGame extends Controller {
 
 
 		public m_world:b2World = null;
+		public m_groundBody:b2Body = null;
 		public m_mouseJoint:b2MouseJoint = null;
 		public m_iterations:number = 10;
 		public m_timeStep:number = 1.0/30;
@@ -1418,14 +1419,11 @@ export class ControllerGame extends Controller {
 
 					if (!ControllerGameGlobals.playingReplay && body) {
 						var md:b2MouseJointDef = new b2MouseJointDef();
-						const massData = new b2MassData()
-						body.GetMassData(massData)
-						md.bodyA = this.allParts[0].GetBody();
+						md.bodyA = this.m_groundBody;
 						md.bodyB = body;
 						md.target.Set(ControllerGameGlobals.mouseXWorldPhys, ControllerGameGlobals.mouseYWorldPhys);
-						md.maxForce = 300.0 * massData.mass;
-						md.stiffness = 1
-						// md.timeStep = this.m_timeStep;
+						md.maxForce = 300 * body.GetMass();
+						b2LinearStiffness(md, 5, 0.7, md.bodyA, md.bodyB);
 						this.m_mouseJoint = this.m_world.CreateJoint(md) as b2MouseJoint;
 						body.SetAwake(true);
 					}
@@ -5270,6 +5268,7 @@ export class ControllerGame extends Controller {
 			// Construct a world object
 
 			this.m_world = b2World.Create(this.GetGravity());
+			this.m_groundBody = this.m_world.CreateBody()
 
 			var filter:ContactFilter = new ContactFilter();
 			this.m_world.SetContactFilter(filter);
