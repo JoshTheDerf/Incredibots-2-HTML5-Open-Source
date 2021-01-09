@@ -1,5 +1,5 @@
 import { TextStyle } from "pixi.js";
-import { b2Color, b2World, b2Vec2, b2Body, b2Shape, b2Joint, b2BroadPhase, b2XForm, b2CircleShape, math, b2PolygonShape, b2_maxPolygonVertices, b2ShapeType, b2Transform, b2JointType } from "@box2d/core";
+import { b2Color, b2World, b2Vec2, b2Body, b2Shape, b2Joint, b2BroadPhase, b2XForm, b2CircleShape, math, b2PolygonShape, b2_maxPolygonVertices, b2ShapeType, b2Transform, b2JointType, b2Rot } from "@box2d/core";
 import { Util } from "../General/Util";
 import { Main } from "../Main";
 import { Cannon } from "../Parts/Cannon";
@@ -87,7 +87,7 @@ export class Draw extends b2DebugDraw
 							if (allParts[i] instanceof Circle) {
 								var circ:Circle = (allParts[i] as Circle);
 								this.m_fillAlpha = circ.opacity / 255.0;
-								this.DrawSolidCircle(new b2Vec2(circ.centerX, circ.centerY), circ.radius + thickness * 0.8, new b2Vec2(Math.cos(circ.angle), Math.sin(circ.angle)), myColor, false, false);
+								this.DrawSolidCircle(new b2Vec2(circ.centerX, circ.centerY), circ.radius + thickness * 0.8, new b2Rot(circ.angle), myColor, false, false);
 							} else if (allParts[i] instanceof Rectangle) {
 								var rect:Rectangle = (allParts[i] as Rectangle);
 								this.m_fillAlpha = rect.opacity / 255.0;
@@ -126,7 +126,7 @@ export class Draw extends b2DebugDraw
 						if (allParts[i] instanceof Circle) {
 							circ = (allParts[i] as Circle);
 							if (this.drawColours) this.m_fillAlpha = circ.opacity / 255.0;
-							this.DrawSolidCircle(new b2Vec2(circ.centerX, circ.centerY), circ.radius, new b2Vec2(Math.cos(circ.angle), Math.sin(circ.angle)), myColor, isHighlighted, circ.outline && (!circ.terrain || !this.drawColours) && showOutlines);
+							this.DrawSolidCircle(new b2Vec2(circ.centerX, circ.centerY), circ.radius, new b2Rot(circ.angle), myColor, isHighlighted, circ.outline && (!circ.terrain || !this.drawColours) && showOutlines);
 						} else if (allParts[i] instanceof Rectangle) {
 							rect = (allParts[i] as Rectangle);
 							if (this.drawColours) this.m_fillAlpha = rect.opacity / 255.0;
@@ -449,7 +449,7 @@ export class Draw extends b2DebugDraw
 				const center = new b2Vec2()
 				b2Transform.MultiplyVec2(xf, circle.m_p, center);
 				var radius:number = circle.m_radius;
-				var axis:b2Vec2 = xf.q;
+				var axis:b2Rot = xf.q;
 
 				if (this.drawColours) this.m_fillAlpha = alpha;
 				this.DrawSolidCircle(center, radius, axis, color, false, userData.outline && (!this.drawColours || !userData.terrain) && showOutlines, cannonball);
@@ -480,11 +480,14 @@ export class Draw extends b2DebugDraw
 
 	public DrawCannon(shape:b2Shape, xf:b2XForm, color:b2Color, alpha:number, showOutlines:boolean = true) : void{
 		var poly:b2PolygonShape = (shape as b2PolygonShape);
-		var localVertices:Array<any> = poly.GetVertices();
+		var localVertices:Array<any> = poly.m_vertices;
 		var vertices:Array<any> = new Array();
+
 		for (var i:number = 0; i < 4; ++i) {
-			vertices[i] = b2Math.b2MulX(xf, localVertices[i]);
-		}
+			const out = new b2Vec2()
+			b2Transform.MultiplyVec2(xf, localVertices[i], out);
+			vertices[i] = out
+}
 
 		if (this.drawColours) this.m_fillAlpha = alpha;
 		this.DrawSolidCannon(vertices, 4, color, false, poly.GetUserData().outline && (!this.drawColours || !poly.GetUserData().terrain) && showOutlines);
@@ -493,15 +496,17 @@ export class Draw extends b2DebugDraw
 	public DrawShapeForOutline(shape:b2Shape, xf:b2XForm, color:b2Color, alpha:number) : void {
 		color = Draw.DarkenColour(color);
 		var thickness:number = Math.max(0.1, (this.m_lineThickness * Math.pow(this.m_drawScale, 0.5)) / 8);
-		switch (shape.m_type)
+
+		switch (shape.GetType())
 		{
 		case b2ShapeType.e_circle:
 			{
 				var circle:b2CircleShape = (shape as b2CircleShape);
 
-				var center:b2Vec2 = b2Math.b2MulX(xf, circle.GetLocalPosition());
-				var radius:number = circle.GetRadius() + thickness;
-				var axis:b2Vec2 = xf.q;
+				const center = new b2Vec2()
+				b2Transform.MultiplyVec2(xf, circle.m_p, center);
+				var radius:number = circle.m_radius;
+				var axis = xf.q;
 
 				if (this.drawColours) this.m_fillAlpha = alpha;
 				this.DrawSolidCircle(center, radius, axis, color, false, false);
@@ -558,7 +563,10 @@ export class Draw extends b2DebugDraw
 			if (rad < Circle.MIN_RADIUS) rad = Circle.MIN_RADIUS;
 			if (rad > Circle.MAX_RADIUS) rad = Circle.MAX_RADIUS;
 			if (this.drawColours) this.m_fillAlpha = ControllerGameGlobals.defaultO / 255.0;
-			this.DrawSolidCircle(new b2Vec2(firstClickX, firstClickY), rad, new b2Vec2((mouseX - firstClickX) / rad, (mouseY - firstClickY) / rad), (this.drawColours ? new b2Color(ControllerGameGlobals.defaultR / 255.0, ControllerGameGlobals.defaultG / 255.0, ControllerGameGlobals.defaultB / 255.0) : Draw.s_selectedColor));
+			const rot = new b2Rot()
+			rot.c = (mouseX - firstClickX) / rad
+			rot.s = (mouseY - firstClickY) / rad
+			this.DrawSolidCircle(new b2Vec2(firstClickX, firstClickY), rad, rot, (this.drawColours ? new b2Color(ControllerGameGlobals.defaultR / 255.0, ControllerGameGlobals.defaultG / 255.0, ControllerGameGlobals.defaultB / 255.0) : Draw.s_selectedColor));
 		} else if (creatingItem == ControllerGameGlobals.NEW_RECT && actionStep == 1) {
 			var w:number = mouseX - firstClickX;
 			var h:number = mouseY - firstClickY;

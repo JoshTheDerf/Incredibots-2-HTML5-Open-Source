@@ -17,7 +17,7 @@
 */
 
 import { Graphics } from "pixi.js";
-import { b2Color, b2Vec2, b2Transform } from "@box2d/core";
+import { b2Color, b2Vec2, b2Transform, b2Rot } from "@box2d/core";
 import { Util } from "../../General/Util";
 
 /// Implement and register this class with a b2World to provide debug drawing of physics
@@ -117,7 +117,7 @@ export class b2DebugDraw
 	}
 
 	/// Draw a solid circle.
-	public DrawSolidCircle(center:b2Vec2, radius:number, axis:b2Vec2, color:b2Color, isHighlighted:boolean = false, drawOutlines:boolean = true, cannonball:boolean = false) : void{
+	public DrawSolidCircle(center:b2Vec2, radius:number, axis:b2Rot, color:b2Color, isHighlighted:boolean = false, drawOutlines:boolean = true, cannonball:boolean = false) : void{
 		if (this.IsCircleOnScreen(center, radius)) {
 			var outlineColour:b2Color = b2DebugDraw.DarkenColour(color);
 			if (drawOutlines) this.m_sprite.lineStyle(this.m_lineThickness * this.m_drawScale, (this.drawColours ? Util.b2ColorToHex(isHighlighted ? b2DebugDraw.DarkenColour(outlineColour) : outlineColour) : Util.b2ColorToHex(color)), this.m_alpha);
@@ -129,7 +129,7 @@ export class b2DebugDraw
 			if (drawOutlines && !cannonball) {
 				var numSpokes:number = 16;
 				for (var i:number = 0; i < numSpokes; i++) {
-					var angle:number = Math.atan2(axis.y, axis.x) + 2 * i * Math.PI / numSpokes;
+					var angle:number = Math.atan2(axis.s, axis.c) + 2 * i * Math.PI / numSpokes;
 					//m_sprite.moveTo(center.x * m_drawScale - m_drawXOff, center.y * m_drawScale - m_drawYOff);
 					this.m_sprite.moveTo((center.x + Math.cos(angle)*(radius * 0.9)) * this.m_drawScale - this.m_drawXOff, (center.y + Math.sin(angle)*(radius * 0.9)) * this.m_drawScale - this.m_drawYOff);
 					this.m_sprite.lineTo((center.x + Math.cos(angle)*radius) * this.m_drawScale - this.m_drawXOff, (center.y + Math.sin(angle)*radius) * this.m_drawScale - this.m_drawYOff);
