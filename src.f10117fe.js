@@ -76431,8 +76431,12 @@ class GuiButton extends pixi_js_1.Container {
     this.label.y = h / 2;
     this.addChild(this.label);
     this.on('click', event => {
+      if (this.disabled) return;
       clickListener(event);
-    }).on('tap', event => clickListener(event)).on('mousedown', this.bDown).on('mouseover', this.mouseOver).on('mouseout', this.bUp).on('click', this.bUp).on('click', this.mouseClick);
+    }).on('tap', event => {
+      if (this.disabled) return;
+      clickListener(event);
+    }).on('mousedown', this.bDown).on('mouseover', this.mouseOver).on('mouseout', this.bUp).on('click', this.bUp).on('click', this.mouseClick);
 
     if (addCheckbox) {
       if (checkboxSelected) {
@@ -76446,6 +76450,26 @@ class GuiButton extends pixi_js_1.Container {
       this.sCheckbox.smoothing = true;
       this.addChild(this.sCheckbox);
     }
+  }
+
+  set disabled(value) {
+    this._disabled = value;
+
+    if (this._disabled) {
+      const colorMatrix = new pixi_js_1.filters.ColorMatrixFilter();
+      colorMatrix.brightness(0.5, true);
+      this.interactive = false;
+      this.alpha = 0.7;
+      this.filters = [colorMatrix];
+    } else {
+      this.interactive = true;
+      this.alpha = 1;
+      this.filters = [];
+    }
+  }
+
+  get disabled() {
+    return this._disabled;
   }
 
   SetState(down) {
@@ -76471,6 +76495,8 @@ class GuiButton extends pixi_js_1.Container {
   }
 
   bDown() {
+    if (this.disabled) return;
+
     if (!this.buttonOffset) {
       this.x += 2;
       this.y += 2;
@@ -76481,6 +76507,8 @@ class GuiButton extends pixi_js_1.Container {
   }
 
   bUp() {
+    if (this.disabled) return;
+
     if (this.buttonOffset) {
       this.x -= 2;
       this.y -= 2;
@@ -76491,6 +76519,8 @@ class GuiButton extends pixi_js_1.Container {
   }
 
   mouseOver() {
+    if (this.disabled) return;
+
     if (Main_1.Main.enableSound && GuiButton.lastRolloverFrame != Math.floor(Date.now() / 150)) {
       GuiButton.rolloverSound.stop();
       GuiButton.rolloverSound.volume = 0.2;
@@ -76502,6 +76532,8 @@ class GuiButton extends pixi_js_1.Container {
   }
 
   mouseClick() {
+    if (this.disabled) return;
+
     if (Main_1.Main.enableSound) {
       GuiButton.clickSound.volume = 0.8;
       GuiButton.clickSound.play();
@@ -105770,6 +105802,7 @@ class ColourChangeWindow extends GuiWindow_1.GuiWindow {
   }
 
   redrawBox() {
+    this.m_colourSelector.clear();
     this.m_colourSelector.beginFill(pixi_js_1.utils.rgb2hex([parseInt(this.m_redArea.text) / 255, parseInt(this.m_greenArea.text) / 255, parseInt(this.m_blueArea.text) / 255]), 1);
     this.m_colourSelector.lineStyle(1, 0x222222, 1.0);
     this.m_colourSelector.drawRect(40, 128, 40, 30);
@@ -116595,17 +116628,21 @@ class ControllerMainMenu extends Controller_1.Controller {
     style = new pixi_js_1.TextStyle();
     style.fontSize = 17;
     var button = new GuiButton_1.GuiButton("Tutorial Levels", 210, 109, 200, 65, this.tutorialButton.bind(this), GuiButton_1.GuiButton.PINK, style);
+    button.disabled = true;
     this.levelSelectGui.addChild(button);
     button = new GuiButton_1.GuiButton("Sandbox Mode", 390, 109, 200, 65, this.sandboxButton.bind(this), GuiButton_1.GuiButton.PINK, style);
     this.levelSelectGui.addChild(button);
     button = new GuiButton_1.GuiButton("Challenge Editor", 210, 158, 200, 65, this.editorButton.bind(this), GuiButton_1.GuiButton.PINK, style);
+    button.disabled = true;
     this.levelSelectGui.addChild(button);
     button = new GuiButton_1.GuiButton(" Advanced Sandbox ", 390, 158, 200, 65, this.advancedButton.bind(this), GuiButton_1.GuiButton.PINK, style);
     this.levelSelectGui.addChild(button);
     this.logInButton = new GuiButton_1.GuiButton("Log In", 675, -5, 120, 60, this.loginButton.bind(this), GuiButton_1.GuiButton.BLUE, style);
+    this.logInButton.disabled = true;
     this.logInButton.visible = ControllerGameGlobals_1.ControllerGameGlobals.userName == "_Public";
     this.levelSelectGui.addChild(this.logInButton);
     this.logOutButton = new GuiButton_1.GuiButton("Log Out", 675, -5, 120, 60, this.logout.bind(this), GuiButton_1.GuiButton.BLUE, style);
+    this.logOutButton.disabled = true;
     this.logOutButton.visible = ControllerGameGlobals_1.ControllerGameGlobals.userName != "_Public";
     this.levelSelectGui.addChild(this.logOutButton);
     this.enableSoundButton = new GuiButton_1.GuiButton("Enable Sound", 5, 535, 150, 60, this.enableSoundButtonPressed.bind(this), GuiButton_1.GuiButton.BLUE, style);
@@ -116622,24 +116659,34 @@ class ControllerMainMenu extends Controller_1.Controller {
     }
 
     button = new GuiButton_1.GuiButton("Load Challenge", 315, 263, 171, 59, this.loadChallengeButton, GuiButton_1.GuiButton.BLUE, style);
+    button.disabled = true;
     this.levelSelectGui.addChild(button);
     button = new GuiButton_1.GuiButton("Load Replay", 315, 303, 171, 59, this.loadReplayButton, GuiButton_1.GuiButton.BLUE, style);
+    button.disabled = true;
     this.levelSelectGui.addChild(button);
     button = new GuiButton_1.GuiButton("Load Bot", 315, 343, 171, 59, this.loadRobotButton, GuiButton_1.GuiButton.BLUE, style);
+    button.disabled = true;
     this.levelSelectGui.addChild(button);
     button = new GuiButton_1.GuiButton("High Scores", 315, 383, 171, 59, this.highScoresButton, GuiButton_1.GuiButton.RED, style);
+    button.disabled = true;
     this.levelSelectGui.addChild(button);
     button = new GuiButton_1.GuiButton("Import Challenge", 145, 263, 171, 59, this.importChallengeButton.bind(this), GuiButton_1.GuiButton.ORANGE, style);
+    button.disabled = true;
     this.levelSelectGui.addChild(button);
     button = new GuiButton_1.GuiButton("Import Replay", 145, 303, 171, 59, this.importReplayButton.bind(this), GuiButton_1.GuiButton.ORANGE, style);
+    button.disabled = true;
     this.levelSelectGui.addChild(button);
     button = new GuiButton_1.GuiButton("Import Bot", 145, 343, 171, 59, this.importRobotButton.bind(this), GuiButton_1.GuiButton.ORANGE, style);
+    button.disabled = true;
     this.levelSelectGui.addChild(button);
     button = new GuiButton_1.GuiButton("Instructions", 620, 454, 153, 50, this.instructionsButton, GuiButton_1.GuiButton.BLUE, style);
+    button.disabled = true;
     this.levelSelectGui.addChild(button);
     button = new GuiButton_1.GuiButton("Credits", 620, 489, 153, 50, this.creditsButton, GuiButton_1.GuiButton.BLUE, style);
+    button.disabled = true;
     this.levelSelectGui.addChild(button);
     button = new GuiButton_1.GuiButton("Suggestions?", 620, 524, 153, 50, this.suggestionsButton, GuiButton_1.GuiButton.BLUE, style);
+    button.disabled = true;
     this.levelSelectGui.addChild(button);
     style = new pixi_js_1.TextStyle();
     style.fontFamily = Main_1.Main.GLOBAL_FONT;
@@ -118254,7 +118301,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "39831" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "41561" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
