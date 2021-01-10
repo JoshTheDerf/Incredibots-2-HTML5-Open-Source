@@ -170,12 +170,9 @@ package Gui
 				format.color = 0x242930;
 				format.font = Main.GLOBAL_FONT;
 				format.size = 12;
-				yourRobotsBox = new GuiCheckBox();
+				yourRobotsBox = new GuiCheckBox(35, 35, 190);
 				yourRobotsBox.label = (dataType == LOAD_ROBOT_TYPE ? "Your Robots Only " : (dataType == LOAD_REPLAY_TYPE ? "Your Replays Only " : "Your Challenges Only "));
 				if ((isRobotType && Database.robotType == Database.NORMAL) || (isReplayType && Database.replayType == Database.NORMAL) || (isChallengeType && Database.challengeType == Database.NORMAL)) yourRobotsBox.selected = true;
-				yourRobotsBox.x = 35;
-				yourRobotsBox.y = 35;
-				yourRobotsBox.width = 190;
 				yourRobotsBox.setStyle("textFormat", format);
 				yourRobotsBox.addEventListener(Event.CHANGE, boxChanged, false, 0, true);
 				addChild(yourRobotsBox);
@@ -497,22 +494,16 @@ package Gui
 				format.color = 0x242930;
 				format.font = Main.GLOBAL_FONT;
 				format.size = 12;
-				sharedBox = new GuiCheckBox();
+				sharedBox = new GuiCheckBox(330, (type == SAVE_REPLAY_TYPE ? 393 : (type == SAVE_CHALLENGE_TYPE ? 383 : 373)), 120);
 				sharedBox.label = "Make Public";
-				sharedBox.x = 330;
-				sharedBox.y = (type == SAVE_REPLAY_TYPE ? 393 : (type == SAVE_CHALLENGE_TYPE ? 383 : 373));
-				sharedBox.width = 120;
 				sharedBox.selected = (!(cont is ControllerHomeMovies) && !(cont is ControllerRubeGoldberg));
 				sharedBox.setStyle("textFormat", format);
 				sharedBox.enabled = (ControllerGameGlobals.userName != "_Public" && !(cont is ControllerHomeMovies) && !(cont is ControllerRubeGoldberg));
 				addChild(sharedBox);
 				if (type == SAVE_ROBOT_TYPE || type == SAVE_CHALLENGE_TYPE) {
 					sharedBox.addEventListener(Event.CHANGE, sharedBoxChanged, false, 0, true);
-					disableEditBox = new GuiCheckBox();
+					disableEditBox = new GuiCheckBox(330, (type == SAVE_ROBOT_TYPE ? 393 : 403), 145);
 					disableEditBox.label = "Allow Copies";
-					disableEditBox.x = 330;
-					disableEditBox.y = (type == SAVE_ROBOT_TYPE ? 393 : 403);
-					disableEditBox.width = 145;
 					disableEditBox.selected = (ControllerGameGlobals.userName != "_Public" && !(cont is ControllerHomeMovies) && !(cont is ControllerRubeGoldberg));
 					if (cont is ControllerChallenge) disableEditBox.selected = false;
 					disableEditBox.enabled = (ControllerGameGlobals.userName != "_Public" && !(cont is ControllerHomeMovies) && !(cont is ControllerRubeGoldberg));
@@ -520,11 +511,8 @@ package Gui
 					addChild(disableEditBox);
 
 					if (type == SAVE_ROBOT_TYPE) {
-						propBox = new GuiCheckBox();
+						propBox = new GuiCheckBox(330, 413, 145);
 						propBox.label = "Make Prop";
-						propBox.x = 330;
-						propBox.y = 413;
-						propBox.width = 145;
 						propBox.selected = false;
 						propBox.setStyle("textFormat", format);
 						addChild(propBox);

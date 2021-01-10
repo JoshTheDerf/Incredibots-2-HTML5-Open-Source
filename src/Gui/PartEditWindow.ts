@@ -174,10 +174,9 @@ export class PartEditWindow extends GuiWindow
 		format = new TextStyle();
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.fill = '#242930';
+		format.fontSize = 12
 		this.m_densityLabel = new Text('');
 		this.m_densityLabel.text = "Density";
-		this.m_densityLabel.width = 80;
-		this.m_densityLabel.height = 20;
 		this.m_densityLabel.x = 39;
 		this.m_densityLabel.y = 186;
 		this.m_densityLabel.style = format;
@@ -206,34 +205,26 @@ export class PartEditWindow extends GuiWindow
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.fontSize = 9;
 		format.fill = 0x242930;
-		this.m_collisionBox = new GuiCheckBox();
+		this.m_collisionBox = new GuiCheckBox(5, 240, 120);
 		this.m_collisionBox.style = format;
+		this.m_collisionBox.disabledStyle = disabledFormat;
 		this.m_collisionBox.label = "Collides";
-		this.m_collisionBox.x = 5;
-		this.m_collisionBox.y = 240;
-		this.m_collisionBox.width = 120;
 		this.m_collisionBox.selected = true;
-		this.m_collisionBox.on('click', (event: any) => this.cont.collisionBox(event));
+		this.m_collisionBox.on('change', (event: any) => this.cont.collisionBox(event));
 		this.m_objectEditPanel.addChild(this.m_collisionBox);
-		this.m_cameraBox = new GuiCheckBox();
+		this.m_cameraBox = new GuiCheckBox(5, 260, 120);
 		this.m_cameraBox.style = format;
 		this.m_cameraBox.disabledStyle = disabledFormat;
 		this.m_cameraBox.label = "Camera Focus";
-		this.m_cameraBox.x = 5;
-		this.m_cameraBox.y = 260;
-		this.m_cameraBox.width = 120;
 		this.m_cameraBox.selected = false;
-		this.m_cameraBox.on('click', (event: any) => this.cont.cameraBox(event));
+		this.m_cameraBox.on('change', (event: any) => this.cont.cameraBox(event));
 		this.m_objectEditPanel.addChild(this.m_cameraBox);
-		this.m_fixateBox = new GuiCheckBox();
+		this.m_fixateBox = new GuiCheckBox(5, 300, 120);
 		this.m_fixateBox.style = format;
 		this.m_fixateBox.disabledStyle = disabledFormat;
 		this.m_fixateBox.label = "Fixate";
-		this.m_fixateBox.x = 5;
-		this.m_fixateBox.y = 300;
-		this.m_fixateBox.width = 120;
 		this.m_fixateBox.selected = false;
-		this.m_fixateBox.on('click', (event: any) => this.cont.fixateBox(event));
+		this.m_fixateBox.on('change', (event: any) => this.cont.fixateBox(event));
 		this.m_objectEditPanel.addChild(this.m_fixateBox);
 		this.m_colourButton = new GuiButton("Change Color", 5, 320, 110, 35, () => this.colourButton(), GuiButton.BLUE);
 		this.m_objectEditPanel.addChild(this.m_colourButton);
@@ -241,34 +232,26 @@ export class PartEditWindow extends GuiWindow
 		this.m_objectEditPanel.addChild(this.m_frontButton);
 		this.m_backButton = new GuiButton("Move to Back", 5, 380, 110, 35, () => this.cont.backButton(), GuiButton.PINK);
 		this.m_objectEditPanel.addChild(this.m_backButton);
-		this.m_outlineBox = new GuiCheckBox();
+		this.m_outlineBox = new GuiCheckBox(5, 415, 120);
 		this.m_outlineBox.style = format
 		this.m_outlineBox.disabledStyle = disabledFormat
 		this.m_outlineBox.label = "Show Outlines";
-		this.m_outlineBox.x = 5;
-		this.m_outlineBox.y = 415;
-		this.m_outlineBox.width = 120;
 		this.m_outlineBox.selected = false;
-		this.m_outlineBox.on('click', (event: any) => this.cont.outlineBox(event))
+		this.m_outlineBox.on('change', (event: any) => this.cont.outlineBox(event))
 		this.m_objectEditPanel.addChild(this.m_outlineBox);
-		this.m_terrainBox = new GuiCheckBox();
+		this.m_terrainBox = new GuiCheckBox(5, 435, 120);
 		this.m_terrainBox.style = format
+		this.m_terrainBox.disabledStyle = disabledFormat;
 		this.m_terrainBox.label = "Outlines Behind";
-		this.m_terrainBox.x = 5;
-		this.m_terrainBox.y = 435;
-		this.m_terrainBox.width = 120;
 		this.m_terrainBox.selected = false;
-		this.m_terrainBox.on('click', (event: any) => this.cont.terrainBox(event))
+		this.m_terrainBox.on('change', (event: any) => this.cont.terrainBox(event))
 		this.m_objectEditPanel.addChild(this.m_terrainBox);
-		this.m_undragableBox = new GuiCheckBox();
+		this.m_undragableBox = new GuiCheckBox(5, 280, 120);
 		this.m_undragableBox.style = format
 		this.m_undragableBox.disabledStyle = disabledFormat
 		this.m_undragableBox.label = "Undraggable";
-		this.m_undragableBox.x = 5;
-		this.m_undragableBox.y = 280;
-		this.m_undragableBox.width = 120;
 		this.m_undragableBox.selected = false;
-		this.m_undragableBox.on('click', (event: any) => this.cont.undragableBox(event))
+		this.m_undragableBox.on('change', (event: any) => this.cont.undragableBox(event))
 		this.m_objectEditPanel.addChild(this.m_undragableBox);
 
 		format = new TextStyle();
@@ -297,10 +280,9 @@ export class PartEditWindow extends GuiWindow
 		format = new TextStyle();
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.fill = '#242930'
+		format.fontSize = 12
 		this.m_densityLabel = new Text('');
 		this.m_densityLabel.text = "Density";
-		this.m_densityLabel.width = 80;
-		this.m_densityLabel.height = 20;
 		this.m_densityLabel.x = 39;
 		this.m_densityLabel.y = 156;
 		this.m_densityLabel.style = format;
@@ -330,24 +312,18 @@ export class PartEditWindow extends GuiWindow
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.fontSize = 9;
 		format.fill = 0x242930;
-		this.m_collisionBox7 = new GuiCheckBox();
+		this.m_collisionBox7 = new GuiCheckBox(5, 210, 120);
 		this.m_collisionBox7.style = format
 		this.m_collisionBox7.label = "Collides";
-		this.m_collisionBox7.x = 5;
-		this.m_collisionBox7.y = 210;
-		this.m_collisionBox7.width = 120;
 		this.m_collisionBox7.selected = true;
-		this.m_collisionBox7.on('click', (event: any) => this.cont.collisionBox(event));
+		this.m_collisionBox7.on('change', (event: any) => this.cont.collisionBox(event));
 		this.m_cannonPanel.addChild(this.m_collisionBox7);
-		this.m_fixateBox7 = new GuiCheckBox();
+		this.m_fixateBox7 = new GuiCheckBox(5, 250, 120);
 		this.m_fixateBox7.style = format
 		this.m_fixateBox7.disabledStyle = disabledFormat
 		this.m_fixateBox7.label = "Fixate";
-		this.m_fixateBox7.x = 5;
-		this.m_fixateBox7.y = 250;
-		this.m_fixateBox7.width = 120;
 		this.m_fixateBox7.selected = false;
-		this.m_fixateBox7.on('click', (event: any) => this.cont.fixateBox(event));
+		this.m_fixateBox7.on('change', (event: any) => this.cont.fixateBox(event));
 		this.m_cannonPanel.addChild(this.m_fixateBox7);
 		this.m_colourButton = new GuiButton("Change Color", 5, 270, 110, 35, () => this.colourButton(), GuiButton.BLUE);
 		this.m_cannonPanel.addChild(this.m_colourButton);
@@ -355,44 +331,35 @@ export class PartEditWindow extends GuiWindow
 		this.m_cannonPanel.addChild(this.m_frontButton);
 		this.m_backButton = new GuiButton("Move to Back", 5, 330, 110, 35, () => this.cont.backButton(), GuiButton.PINK);
 		this.m_cannonPanel.addChild(this.m_backButton);
-		this.m_outlineBox7 = new GuiCheckBox();
+		this.m_outlineBox7 = new GuiCheckBox(5, 365, 120);
 		this.m_outlineBox7.style = format
 		this.m_outlineBox7.disabledStyle = disabledFormat
 		this.m_outlineBox7.label = "Show Outlines";
-		this.m_outlineBox7.x = 5;
-		this.m_outlineBox7.y = 365;
-		this.m_outlineBox7.width = 120;
 		this.m_outlineBox7.selected = false;
-		this.m_outlineBox7.on('click', (event: any) => this.cont.outlineBox(event));
+		this.m_outlineBox7.on('change', (event: any) => this.cont.outlineBox(event));
 		this.m_cannonPanel.addChild(this.m_outlineBox7);
-		this.m_terrainBox7 = new GuiCheckBox();
+		this.m_terrainBox7 = new GuiCheckBox(5, 385, 120);
 		this.m_terrainBox7.style = format
 		this.m_terrainBox7.label = "Outlines Behind";
-		this.m_terrainBox7.x = 5;
-		this.m_terrainBox7.y = 385;
-		this.m_terrainBox7.width = 120;
 		this.m_terrainBox7.selected = false;
-		this.m_terrainBox7.on('click', (event: any) => this.cont.terrainBox(event));
+		this.m_terrainBox7.on('change', (event: any) => this.cont.terrainBox(event));
 		this.m_cannonPanel.addChild(this.m_terrainBox7);
-		this.m_undragableBox7 = new GuiCheckBox();
+		this.m_undragableBox7 = new GuiCheckBox(5, 230, 120);
 		this.m_undragableBox7.style = format
 		this.m_undragableBox7.disabledStyle = disabledFormat
 		this.m_undragableBox7.label = "Undraggable";
-		this.m_undragableBox7.x = 5;
-		this.m_undragableBox7.y = 230;
-		this.m_undragableBox7.width = 120;
 		this.m_undragableBox7.selected = false;
-		this.m_undragableBox7.on('click', (event: any) => this.cont.undragableBox(event));
+		this.m_undragableBox7.on('change', (event: any) => this.cont.undragableBox(event));
 		this.m_cannonPanel.addChild(this.m_undragableBox7);
 		format = new TextStyle();
 		format.fontSize = 10;
 		format.fontFamily = Main.GLOBAL_FONT;
+		format.fill = 0x242930;
 		this.m_strengthLabel7 = new Text('');
 		this.m_strengthLabel7.text = "Cannon Strength";
 		this.m_strengthLabel7.style = format;
 		this.m_strengthLabel7.width = 120;
 		this.m_strengthLabel7.height = 20;
-		this.m_strengthLabel7.textColor = 0x242930;
 		this.m_strengthLabel7.x = 21;
 		this.m_strengthLabel7.y = 434;
 		this.m_strengthLabel7.style = format;
@@ -468,53 +435,38 @@ export class PartEditWindow extends GuiWindow
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.fontSize = 9;
 		format.fill = 0x242930;
-		this.m_outlineBox3 = new GuiCheckBox();
+		this.m_outlineBox3 = new GuiCheckBox(5, 300, 120);
 		this.m_outlineBox3.style = format
 		this.m_outlineBox3.label = "Show Outlines";
-		this.m_outlineBox3.x = 5;
-		this.m_outlineBox3.y = 300;
-		this.m_outlineBox3.width = 120;
 		this.m_outlineBox3.selected = true;
-		this.m_outlineBox3.on('click', (event: any) => this.cont.outlineBox(event));
+		this.m_outlineBox3.on('change', (event: any) => this.cont.outlineBox(event));
 		this.m_multiEditPanel.addChild(this.m_outlineBox3);
-		this.m_terrainBox3 = new GuiCheckBox();
+		this.m_terrainBox3 = new GuiCheckBox(5, 320, 120);
 		this.m_terrainBox3.style = format
 		this.m_terrainBox3.label = "Outlines Behind";
-		this.m_terrainBox3.x = 5;
-		this.m_terrainBox3.y = 320;
-		this.m_terrainBox3.width = 120;
 		this.m_terrainBox3.selected = false;
-		this.m_terrainBox3.on('click', (event: any) => this.cont.terrainBox(event));
+		this.m_terrainBox3.on('change', (event: any) => this.cont.terrainBox(event));
 		this.m_multiEditPanel.addChild(this.m_terrainBox3);
 		this.m_colourButton = new GuiButton("Change Color", 5, 260, 110, 35, () => this.colourButton(), GuiButton.BLUE);
 		this.m_multiEditPanel.addChild(this.m_colourButton);
-		this.m_collisionBox2 = new GuiCheckBox();
+		this.m_collisionBox2 = new GuiCheckBox(5, 190, 120);
 		this.m_collisionBox2.style = format
 		this.m_collisionBox2.disabledStyle = disabledFormat
 		this.m_collisionBox2.label = "Collides";
-		this.m_collisionBox2.x = 5;
-		this.m_collisionBox2.y = 190;
-		this.m_collisionBox2.width = 120;
 		this.m_collisionBox2.selected = false;
-		this.m_collisionBox2.on('click', (event: any) => this.cont.collisionBox(event));
+		this.m_collisionBox2.on('change', (event: any) => this.cont.collisionBox(event));
 		this.m_multiEditPanel.addChild(this.m_collisionBox2);
-		this.m_fixateBox2 = new GuiCheckBox();
+		this.m_fixateBox2 = new GuiCheckBox(5, 230, 120);
 		this.m_fixateBox2.style = format
 		this.m_fixateBox2.disabledStyle = disabledFormat
 		this.m_fixateBox2.label = "Fixate";
-		this.m_fixateBox2.x = 5;
-		this.m_fixateBox2.y = 230;
-		this.m_fixateBox2.width = 120;
 		this.m_fixateBox2.selected = false;
-		this.m_fixateBox2.on('click', (event: any) => this.cont.fixateBox(event));
+		this.m_fixateBox2.on('change', (event: any) => this.cont.fixateBox(event));
 		this.m_multiEditPanel.addChild(this.m_fixateBox2);
-		this.m_undragableBox2 = new GuiCheckBox();
+		this.m_undragableBox2 = new GuiCheckBox(5, 210, 120);
 		this.m_undragableBox2.style = format
 		this.m_undragableBox2.disabledStyle = disabledFormat
 		this.m_undragableBox2.label = "Undraggable";
-		this.m_undragableBox2.x = 5;
-		this.m_undragableBox2.y = 210;
-		this.m_undragableBox2.width = 120;
 		this.m_undragableBox2.selected = false;
 		this.m_undragableBox2.on('click', (event: any) => this.cont.undragableBox(event));
 		this.m_multiEditPanel.addChild(this.m_undragableBox2);
@@ -557,7 +509,6 @@ export class PartEditWindow extends GuiWindow
 		this.m_sizeLabel.text = "Text Size:";
 		this.m_sizeLabel.width = 55;
 		this.m_sizeLabel.height = 20;
-		this.m_sizeLabel.textColor = 0x242930;
 		this.m_sizeLabel.x = 15;
 		this.m_sizeLabel.y = 170;
 		this.m_sizeLabel.style = format;
@@ -577,23 +528,17 @@ export class PartEditWindow extends GuiWindow
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.fontSize = 9;
 		format.fill = 0x242930;
-		this.m_scaleWithZoomBox = new GuiCheckBox();
+		this.m_scaleWithZoomBox = new GuiCheckBox(2, 195, 120);
 		this.m_scaleWithZoomBox.style = format
 		this.m_scaleWithZoomBox.label = "Scale with Zoom";
-		this.m_scaleWithZoomBox.x = 2;
-		this.m_scaleWithZoomBox.y = 195;
-		this.m_scaleWithZoomBox.width = 120;
 		this.m_scaleWithZoomBox.selected = true;
-		this.m_scaleWithZoomBox.on('click', (event: any) => this.cont.scaleWithZoomBox(event));
+		this.m_scaleWithZoomBox.on('change', (event: any) => this.cont.scaleWithZoomBox(event));
 		this.m_textEditPanel.addChild(this.m_scaleWithZoomBox);
-		this.m_alwaysVisibleBox = new GuiCheckBox();
+		this.m_alwaysVisibleBox = new GuiCheckBox(2, 215, 120);
 		this.m_alwaysVisibleBox.style = format
 		this.m_alwaysVisibleBox.label = "Always Display";
-		this.m_alwaysVisibleBox.x = 2;
-		this.m_alwaysVisibleBox.y = 215;
-		this.m_alwaysVisibleBox.width = 120;
 		this.m_alwaysVisibleBox.selected = false;
-		this.m_alwaysVisibleBox.on('click', (event: any) => this.cont.alwaysVisibleBox(event));
+		this.m_alwaysVisibleBox.on('change', (event: any) => this.cont.alwaysVisibleBox(event));
 		this.m_textEditPanel.addChild(this.m_alwaysVisibleBox);
 		this.m_colourButton = new GuiButton("Change Color", 5, 290, 110, 35, () => this.colourButton(), GuiButton.BLUE);
 		this.m_textEditPanel.addChild(this.m_colourButton);
@@ -614,13 +559,12 @@ export class PartEditWindow extends GuiWindow
 		format = new TextStyle();
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.fontSize = 10;
+		format.fill = 0x242930;
 		this.m_textKeyLabel = new Text('');
 		this.m_textKeyLabel.text = "Display Text Key:";
-		this.m_textKeyLabel.width = 90;
-		this.m_textKeyLabel.height = 20;
-		this.m_textKeyLabel.textColor = 0x242930;
-		this.m_textKeyLabel.x = 18;
-		this.m_textKeyLabel.y = 250;
+		this.m_textKeyLabel.anchor.set(0.5)
+		this.m_textKeyLabel.x = 18 + (90 / 2);
+		this.m_textKeyLabel.y = 250 + (20 / 2);
 		this.m_textKeyLabel.style = format;
 		this.m_textEditPanel.addChild(this.m_textKeyLabel);
 
@@ -734,15 +678,12 @@ export class PartEditWindow extends GuiWindow
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.fontSize = 10;
 		format.fill = 0x242930;
-		this.m_autoBox3 = new GuiCheckBox();
+		this.m_autoBox3 = new GuiCheckBox(5, 290, 120);
 		this.m_autoBox3.style = format
 		this.m_autoBox3.disabledStyle = format
 		this.m_autoBox3.label = "Auto-On";
-		this.m_autoBox3.x = 5;
-		this.m_autoBox3.y = 290;
-		this.m_autoBox3.width = 120;
 		this.m_autoBox3.selected = false;
-		this.m_autoBox3.on('click', (event: any) => this.cont.autoBox1(event));
+		this.m_autoBox3.on('change', (event: any) => this.cont.autoBox1(event));
 		this.m_thrustersEditPanel.addChild(this.m_autoBox3);
 
 		format = new TextStyle();
@@ -790,74 +731,56 @@ export class PartEditWindow extends GuiWindow
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.fontSize = 9;
 		format.fill = 0x242930;
-		this.m_enableMotorBox = new GuiCheckBox();
+		this.m_enableMotorBox = new GuiCheckBox(5, 152, 120);
 		this.m_enableMotorBox.style = format
 		this.m_enableMotorBox.label = "Enable Motor";
-		this.m_enableMotorBox.x = 5;
-		this.m_enableMotorBox.y = 152;
-		this.m_enableMotorBox.width = 120;
 		this.m_enableMotorBox.selected = false;
-		this.m_enableMotorBox.on('click', (event: any) => this.cont.motorBox(event));
+		this.m_enableMotorBox.on('change', (event: any) => this.cont.motorBox(event));
 		this.m_jointEditPanel.addChild(this.m_enableMotorBox);
-		this.m_rigidJointBox = new GuiCheckBox();
+		this.m_rigidJointBox = new GuiCheckBox(5, 284, 120);
 		this.m_rigidJointBox.style = format
 		this.m_rigidJointBox.disabledStyle = disabledFormat
 		this.m_rigidJointBox.label = "Floppy Joint";
-		this.m_rigidJointBox.x = 5;
-		this.m_rigidJointBox.y = 284;
-		this.m_rigidJointBox.width = 120;
 		this.m_rigidJointBox.selected = true;
-		this.m_rigidJointBox.on('click', (event: any) => this.cont.rigidBox(event));
+		this.m_rigidJointBox.on('change', (event: any) => this.cont.rigidBox(event));
 		this.m_jointEditPanel.addChild(this.m_rigidJointBox);
-		this.m_autoBox1 = new GuiCheckBox();
+		this.m_autoBox1 = new GuiCheckBox(5, 347, 120);
 		this.m_autoBox1.style = format
 		this.m_autoBox1.disabledStyle = disabledFormat
 		this.m_autoBox1.label = "Auto-On CW";
-		this.m_autoBox1.x = 5;
-		this.m_autoBox1.y = 347;
-		this.m_autoBox1.width = 120;
 		this.m_autoBox1.selected = false;
-		this.m_autoBox1.on('click', (event: any) => this.cont.autoBox1(event));
+		this.m_autoBox1.on('change', (event: any) => this.cont.autoBox1(event));
 		this.m_jointEditPanel.addChild(this.m_autoBox1);
-		this.m_autoBox2 = new GuiCheckBox();
+		this.m_autoBox2 = new GuiCheckBox(5, 367, 120);
 		this.m_autoBox2.style = format
 		this.m_autoBox2.disabledStyle = disabledFormat
 		this.m_autoBox2.label = "Auto-On CCW";
-		this.m_autoBox2.x = 5;
-		this.m_autoBox2.y = 367;
-		this.m_autoBox2.width = 120;
 		this.m_autoBox2.selected = false;
-		this.m_autoBox2.on('click', (event: any) => this.cont.autoBox2(event));
+		this.m_autoBox2.on('change', (event: any) => this.cont.autoBox2(event));
 		this.m_jointEditPanel.addChild(this.m_autoBox2);
-		this.m_outlineBox2 = new GuiCheckBox();
+		this.m_outlineBox2 = new GuiCheckBox(5, 472, 120);
 		this.m_outlineBox2.style = format
 		this.m_outlineBox2.label = "Show Outlines";
-		this.m_outlineBox2.x = 5;
-		this.m_outlineBox2.y = 472;
-		this.m_outlineBox2.width = 120;
 		this.m_outlineBox2.selected = false;
-		this.m_outlineBox2.on('click', (event: any) => this.cont.outlineBox(event));
+		this.m_outlineBox2.on('change', (event: any) => this.cont.outlineBox(event));
 		this.m_jointEditPanel.addChild(this.m_outlineBox2);
 		format = new TextStyle();
 		format.fontFamily = Main.GLOBAL_FONT;
+		format.fill = 0x242930;
 		this.m_strengthLabel = new Text('');
 		this.m_strengthLabel.text = "Motor Strength";
+		this.m_strengthLabel.anchor.set(0.5)
 		this.m_strengthLabel.style = format;
-		this.m_strengthLabel.width = 120;
-		this.m_strengthLabel.height = 20;
-		this.m_strengthLabel.textColor = 0x242930;
-		this.m_strengthLabel.x = 28;
-		this.m_strengthLabel.y = 177;
+		this.m_strengthLabel.x = (120 / 2);
+		this.m_strengthLabel.y = 177 + (20 / 2);
 		this.m_strengthLabel.style = format;
 		this.m_jointEditPanel.addChild(this.m_strengthLabel);
 		this.m_speedLabel = new Text('');
 		this.m_speedLabel.text = "Motor Speed";
 		this.m_speedLabel.style = format;
-		this.m_speedLabel.width = 120;
-		this.m_speedLabel.height = 20;
-		this.m_speedLabel.textColor = 0x242930;
-		this.m_speedLabel.x = 32;
-		this.m_speedLabel.y = 232;
+		this.m_speedLabel.anchor.set(0.5)
+		this.m_speedLabel.x = (120 / 2);
+		this.m_speedLabel.y = 232 + (20 / 2);
 		this.m_speedLabel.style = format;
 		this.m_jointEditPanel.addChild(this.m_speedLabel);
 		this.m_strengthSlider = new GuiSlider();
@@ -920,35 +843,28 @@ export class PartEditWindow extends GuiWindow
 		this.m_jointEditPanel.addChild(this.m_controlKeyArea2);
 		format = new TextStyle();
 		format.fontFamily = Main.GLOBAL_FONT;
+		format.fontSize = 12
 		format.fill = '#242930'
 		this.m_limitLabel1 = new Text('');
 		this.m_limitLabel1.text = "Lower Limit (degrees)";
-		this.m_limitLabel1.width = 95;
-		this.m_limitLabel1.height = 15;
 		this.m_limitLabel1.x = 15;
 		this.m_limitLabel1.y = 395;
 		this.m_limitLabel1.style = format;
 		this.m_jointEditPanel.addChild(this.m_limitLabel1);
 		this.m_limitLabel2 = new Text('');
 		this.m_limitLabel2.text = "Upper Limit (degrees)";
-		this.m_limitLabel2.width = 95;
-		this.m_limitLabel2.height = 15;
 		this.m_limitLabel2.x = 15;
 		this.m_limitLabel2.y = 430;
 		this.m_limitLabel2.style = format;
 		this.m_jointEditPanel.addChild(this.m_limitLabel2);
 		this.m_inputLabel1 = new Text('');
 		this.m_inputLabel1.text = "Rotate CW:";
-		this.m_inputLabel1.width = 62;
-		this.m_inputLabel1.height = 20;
 		this.m_inputLabel1.x = 10;
 		this.m_inputLabel1.y = 307;
 		this.m_inputLabel1.style = format;
 		this.m_jointEditPanel.addChild(this.m_inputLabel1);
 		this.m_inputLabel2 = new Text('');
 		this.m_inputLabel2.text = "Rotate CCW:";
-		this.m_inputLabel2.width = 62;
-		this.m_inputLabel2.height = 20;
 		this.m_inputLabel2.x = 10;
 		this.m_inputLabel2.y = 327;
 		this.m_inputLabel2.style = format;
@@ -963,13 +879,10 @@ export class PartEditWindow extends GuiWindow
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.fontSize = 9;
 		format.fill = 0x242930;
-		this.m_collisionBox3 = new GuiCheckBox();
+		this.m_collisionBox3 = new GuiCheckBox(5, 367, 120);
 		this.m_collisionBox3.style = format
 		this.m_collisionBox3.disabledStyle = disabledFormat
 		this.m_collisionBox3.label = "Collides";
-		this.m_collisionBox3.x = 5;
-		this.m_collisionBox3.y = 367;
-		this.m_collisionBox3.width = 120;
 		this.m_collisionBox3.selected = true;
 		this.m_collisionBox3.on('click', (event: any) => this.cont.collisionBox(event));
 		this.m_jointEditPanel.addChild(this.m_collisionBox3);

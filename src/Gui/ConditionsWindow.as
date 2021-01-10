@@ -1,56 +1,56 @@
 package Gui
 {
 	import Game.*;
-	
+
 	import General.Util;
-	
+
 	import Parts.ShapePart;
-	
+
 	import fl.controls.*;
-	
+
 	import flash.display.Sprite;
 	import flash.events.*;
 	import flash.text.*;
-	
-	
+
+
 	public class ConditionsWindow extends GuiWindow
 	{
 		private var cont:ControllerChallenge;
-		
+
 		private var is1:TextField;
 		private var is2:TextField;
-		
+
 		private var allConditionsBox:CheckBox;
 		private var immediateLossBox:CheckBox;
-		
+
 		private var winSubjectBox:ComboBox;
 		private var winObjectBox:ComboBox;
 		private var lossSubjectBox:ComboBox;
 		private var lossObjectBox:ComboBox;
-		
+
 		private var winNameArea:TextInput;
 		private var lossNameArea:TextInput;
-		
+
 		private var winConditions:List;
 		private var lossConditions:List;
-		
+
 		private var backButton:GuiButton;
 		private var addWinConditionButton:GuiButton;
 		private var addLossConditionButton:GuiButton;
 		private var removeWinConditionButton:GuiButton;
 		private var removeLossConditionButton:GuiButton;
-		
+
 		private var addingWinCondition:Boolean;
 		private var selectingForShape1:Boolean;
 		public var shape1:ShapePart;
-		
+
 		private static const STRINGS_FOR_SUBJECTS:Array = ["A specific shape", "Any shape", "All user-created shapes", "Any pre-existing shape", "Any cannonball"];
 		private static const STRINGS_FOR_OBJECTS:Array = ["within a box", "above a line", "below a line", "left of a line", "right of a line", "touching another shape", "touched another shape"];
-		
+
 		public function ConditionsWindow(contr:ControllerChallenge)
 		{
 			cont = contr;
-			
+
 			var header:TextField = new TextField();
 			header.text = "New Win Condition:";
 			header.width = 300;
@@ -76,7 +76,7 @@ package Gui
 			header.y = 102;
 			header.setTextFormat(format);
 			addChild(header);
-			
+
 			header = new TextField();
 			header.text = "New Loss Condition:";
 			header.width = 300;
@@ -87,7 +87,7 @@ package Gui
 			header.y = 325;
 			header.setTextFormat(format);
 			addChild(header);
-			
+
 			header = new TextField();
 			header.text = "All Existing Loss Conditions:";
 			header.width = 300;
@@ -198,7 +198,7 @@ package Gui
 			lossObjectBox.dropdown.addEventListener(Event.ADDED_TO_STAGE, refreshMouse, false, 0, true);
 			lossObjectBox.addEventListener(Event.CHANGE, lossSubjectChanged, false, 0, true);
 			addChild(lossObjectBox);
-			
+
 			format = new TextFormat();
 			format.font = Main.GLOBAL_FONT;
 			format.size = 12;
@@ -285,19 +285,13 @@ package Gui
 			format.color = 0x242930;
 			format.font = Main.GLOBAL_FONT;
 			format.size = 12;
-			allConditionsBox = new GuiCheckBox();
+			allConditionsBox = new GuiCheckBox(340, 245, 320);
 			allConditionsBox.label = "All conditions must be satisfied simultaneously ";
-			allConditionsBox.x = 340;
-			allConditionsBox.y = 245;
-			allConditionsBox.width = 320;
 			allConditionsBox.selected = ControllerChallenge.challenge.winConditionsAnded;
 			allConditionsBox.setStyle("textFormat", format);
 			addChild(allConditionsBox);
-			immediateLossBox = new GuiCheckBox();
+			immediateLossBox = new GuiCheckBox(420, 323, 300);
 			immediateLossBox.label = "Immediate loss if condition met";
-			immediateLossBox.x = 420;
-			immediateLossBox.y = 323;
-			immediateLossBox.width = 300;
 			immediateLossBox.selected = true;
 			immediateLossBox.setStyle("textFormat", format);
 			addChild(immediateLossBox);
@@ -307,11 +301,11 @@ package Gui
 
 			super(45, 10, 720, 590);
 		}
-		
+
 		private function textFocus(e:MouseEvent):void {
 			e.target.setSelection(0, 20);
 		}
-		
+
 		private function winSubjectChanged(e:Event):void {
 			var format:TextFormat = new TextFormat();
 			format.size = 12;
@@ -320,7 +314,7 @@ package Gui
 			is1.text = (winObjectBox.selectedIndex == 6 ? (winSubjectBox.selectedIndex == 2 ? "have" : "has") : (winSubjectBox.selectedIndex == 2 ? "are" : "is"));
 			is1.setTextFormat(format);
 		}
-		
+
 		private function lossSubjectChanged(e:Event):void {
 			var format:TextFormat = new TextFormat();
 			format.size = 12;
@@ -329,7 +323,7 @@ package Gui
 			is2.text = (lossObjectBox.selectedIndex == 6 ? (lossSubjectBox.selectedIndex == 2 ? "have" : "has") : (lossSubjectBox.selectedIndex == 2 ? "are" : "is"));
 			is2.setTextFormat(format);
 		}
-		
+
 		private function addWinButtonPressed(e:MouseEvent, callback:Boolean = true):void {
 			if (CheckWinShapes()) {
 				if (callback) shape1 = null;
@@ -351,7 +345,7 @@ package Gui
 				addingWinCondition = true;
 			}
 		}
-		
+
 		private function addLossButtonPressed(e:MouseEvent, callback:Boolean = true):void {
 			if (CheckLossShapes()) {
 				if (callback) shape1 = null;
@@ -476,12 +470,12 @@ package Gui
 			ControllerChallenge.challenge.winConditions = Util.RemoveFromArray(ControllerChallenge.challenge.winConditions[winConditions.selectedIndex], ControllerChallenge.challenge.winConditions);
 			RefreshList(true);
 		}
-		
+
 		private function removeLossButtonPressed(e:MouseEvent):void {
 			ControllerChallenge.challenge.lossConditions = Util.RemoveFromArray(ControllerChallenge.challenge.lossConditions[lossConditions.selectedIndex], ControllerChallenge.challenge.lossConditions);
 			RefreshList(false);
 		}
-		
+
 		private function RefreshList(win:Boolean):void {
 			var list:List = (win ? winConditions : lossConditions);
 			var conditions:Array = (win ? ControllerChallenge.challenge.winConditions : ControllerChallenge.challenge.lossConditions);
@@ -494,13 +488,13 @@ package Gui
 			if (win) winNameArea.text = "Condition " + (winConditions.length + 1);
 			else lossNameArea.text = "Condition " + (lossConditions.length + 1);
 		}
-		
+
 		private function closeButtonPressed(e:MouseEvent):void {
 			visible = false;
 			cont.m_fader.visible = false;
 			ControllerChallenge.challenge.winConditionsAnded = allConditionsBox.selected;
 		}
-		
+
 		private function refreshMouse(e:Event):void {
 			if (e.target == winObjectBox.dropdown || e.target == lossObjectBox.dropdown) {
 				e.target.height = 140;

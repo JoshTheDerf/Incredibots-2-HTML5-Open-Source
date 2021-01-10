@@ -137,12 +137,9 @@ export class ColourChangeWindow extends GuiWindow
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.fontSize = 10;
 		format.fill = 0x242930;
-		this.m_defaultBox = new GuiCheckBox();
+		this.m_defaultBox = new GuiCheckBox(5, 160, 120);
 		this.m_defaultBox.style = format;
 		this.m_defaultBox.label = "Make Default";
-		this.m_defaultBox.x = 5;
-		this.m_defaultBox.y = 160;
-		this.m_defaultBox.width = 120;
 		this.m_defaultBox.selected = false;
 		this.addChild(this.m_defaultBox);
 

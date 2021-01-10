@@ -15,7 +15,7 @@ async function main() {
     });
     const main = new Main(renderer)
 
-    document.body.appendChild(renderer.view)
+    document.getElementById('page_wrapper').appendChild(renderer.view)
 }
 
 main()

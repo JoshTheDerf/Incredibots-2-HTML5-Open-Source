@@ -153,7 +153,7 @@ package Gui
 			format.font = Main.GLOBAL_FONT;
 			format.size = 12;
 
-			circleBox = new GuiCheckBox();
+			circleBox = new GuiCheckBox(15, 45, 190);
 			circleBox.label = "Exclude Circles";
 			circleBox.x = 15;
 			circleBox.y = 45;
@@ -163,17 +163,14 @@ package Gui
 			circleBox.addEventListener(Event.CHANGE, boxChanged, false, 0, true);
 			addChild(circleBox);
 
-			rectBox = new GuiCheckBox();
+			rectBox = new GuiCheckBox(205, 45, 190);
 			rectBox.label = "Exclude Rectangles";
-			rectBox.x = 205;
-			rectBox.y = 45;
-			rectBox.width = 190;
 			rectBox.selected = !ControllerChallenge.challenge.rectanglesAllowed;
 			rectBox.setStyle("textFormat", format);
 			rectBox.addEventListener(Event.CHANGE, boxChanged, false, 0, true);
 			addChild(rectBox);
 
-			triBox = new GuiCheckBox();
+			triBox = new GuiCheckBox(395, 45, 190);
 			triBox.label = "Exclude Triangles";
 			triBox.x = 395;
 			triBox.y = 45;
@@ -183,176 +180,122 @@ package Gui
 			triBox.addEventListener(Event.CHANGE, boxChanged, false, 0, true);
 			addChild(triBox);
 
-			fjBox = new GuiCheckBox();
+			fjBox = new GuiCheckBox(15, 75, 190);
 			fjBox.label = "Exclude Fixed Joints";
-			fjBox.x = 15;
-			fjBox.y = 75;
-			fjBox.width = 190;
 			fjBox.selected = !ControllerChallenge.challenge.fixedJointsAllowed;
 			fjBox.setStyle("textFormat", format);
 			fjBox.addEventListener(Event.CHANGE, boxChanged, false, 0, true);
 			addChild(fjBox);
 
-			rjBox = new GuiCheckBox();
+			rjBox = new GuiCheckBox(205, 75, 190);
 			rjBox.label = "Exclude Rotating Joints";
-			rjBox.x = 205;
-			rjBox.y = 75;
-			rjBox.width = 190;
 			rjBox.selected = !ControllerChallenge.challenge.rotatingJointsAllowed;
 			rjBox.setStyle("textFormat", format);
 			rjBox.addEventListener(Event.CHANGE, boxChanged, false, 0, true);
 			addChild(rjBox);
 
-			sjBox = new GuiCheckBox();
+			sjBox = new GuiCheckBox(395, 75, 190);
 			sjBox.label = "Exclude Sliding Joints";
-			sjBox.x = 395;
-			sjBox.y = 75;
-			sjBox.width = 190;
 			sjBox.selected = !ControllerChallenge.challenge.slidingJointsAllowed;
 			sjBox.setStyle("textFormat", format);
 			sjBox.addEventListener(Event.CHANGE, boxChanged, false, 0, true);
 			addChild(sjBox);
 
-			thrustersBox = new GuiCheckBox();
+			thrustersBox = new GuiCheckBox(110, 105, 190);
 			thrustersBox.label = "Exclude Thrusters";
-			thrustersBox.x = 110;
-			thrustersBox.y = 105;
-			thrustersBox.width = 190;
 			thrustersBox.selected = !ControllerChallenge.challenge.thrustersAllowed;
 			thrustersBox.setStyle("textFormat", format);
 			thrustersBox.addEventListener(Event.CHANGE, boxChanged, false, 0, true);
 			addChild(thrustersBox);
 
-			cannonBox = new GuiCheckBox();
+			cannonBox = new GuiCheckBox(300, 105, 190);
 			cannonBox.label = "Exclude Cannons";
-			cannonBox.x = 300;
-			cannonBox.y = 105;
-			cannonBox.width = 190;
 			cannonBox.selected = !ControllerChallenge.challenge.cannonsAllowed;
 			cannonBox.setStyle("textFormat", format);
 			cannonBox.addEventListener(Event.CHANGE, boxChanged, false, 0, true);
 			addChild(cannonBox);
 
-			mouseBox = new GuiCheckBox();
+			mouseBox = new GuiCheckBox(15, 145, 200);
 			mouseBox.label = "Allow Dragging With Mouse";
-			mouseBox.x = 15;
-			mouseBox.y = 145;
-			mouseBox.width = 200;
 			mouseBox.selected = ControllerChallenge.challenge.mouseDragAllowed;
 			mouseBox.setStyle("textFormat", format);
 			addChild(mouseBox);
 
-			controlBox = new GuiCheckBox();
+			controlBox = new GuiCheckBox(205, 145, 190);
 			controlBox.label = "Allow User Control of Bot";
-			controlBox.x = 205;
-			controlBox.y = 145;
-			controlBox.width = 190;
 			controlBox.selected = ControllerChallenge.challenge.botControlAllowed;
 			controlBox.setStyle("textFormat", format);
 			addChild(controlBox);
 
-			constructionBox = new GuiCheckBox();
+			constructionBox = new GuiCheckBox(395, 145, 190);
 			constructionBox.label = "Allow User Construction";
-			constructionBox.x = 395;
-			constructionBox.y = 145;
-			constructionBox.width = 190;
 			constructionBox.selected = (ControllerChallenge.challenge.circlesAllowed || ControllerChallenge.challenge.rectanglesAllowed || ControllerChallenge.challenge.trianglesAllowed || ControllerChallenge.challenge.fixedJointsAllowed || ControllerChallenge.challenge.rotatingJointsAllowed || ControllerChallenge.challenge.slidingJointsAllowed || ControllerChallenge.challenge.thrustersAllowed);
 			constructionBox.setStyle("textFormat", format);
 			constructionBox.addEventListener(Event.CHANGE, allowBuildingBoxChanged, false, 0, true);
 			addChild(constructionBox);
 
-			fixateBox = new GuiCheckBox();
+			fixateBox = new GuiCheckBox(205, 175, 190);
 			fixateBox.label = "Allow Fixated Shapes";
-			fixateBox.x = 205;
-			fixateBox.y = 175;
-			fixateBox.width = 190;
 			fixateBox.selected = ControllerChallenge.challenge.fixateAllowed;
 			fixateBox.setStyle("textFormat", format);
 			addChild(fixateBox);
 
-			collisionBox = new GuiCheckBox();
+			collisionBox = new GuiCheckBox(15, 175, 200);
 			collisionBox.label = "Allow Non-colliding Shapes";
-			collisionBox.x = 15;
-			collisionBox.y = 175;
-			collisionBox.width = 200;
 			collisionBox.selected = ControllerChallenge.challenge.nonCollidingAllowed;
 			collisionBox.setStyle("textFormat", format);
 			addChild(collisionBox);
 
-			conditionsBox = new GuiCheckBox();
+			conditionsBox = new GuiCheckBox(395, 175, 200);
 			conditionsBox.label = "Conditions Always Visible";
-			conditionsBox.x = 395;
-			conditionsBox.y = 175;
-			conditionsBox.width = 200;
 			conditionsBox.selected = ControllerChallenge.challenge.showConditions;
 			conditionsBox.setStyle("textFormat", format);
 			addChild(conditionsBox);
 
-			minDensityBox = new GuiCheckBox();
+			minDensityBox = new GuiCheckBox(95, 230, 190);
 			minDensityBox.label = "No Limit";
-			minDensityBox.x = 95;
-			minDensityBox.y = 230;
-			minDensityBox.width = 190;
 			minDensityBox.selected = (ControllerChallenge.challenge.minDensity == -Number.MAX_VALUE);
 			minDensityBox.setStyle("textFormat", format);
 			minDensityBox.addEventListener(Event.CHANGE, minDensityBoxChanged, false, 0, true);
 			addChild(minDensityBox);
 
-			maxDensityBox = new GuiCheckBox();
+			maxDensityBox = new GuiCheckBox(95, 280, 190);
 			maxDensityBox.label = "No Limit";
-			maxDensityBox.x = 95;
-			maxDensityBox.y = 280;
-			maxDensityBox.width = 190;
 			maxDensityBox.selected = (ControllerChallenge.challenge.maxDensity == Number.MAX_VALUE);
 			maxDensityBox.setStyle("textFormat", format);
 			maxDensityBox.addEventListener(Event.CHANGE, maxDensityBoxChanged, false, 0, true);
 			addChild(maxDensityBox);
 
-			maxSJStrengthBox = new GuiCheckBox();
+			maxSJStrengthBox = new GuiCheckBox(95, 330, 190);
 			maxSJStrengthBox.label = "No Limit";
-			maxSJStrengthBox.x = 95;
-			maxSJStrengthBox.y = 330;
-			maxSJStrengthBox.width = 190;
 			maxSJStrengthBox.selected = (ControllerChallenge.challenge.maxSJStrength == Number.MAX_VALUE);
 			maxSJStrengthBox.setStyle("textFormat", format);
 			maxSJStrengthBox.addEventListener(Event.CHANGE, maxSJStrengthBoxChanged, false, 0, true);
 			addChild(maxSJStrengthBox);
 
-			maxSJSpeedBox = new GuiCheckBox();
+			maxSJSpeedBox = new GuiCheckBox(95, 380, 190);
 			maxSJSpeedBox.label = "No Limit";
-			maxSJSpeedBox.x = 95;
-			maxSJSpeedBox.y = 380;
-			maxSJSpeedBox.width = 190;
 			maxSJSpeedBox.selected = (ControllerChallenge.challenge.maxSJSpeed == Number.MAX_VALUE);
 			maxSJSpeedBox.setStyle("textFormat", format);
 			maxSJSpeedBox.addEventListener(Event.CHANGE, maxSJSpeedBoxChanged, false, 0, true);
 			addChild(maxSJSpeedBox);
 
-			maxRJStrengthBox = new GuiCheckBox();
+			maxRJStrengthBox = new GuiCheckBox(300, 230, 190);
 			maxRJStrengthBox.label = "No Limit";
-			maxRJStrengthBox.x = 300;
-			maxRJStrengthBox.y = 230;
-			maxRJStrengthBox.width = 190;
 			maxRJStrengthBox.selected = (ControllerChallenge.challenge.maxRJStrength == Number.MAX_VALUE);
 			maxRJStrengthBox.setStyle("textFormat", format);
 			maxRJStrengthBox.addEventListener(Event.CHANGE, maxRJStrengthBoxChanged, false, 0, true);
 			addChild(maxRJStrengthBox);
 
-			maxRJSpeedBox = new GuiCheckBox();
+			maxRJSpeedBox = new GuiCheckBox(300, 280, 190);
 			maxRJSpeedBox.label = "No Limit";
-			maxRJSpeedBox.x = 300;
-			maxRJSpeedBox.y = 280;
-			maxRJSpeedBox.width = 190;
 			maxRJSpeedBox.selected = (ControllerChallenge.challenge.maxRJSpeed == Number.MAX_VALUE);
 			maxRJSpeedBox.setStyle("textFormat", format);
 			maxRJSpeedBox.addEventListener(Event.CHANGE, maxRJSpeedBoxChanged, false, 0, true);
 			addChild(maxRJSpeedBox);
 
-			maxThrusterBox = new GuiCheckBox();
+			maxThrusterBox = new GuiCheckBox(300, 330, 190);
 			maxThrusterBox.label = "No Limit";
-			maxThrusterBox.x = 300;
-			maxThrusterBox.y = 330;
-			maxThrusterBox.width = 190;
 			maxThrusterBox.selected = (ControllerChallenge.challenge.maxThrusterStrength == Number.MAX_VALUE);
 			maxThrusterBox.setStyle("textFormat", format);
 			maxThrusterBox.addEventListener(Event.CHANGE, maxThrusterBoxChanged, false, 0, true);
