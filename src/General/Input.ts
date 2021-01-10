@@ -1,4 +1,4 @@
-﻿import { Container, Sprite } from "pixi.js";
+﻿import { Application, Container, Sprite } from "pixi.js";
 import { ControllerGame } from "../Game/ControllerGame";
 import { ControllerMainMenu } from "../Game/ControllerMainMenu";
 import { Main } from "../Main";
@@ -33,6 +33,7 @@ export class Input {
 	public static mouseDragY:number = 0;
 
 	// stage
+	public static renderer: Application;
 	public static m_stageMc:Container;
 	public static m_currController:ControllerGame;
 
@@ -42,6 +43,7 @@ export class Input {
 	//======================
 	public static Init():void {
 
+		Input.renderer = Main.renderer;
 		Input.m_stageMc = Main.theRoot;
 
 		// init ascii array
@@ -65,10 +67,10 @@ export class Input {
 			Input.keyBuffer[j] = new Array(0,0);
 		}
 
-		// FIXME: Wire up listeners.
 		// add key listeners
-		// Input.m_stageMc.stage.addEventListener(KeyboardEvent.KEY_DOWN, this.keyPress, false, 0, true);
-		// Input.m_stageMc.stage.addEventListener(KeyboardEvent.KEY_UP, this.keyRelease, false, 0, true);
+		Input.renderer.view.tabIndex = -1
+		Input.renderer.view.addEventListener('keydown', (event: any) => this.keyPress(event));
+		Input.renderer.view.addEventListener('keyup', (event: any) => this.keyRelease(event));
 
 		// mouse listeners
 		Input.m_stageMc.on('mousedown', (event: any) => this.mousePress(event))

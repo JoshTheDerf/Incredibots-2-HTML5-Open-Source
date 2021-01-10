@@ -1,4 +1,4 @@
-﻿// permanent mochi ID for version 0.02: 1913f89f65e17063
+// permanent mochi ID for version 0.02: 1913f89f65e17063
 
 import { Application, Container, Sprite } from "pixi.js";
 import { Controller } from "./Game/Controller";
@@ -15,33 +15,34 @@ export class Main {
 	//======================
 	// Member data
 	//======================
-	static public m_fpsCounter:FpsCounter = new FpsCounter();
-	static public m_curController:Controller = null;
-	static public changeControllers:boolean = false;
-	static public nextControllerType:number = -1;
-	static public firstFrame:boolean = true;
-	static public frameCounter:number = 0;
-	static public inIFrame:boolean = false;
+	public static m_fpsCounter:FpsCounter = new FpsCounter();
+	public static m_curController:Controller;
+	public static changeControllers:boolean = false;
+	public static nextControllerType:number = -1;
+	public static firstFrame:boolean = true;
+	public static frameCounter:number = 0;
+	public static inIFrame:boolean = false;
 
-	static public theRoot:Container = null;
+	public static renderer: Application;
+	public static theRoot:Container;
 
-	static public mouseCursor:BitmapAsset;
-	static public mouseHourglass:BitmapAsset;
+	public static mouseCursor:BitmapAsset;
+	public static mouseHourglass:BitmapAsset;
 
-	static public loadRobotMode:boolean = false;
-	static public loadReplayMode:boolean = false;
-	static public loadChallengeMode:boolean = false;
-	static public premiumMode:boolean = false;
-	static public enableSound:boolean = true;
+	public static loadRobotMode:boolean = false;
+	public static loadReplayMode:boolean = false;
+	public static loadChallengeMode:boolean = false;
+	public static premiumMode:boolean = false;
+	public static enableSound:boolean = true;
 
-	static public const VERSION_STRING:string = "2.23 CE";
-	static public const DEBUG_VERSION:boolean = true;
-	static public const ENABLE_SITE_LOCK:number = 643 - (Main.DEBUG_VERSION ? 2 : 1);
-	static public _mochiads_game_id:string = "50feb50977299858";
+	public static const VERSION_STRING:string = "2.23 CE";
+	public static const DEBUG_VERSION:boolean = true;
+	public static const ENABLE_SITE_LOCK:number = 643 - (Main.DEBUG_VERSION ? 2 : 1);
+	public static _mochiads_game_id:string = "50feb50977299858";
 
-	static public lastAdTime:number = 0;
+	public static lastAdTime:number = 0;
 
-	static public const GLOBAL_FONT:string = "Arial";
+	public static const GLOBAL_FONT:string = "Arial";
 
 	public static BrowserRedirect(url:string|null = null, newWindow:boolean = false, parent:boolean = false):void {
 		const target = url || "http://www.incredibots.com/"
@@ -50,12 +51,12 @@ export class Main {
 		if (newWindow) mode = '_blank'
 		if (parent) mode = '_top'
 
-		window.open(url, mode)
+		window.open(target, mode)
 	}
 
 	constructor(renderer: Application) {
-		this.renderer = renderer
-		Main.theRoot = this.renderer.stage
+		Main.renderer = renderer
+		Main.theRoot = Main.renderer.stage
 		Main.theRoot.interactive = true
 
 		var urlString:string = window.location.href;
