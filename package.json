@@ -1,6 +1,8 @@
 {
     "scripts": {
-        "dev": "parcel index.html"
+        "dev": "parcel index.html",
+        "build": "parcel build index.html",
+        "deploy": "gh-pages -d dist"
     },
     "browserslist": [
         "last 1 chrome version"
@@ -15,8 +17,9 @@
     "devDependencies": {
         "babel-core": "^6.26.3",
         "babel-preset-env": "^1.7.0",
-        "typescript": "^4.1.3",
+        "gh-pages": "^3.1.0",
         "parcel": "^2.0.0-nightly.491",
-        "parcel-bundler": "^1.12.4"
+        "parcel-bundler": "^1.12.4",
+        "typescript": "^4.1.3"
     }
 }
