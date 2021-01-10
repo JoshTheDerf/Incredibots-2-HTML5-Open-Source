@@ -73028,6 +73028,8 @@ class Circle extends ShapePart_1.ShapePart {
     userData.undragable = this.undragable;
     userData.isPiston = -1;
     userData.isSandbox = this.isSandbox;
+    this.m_body.SetUserData(userData);
+    this.m_fixture.SetUserData(userData);
     if (this.m_collisionGroup != Number.MIN_VALUE) this.m_fixture.SetFilterData({
       groupIndex: this.m_collisionGroup
     });
@@ -73267,6 +73269,7 @@ class Rectangle extends ShapePart_1.ShapePart {
     userData.isPiston = -1;
     userData.isSandbox = this.isSandbox;
     this.m_body.SetUserData(userData);
+    this.m_fixture.SetUserData(userData);
     this.m_shape = sd;
     if (this.isStatic || bodyStatic) this.m_body.SetMassData(new core_1.b2MassData());else this.m_body.ResetMassData();
 
@@ -74812,6 +74815,7 @@ class Triangle extends ShapePart_1.ShapePart {
     userData.isPiston = -1;
     userData.isSandbox = this.isSandbox;
     this.m_body.SetUserData(userData);
+    this.m_fixture.SetUserData(userData);
     this.m_shape = sd;
     if (this.isStatic || bodyStatic) this.m_body.SetMassData(new core_1.b2MassData());else this.m_body.ResetMassData();
 
@@ -108620,8 +108624,8 @@ class ContactFilter extends core_1.b2ContactFilter {
   }
 
   ShouldCollide(fixture1, fixture2) {
-    const userData1 = fixture1.GetBody().GetUserData();
-    const userData2 = fixture2.GetBody().GetUserData();
+    const userData1 = fixture1.GetUserData();
+    const userData2 = fixture2.GetUserData();
     if (userData1 && userData1.isSandbox || userData2 && userData2.isSandbox) return true;
     if (userData1 && userData2 && !userData1.collide && (!userData1.editable || userData2.editable) && (userData1.isPiston == -1 || userData2.isPiston == -1)) return false;
     if (userData1 && userData2 && !userData2.collide && (!userData2.editable || userData1.editable) && (userData1.isPiston == -1 || userData2.isPiston == -1)) return false;
@@ -118304,7 +118308,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "41779" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "46097" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
