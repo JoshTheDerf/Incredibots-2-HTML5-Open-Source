@@ -73330,6 +73330,8 @@ exports.TextPart = void 0;
 
 const Part_1 = require("./Part");
 
+const pixi_js_1 = require("pixi.js");
+
 class TextPart extends Part_1.Part {
   constructor(cont, nx, ny, nw, nh, str, front = true) {
     super();
@@ -73348,8 +73350,7 @@ class TextPart extends Part_1.Part {
     this.green = 0;
     this.blue = 0;
     this.size = 14;
-    this.m_textField = new TextField();
-    this.m_textField.text = str;
+    this.m_textField = new pixi_js_1.Text(str);
     this.m_textField.wordWrap = true;
     if (cont) cont.addChildAt(this.m_textField, cont.getChildIndex(cont.m_canvas) + (front ? 1 : 0));
     this.type = "TextPart";
@@ -73510,7 +73511,7 @@ class TextPart extends Part_1.Part {
 }
 
 exports.TextPart = TextPart;
-},{"./Part":"src/Parts/Part.ts"}],"src/Parts/Cannon.ts":[function(require,module,exports) {
+},{"./Part":"src/Parts/Part.ts","pixi.js":"node_modules/pixi.js/lib/pixi.es.js"}],"src/Parts/Cannon.ts":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -75684,17 +75685,16 @@ class Draw extends b2DebugDraw_1.b2DebugDraw {
 
     for (i = 0; i < allParts.length; i++) {
       if (allParts[i] instanceof TextPart_1.TextPart) {
-        allParts[i].m_textField.visible = notStarted || allParts[i].alwaysVisible || allParts[i].displayKeyPressed;
-        allParts[i].m_textField.x = allParts[i].x * this.m_drawScale - this.m_drawXOff;
-        allParts[i].m_textField.y = allParts[i].y * this.m_drawScale - this.m_drawYOff;
-        allParts[i].m_textField.width = allParts[i].w * this.m_drawScale;
-        allParts[i].m_textField.height = allParts[i].h * this.m_drawScale;
+        // allParts[i].m_textField.visible = (notStarted || allParts[i].alwaysVisible || allParts[i].displayKeyPressed);
+        // allParts[i].m_textField.x = allParts[i].x * this.m_drawScale - this.m_drawXOff;
+        // allParts[i].m_textField.y = allParts[i].y * this.m_drawScale - this.m_drawYOff;
+        // allParts[i].m_textField.width = allParts[i].w * this.m_drawScale;
+        // allParts[i].m_textField.height = allParts[i].h * this.m_drawScale;
         var format = new pixi_js_1.TextStyle();
         format.fontSize = allParts[i].scaleWithZoom ? allParts[i].size * this.m_drawScale / 30 : allParts[i].size;
         format.fill = allParts[i].red << 16 | allParts[i].green << 8 | allParts[i].blue;
-        format.fontFamily = Main_1.Main.GLOBAL_FONT;
-        allParts[i].m_textField.setTextStyle(format);
-        allParts[i].m_textField.setSelection(0, 0);
+        format.fontFamily = Main_1.Main.GLOBAL_FONT; // allParts[i].m_textField.setTextStyle(format);
+        // allParts[i].m_textField.setSelection(0, 0);
 
         if (notStarted) {
           var selected = Util_1.Util.ObjectInArray(allParts[i], selectedParts);
@@ -105412,11 +105412,11 @@ class GuiTextInput extends core_1.Stage {
         if (input !== this) input.textInput.blur();
       });
       backgroundSprite.texture = this.rollSkin;
-      this.emit('focus', event);
+      this.emit('focus', this.textInput.text);
     });
     this.textInput.on('blur', event => {
       backgroundSprite.texture = this.baseSkin;
-      this.emit('blur', event);
+      this.emit('blur', this.textInput.text);
     });
     this.textInput.on('change', () => {
       this.emit('change', this.textInput.text);
@@ -106397,8 +106397,8 @@ class PartEditWindow extends GuiWindow_1.GuiWindow {
     this.m_sizeArea.on('click', event => this.sizeFocus(event));
     this.m_sizeArea.on('focus', event => this.TextAreaGotFocus(event));
     this.m_sizeArea.on('change', event => this.cont.textEntered(event));
-    this.m_sizeArea.on('blur', event => this.cont.sizeText(event));
-    this.m_sizeArea.on('hide', event => this.cont.sizeText(event));
+    this.m_sizeArea.on('blur', event => this.cont.sizeText(this.m_sizeArea, event));
+    this.m_sizeArea.on('hide', event => this.cont.sizeText(this.m_sizeArea, event));
     this.m_textEditPanel.addChild(this.m_sizeArea);
     format = new pixi_js_1.TextStyle();
     format.fontFamily = Main_1.Main.GLOBAL_FONT;
@@ -106968,7 +106968,7 @@ class PartEditWindow extends GuiWindow_1.GuiWindow {
     var str = Input_1.Input.getKeyString(text.displayKey);
     if (str == null) str = "Unk: " + text.displayKey;
     this.m_textKeyArea.text = str;
-    this.m_textArea.text = text.m_textField.text;
+    this.m_textArea.text = text.text;
     this.m_sizeArea.text = text.size + "";
   }
 
@@ -109773,7 +109773,7 @@ class ControllerGame extends Controller_1.Controller {
   MouseDrag() {
     if (!this.simStarted) {
       // mouse press
-      if (Input_1.Input.mouseDown && ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld >= 100 && !this.m_sidePanel.sliderDown && !this.m_guiMenu.MouseOverMenu(ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld, ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld) && (ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld >= 120 || !this.m_sidePanel.visible) && (ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld >= 230 || ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld >= 340 || !this.m_sidePanel.ColourWindowShowing()) && this.curAction != ControllerGameGlobals_1.ControllerGameGlobals.BOX_SELECTING && this.curAction != ControllerGameGlobals_1.ControllerGameGlobals.DRAWING_BUILD_BOX && this.curAction != ControllerGameGlobals_1.ControllerGameGlobals.DRAWING_BOX && this.curAction != ControllerGameGlobals_1.ControllerGameGlobals.DRAWING_HORIZONTAL_LINE && this.curAction != ControllerGameGlobals_1.ControllerGameGlobals.DRAWING_VERTICAL_LINE) {
+      if (Input_1.Input.mouseDown && ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld >= 100 && !this.m_sidePanel.sliderDown && !this.m_guiMenu.MouseOverMenu(ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld, ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld) && (ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld >= 120 || !this.m_sidePanel.visible) && (ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld >= 230 || ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld >= 600 || !this.m_sidePanel.ColourWindowShowing()) && this.curAction != ControllerGameGlobals_1.ControllerGameGlobals.BOX_SELECTING && this.curAction != ControllerGameGlobals_1.ControllerGameGlobals.DRAWING_BUILD_BOX && this.curAction != ControllerGameGlobals_1.ControllerGameGlobals.DRAWING_BOX && this.curAction != ControllerGameGlobals_1.ControllerGameGlobals.DRAWING_HORIZONTAL_LINE && this.curAction != ControllerGameGlobals_1.ControllerGameGlobals.DRAWING_VERTICAL_LINE) {
         if (!this.m_tutorialDialog || !this.m_tutorialDialog.MouseOver(ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld, ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld)) {
           var shapeOrJoint = this.GetPartAtMouse();
 
@@ -109958,7 +109958,7 @@ class ControllerGame extends Controller_1.Controller {
         }
       }
 
-      if (Input_1.Input.mouseDown && !this.m_sidePanel.sliderDown && !this.m_guiMenu.MouseOverMenu(ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld, ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld) && ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld >= 100 && (ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld >= 120 || !this.m_sidePanel.visible) && (ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld >= 230 || ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld >= 340 || !this.m_sidePanel.ColourWindowShowing()) && this.curAction != ControllerGameGlobals_1.ControllerGameGlobals.BOX_SELECTING) {
+      if (Input_1.Input.mouseDown && !this.m_sidePanel.sliderDown && !this.m_guiMenu.MouseOverMenu(ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld, ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld) && ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld >= 100 && (ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld >= 120 || !this.m_sidePanel.visible) && (ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld >= 230 || ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld >= 600 || !this.m_sidePanel.ColourWindowShowing()) && this.curAction != ControllerGameGlobals_1.ControllerGameGlobals.BOX_SELECTING) {
         if (!this.m_tutorialDialog || !this.m_tutorialDialog.MouseOver(ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld, ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld)) {
           this.RefreshSidePanel();
         }
@@ -110194,7 +110194,7 @@ class ControllerGame extends Controller_1.Controller {
       }
     }
 
-    if (this.simStarted && Input_1.Input.mouseDown && !this.m_guiMenu.MouseOverMenu(ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld, ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld) && ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld >= 100 && (ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld >= 120 || !this.m_sidePanel.visible) && (ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld >= 230 || ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld >= 340 || !this.m_sidePanel.ColourWindowShowing()) && this.curAction != ControllerGameGlobals_1.ControllerGameGlobals.BOX_SELECTING && !this.m_mouseJoint) {
+    if (this.simStarted && Input_1.Input.mouseDown && !this.m_guiMenu.MouseOverMenu(ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld, ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld) && ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld >= 100 && (ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld >= 120 || !this.m_sidePanel.visible) && (ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld >= 230 || ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld >= 600 || !this.m_sidePanel.ColourWindowShowing()) && this.curAction != ControllerGameGlobals_1.ControllerGameGlobals.BOX_SELECTING && !this.m_mouseJoint) {
       if ((!this.m_tutorialDialog || !this.m_tutorialDialog.MouseOver(ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld, ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld)) && !this.draggingTutorial) {
         // dragging the world around
         var change = ControllerGameGlobals_1.ControllerGameGlobals.mouseXWorld != ControllerGameGlobals_1.ControllerGameGlobals.prevMouseXWorld || ControllerGameGlobals_1.ControllerGameGlobals.mouseYWorld != ControllerGameGlobals_1.ControllerGameGlobals.prevMouseYWorld;
@@ -112431,7 +112431,7 @@ class ControllerGame extends Controller_1.Controller {
     this.redrawRobot = true;
   }
 
-  scaleWithZoomBox() {
+  scaleWithZoomBox(value) {
     if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof TextPart_1.TextPart) {
       this.selectedParts[0].scaleWithZoom = value;
       ControllerGameGlobals_1.ControllerGameGlobals.curRobotID = "";
@@ -112439,7 +112439,7 @@ class ControllerGame extends Controller_1.Controller {
     }
   }
 
-  alwaysVisibleBox() {
+  alwaysVisibleBox(value) {
     if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof TextPart_1.TextPart) {
       this.selectedParts[0].alwaysVisible = value;
       ControllerGameGlobals_1.ControllerGameGlobals.curRobotID = "";
@@ -112561,13 +112561,13 @@ class ControllerGame extends Controller_1.Controller {
     }
   }
 
-  sizeText(e) {
+  sizeText(target, value) {
     if (this.lastSelectedText instanceof TextPart_1.TextPart) {
       var oldSize = this.lastSelectedText.size;
-      this.lastSelectedText.size = parseInt(e.target.text);
+      this.lastSelectedText.size = parseInt(value);
       if (this.lastSelectedText.size < 4) this.lastSelectedText.size = 4;
       if (this.lastSelectedText.size > 36) this.lastSelectedText.size = 36;
-      e.target.text = this.lastSelectedText.size + "";
+      target.text = this.lastSelectedText.size + "";
       ControllerGameGlobals_1.ControllerGameGlobals.curRobotID = "";
       this.redrawRobot = true;
       if (oldSize != this.lastSelectedText.size) this.AddAction(new TextSizeChangeAction_1.TextSizeChangeAction(this.lastSelectedText, this.lastSelectedText.size - oldSize));
@@ -118308,7 +118308,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "46097" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "41287" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
