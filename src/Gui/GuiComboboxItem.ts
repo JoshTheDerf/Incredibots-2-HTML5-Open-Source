@@ -77,6 +77,7 @@ export class GuiComboboxItem extends Container
           GuiComboboxItem.clickSound.volume = 0.2
           GuiComboboxItem.clickSound.play()
         }
+        event.stopPropagation()
 
         this.emit('select', event)
 			})

@@ -16,8 +16,10 @@ async function main() {
     const main = new Main(renderer)
 
     const gameWrapper = document.getElementById('game_wrapper')
-    gameWrapper.innerHTML = ''
-    gameWrapper.appendChild(renderer.view)
+    if (gameWrapper) {
+        gameWrapper.innerHTML = ''
+        gameWrapper.appendChild(renderer.view)
+    }
 }
 
 main()

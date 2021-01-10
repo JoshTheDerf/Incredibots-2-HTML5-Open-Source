@@ -33,6 +33,7 @@ export class ColourChangeWindow extends GuiWindow
 	constructor(contr:ControllerGame, sidePanel:PartEditWindow)
 	{
 		super(119, 0, 120, 260);
+		this.sortableChildren = true;
 		this.cont = contr;
 		this.m_sidePanel = sidePanel;
 		this.m_colourSelector = new Graphics()
@@ -41,34 +42,27 @@ export class ColourChangeWindow extends GuiWindow
 		var format:TextStyle = new TextStyle();
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.fill = 0x242930;
+		format.fontSize = 12;
 		this.m_redLabel = new Text('');
 		this.m_redLabel.text = "Red:";
-		this.m_redLabel.width = 50;
-		this.m_redLabel.height = 20;
 		this.m_redLabel.x = 18;
 		this.m_redLabel.y = 20;
 		this.m_redLabel.style = format;
 		this.addChild(this.m_redLabel);
 		this.m_greenLabel = new Text('');
 		this.m_greenLabel.text = "Green:";
-		this.m_greenLabel.width = 50;
-		this.m_greenLabel.height = 20;
 		this.m_greenLabel.x = 18;
 		this.m_greenLabel.y = 40;
 		this.m_greenLabel.style = format;
 		this.addChild(this.m_greenLabel);
 		this.m_blueLabel = new Text('');
 		this.m_blueLabel.text = "Blue:";
-		this.m_blueLabel.width = 50;
-		this.m_blueLabel.height = 20;
 		this.m_blueLabel.x = 18;
 		this.m_blueLabel.y = 60;
 		this.m_blueLabel.style = format;
 		this.addChild(this.m_blueLabel);
 		this.m_opacityLabel = new Text('');
 		this.m_opacityLabel.text = "Opacity:";
-		this.m_opacityLabel.width = 50;
-		this.m_opacityLabel.height = 20;
 		this.m_opacityLabel.x = 18;
 		this.m_opacityLabel.y = 80;
 		this.m_opacityLabel.style = format;
@@ -143,9 +137,9 @@ export class ColourChangeWindow extends GuiWindow
 		this.m_defaultBox.selected = false;
 		this.addChild(this.m_defaultBox);
 
-		this.m_okButton = new GuiButton("OK", 10, 180, 100, 35, this.okButton, GuiButton.PURPLE);
+		this.m_okButton = new GuiButton("OK", 10, 180, 100, 35, (e: any) => this.okButton(e), GuiButton.PURPLE);
 		this.addChild(this.m_okButton);
-		this.m_cancelButton = new GuiButton("Cancel", 10, 210, 100, 35, this.cancelButton, GuiButton.PURPLE);
+		this.m_cancelButton = new GuiButton("Cancel", 10, 210, 100, 35, (e: any) => this.cancelButton(e), GuiButton.PURPLE);
 		this.addChild(this.m_cancelButton);
 	}
 
@@ -218,98 +212,98 @@ export class ColourChangeWindow extends GuiWindow
 		this.m_sidePanel.TextAreaLostFocus();
 	}
 
-	private redText(e:Event):void {
-		var red:number = parseInt(e.target.text);
+	private redText(text: string):void {
+		var red:number = parseInt(text);
 		if (red < 0) red = 0;
 		if (red > 255) red = 255;
 		if (isNaN(red)) red = 0;
-		e.target.text = red + "";
+		text = red + "";
 		this.SetComboBoxIndex();
 		this.redrawBox();
-		this.cont.textEntered(e);
+		this.cont.textEntered();
 	}
 
-	private greenText(e:Event):void {
-		var green:number = parseInt(e.target.text);
+	private greenText(text: string):void {
+		var green:number = parseInt(text);
 		if (green < 0) green = 0;
 		if (green > 255) green = 255;
 		if (isNaN(green)) green = 0;
-		e.target.text = green + "";
+		text = green + "";
 		this.SetComboBoxIndex();
 		this.redrawBox();
-		this.cont.textEntered(e);
+		this.cont.textEntered();
 	}
 
-	private blueText(e:Event):void {
-		var blue:number = parseInt(e.target.text);
+	private blueText(text: string):void {
+		var blue:number = parseInt(text);
 		if (blue < 0) blue = 0;
 		if (blue > 255) blue = 255;
 		if (isNaN(blue)) blue = 0;
-		e.target.text = blue + "";
+		text = blue + "";
 		this.SetComboBoxIndex();
 		this.redrawBox();
-		this.cont.textEntered(e);
+		this.cont.textEntered();
 	}
 
-	private opacityText(e:Event):void {
-		var opacity:number = parseInt(e.target.text);
+	private opacityText(text: string):void {
+		var opacity:number = parseInt(text);
 		if (opacity < 0) opacity = 0;
 		if (opacity > 255) opacity = 255;
 		if (isNaN(opacity)) opacity = 0;
-		e.target.text = opacity + "";
-		this.cont.textEntered(e);
+		text = opacity + "";
+		this.cont.textEntered();
 	}
 
-	private colourBox(e:Event):void {
-		if (e.target.selectedIndex == 1) {
+	private colourBox(selectedIndex: number):void {
+		if (selectedIndex == 1) {
 			this.m_redArea.text = "253";
 			this.m_greenArea.text = "66";
 			this.m_blueArea.text = "42";
-		} else if (e.target.selectedIndex == 2) {
+		} else if (selectedIndex == 2) {
 			this.m_redArea.text = "253";
 			this.m_greenArea.text = "116";
 			this.m_blueArea.text = "10";
-		} else if (e.target.selectedIndex == 3) {
+		} else if (selectedIndex == 3) {
 			this.m_redArea.text = "251";
 			this.m_greenArea.text = "241";
 			this.m_blueArea.text = "56";
-		} else if (e.target.selectedIndex == 4) {
+		} else if (selectedIndex == 4) {
 			this.m_redArea.text = "80";
 			this.m_greenArea.text = "255";
 			this.m_blueArea.text = "72";
-		} else if (e.target.selectedIndex == 5) {
+		} else if (selectedIndex == 5) {
 			this.m_redArea.text = "52";
 			this.m_greenArea.text = "245";
 			this.m_blueArea.text = "227";
-		} else if (e.target.selectedIndex == 6) {
+		} else if (selectedIndex == 6) {
 			this.m_redArea.text = "54";
 			this.m_greenArea.text = "89";
 			this.m_blueArea.text = "255";
-		} else if (e.target.selectedIndex == 7) {
+		} else if (selectedIndex == 7) {
 			this.m_redArea.text = "189";
 			this.m_greenArea.text = "87";
 			this.m_blueArea.text = "255";
-		} else if (e.target.selectedIndex == 8) {
+		} else if (selectedIndex == 8) {
 			this.m_redArea.text = "255";
 			this.m_greenArea.text = "155";
 			this.m_blueArea.text = "152";
-		} else if (e.target.selectedIndex == 9) {
+		} else if (selectedIndex == 9) {
 			this.m_redArea.text = "255";
 			this.m_greenArea.text = "216";
 			this.m_blueArea.text = "136";
-		} else if (e.target.selectedIndex == 10) {
+		} else if (selectedIndex == 10) {
 			this.m_redArea.text = "151";
 			this.m_greenArea.text = "122";
 			this.m_blueArea.text = "46";
-		} else if (e.target.selectedIndex == 11) {
+		} else if (selectedIndex == 11) {
 			this.m_redArea.text = "253";
 			this.m_greenArea.text = "253";
 			this.m_blueArea.text = "253";
-		} else if (e.target.selectedIndex == 12) {
+		} else if (selectedIndex == 12) {
 			this.m_redArea.text = "160";
 			this.m_greenArea.text = "160";
 			this.m_blueArea.text = "160";
-		} else if (e.target.selectedIndex == 13) {
+		} else if (selectedIndex == 13) {
 			this.m_redArea.text = "24";
 			this.m_greenArea.text = "24";
 			this.m_blueArea.text = "24";
