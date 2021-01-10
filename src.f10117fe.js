@@ -72970,8 +72970,8 @@ class Circle extends ShapePart_1.ShapePart {
     super.Init(world);
     var circ = new core_1.b2CircleShape();
     circ.Set({
-      x: this.centerX,
-      y: this.centerY
+      x: 0,
+      y: 0
     }, this.radius);
     var bodyStatic = false;
 
@@ -118308,7 +118308,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "41287" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "35229" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
