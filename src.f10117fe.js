@@ -76376,6 +76376,7 @@ class GuiButton extends pixi_js_1.Container {
     this.depressed = false;
     this.label = null;
     this.background = null;
+    this._disabled = false;
 
     if (colour == GuiButton.PURPLE) {
       this.upTexture = GuiButton.purpleButtonBase();
@@ -108619,12 +108620,14 @@ class ContactFilter extends core_1.b2ContactFilter {
   }
 
   ShouldCollide(fixture1, fixture2) {
-    if (fixture1.GetUserData() && fixture1.GetUserData().isSandbox || fixture2.GetUserData() && fixture2.GetUserData().isSandbox) return true;
-    if (fixture1.GetUserData() && fixture2.GetUserData() && !fixture1.GetUserData().collide && (!fixture1.GetUserData().editable || fixture2.GetUserData().editable) && (fixture1.GetUserData().isPiston == -1 || fixture2.GetUserData().isPiston == -1)) return false;
-    if (fixture1.GetUserData() && fixture2.GetUserData() && !fixture2.GetUserData().collide && (!fixture2.GetUserData().editable || fixture1.GetUserData().editable) && (fixture1.GetUserData().isPiston == -1 || fixture2.GetUserData().isPiston == -1)) return false;
-    if (fixture1.GetUserData() && fixture2.GetUserData() && fixture1.GetUserData().isPiston != -1 && fixture2.GetUserData().isPiston != -1 && !fixture1.GetUserData().collide && (!fixture1.GetUserData().editable || fixture2.GetUserData().editable)) return false;
-    if (fixture1.GetUserData() && fixture2.GetUserData() && fixture1.GetUserData().isPiston != -1 && fixture2.GetUserData().isPiston != -1 && !fixture2.GetUserData().collide && (!fixture2.GetUserData().editable || fixture1.GetUserData().editable)) return false;
-    if (fixture1.GetUserData() && fixture2.GetUserData() && fixture1.GetUserData().isPiston != -1 && fixture2.GetUserData().isPiston != -1 && fixture1.GetUserData().isPiston == fixture2.GetUserData().isPiston && fixture1.GetBody() != fixture2.GetBody() && fixture1.m_filter.groupIndex == fixture2.m_filter.groupIndex) return true;
+    const userData1 = fixture1.GetBody().GetUserData();
+    const userData2 = fixture2.GetBody().GetUserData();
+    if (userData1 && userData1.isSandbox || userData2 && userData2.isSandbox) return true;
+    if (userData1 && userData2 && !userData1.collide && (!userData1.editable || userData2.editable) && (userData1.isPiston == -1 || userData2.isPiston == -1)) return false;
+    if (userData1 && userData2 && !userData2.collide && (!userData2.editable || userData1.editable) && (userData1.isPiston == -1 || userData2.isPiston == -1)) return false;
+    if (userData1 && userData2 && userData1.isPiston != -1 && userData2.isPiston != -1 && !userData1.collide && (!userData1.editable || userData2.editable)) return false;
+    if (userData1 && userData2 && userData1.isPiston != -1 && userData2.isPiston != -1 && !userData2.collide && (!userData2.editable || userData1.editable)) return false;
+    if (userData1 && userData2 && userData1.isPiston != -1 && userData2.isPiston != -1 && userData1.isPiston == userData2.isPiston && fixture1.GetBody() != fixture2.GetBody() && fixture1.GetFilterData().groupIndex == fixture2.GetFilterData().groupIndex) return true;
     return super.ShouldCollide(fixture1, fixture2);
   }
 
@@ -118301,7 +118304,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "41561" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "41779" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
