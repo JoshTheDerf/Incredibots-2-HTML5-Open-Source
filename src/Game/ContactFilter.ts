@@ -7,8 +7,8 @@ export class ContactFilter extends b2ContactFilter
 	}
 
 	public ShouldCollide(fixture1:b2Fixture, fixture2:b2Fixture):boolean {
-		const userData1 = fixture1.GetBody().GetUserData()
-		const userData2 = fixture2.GetBody().GetUserData()
+		const userData1 = fixture1.GetUserData()
+		const userData2 = fixture2.GetUserData()
 
 		if ((userData1 && userData1.isSandbox) || (userData2 && userData2.isSandbox)) return true;
 

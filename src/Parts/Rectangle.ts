@@ -174,6 +174,7 @@ import { ShapePart } from "./ShapePart";
 			userData.isSandbox = this.isSandbox;
 
 			this.m_body.SetUserData(userData)
+			this.m_fixture.SetUserData(userData)
 			this.m_shape = sd;
 
 			if (this.isStatic || bodyStatic) this.m_body.SetMassData(new b2MassData());

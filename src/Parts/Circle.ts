@@ -103,6 +103,9 @@ export class Circle extends ShapePart
 		userData.isPiston = -1;
 		userData.isSandbox = this.isSandbox;
 
+		this.m_body.SetUserData(userData)
+		this.m_fixture.SetUserData(userData)
+
 		if (this.m_collisionGroup != Number.MIN_VALUE) this.m_fixture.SetFilterData({ groupIndex: this.m_collisionGroup });
 
 		this.m_shape = circ;
