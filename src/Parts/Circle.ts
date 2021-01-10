@@ -54,7 +54,7 @@ export class Circle extends ShapePart
 		super.Init(world);
 
 		var circ:b2CircleShape = new b2CircleShape();
-		circ.Set({x: this.centerX, y: this.centerY}, this.radius)
+		circ.Set({x: 0, y: 0}, this.radius)
 
 		var bodyStatic:boolean = false;
 
