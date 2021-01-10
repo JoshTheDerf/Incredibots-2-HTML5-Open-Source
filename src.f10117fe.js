@@ -78354,6 +78354,7 @@ class GuiComboboxItem extends pixi_js_1.Container {
         GuiComboboxItem.clickSound.play();
       }
 
+      event.stopPropagation();
       this.emit('select', event);
     }).on('mousedown', event => {
       this.background.texture = this.downTexture;
@@ -105457,6 +105458,7 @@ const GuiWindow_1 = require("./GuiWindow");
 class ColourChangeWindow extends GuiWindow_1.GuiWindow {
   constructor(contr, sidePanel) {
     super(119, 0, 120, 260);
+    this.sortableChildren = true;
     this.cont = contr;
     this.m_sidePanel = sidePanel;
     this.m_colourSelector = new pixi_js_1.Graphics();
@@ -105464,34 +105466,27 @@ class ColourChangeWindow extends GuiWindow_1.GuiWindow {
     var format = new pixi_js_1.TextStyle();
     format.fontFamily = Main_1.Main.GLOBAL_FONT;
     format.fill = 0x242930;
+    format.fontSize = 12;
     this.m_redLabel = new pixi_js_1.Text('');
     this.m_redLabel.text = "Red:";
-    this.m_redLabel.width = 50;
-    this.m_redLabel.height = 20;
     this.m_redLabel.x = 18;
     this.m_redLabel.y = 20;
     this.m_redLabel.style = format;
     this.addChild(this.m_redLabel);
     this.m_greenLabel = new pixi_js_1.Text('');
     this.m_greenLabel.text = "Green:";
-    this.m_greenLabel.width = 50;
-    this.m_greenLabel.height = 20;
     this.m_greenLabel.x = 18;
     this.m_greenLabel.y = 40;
     this.m_greenLabel.style = format;
     this.addChild(this.m_greenLabel);
     this.m_blueLabel = new pixi_js_1.Text('');
     this.m_blueLabel.text = "Blue:";
-    this.m_blueLabel.width = 50;
-    this.m_blueLabel.height = 20;
     this.m_blueLabel.x = 18;
     this.m_blueLabel.y = 60;
     this.m_blueLabel.style = format;
     this.addChild(this.m_blueLabel);
     this.m_opacityLabel = new pixi_js_1.Text('');
     this.m_opacityLabel.text = "Opacity:";
-    this.m_opacityLabel.width = 50;
-    this.m_opacityLabel.height = 20;
     this.m_opacityLabel.x = 18;
     this.m_opacityLabel.y = 80;
     this.m_opacityLabel.style = format;
@@ -105593,9 +105588,9 @@ class ColourChangeWindow extends GuiWindow_1.GuiWindow {
     this.m_defaultBox.label = "Make Default";
     this.m_defaultBox.selected = false;
     this.addChild(this.m_defaultBox);
-    this.m_okButton = new GuiButton_1.GuiButton("OK", 10, 180, 100, 35, this.okButton, GuiButton_1.GuiButton.PURPLE);
+    this.m_okButton = new GuiButton_1.GuiButton("OK", 10, 180, 100, 35, e => this.okButton(e), GuiButton_1.GuiButton.PURPLE);
     this.addChild(this.m_okButton);
-    this.m_cancelButton = new GuiButton_1.GuiButton("Cancel", 10, 210, 100, 35, this.cancelButton, GuiButton_1.GuiButton.PURPLE);
+    this.m_cancelButton = new GuiButton_1.GuiButton("Cancel", 10, 210, 100, 35, e => this.cancelButton(e), GuiButton_1.GuiButton.PURPLE);
     this.addChild(this.m_cancelButton);
   }
 
@@ -105669,98 +105664,98 @@ class ColourChangeWindow extends GuiWindow_1.GuiWindow {
     this.m_sidePanel.TextAreaLostFocus();
   }
 
-  redText(e) {
-    var red = parseInt(e.target.text);
+  redText(text) {
+    var red = parseInt(text);
     if (red < 0) red = 0;
     if (red > 255) red = 255;
     if (isNaN(red)) red = 0;
-    e.target.text = red + "";
+    text = red + "";
     this.SetComboBoxIndex();
     this.redrawBox();
-    this.cont.textEntered(e);
+    this.cont.textEntered();
   }
 
-  greenText(e) {
-    var green = parseInt(e.target.text);
+  greenText(text) {
+    var green = parseInt(text);
     if (green < 0) green = 0;
     if (green > 255) green = 255;
     if (isNaN(green)) green = 0;
-    e.target.text = green + "";
+    text = green + "";
     this.SetComboBoxIndex();
     this.redrawBox();
-    this.cont.textEntered(e);
+    this.cont.textEntered();
   }
 
-  blueText(e) {
-    var blue = parseInt(e.target.text);
+  blueText(text) {
+    var blue = parseInt(text);
     if (blue < 0) blue = 0;
     if (blue > 255) blue = 255;
     if (isNaN(blue)) blue = 0;
-    e.target.text = blue + "";
+    text = blue + "";
     this.SetComboBoxIndex();
     this.redrawBox();
-    this.cont.textEntered(e);
+    this.cont.textEntered();
   }
 
-  opacityText(e) {
-    var opacity = parseInt(e.target.text);
+  opacityText(text) {
+    var opacity = parseInt(text);
     if (opacity < 0) opacity = 0;
     if (opacity > 255) opacity = 255;
     if (isNaN(opacity)) opacity = 0;
-    e.target.text = opacity + "";
-    this.cont.textEntered(e);
+    text = opacity + "";
+    this.cont.textEntered();
   }
 
-  colourBox(e) {
-    if (e.target.selectedIndex == 1) {
+  colourBox(selectedIndex) {
+    if (selectedIndex == 1) {
       this.m_redArea.text = "253";
       this.m_greenArea.text = "66";
       this.m_blueArea.text = "42";
-    } else if (e.target.selectedIndex == 2) {
+    } else if (selectedIndex == 2) {
       this.m_redArea.text = "253";
       this.m_greenArea.text = "116";
       this.m_blueArea.text = "10";
-    } else if (e.target.selectedIndex == 3) {
+    } else if (selectedIndex == 3) {
       this.m_redArea.text = "251";
       this.m_greenArea.text = "241";
       this.m_blueArea.text = "56";
-    } else if (e.target.selectedIndex == 4) {
+    } else if (selectedIndex == 4) {
       this.m_redArea.text = "80";
       this.m_greenArea.text = "255";
       this.m_blueArea.text = "72";
-    } else if (e.target.selectedIndex == 5) {
+    } else if (selectedIndex == 5) {
       this.m_redArea.text = "52";
       this.m_greenArea.text = "245";
       this.m_blueArea.text = "227";
-    } else if (e.target.selectedIndex == 6) {
+    } else if (selectedIndex == 6) {
       this.m_redArea.text = "54";
       this.m_greenArea.text = "89";
       this.m_blueArea.text = "255";
-    } else if (e.target.selectedIndex == 7) {
+    } else if (selectedIndex == 7) {
       this.m_redArea.text = "189";
       this.m_greenArea.text = "87";
       this.m_blueArea.text = "255";
-    } else if (e.target.selectedIndex == 8) {
+    } else if (selectedIndex == 8) {
       this.m_redArea.text = "255";
       this.m_greenArea.text = "155";
       this.m_blueArea.text = "152";
-    } else if (e.target.selectedIndex == 9) {
+    } else if (selectedIndex == 9) {
       this.m_redArea.text = "255";
       this.m_greenArea.text = "216";
       this.m_blueArea.text = "136";
-    } else if (e.target.selectedIndex == 10) {
+    } else if (selectedIndex == 10) {
       this.m_redArea.text = "151";
       this.m_greenArea.text = "122";
       this.m_blueArea.text = "46";
-    } else if (e.target.selectedIndex == 11) {
+    } else if (selectedIndex == 11) {
       this.m_redArea.text = "253";
       this.m_greenArea.text = "253";
       this.m_blueArea.text = "253";
-    } else if (e.target.selectedIndex == 12) {
+    } else if (selectedIndex == 12) {
       this.m_redArea.text = "160";
       this.m_greenArea.text = "160";
       this.m_blueArea.text = "160";
-    } else if (e.target.selectedIndex == 13) {
+    } else if (selectedIndex == 13) {
       this.m_redArea.text = "24";
       this.m_greenArea.text = "24";
       this.m_blueArea.text = "24";
@@ -118223,8 +118218,11 @@ async function main() {
   });
   const main = new Main_1.Main(renderer);
   const gameWrapper = document.getElementById('game_wrapper');
-  gameWrapper.innerHTML = '';
-  gameWrapper.appendChild(renderer.view);
+
+  if (gameWrapper) {
+    gameWrapper.innerHTML = '';
+    gameWrapper.appendChild(renderer.view);
+  }
 }
 
 main();
@@ -118256,7 +118254,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "44853" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "39831" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
