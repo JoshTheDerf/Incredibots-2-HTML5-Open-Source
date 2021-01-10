@@ -1,7 +1,7 @@
 {
     "scripts": {
         "dev": "parcel index.html",
-        "build": "parcel build index.html",
+        "build": "parcel build index.html --public-url ./",
         "deploy": "gh-pages -d dist"
     },
     "browserslist": [
