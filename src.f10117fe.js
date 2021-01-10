@@ -76009,6 +76009,7 @@ class Input {
   // constructor
   //======================
   static Init() {
+    Input.renderer = Main_1.Main.renderer;
     Input.m_stageMc = Main_1.Main.theRoot; // init ascii array
 
     Input.ascii = new Array(222);
@@ -76031,12 +76032,12 @@ class Input {
 
     for (var j = 0; j < Input.bufferSize; j++) {
       Input.keyBuffer[j] = new Array(0, 0);
-    } // FIXME: Wire up listeners.
-    // add key listeners
-    // Input.m_stageMc.stage.addEventListener(KeyboardEvent.KEY_DOWN, this.keyPress, false, 0, true);
-    // Input.m_stageMc.stage.addEventListener(KeyboardEvent.KEY_UP, this.keyRelease, false, 0, true);
-    // mouse listeners
+    } // add key listeners
 
+
+    Input.renderer.view.tabIndex = -1;
+    Input.renderer.view.addEventListener('keydown', event => this.keyPress(event));
+    Input.renderer.view.addEventListener('keyup', event => this.keyRelease(event)); // mouse listeners
 
     Input.m_stageMc.on('mousedown', event => this.mousePress(event));
     Input.m_stageMc.on('mouseup', event => this.mouseRelease(event));
@@ -118050,8 +118051,8 @@ const Input_1 = require("./General/Input");
 
 class Main {
   constructor(renderer) {
-    this.renderer = renderer;
-    Main.theRoot = this.renderer.stage;
+    Main.renderer = renderer;
+    Main.theRoot = Main.renderer.stage;
     Main.theRoot.interactive = true;
     var urlString = window.location.href;
     var urlStart = urlString.indexOf("://") + 3;
@@ -118231,13 +118232,11 @@ exports.Main = Main; //======================
 //======================
 
 Main.m_fpsCounter = new FpsCounter_1.FpsCounter();
-Main.m_curController = null;
 Main.changeControllers = false;
 Main.nextControllerType = -1;
 Main.firstFrame = true;
 Main.frameCounter = 0;
 Main.inIFrame = false;
-Main.theRoot = null;
 Main.loadRobotMode = false;
 Main.loadReplayMode = false;
 Main.loadChallengeMode = false;
@@ -118308,7 +118307,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "35229" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "46539" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
