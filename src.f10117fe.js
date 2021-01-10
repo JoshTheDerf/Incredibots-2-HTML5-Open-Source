@@ -50970,13 +50970,17 @@ exports.MouseCursor = MouseCursor;
 
 class Resource {
   static async load() {
+    const promises = [];
+
     for (const key in Resource.paths) {
-      Resource[key] = await fetch(Resource.paths[key]).then(res => res.blob());
+      promises.push(fetch(Resource.paths[key]).then(res => res.blob()).then(resource => Resource[key] = resource));
     }
 
     for (const key in Resource.textures) {
-      Resource[key] = await pixi_js_1.Texture.fromURL(Resource.textures[key]);
+      promises.push(pixi_js_1.Texture.fromURL(Resource.textures[key]).then(texture => Resource[key] = texture));
     }
+
+    await Promise.all(promises);
   }
 
 }
@@ -118218,7 +118222,9 @@ async function main() {
     height: 600
   });
   const main = new Main_1.Main(renderer);
-  document.getElementById('game_wrapper').appendChild(renderer.view);
+  const gameWrapper = document.getElementById('game_wrapper');
+  gameWrapper.innerHTML = '';
+  gameWrapper.appendChild(renderer.view);
 }
 
 main();
@@ -118250,7 +118256,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "34081" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "44853" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
