@@ -521,8 +521,8 @@ export class PartEditWindow extends GuiWindow
 		this.m_sizeArea.on('click', (event: any) => this.sizeFocus(event));
 		this.m_sizeArea.on('focus', (event: any) => this.TextAreaGotFocus(event));
 		this.m_sizeArea.on('change', (event: any) => this.cont.textEntered(event));
-		this.m_sizeArea.on('blur', (event: any) => this.cont.sizeText(event));
-		this.m_sizeArea.on('hide', (event: any) => this.cont.sizeText(event));
+		this.m_sizeArea.on('blur', (event: any) => this.cont.sizeText(this.m_sizeArea, event));
+		this.m_sizeArea.on('hide', (event: any) => this.cont.sizeText(this.m_sizeArea, event));
 		this.m_textEditPanel.addChild(this.m_sizeArea);
 		format = new TextStyle();
 		format.fontFamily = Main.GLOBAL_FONT;
@@ -1101,7 +1101,7 @@ export class PartEditWindow extends GuiWindow
 		var str:string = Input.getKeyString(text.displayKey);
 		if (str == null) str = "Unk: " + text.displayKey;
 		this.m_textKeyArea.text = str;
-		this.m_textArea.text = text.m_textField.text;
+		this.m_textArea.text = text.text;
 		this.m_sizeArea.text = text.size + "";
 	}
 

@@ -93,11 +93,11 @@ export class GuiTextInput extends Stage
 				if (input !== this) input.textInput.blur()
 			})
 			backgroundSprite.texture = this.rollSkin
-			this.emit('focus', event)
+			this.emit('focus', this.textInput.text)
 		})
 		this.textInput.on('blur', (event: any) => {
 			backgroundSprite.texture = this.baseSkin
-			this.emit('blur', event)
+			this.emit('blur', this.textInput.text)
 		})
 		this.textInput.on('change', () => {
 			this.emit('change', this.textInput.text)

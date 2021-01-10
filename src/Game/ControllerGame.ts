@@ -64,6 +64,7 @@ import { ContactFilter } from "./ContactFilter";
 import { ContactListener } from "./ContactListener";
 import { Rectangle } from "../Parts/Rectangle";
 import { Circle } from "../Parts/Circle";
+import { GuiTextInput } from "../Gui/GuiTextInput";
 
 export class ControllerGame extends Controller {
 		//======================
@@ -1054,7 +1055,7 @@ export class ControllerGame extends Controller {
 		public MouseDrag():void {
 			if (!this.simStarted) {
 				// mouse press
-				if (Input.mouseDown && ControllerGameGlobals.mouseYWorld >= 100 && !this.m_sidePanel.sliderDown && !this.m_guiMenu.MouseOverMenu(ControllerGameGlobals.mouseXWorld, ControllerGameGlobals.mouseYWorld) && (ControllerGameGlobals.mouseXWorld >= 120 || !this.m_sidePanel.visible) && (ControllerGameGlobals.mouseXWorld >= 230 || ControllerGameGlobals.mouseYWorld >= 340 || !this.m_sidePanel.ColourWindowShowing()) && this.curAction != ControllerGameGlobals.BOX_SELECTING && this.curAction != ControllerGameGlobals.DRAWING_BUILD_BOX && this.curAction != ControllerGameGlobals.DRAWING_BOX && this.curAction != ControllerGameGlobals.DRAWING_HORIZONTAL_LINE && this.curAction != ControllerGameGlobals.DRAWING_VERTICAL_LINE) {
+				if (Input.mouseDown && ControllerGameGlobals.mouseYWorld >= 100 && !this.m_sidePanel.sliderDown && !this.m_guiMenu.MouseOverMenu(ControllerGameGlobals.mouseXWorld, ControllerGameGlobals.mouseYWorld) && (ControllerGameGlobals.mouseXWorld >= 120 || !this.m_sidePanel.visible) && (ControllerGameGlobals.mouseXWorld >= 230 || ControllerGameGlobals.mouseYWorld >= 600 || !this.m_sidePanel.ColourWindowShowing()) && this.curAction != ControllerGameGlobals.BOX_SELECTING && this.curAction != ControllerGameGlobals.DRAWING_BUILD_BOX && this.curAction != ControllerGameGlobals.DRAWING_BOX && this.curAction != ControllerGameGlobals.DRAWING_HORIZONTAL_LINE && this.curAction != ControllerGameGlobals.DRAWING_VERTICAL_LINE) {
 					if (!this.m_tutorialDialog || !this.m_tutorialDialog.MouseOver(ControllerGameGlobals.mouseXWorld, ControllerGameGlobals.mouseYWorld)) {
 						var shapeOrJoint:Part = this.GetPartAtMouse();
 
@@ -1218,7 +1219,7 @@ export class ControllerGame extends Controller {
 					}
 				}
 
-				if (Input.mouseDown && !this.m_sidePanel.sliderDown && !this.m_guiMenu.MouseOverMenu(ControllerGameGlobals.mouseXWorld, ControllerGameGlobals.mouseYWorld) && ControllerGameGlobals.mouseYWorld >= 100 && (ControllerGameGlobals.mouseXWorld >= 120 || !this.m_sidePanel.visible) && (ControllerGameGlobals.mouseXWorld >= 230 || ControllerGameGlobals.mouseYWorld >= 340 || !this.m_sidePanel.ColourWindowShowing()) && this.curAction != ControllerGameGlobals.BOX_SELECTING) {
+				if (Input.mouseDown && !this.m_sidePanel.sliderDown && !this.m_guiMenu.MouseOverMenu(ControllerGameGlobals.mouseXWorld, ControllerGameGlobals.mouseYWorld) && ControllerGameGlobals.mouseYWorld >= 100 && (ControllerGameGlobals.mouseXWorld >= 120 || !this.m_sidePanel.visible) && (ControllerGameGlobals.mouseXWorld >= 230 || ControllerGameGlobals.mouseYWorld >= 600 || !this.m_sidePanel.ColourWindowShowing()) && this.curAction != ControllerGameGlobals.BOX_SELECTING) {
 					if (!this.m_tutorialDialog || !this.m_tutorialDialog.MouseOver(ControllerGameGlobals.mouseXWorld, ControllerGameGlobals.mouseYWorld)) {
 						this.RefreshSidePanel();
 					}
@@ -1444,7 +1445,7 @@ export class ControllerGame extends Controller {
 				}
 			}
 
-			if (this.simStarted && Input.mouseDown && !this.m_guiMenu.MouseOverMenu(ControllerGameGlobals.mouseXWorld, ControllerGameGlobals.mouseYWorld) && ControllerGameGlobals.mouseYWorld >= 100 && (ControllerGameGlobals.mouseXWorld >= 120 || !this.m_sidePanel.visible) && (ControllerGameGlobals.mouseXWorld >= 230 || ControllerGameGlobals.mouseYWorld >= 340 || !this.m_sidePanel.ColourWindowShowing()) && this.curAction != ControllerGameGlobals.BOX_SELECTING && !this.m_mouseJoint) {
+			if (this.simStarted && Input.mouseDown && !this.m_guiMenu.MouseOverMenu(ControllerGameGlobals.mouseXWorld, ControllerGameGlobals.mouseYWorld) && ControllerGameGlobals.mouseYWorld >= 100 && (ControllerGameGlobals.mouseXWorld >= 120 || !this.m_sidePanel.visible) && (ControllerGameGlobals.mouseXWorld >= 230 || ControllerGameGlobals.mouseYWorld >= 600 || !this.m_sidePanel.ColourWindowShowing()) && this.curAction != ControllerGameGlobals.BOX_SELECTING && !this.m_mouseJoint) {
 				if ((!this.m_tutorialDialog || !this.m_tutorialDialog.MouseOver(ControllerGameGlobals.mouseXWorld, ControllerGameGlobals.mouseYWorld)) && !this.draggingTutorial) {
 					// dragging the world around
 					var change:boolean = (ControllerGameGlobals.mouseXWorld != ControllerGameGlobals.prevMouseXWorld || ControllerGameGlobals.mouseYWorld != ControllerGameGlobals.prevMouseYWorld);
@@ -3507,7 +3508,7 @@ export class ControllerGame extends Controller {
 			this.redrawRobot = true;
 		}
 
-		public scaleWithZoomBox():void {
+		public scaleWithZoomBox(value: boolean):void {
 			if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof TextPart) {
 				(this.selectedParts[0] as TextPart).scaleWithZoom = value;
 				ControllerGameGlobals.curRobotID = "";
@@ -3515,7 +3516,7 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public alwaysVisibleBox():void {
+		public alwaysVisibleBox(value: boolean):void {
 			if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof TextPart) {
 				(this.selectedParts[0] as TextPart).alwaysVisible = value;
 				ControllerGameGlobals.curRobotID = "";
@@ -3628,13 +3629,13 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public sizeText(e: Event):void {
+		public sizeText(target: GuiTextInput, value: string):void {
 			if (this.lastSelectedText instanceof TextPart) {
 				var oldSize:number = this.lastSelectedText.size;
-				this.lastSelectedText.size = parseInt(e.target.text);
+				this.lastSelectedText.size = parseInt(value);
 				if (this.lastSelectedText.size < 4) this.lastSelectedText.size = 4;
 				if (this.lastSelectedText.size > 36) this.lastSelectedText.size = 36;
-				e.target.text = this.lastSelectedText.size + "";
+				target.text = this.lastSelectedText.size + "";
 				ControllerGameGlobals.curRobotID = "";
 				this.redrawRobot = true;
 				if (oldSize != this.lastSelectedText.size) this.AddAction(new TextSizeChangeAction(this.lastSelectedText, this.lastSelectedText.size - oldSize));

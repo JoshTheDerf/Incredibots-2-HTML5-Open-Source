@@ -1,6 +1,7 @@
 import { b2World, b2Body } from "@box2d/core";
 import { ControllerGame } from "../Game/ControllerGame";
 import { Part } from "./Part";
+import { Text } from 'pixi.js'
 
 export class TextPart extends Part
 {
@@ -27,7 +28,7 @@ export class TextPart extends Part
 	public initY:number;
 	public initW:number;
 	public initH:number;
-	public m_textField:TextField;
+	public m_textField:Text;
 	private m_controller:ControllerGame;
 
 	constructor(cont:ControllerGame, nx:number, ny:number, nw:number, nh:number, str:string, front:boolean = true)
@@ -43,8 +44,7 @@ export class TextPart extends Part
 		this.green = 0;
 		this.blue = 0;
 		this.size = 14;
-		this.m_textField = new TextField();
-		this.m_textField.text = str;
+		this.m_textField = new Text(str);
 		this.m_textField.wordWrap = true;
 		if (cont) cont.addChildAt(this.m_textField, cont.getChildIndex(cont.m_canvas) + (front ? 1 : 0));
 		this.type = "TextPart";
