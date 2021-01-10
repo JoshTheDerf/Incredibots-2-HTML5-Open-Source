@@ -1,4 +1,4 @@
-import { Container, InteractionEvent, Sprite, Text, TextStyle, Texture } from 'pixi.js'
+import { Container, InteractionEvent, Sprite, Text, TextStyle, Texture, filters } from 'pixi.js'
 import { Resource } from '../Game/Graphics/Resource';
 import { Main } from '../Main';
 import PIXIsound from 'pixi-sound'
@@ -31,6 +31,27 @@ export class GuiButton extends Container
 	private upTexture: Texture;
 	private overTexture: Texture;
 	private downTexture: Texture;
+	private _disabled: boolean;
+
+	set disabled(value: boolean) {
+		this._disabled = value
+
+		if (this._disabled) {
+			const colorMatrix = new filters.ColorMatrixFilter();
+			colorMatrix.brightness(0.5, true);
+			this.interactive = false
+			this.alpha = 0.7
+			this.filters = [colorMatrix];
+		} else {
+			this.interactive = true
+			this.alpha = 1
+			this.filters = []
+		}
+	}
+
+	get disabled():boolean {
+		return this._disabled
+	}
 
 	constructor(text:String, xPos:number, yPos:number, w:number, h:number, clickListener:Function, colour:number, style:TextStyle|null = null, addCheckbox:boolean = false, checkboxSelected:boolean = false)
 	{
@@ -94,9 +115,13 @@ export class GuiButton extends Container
 
 		this
 			.on('click', (event: InteractionEvent) => {
+				if (this.disabled) return
 				clickListener(event)
 			})
-			.on('tap', (event: InteractionEvent) => clickListener(event))
+			.on('tap', (event: InteractionEvent) => {
+				if (this.disabled) return
+				clickListener(event)
+			})
 			.on('mousedown', this.bDown)
 			.on('mouseover', this.mouseOver)
 			.on('mouseout', this.bUp)
@@ -137,6 +162,7 @@ export class GuiButton extends Container
 	}
 
 	private bDown():void {
+		if (this.disabled) return
 		if (!this.buttonOffset) {
 			this.x += 2;
 			this.y += 2;
@@ -146,6 +172,7 @@ export class GuiButton extends Container
 	}
 
 	private bUp():void {
+		if (this.disabled) return
 		if (this.buttonOffset) {
 			this.x -= 2;
 			this.y -= 2;
@@ -155,6 +182,7 @@ export class GuiButton extends Container
 	}
 
 	private mouseOver():void {
+		if (this.disabled) return
 		if (Main.enableSound && GuiButton.lastRolloverFrame != Math.floor(Date.now() / 150)) {
 			GuiButton.rolloverSound.stop()
 			GuiButton.rolloverSound.volume = 0.2
@@ -165,6 +193,7 @@ export class GuiButton extends Container
 	}
 
 	private mouseClick():void {
+		if (this.disabled) return
 		if (Main.enableSound) {
 			GuiButton.clickSound.volume = 0.8
 			GuiButton.clickSound.play()

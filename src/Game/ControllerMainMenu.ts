@@ -242,17 +242,21 @@ export class ControllerMainMenu extends Controller
 		style = new TextStyle();
 		style.fontSize = 17;
 		var button:GuiButton = new GuiButton("Tutorial Levels", 210, 109, 200, 65, this.tutorialButton.bind(this), GuiButton.PINK, style);
+		button.disabled = true
 		this.levelSelectGui.addChild(button);
 		button = new GuiButton("Sandbox Mode", 390, 109, 200, 65, this.sandboxButton.bind(this), GuiButton.PINK, style);
 		this.levelSelectGui.addChild(button);
 		button = new GuiButton("Challenge Editor", 210, 158, 200, 65, this.editorButton.bind(this), GuiButton.PINK, style);
+		button.disabled = true
 		this.levelSelectGui.addChild(button);
 		button = new GuiButton(" Advanced Sandbox ", 390, 158, 200, 65, this.advancedButton.bind(this), GuiButton.PINK, style);
 		this.levelSelectGui.addChild(button);
 		this.logInButton = new GuiButton("Log In", 675, -5, 120, 60, this.loginButton.bind(this), GuiButton.BLUE, style);
+		this.logInButton.disabled = true
 		this.logInButton.visible = (ControllerGameGlobals.userName == "_Public");
 		this.levelSelectGui.addChild(this.logInButton);
 		this.logOutButton = new GuiButton("Log Out", 675, -5, 120, 60, this.logout.bind(this), GuiButton.BLUE, style);
+		this.logOutButton.disabled = true
 		this.logOutButton.visible = (ControllerGameGlobals.userName != "_Public");
 		this.levelSelectGui.addChild(this.logOutButton);
 		this.enableSoundButton = new GuiButton("Enable Sound", 5, 535, 150, 60, this.enableSoundButtonPressed.bind(this), GuiButton.BLUE, style);
@@ -268,26 +272,36 @@ export class ControllerMainMenu extends Controller
 		}
 
 		button = new GuiButton("Load Challenge", 315, 263, 171, 59, this.loadChallengeButton, GuiButton.BLUE, style);
+		button.disabled = true
 		this.levelSelectGui.addChild(button);
 		button = new GuiButton("Load Replay", 315, 303, 171, 59, this.loadReplayButton, GuiButton.BLUE, style);
+		button.disabled = true
 		this.levelSelectGui.addChild(button);
 		button = new GuiButton("Load Bot", 315, 343, 171, 59, this.loadRobotButton, GuiButton.BLUE, style);
+		button.disabled = true
 		this.levelSelectGui.addChild(button);
 		button = new GuiButton("High Scores", 315, 383, 171, 59, this.highScoresButton, GuiButton.RED, style);
+		button.disabled = true
 		this.levelSelectGui.addChild(button);
 
 		button = new GuiButton("Import Challenge", 145, 263, 171, 59, this.importChallengeButton.bind(this), GuiButton.ORANGE, style);
+		button.disabled = true
 		this.levelSelectGui.addChild(button);
 		button = new GuiButton("Import Replay", 145, 303, 171, 59, this.importReplayButton.bind(this), GuiButton.ORANGE, style);
+		button.disabled = true
 		this.levelSelectGui.addChild(button);
 		button = new GuiButton("Import Bot", 145, 343, 171, 59, this.importRobotButton.bind(this), GuiButton.ORANGE, style);
+		button.disabled = true
 		this.levelSelectGui.addChild(button);
 
 		button = new GuiButton("Instructions", 620, 454, 153, 50, this.instructionsButton, GuiButton.BLUE, style);
+		button.disabled = true
 		this.levelSelectGui.addChild(button);
 		button = new GuiButton("Credits", 620, 489, 153, 50, this.creditsButton, GuiButton.BLUE, style);
+		button.disabled = true
 		this.levelSelectGui.addChild(button);
 		button = new GuiButton("Suggestions?", 620, 524, 153, 50, this.suggestionsButton, GuiButton.BLUE, style);
+		button.disabled = true
 		this.levelSelectGui.addChild(button);
 
 		style = new TextStyle();

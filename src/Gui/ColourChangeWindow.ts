@@ -317,6 +317,7 @@ export class ColourChangeWindow extends GuiWindow
 	}
 
 	private redrawBox():void {
+		this.m_colourSelector.clear()
 		this.m_colourSelector.beginFill(utils.rgb2hex([parseInt(this.m_redArea.text) / 255, parseInt(this.m_greenArea.text) / 255, parseInt(this.m_blueArea.text) / 255]), 1);
 		this.m_colourSelector.lineStyle(1, 0x222222, 1.0);
 		this.m_colourSelector.drawRect(40, 128, 40, 30);
