@@ -15,7 +15,7 @@ async function main() {
     });
     const main = new Main(renderer)
 
-    document.getElementById('page_wrapper').appendChild(renderer.view)
+    document.getElementById('game_wrapper').appendChild(renderer.view)
 }
 
 main()
