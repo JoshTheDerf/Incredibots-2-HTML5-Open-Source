@@ -7,15 +7,18 @@ export class ContactFilter extends b2ContactFilter
 	}
 
 	public ShouldCollide(fixture1:b2Fixture, fixture2:b2Fixture):boolean {
-		if ((fixture1.GetUserData() && fixture1.GetUserData().isSandbox) || (fixture2.GetUserData() && fixture2.GetUserData().isSandbox)) return true;
+		const userData1 = fixture1.GetBody().GetUserData()
+		const userData2 = fixture2.GetBody().GetUserData()
 
-		if (fixture1.GetUserData() && fixture2.GetUserData() && !fixture1.GetUserData().collide && (!fixture1.GetUserData().editable || fixture2.GetUserData().editable) && (fixture1.GetUserData().isPiston == -1 || fixture2.GetUserData().isPiston == -1)) return false;
-		if (fixture1.GetUserData() && fixture2.GetUserData() && !fixture2.GetUserData().collide && (!fixture2.GetUserData().editable || fixture1.GetUserData().editable) && (fixture1.GetUserData().isPiston == -1 || fixture2.GetUserData().isPiston == -1)) return false;
+		if ((userData1 && userData1.isSandbox) || (userData2 && userData2.isSandbox)) return true;
 
-		if (fixture1.GetUserData() && fixture2.GetUserData() && fixture1.GetUserData().isPiston != -1 && fixture2.GetUserData().isPiston != -1 && !fixture1.GetUserData().collide && (!fixture1.GetUserData().editable || fixture2.GetUserData().editable)) return false;
-		if (fixture1.GetUserData() && fixture2.GetUserData() && fixture1.GetUserData().isPiston != -1 && fixture2.GetUserData().isPiston != -1 && !fixture2.GetUserData().collide && (!fixture2.GetUserData().editable || fixture1.GetUserData().editable)) return false;
+		if (userData1 && userData2 && !userData1.collide && (!userData1.editable || userData2.editable) && (userData1.isPiston == -1 || userData2.isPiston == -1)) return false;
+		if (userData1 && userData2 && !userData2.collide && (!userData2.editable || userData1.editable) && (userData1.isPiston == -1 || userData2.isPiston == -1)) return false;
 
-		if (fixture1.GetUserData() && fixture2.GetUserData() && fixture1.GetUserData().isPiston != -1 && fixture2.GetUserData().isPiston != -1 && fixture1.GetUserData().isPiston == fixture2.GetUserData().isPiston && fixture1.GetBody() != fixture2.GetBody() && fixture1.m_filter.groupIndex == fixture2.m_filter.groupIndex) return true;
+		if (userData1 && userData2 && userData1.isPiston != -1 && userData2.isPiston != -1 && !userData1.collide && (!userData1.editable || userData2.editable)) return false;
+		if (userData1 && userData2 && userData1.isPiston != -1 && userData2.isPiston != -1 && !userData2.collide && (!userData2.editable || userData1.editable)) return false;
+
+		if (userData1 && userData2 && userData1.isPiston != -1 && userData2.isPiston != -1 && userData1.isPiston == userData2.isPiston && fixture1.GetBody() != fixture2.GetBody() && fixture1.GetFilterData().groupIndex == fixture2.GetFilterData().groupIndex) return true;
 
 		return super.ShouldCollide(fixture1, fixture2);
 	}

@@ -31,7 +31,7 @@ export class GuiButton extends Container
 	private upTexture: Texture;
 	private overTexture: Texture;
 	private downTexture: Texture;
-	private _disabled: boolean;
+	private _disabled: boolean = false;
 
 	set disabled(value: boolean) {
 		this._disabled = value
