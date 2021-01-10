@@ -428,13 +428,16 @@ export class Resource {
     static cCloud9: Texture;
 
     static async load() {
+        const promises = []
         for (const key in Resource.paths) {
-            Resource[key] = await fetch(Resource.paths[key]).then(res => res.blob())
+            promises.push(fetch(Resource.paths[key]).then(res => res.blob()).then(resource => Resource[key] = resource))
         }
 
         for (const key in Resource.textures) {
-            Resource[key] = await Texture.fromURL(Resource.textures[key])
+            promises.push(Texture.fromURL(Resource.textures[key]).then(texture => Resource[key] = texture))
         }
+
+        await Promise.all(promises)
     }
 
     // // Mouse cursor resources

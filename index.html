@@ -70,8 +70,18 @@
         }
         
         #game_wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 800px;
+            height: 600px;
             padding: 2rem;
             background: #9ea2c2;
+        }
+        
+        #loading_indicator {
+            font-size: 2rem;
+            opacity: 0.5;
         }
     </style>
 </head>
@@ -82,7 +92,9 @@
             <div id="logo"></div>
             <div id="game_box" style="z-index: 5;">
                 <div id="game_wrapper">
-
+                    <div id="loading_indicator">
+                        Loading assets...
+                    </div>
                 </div>
             </div>
         </div>
