@@ -77799,7 +77799,7 @@ class DropDownMenu extends pixi_js_1.Graphics {
     this.m_currentMenu.beginFill(0xFDF9EA, 1);
     this.m_currentMenu.lineStyle(1, 0x43366F);
     this.m_currentMenu.moveTo(0, 0);
-    this.m_currentMenu.drawRect(0, 0, 115, this.cont.constructor.name === 'ControllerSandbox' ? 100 : 60);
+    this.m_currentMenu.drawRect(0, 0, 115, this.cont.controllerType === 'sandbox' ? 100 : 60);
     var item = new DropDownMenuItem_1.DropDownMenuItem(this, "Mirror Horizontal", 115, () => this.mirrorHorizontalButton());
     item.y = 0;
     this.m_currentMenu.addChild(item);
@@ -77810,7 +77810,7 @@ class DropDownMenu extends pixi_js_1.Graphics {
     item.y = 40;
     this.m_currentMenu.addChild(item);
 
-    if (this.cont.constructor.name === 'ControllerSandbox') {
+    if (this.cont.controllerType === 'sandbox') {
       item = new DropDownMenuItem_1.DropDownMenuItem(this, "Thrusters", 115, () => this.cont.thrustersButton());
       item.y = 60;
       this.m_currentMenu.addChild(item);
@@ -118321,7 +118321,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "36269" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "32969" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
