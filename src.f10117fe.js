@@ -105380,17 +105380,19 @@ class GuiTextInput extends core_1.Stage {
     this.width = w;
     this.height = h;
     this.interactive = true;
+    this.interactiveChildren = true;
     TextInputs.push(this);
     this.baseSkin = Resource_1.Resource.cGuiTextAreaBase;
     this.rollSkin = Resource_1.Resource.cGuiTextAreaRoll;
+    this.disabledSkin = Resource_1.Resource.cGuiTextAreaDisabled;
     if (!format) format = new pixi_js_1.TextStyle();
     format.fontFamily = Main_1.Main.GLOBAL_FONT;
     format.fill = '#4C3D57';
     const backgroundContainer = new pixi_js_1.Container();
-    const backgroundSprite = new pixi_js_1.Sprite(this.baseSkin);
-    backgroundSprite.width = w;
-    backgroundSprite.height = h;
-    backgroundContainer.addChild(backgroundSprite);
+    this.backgroundSprite = new pixi_js_1.Sprite(this.baseSkin);
+    this.backgroundSprite.width = w;
+    this.backgroundSprite.height = h;
+    backgroundContainer.addChild(this.backgroundSprite);
     this.textInput = new core_1.TextInput({
       value: '',
       width: w,
@@ -105399,11 +105401,11 @@ class GuiTextInput extends core_1.Stage {
       background: backgroundContainer
     });
     this.on('mouseover', () => {
-      backgroundSprite.texture = this.rollSkin;
+      this.backgroundSprite.texture = this.rollSkin;
     });
     this.on('mouseout', () => {
       if (this.textInput.isFocused) return;
-      backgroundSprite.texture = this.baseSkin;
+      this.backgroundSprite.texture = this.baseSkin;
     });
     this.textInput.on('click', event => {
       this.emit('click', event);
@@ -105412,16 +105414,22 @@ class GuiTextInput extends core_1.Stage {
       TextInputs.forEach(input => {
         if (input !== this) input.textInput.blur();
       });
-      backgroundSprite.texture = this.rollSkin;
+      this.backgroundSprite.texture = this.rollSkin;
       this.emit('focus', this.textInput.text);
     });
     this.textInput.on('blur', event => {
-      backgroundSprite.texture = this.baseSkin;
+      this.backgroundSprite.texture = this.baseSkin;
       this.emit('blur', this.textInput.text);
     });
     this.textInput.on('change', () => {
       this.emit('change', this.textInput.text);
       this.text = this.textInput.text;
+    });
+    this.textInput.on('keydown', event => {
+      this.emit('keydown', this);
+    });
+    this.textInput.on('keyup', event => {
+      this.emit('keyup', this);
     });
     this.textInput.setLayoutOptions(new core_1.FastLayoutOptions({
       width: 0.9999,
@@ -105439,19 +105447,21 @@ class GuiTextInput extends core_1.Stage {
   }
 
   get enabled() {
-    return this.interactive;
+    return this.interactive && this.interactiveChildren;
   }
 
   set enabled(value) {
-    this.interactive = value;
+    this.interactive = this.interactiveChildren = value;
+    this.updateEnabled();
   }
 
   get editable() {
-    return this.interactive;
+    return this.interactive && this.interactiveChildren;
   }
 
   set editable(value) {
-    this.interactive = value;
+    this.interactive = this.interactiveChildren = value;
+    this.updateEnabled();
   }
 
   get text() {
@@ -105464,6 +105474,10 @@ class GuiTextInput extends core_1.Stage {
 
   setSelection(startIndex, endIndex) {
     this.textInput.selectRange(startIndex, endIndex);
+  }
+
+  updateEnabled() {
+    this.backgroundSprite.texture = this.enabled ? this.baseSkin : this.disabledSkin;
   }
 
 }
@@ -106237,8 +106251,6 @@ class PartEditWindow extends GuiWindow_1.GuiWindow {
     this.m_strengthLabel7 = new pixi_js_1.Text('');
     this.m_strengthLabel7.text = "Cannon Strength";
     this.m_strengthLabel7.style = format;
-    this.m_strengthLabel7.width = 120;
-    this.m_strengthLabel7.height = 20;
     this.m_strengthLabel7.x = 21;
     this.m_strengthLabel7.y = 434;
     this.m_strengthLabel7.style = format;
@@ -106266,7 +106278,7 @@ class PartEditWindow extends GuiWindow_1.GuiWindow {
     this.m_strengthArea7.on('hide', event => this.cont.cannonText(event));
     this.m_cannonPanel.addChild(this.m_strengthArea7);
     this.m_fireKeyArea = new GuiTextInput_1.GuiTextInput(60, 412, 37, 15, format);
-    this.m_fireKeyArea.editable = false;
+    this.m_fireKeyArea.editable = true;
     this.m_fireKeyArea.on('click', event => this.cannonKeyFocus(event));
     this.m_fireKeyArea.on('focus', event => this.TextAreaGotFocus(event));
     this.m_fireKeyArea.on('keydown', event => this.cont.fireKeyText(event));
@@ -106277,12 +106289,11 @@ class PartEditWindow extends GuiWindow_1.GuiWindow {
     format.fontFamily = Main_1.Main.GLOBAL_FONT;
     format.fill = "#242930";
     format.align = 'right';
+    format.fontSize = 12;
     this.m_fireKeyLabel = new pixi_js_1.Text('');
     this.m_fireKeyLabel.text = "Fire:";
-    this.m_fireKeyLabel.width = 50;
-    this.m_fireKeyLabel.height = 20;
-    this.m_fireKeyLabel.x = 2;
-    this.m_fireKeyLabel.y = 411;
+    this.m_fireKeyLabel.x = 25;
+    this.m_fireKeyLabel.y = 412;
     this.m_fireKeyLabel.style = format;
     this.m_cannonPanel.addChild(this.m_fireKeyLabel);
     format = new pixi_js_1.TextStyle();
@@ -106502,8 +106513,8 @@ class PartEditWindow extends GuiWindow_1.GuiWindow {
     this.m_thrustLabel = new pixi_js_1.Text('');
     this.m_thrustLabel.text = "Thruster Strength";
     this.m_thrustLabel.style = format;
-    this.m_thrustLabel.anchor.set(0.5);
-    this.m_thrustLabel.x = 21 + 120 / 2;
+    this.m_thrustLabel.anchor.set(0, 0.5);
+    this.m_thrustLabel.x = 21;
     this.m_thrustLabel.y = 190 + 20 / 2;
     this.m_thrustLabel.style = format;
     this.m_thrustersEditPanel.addChild(this.m_thrustLabel);
@@ -106530,7 +106541,7 @@ class PartEditWindow extends GuiWindow_1.GuiWindow {
     this.m_thrustArea.on('hide', event => this.cont.thrustText(event));
     this.m_thrustersEditPanel.addChild(this.m_thrustArea);
     this.m_thrustKeyArea = new GuiTextInput_1.GuiTextInput(65, 259, 37, 15, format);
-    this.m_thrustKeyArea.editable = false;
+    this.m_thrustKeyArea.editable = true;
     this.m_thrustKeyArea.on('click', event => this.thrustKeyFocus(event));
     this.m_thrustKeyArea.on('focus', event => this.TextAreaGotFocus(event));
     this.m_thrustKeyArea.on('keydown', event => this.cont.thrustKeyText(event));
@@ -106541,11 +106552,12 @@ class PartEditWindow extends GuiWindow_1.GuiWindow {
     format.fontFamily = Main_1.Main.GLOBAL_FONT;
     format.fill = 0x242930;
     format.align = 'right';
+    format.fontSize = 12;
     this.m_thrustKeyLabel = new pixi_js_1.Text('');
     this.m_thrustKeyLabel.text = "Activate:";
     this.m_thrustKeyLabel.anchor.set(0.5);
     this.m_thrustKeyLabel.x = 7 + 55 / 2;
-    this.m_thrustKeyLabel.y = 258 + 20;
+    this.m_thrustKeyLabel.y = 258 + 20 / 2;
     this.m_thrustKeyLabel.style = format;
     this.m_thrustersEditPanel.addChild(this.m_thrustKeyLabel);
     format = new pixi_js_1.TextStyle();
@@ -112449,20 +112461,20 @@ class ControllerGame extends Controller_1.Controller {
     }
   }
 
-  textKeyBox(e) {
-    if (e.currentTarget.enabled) {
+  textKeyBox(input) {
+    if (input.enabled) {
       var str;
 
       if (this.selectedParts[0] instanceof TextPart_1.TextPart) {
         var oldKey = this.selectedParts[0].displayKey;
-        this.selectedParts[0].displayKey = e.keyCode;
-        if (oldKey != e.keyCode) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.TEXT_TYPE, oldKey, e.keyCode));
+        this.selectedParts[0].displayKey = Input_1.Input.lastKey;
+        if (oldKey != Input_1.Input.lastKey) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.TEXT_TYPE, oldKey, Input_1.Input.lastKey));
       }
 
-      str = Input_1.Input.getKeyString(e.keyCode);
-      if (str == null) str = "Unk: " + e.keyCode;
-      e.target.text = str;
-      e.target.setSelection(0, 10);
+      str = Input_1.Input.getKeyString(Input_1.Input.lastKey);
+      if (str == null) str = "Unk: " + Input_1.Input.lastKey;
+      input.text = str;
+      input.textInput.selectRange(0, 10);
       ControllerGameGlobals_1.ControllerGameGlobals.curRobotID = "";
     }
   }
@@ -112577,17 +112589,17 @@ class ControllerGame extends Controller_1.Controller {
     this.m_sidePanel.TextAreaLostFocus();
   }
 
-  minLimitText(e) {
-    var limit = Number(e.target.text.replace("\n", ""));
-    if (e.target.text == "") limit = NaN;
+  minLimitText(text) {
+    var limit = Number(text.replace("\n", ""));
+    if (text == "") limit = NaN;
 
     if (this.lastSelectedJoint instanceof RevoluteJoint_1.RevoluteJoint) {
       if (isNaN(limit)) {
         limit = -Number.MAX_VALUE;
-        e.target.text = "None";
+        text = "None";
       } else if (limit >= 0.0) {
         limit = 0;
-        e.target.text = 0;
+        text = "0";
       }
 
       var oldLimit = this.lastSelectedJoint.motorLowerLimit;
@@ -112599,17 +112611,17 @@ class ControllerGame extends Controller_1.Controller {
     ControllerGameGlobals_1.ControllerGameGlobals.curRobotID = "";
   }
 
-  maxLimitText(e) {
-    var limit = Number(e.target.text.replace("\n", ""));
-    if (e.target.text == "") limit = NaN;
+  maxLimitText(text) {
+    var limit = Number(text.replace("\n", ""));
+    if (text == "") limit = NaN;
 
     if (this.lastSelectedJoint instanceof RevoluteJoint_1.RevoluteJoint) {
       if (isNaN(limit)) {
         limit = Number.MAX_VALUE;
-        e.target.text = "None";
+        text = "None";
       } else if (limit <= 0.0) {
         limit = 0;
-        e.target.text = 0;
+        text = "0";
       }
 
       var oldLimit = this.lastSelectedJoint.motorUpperLimit;
@@ -112621,86 +112633,88 @@ class ControllerGame extends Controller_1.Controller {
     ControllerGameGlobals_1.ControllerGameGlobals.curRobotID = "";
   }
 
-  controlKeyText1(e) {
-    if (e.currentTarget.enabled) {
+  controlKeyText1(input) {
+    if (input.enabled) {
       var str;
       var oldKey;
 
       if (this.selectedParts[0] instanceof RevoluteJoint_1.RevoluteJoint) {
         oldKey = this.selectedParts[0].motorCWKey;
-        this.selectedParts[0].motorCWKey = e.keyCode;
-        if (oldKey != e.keyCode) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.CW_TYPE, oldKey, e.keyCode));
+        this.selectedParts[0].motorCWKey = Input_1.Input.lastKey;
+        if (oldKey != Input_1.Input.lastKey) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.CW_TYPE, oldKey, Input_1.Input.lastKey));
       } else {
         oldKey = this.selectedParts[0].pistonUpKey;
-        this.selectedParts[0].pistonUpKey = e.keyCode;
-        if (oldKey != e.keyCode) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.EXPAND_TYPE, oldKey, e.keyCode));
+        this.selectedParts[0].pistonUpKey = Input_1.Input.lastKey;
+        if (oldKey != Input_1.Input.lastKey) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.EXPAND_TYPE, oldKey, Input_1.Input.lastKey));
       }
 
-      str = Input_1.Input.getKeyString(e.keyCode);
-      if (str == null) str = "Unk: " + e.keyCode;
-      e.target.text = str;
-      e.target.setSelection(0, 10);
+      str = Input_1.Input.getKeyString(Input_1.Input.lastKey);
+      if (str == null) str = "Unk: " + Input_1.Input.lastKey;
+      input.text = str;
+      input.textInput.selectRange(0, 10);
       ControllerGameGlobals_1.ControllerGameGlobals.curRobotID = "";
     }
   }
 
-  controlKeyText2(e) {
-    if (e.currentTarget.enabled) {
+  controlKeyText2(input) {
+    if (input.enabled) {
       var str;
       var oldKey;
 
       if (this.selectedParts[0] instanceof RevoluteJoint_1.RevoluteJoint) {
         oldKey = this.selectedParts[0].motorCCWKey;
-        this.selectedParts[0].motorCCWKey = e.keyCode;
-        if (oldKey != e.keyCode) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.CCW_TYPE, oldKey, e.keyCode));
+        this.selectedParts[0].motorCCWKey = Input_1.Input.lastKey;
+        if (oldKey != Input_1.Input.lastKey) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.CCW_TYPE, oldKey, Input_1.Input.lastKey));
       } else {
         oldKey = this.selectedParts[0].pistonDownKey;
-        this.selectedParts[0].pistonDownKey = e.keyCode;
-        if (oldKey != e.keyCode) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.CONTRACT_TYPE, oldKey, e.keyCode));
+        this.selectedParts[0].pistonDownKey = Input_1.Input.lastKey;
+        if (oldKey != Input_1.Input.lastKey) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.CONTRACT_TYPE, oldKey, Input_1.Input.lastKey));
       }
 
-      str = Input_1.Input.getKeyString(e.keyCode);
-      if (str == null) str = "Unk: " + e.keyCode;
-      e.target.text = str;
-      e.target.setSelection(0, 10);
+      str = Input_1.Input.getKeyString(Input_1.Input.lastKey);
+      if (str == null) str = "Unk: " + Input_1.Input.lastKey;
+      input.text = str;
+      input.textInput.selectRange(0, 10);
       ControllerGameGlobals_1.ControllerGameGlobals.curRobotID = "";
     }
   }
 
-  thrustKeyText(e) {
-    if (e.currentTarget.enabled) {
+  thrustKeyText(input) {
+    console.log(input.enabled);
+
+    if (input.enabled) {
       var str;
       var oldKey;
 
       if (this.selectedParts[0] instanceof Thrusters_1.Thrusters) {
         oldKey = this.selectedParts[0].thrustKey;
-        this.selectedParts[0].thrustKey = e.keyCode;
-        if (oldKey != e.keyCode) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.THRUSTERS_TYPE, oldKey, e.keyCode));
+        this.selectedParts[0].thrustKey = Input_1.Input.lastKey;
+        if (oldKey != Input_1.Input.lastKey) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.THRUSTERS_TYPE, oldKey, Input_1.Input.lastKey));
       }
 
-      str = Input_1.Input.getKeyString(e.keyCode);
-      if (str == null) str = "Unk: " + e.keyCode;
-      e.target.text = str;
-      e.target.setSelection(0, 10);
+      str = Input_1.Input.getKeyString(Input_1.Input.lastKey);
+      if (str == null) str = "Unk: " + Input_1.Input.lastKey;
+      input.text = str;
+      input.textInput.selectRange(0, 10);
       ControllerGameGlobals_1.ControllerGameGlobals.curRobotID = "";
     }
   }
 
-  fireKeyText(e) {
-    if (e.currentTarget.enabled) {
+  fireKeyText(input) {
+    if (input.enabled) {
       var str;
       var oldKey;
 
       if (this.selectedParts[0] instanceof Cannon_1.Cannon) {
         oldKey = this.selectedParts[0].fireKey;
-        this.selectedParts[0].fireKey = e.keyCode;
-        if (oldKey != e.keyCode) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.CANNON_TYPE, oldKey, e.keyCode));
+        this.selectedParts[0].fireKey = Input_1.Input.lastKey;
+        if (oldKey != Input_1.Input.lastKey) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.CANNON_TYPE, oldKey, Input_1.Input.lastKey));
       }
 
-      str = Input_1.Input.getKeyString(e.keyCode);
-      if (str == null) str = "Unk: " + e.keyCode;
-      e.target.text = str;
-      e.target.setSelection(0, 10);
+      str = Input_1.Input.getKeyString(Input_1.Input.lastKey);
+      if (str == null) str = "Unk: " + Input_1.Input.lastKey;
+      input.text = str;
+      input.textInput.selectRange(0, 10);
       ControllerGameGlobals_1.ControllerGameGlobals.curRobotID = "";
     }
   }
@@ -118086,7 +118100,7 @@ class Main {
     let mode = '_self';
     if (newWindow) mode = '_blank';
     if (parent) mode = '_top';
-    window.open(url, mode);
+    window.open(target, mode);
   }
 
   Init() {
@@ -118307,7 +118321,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "46539" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "36269" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
