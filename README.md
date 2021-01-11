@@ -1,4 +1,4 @@
-# IBJS
+# Incredibots 2 HTML5 Open Source
 
 Early-stage project attempting to port the flash game [IncrediBots 2 CE](http://incredibots.com/if/game.php) to TypeScript and PIXI.js.
 
