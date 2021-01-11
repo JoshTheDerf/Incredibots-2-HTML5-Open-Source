@@ -76210,6 +76210,17 @@ class Input {
   static getKeyString(k) {
     return Input.ascii[k];
   } //======================
+  // get key string
+  //======================
+
+
+  static getKeyNumber(k) {
+    const number = Object.keys(Input.ascii).find(key => {
+      return Input.ascii[key] === k || Input.ascii[key] === k.toUpperCase() || Input.ascii[key] === k.toLowerCase();
+    });
+    if (number) return +number;
+    return null;
+  } //======================
   // set up ascii text
   //======================
 
@@ -106281,7 +106292,7 @@ class PartEditWindow extends GuiWindow_1.GuiWindow {
     this.m_fireKeyArea.editable = true;
     this.m_fireKeyArea.on('click', event => this.cannonKeyFocus(event));
     this.m_fireKeyArea.on('focus', event => this.TextAreaGotFocus(event));
-    this.m_fireKeyArea.on('keydown', event => this.cont.fireKeyText(event));
+    this.m_fireKeyArea.on('keyup', event => this.cont.fireKeyText(event));
     this.m_fireKeyArea.on('blur', event => this.TextAreaLostFocus(event));
     this.m_fireKeyArea.on('hide', event => this.TextAreaLostFocus(event));
     this.m_cannonPanel.addChild(this.m_fireKeyArea);
@@ -106440,7 +106451,7 @@ class PartEditWindow extends GuiWindow_1.GuiWindow {
     this.m_textKeyArea.editable = false;
     this.m_textKeyArea.on('click', event => this.controlKey1Focus(event));
     this.m_textKeyArea.on('focus', event => this.TextAreaGotFocus(event));
-    this.m_textKeyArea.on('keydown', event => this.cont.textKeyBox(event));
+    this.m_textKeyArea.on('keyup', event => this.cont.textKeyBox(event));
     this.m_textKeyArea.on('blur', event => this.TextAreaLostFocus(event));
     this.m_textKeyArea.on('hide', event => this.TextAreaLostFocus(event));
     this.m_textEditPanel.addChild(this.m_textKeyArea);
@@ -106544,7 +106555,7 @@ class PartEditWindow extends GuiWindow_1.GuiWindow {
     this.m_thrustKeyArea.editable = true;
     this.m_thrustKeyArea.on('click', event => this.thrustKeyFocus(event));
     this.m_thrustKeyArea.on('focus', event => this.TextAreaGotFocus(event));
-    this.m_thrustKeyArea.on('keydown', event => this.cont.thrustKeyText(event));
+    this.m_thrustKeyArea.on('keyup', event => this.cont.thrustKeyText(event));
     this.m_thrustKeyArea.on('blur', event => this.TextAreaLostFocus(event));
     this.m_thrustKeyArea.on('hide', event => this.TextAreaLostFocus(event));
     this.m_thrustersEditPanel.addChild(this.m_thrustKeyArea);
@@ -106714,7 +106725,7 @@ class PartEditWindow extends GuiWindow_1.GuiWindow {
     this.m_controlKeyArea1.editable = false;
     this.m_controlKeyArea1.on('click', event => this.controlKey1Focus(event));
     this.m_controlKeyArea1.on('focus', event => this.TextAreaGotFocus(event));
-    this.m_controlKeyArea1.on('keydown', event => this.cont.controlKeyText1(event));
+    this.m_controlKeyArea1.on('keyup', event => this.cont.controlKeyText1(event));
     this.m_controlKeyArea1.on('blur', event => this.TextAreaLostFocus(event));
     this.m_controlKeyArea1.on('hide', event => this.TextAreaLostFocus(event));
     this.m_jointEditPanel.addChild(this.m_controlKeyArea1);
@@ -106722,7 +106733,7 @@ class PartEditWindow extends GuiWindow_1.GuiWindow {
     this.m_controlKeyArea2.editable = false;
     this.m_controlKeyArea2.on('click', event => this.controlKey2Focus(event));
     this.m_controlKeyArea2.on('focus', event => this.TextAreaGotFocus(event));
-    this.m_controlKeyArea2.on('keydown', event => this.cont.controlKeyText2(event));
+    this.m_controlKeyArea2.on('keyup', event => this.cont.controlKeyText2(event));
     this.m_controlKeyArea2.on('blur', event => this.TextAreaLostFocus(event));
     this.m_controlKeyArea2.on('hide', event => this.TextAreaLostFocus(event));
     this.m_jointEditPanel.addChild(this.m_controlKeyArea2);
@@ -112637,19 +112648,19 @@ class ControllerGame extends Controller_1.Controller {
     if (input.enabled) {
       var str;
       var oldKey;
+      const keyNumber = Input_1.Input.getKeyNumber(input.text);
 
-      if (this.selectedParts[0] instanceof RevoluteJoint_1.RevoluteJoint) {
+      if (this.selectedParts[0] instanceof RevoluteJoint_1.RevoluteJoint && keyNumber != null) {
         oldKey = this.selectedParts[0].motorCWKey;
-        this.selectedParts[0].motorCWKey = Input_1.Input.lastKey;
-        if (oldKey != Input_1.Input.lastKey) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.CW_TYPE, oldKey, Input_1.Input.lastKey));
-      } else {
+        this.selectedParts[0].motorCWKey = keyNumber;
+        if (oldKey != keyNumber) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.CW_TYPE, oldKey, keyNumber));
+      } else if (keyNumber != null) {
         oldKey = this.selectedParts[0].pistonUpKey;
-        this.selectedParts[0].pistonUpKey = Input_1.Input.lastKey;
-        if (oldKey != Input_1.Input.lastKey) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.EXPAND_TYPE, oldKey, Input_1.Input.lastKey));
+        this.selectedParts[0].pistonUpKey = keyNumber;
+        if (oldKey != keyNumber) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.EXPAND_TYPE, oldKey, keyNumber));
       }
 
-      str = Input_1.Input.getKeyString(Input_1.Input.lastKey);
-      if (str == null) str = "Unk: " + Input_1.Input.lastKey;
+      if (keyNumber == null) str = "Unk: " + keyNumber;else str = Input_1.Input.getKeyString(keyNumber);
       input.text = str;
       input.textInput.selectRange(0, 10);
       ControllerGameGlobals_1.ControllerGameGlobals.curRobotID = "";
@@ -112660,19 +112671,19 @@ class ControllerGame extends Controller_1.Controller {
     if (input.enabled) {
       var str;
       var oldKey;
+      const keyNumber = Input_1.Input.getKeyNumber(input.text);
 
-      if (this.selectedParts[0] instanceof RevoluteJoint_1.RevoluteJoint) {
+      if (this.selectedParts[0] instanceof RevoluteJoint_1.RevoluteJoint && keyNumber != null) {
         oldKey = this.selectedParts[0].motorCCWKey;
-        this.selectedParts[0].motorCCWKey = Input_1.Input.lastKey;
-        if (oldKey != Input_1.Input.lastKey) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.CCW_TYPE, oldKey, Input_1.Input.lastKey));
-      } else {
+        this.selectedParts[0].motorCCWKey = keyNumber;
+        if (oldKey != keyNumber) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.CCW_TYPE, oldKey, keyNumber));
+      } else if (keyNumber != null) {
         oldKey = this.selectedParts[0].pistonDownKey;
-        this.selectedParts[0].pistonDownKey = Input_1.Input.lastKey;
-        if (oldKey != Input_1.Input.lastKey) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.CONTRACT_TYPE, oldKey, Input_1.Input.lastKey));
+        this.selectedParts[0].pistonDownKey = keyNumber;
+        if (oldKey != keyNumber) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.CONTRACT_TYPE, oldKey, keyNumber));
       }
 
-      str = Input_1.Input.getKeyString(Input_1.Input.lastKey);
-      if (str == null) str = "Unk: " + Input_1.Input.lastKey;
+      if (keyNumber == null) str = "Unk: " + keyNumber;else str = Input_1.Input.getKeyString(keyNumber);
       input.text = str;
       input.textInput.selectRange(0, 10);
       ControllerGameGlobals_1.ControllerGameGlobals.curRobotID = "";
@@ -112680,20 +112691,18 @@ class ControllerGame extends Controller_1.Controller {
   }
 
   thrustKeyText(input) {
-    console.log(input.enabled);
-
     if (input.enabled) {
       var str;
       var oldKey;
+      const keyNumber = Input_1.Input.getKeyNumber(input.text);
 
-      if (this.selectedParts[0] instanceof Thrusters_1.Thrusters) {
+      if (this.selectedParts[0] instanceof Thrusters_1.Thrusters && keyNumber != null) {
         oldKey = this.selectedParts[0].thrustKey;
-        this.selectedParts[0].thrustKey = Input_1.Input.lastKey;
-        if (oldKey != Input_1.Input.lastKey) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.THRUSTERS_TYPE, oldKey, Input_1.Input.lastKey));
+        this.selectedParts[0].thrustKey = keyNumber;
+        if (oldKey != keyNumber) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.THRUSTERS_TYPE, oldKey, keyNumber));
       }
 
-      str = Input_1.Input.getKeyString(Input_1.Input.lastKey);
-      if (str == null) str = "Unk: " + Input_1.Input.lastKey;
+      if (keyNumber == null) str = "Unk: " + keyNumber;else str = Input_1.Input.getKeyString(keyNumber);
       input.text = str;
       input.textInput.selectRange(0, 10);
       ControllerGameGlobals_1.ControllerGameGlobals.curRobotID = "";
@@ -112704,15 +112713,15 @@ class ControllerGame extends Controller_1.Controller {
     if (input.enabled) {
       var str;
       var oldKey;
+      const keyNumber = Input_1.Input.getKeyNumber(input.text);
 
-      if (this.selectedParts[0] instanceof Cannon_1.Cannon) {
+      if (this.selectedParts[0] instanceof Cannon_1.Cannon && keyNumber != null) {
         oldKey = this.selectedParts[0].fireKey;
-        this.selectedParts[0].fireKey = Input_1.Input.lastKey;
-        if (oldKey != Input_1.Input.lastKey) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.CANNON_TYPE, oldKey, Input_1.Input.lastKey));
+        this.selectedParts[0].fireKey = keyNumber;
+        if (oldKey != keyNumber) this.AddAction(new ControlKeyAction_1.ControlKeyAction(this.selectedParts[0], ControlKeyAction_1.ControlKeyAction.CANNON_TYPE, oldKey, keyNumber));
       }
 
-      str = Input_1.Input.getKeyString(Input_1.Input.lastKey);
-      if (str == null) str = "Unk: " + Input_1.Input.lastKey;
+      if (keyNumber == null) str = "Unk: " + keyNumber;else str = Input_1.Input.getKeyString(keyNumber);
       input.text = str;
       input.textInput.selectRange(0, 10);
       ControllerGameGlobals_1.ControllerGameGlobals.curRobotID = "";
@@ -118321,7 +118330,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "32969" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "46231" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
