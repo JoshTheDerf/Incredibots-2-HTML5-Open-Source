@@ -347,7 +347,7 @@ export class DropDownMenu extends Graphics
 		this.m_currentMenu.beginFill(0xFDF9EA, 1);
 		this.m_currentMenu.lineStyle(1, 0x43366F);
 		this.m_currentMenu.moveTo(0, 0);
-		this.m_currentMenu.drawRect(0, 0, 115, (this.cont.constructor.name === 'ControllerSandbox' ? 100 : 60));
+		this.m_currentMenu.drawRect(0, 0, 115, (this.cont.controllerType === 'sandbox' ? 100 : 60));
 		var item:DropDownMenuItem = new DropDownMenuItem(this, "Mirror Horizontal", 115, () => this.mirrorHorizontalButton());
 		item.y = 0;
 		this.m_currentMenu.addChild(item);
@@ -357,7 +357,7 @@ export class DropDownMenu extends Graphics
 		item = new DropDownMenuItem(this, "Scale", 115, () => this.cont.scaleButton());
 		item.y = 40;
 		this.m_currentMenu.addChild(item);
-		if (this.cont.constructor.name === 'ControllerSandbox') {
+		if (this.cont.controllerType === 'sandbox') {
 			item = new DropDownMenuItem(this, "Thrusters", 115, () => this.cont.thrustersButton());
 			item.y = 60;
 			this.m_currentMenu.addChild(item);
