@@ -358,8 +358,6 @@ export class PartEditWindow extends GuiWindow
 		this.m_strengthLabel7 = new Text('');
 		this.m_strengthLabel7.text = "Cannon Strength";
 		this.m_strengthLabel7.style = format;
-		this.m_strengthLabel7.width = 120;
-		this.m_strengthLabel7.height = 20;
 		this.m_strengthLabel7.x = 21;
 		this.m_strengthLabel7.y = 434;
 		this.m_strengthLabel7.style = format;
@@ -387,7 +385,7 @@ export class PartEditWindow extends GuiWindow
 		this.m_strengthArea7.on('hide', (event: any) => this.cont.cannonText(event));
 		this.m_cannonPanel.addChild(this.m_strengthArea7);
 		this.m_fireKeyArea = new GuiTextInput(60, 412, 37, 15, format);
-		this.m_fireKeyArea.editable = false;
+		this.m_fireKeyArea.editable = true;
 		this.m_fireKeyArea.on('click', (event: any) => this.cannonKeyFocus(event));
 		this.m_fireKeyArea.on('focus', (event: any) => this.TextAreaGotFocus(event));
 		this.m_fireKeyArea.on('keydown', (event: any) => this.cont.fireKeyText(event));
@@ -398,12 +396,11 @@ export class PartEditWindow extends GuiWindow
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.fill = "#242930";
 		format.align = 'right';
+		format.fontSize = 12;
 		this.m_fireKeyLabel = new Text('');
 		this.m_fireKeyLabel.text = "Fire:";
-		this.m_fireKeyLabel.width = 50;
-		this.m_fireKeyLabel.height = 20;
-		this.m_fireKeyLabel.x = 2;
-		this.m_fireKeyLabel.y = 411;
+		this.m_fireKeyLabel.x = 25;
+		this.m_fireKeyLabel.y = 412;
 		this.m_fireKeyLabel.style = format;
 		this.m_cannonPanel.addChild(this.m_fireKeyLabel);
 
@@ -628,8 +625,8 @@ export class PartEditWindow extends GuiWindow
 		this.m_thrustLabel = new Text('');
 		this.m_thrustLabel.text = "Thruster Strength";
 		this.m_thrustLabel.style = format;
-		this.m_thrustLabel.anchor.set(0.5)
-		this.m_thrustLabel.x = 21 + 120 / 2;
+		this.m_thrustLabel.anchor.set(0, 0.5)
+		this.m_thrustLabel.x = 21;
 		this.m_thrustLabel.y = 190 + 20 / 2;
 		this.m_thrustLabel.style = format;
 		this.m_thrustersEditPanel.addChild(this.m_thrustLabel);
@@ -656,7 +653,7 @@ export class PartEditWindow extends GuiWindow
 		this.m_thrustArea.on('hide', (event: any) => this.cont.thrustText(event));
 		this.m_thrustersEditPanel.addChild(this.m_thrustArea);
 		this.m_thrustKeyArea = new GuiTextInput(65, 259, 37, 15, format);
-		this.m_thrustKeyArea.editable = false;
+		this.m_thrustKeyArea.editable = true;
 		this.m_thrustKeyArea.on('click', (event: any) => this.thrustKeyFocus(event));
 		this.m_thrustKeyArea.on('focus', (event: any) => this.TextAreaGotFocus(event));
 		this.m_thrustKeyArea.on('keydown', (event: any) => this.cont.thrustKeyText(event));
@@ -667,11 +664,12 @@ export class PartEditWindow extends GuiWindow
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.fill = 0x242930;
 		format.align = 'right';
+		format.fontSize = 12;
 		this.m_thrustKeyLabel = new Text('');
 		this.m_thrustKeyLabel.text = "Activate:";
 		this.m_thrustKeyLabel.anchor.set(0.5)
 		this.m_thrustKeyLabel.x = 7 + 55 / 2;
-		this.m_thrustKeyLabel.y = 258 + 20;
+		this.m_thrustKeyLabel.y = 258 + (20 / 2);
 		this.m_thrustKeyLabel.style = format;
 		this.m_thrustersEditPanel.addChild(this.m_thrustKeyLabel);
 		format = new TextStyle();

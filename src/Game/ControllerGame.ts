@@ -3525,18 +3525,18 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public textKeyBox(e:KeyboardEvent):void {
-			if (e.currentTarget.enabled) {
+		public textKeyBox(input: GuiTextInput):void {
+			if (input.enabled) {
 				var str:string;
 				if (this.selectedParts[0] instanceof TextPart) {
 					var oldKey:number = (this.selectedParts[0] as TextPart).displayKey;
-					(this.selectedParts[0] as TextPart).displayKey = e.keyCode;
-					if (oldKey != e.keyCode) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.TEXT_TYPE, oldKey, e.keyCode));
+					(this.selectedParts[0] as TextPart).displayKey = Input.lastKey;
+					if (oldKey != Input.lastKey) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.TEXT_TYPE, oldKey, Input.lastKey));
 				}
-				str = Input.getKeyString(e.keyCode);
-				if (str == null) str = "Unk: " + e.keyCode;
-				e.target.text = str;
-				e.target.setSelection(0, 10);
+				str = Input.getKeyString(Input.lastKey);
+				if (str == null) str = "Unk: " + Input.lastKey;
+				input.text = str;
+				input.textInput.selectRange(0, 10);
 				ControllerGameGlobals.curRobotID = "";
 			}
 		}
@@ -3643,17 +3643,17 @@ export class ControllerGame extends Controller {
 			this.m_sidePanel.TextAreaLostFocus();
 		}
 
-		public minLimitText(e:Event):void {
-			var limit:number = Number(e.target.text.replace("\n", ""));
-			if (e.target.text == "") limit = NaN;
+		public minLimitText(text:string):void {
+			var limit:number = Number(text.replace("\n", ""));
+			if (text == "") limit = NaN;
 
 			if (this.lastSelectedJoint instanceof RevoluteJoint) {
 				if (isNaN(limit)) {
 					limit = -Number.MAX_VALUE;
-					e.target.text = "None";
+					text = "None";
 				} else if (limit >= 0.0) {
 					limit = 0;
-					e.target.text = 0;
+					text = "0";
 				}
 				var oldLimit:number = (this.lastSelectedJoint as RevoluteJoint).motorLowerLimit;
 				(this.lastSelectedJoint as RevoluteJoint).motorLowerLimit = limit;
@@ -3663,17 +3663,17 @@ export class ControllerGame extends Controller {
 			ControllerGameGlobals.curRobotID = "";
 		}
 
-		public maxLimitText(e:Event):void {
-			var limit:number = Number(e.target.text.replace("\n", ""));
-			if (e.target.text == "") limit = NaN;
+		public maxLimitText(text:string):void {
+			var limit:number = Number(text.replace("\n", ""));
+			if (text == "") limit = NaN;
 
 			if (this.lastSelectedJoint instanceof RevoluteJoint) {
 				if (isNaN(limit)) {
 					limit = Number.MAX_VALUE;
-					e.target.text = "None";
+					text = "None";
 				} else if (limit <= 0.0) {
 					limit = 0;
-					e.target.text = 0;
+					text = "0";
 				}
 				var oldLimit:number = (this.lastSelectedJoint as RevoluteJoint).motorUpperLimit;
 				(this.lastSelectedJoint as RevoluteJoint).motorUpperLimit = limit;
@@ -3683,78 +3683,79 @@ export class ControllerGame extends Controller {
 			ControllerGameGlobals.curRobotID = "";
 		}
 
-		public controlKeyText1(e:KeyboardEvent):void {
-			if (e.currentTarget.enabled) {
+		public controlKeyText1(input:GuiTextInput):void {
+			if (input.enabled) {
 				var str:string;
 				var oldKey:number;
 				if (this.selectedParts[0] instanceof RevoluteJoint) {
 					oldKey = (this.selectedParts[0] as RevoluteJoint).motorCWKey;
-					(this.selectedParts[0] as RevoluteJoint).motorCWKey = e.keyCode;
-					if (oldKey != e.keyCode) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.CW_TYPE, oldKey, e.keyCode));
+					(this.selectedParts[0] as RevoluteJoint).motorCWKey = Input.lastKey;
+					if (oldKey != Input.lastKey) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.CW_TYPE, oldKey, Input.lastKey));
 				} else {
 					oldKey = (this.selectedParts[0] as PrismaticJoint).pistonUpKey;
-					(this.selectedParts[0] as PrismaticJoint).pistonUpKey = e.keyCode;
-					if (oldKey != e.keyCode) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.EXPAND_TYPE, oldKey, e.keyCode));
+					(this.selectedParts[0] as PrismaticJoint).pistonUpKey = Input.lastKey;
+					if (oldKey != Input.lastKey) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.EXPAND_TYPE, oldKey, Input.lastKey));
 				}
-				str = Input.getKeyString(e.keyCode);
-				if (str == null) str = "Unk: " + e.keyCode;
-				e.target.text = str;
-				e.target.setSelection(0, 10);
+				str = Input.getKeyString(Input.lastKey);
+				if (str == null) str = "Unk: " + Input.lastKey;
+				input.text = str;
+				input.textInput.selectRange(0, 10);
 				ControllerGameGlobals.curRobotID = "";
 			}
 		}
 
-		public controlKeyText2(e:KeyboardEvent):void {
-			if (e.currentTarget.enabled) {
+		public controlKeyText2(input:GuiTextInput):void {
+			if (input.enabled) {
 				var str:string;
 				var oldKey:number;
 				if (this.selectedParts[0] instanceof RevoluteJoint) {
 					oldKey = (this.selectedParts[0] as RevoluteJoint).motorCCWKey;
-					(this.selectedParts[0] as RevoluteJoint).motorCCWKey = e.keyCode;
-					if (oldKey != e.keyCode) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.CCW_TYPE, oldKey, e.keyCode));
+					(this.selectedParts[0] as RevoluteJoint).motorCCWKey = Input.lastKey;
+					if (oldKey != Input.lastKey) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.CCW_TYPE, oldKey, Input.lastKey));
 				} else {
 					oldKey = (this.selectedParts[0] as PrismaticJoint).pistonDownKey;
-					(this.selectedParts[0] as PrismaticJoint).pistonDownKey = e.keyCode;
-					if (oldKey != e.keyCode) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.CONTRACT_TYPE, oldKey, e.keyCode));
+					(this.selectedParts[0] as PrismaticJoint).pistonDownKey = Input.lastKey;
+					if (oldKey != Input.lastKey) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.CONTRACT_TYPE, oldKey, Input.lastKey));
 				}
-				str = Input.getKeyString(e.keyCode);
-				if (str == null) str = "Unk: " + e.keyCode;
-				e.target.text = str;
-				e.target.setSelection(0, 10);
+				str = Input.getKeyString(Input.lastKey);
+				if (str == null) str = "Unk: " + Input.lastKey;
+				input.text = str;
+				input.textInput.selectRange(0, 10);
 				ControllerGameGlobals.curRobotID = "";
 			}
 		}
 
-		public thrustKeyText(e:KeyboardEvent):void {
-			if (e.currentTarget.enabled) {
+		public thrustKeyText(input:GuiTextInput):void {
+			console.log(input.enabled)
+			if (input.enabled) {
 				var str:string;
 				var oldKey:number;
 				if (this.selectedParts[0] instanceof Thrusters) {
 					oldKey = (this.selectedParts[0] as Thrusters).thrustKey;
-					(this.selectedParts[0] as Thrusters).thrustKey = e.keyCode;
-					if (oldKey != e.keyCode) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.THRUSTERS_TYPE, oldKey, e.keyCode));
+					(this.selectedParts[0] as Thrusters).thrustKey = Input.lastKey;
+					if (oldKey != Input.lastKey) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.THRUSTERS_TYPE, oldKey, Input.lastKey));
 				}
-				str = Input.getKeyString(e.keyCode);
-				if (str == null) str = "Unk: " + e.keyCode;
-				e.target.text = str;
-				e.target.setSelection(0, 10);
+				str = Input.getKeyString(Input.lastKey);
+				if (str == null) str = "Unk: " + Input.lastKey;
+				input.text = str;
+				input.textInput.selectRange(0, 10);
 				ControllerGameGlobals.curRobotID = "";
 			}
 		}
 
-		public fireKeyText(e:KeyboardEvent):void {
-			if (e.currentTarget.enabled) {
+		public fireKeyText(input:GuiTextInput):void {
+			if (input.enabled) {
 				var str:string;
 				var oldKey:number;
 				if (this.selectedParts[0] instanceof Cannon) {
 					oldKey = (this.selectedParts[0] as Cannon).fireKey;
-					(this.selectedParts[0] as Cannon).fireKey = e.keyCode;
-					if (oldKey != e.keyCode) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.CANNON_TYPE, oldKey, e.keyCode));
+					(this.selectedParts[0] as Cannon).fireKey = Input.lastKey;
+					if (oldKey != Input.lastKey) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.CANNON_TYPE, oldKey, Input.lastKey));
 				}
-				str = Input.getKeyString(e.keyCode);
-				if (str == null) str = "Unk: " + e.keyCode;
-				e.target.text = str;
-				e.target.setSelection(0, 10);
+				str = Input.getKeyString(Input.lastKey);
+				if (str == null) str = "Unk: " + Input.lastKey;
+				input.text = str;
+				input.textInput.selectRange(0, 10);
 				ControllerGameGlobals.curRobotID = "";
 			}
 		}

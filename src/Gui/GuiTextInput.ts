@@ -1,5 +1,5 @@
 import { Stage, Button, TextInput, FastLayoutOptions, LayoutOptions, AnchorLayoutOptions, AnchorLayout } from '@puxi/core'
-import { Container, Text, TextStyle, Texture, Sprite } from 'pixi.js'
+import { Container, Text, TextStyle, Texture, Sprite, filters } from 'pixi.js'
 import { Resource } from '../Game/Graphics/Resource'
 import { Main } from '../Main'
 
@@ -9,8 +9,10 @@ export class GuiTextInput extends Stage
 {
 	private baseSkin:Texture;
 	private rollSkin:Texture;
+	private disabledSkin:Texture;
 
 	public textInput: TextInput;
+	private backgroundSprite: Sprite;
 
 	set maxLength (value: number) {
 		this.textInput.maxLength = value || 0
@@ -21,19 +23,21 @@ export class GuiTextInput extends Stage
 	}
 
 	get enabled (): boolean {
-		return this.interactive
+		return this.interactive && this.interactiveChildren
 	}
 
 	set enabled (value: boolean) {
-		this.interactive = value
+		this.interactive = this.interactiveChildren = value
+		this.updateEnabled()
 	}
 
 	get editable (): boolean {
-		return this.interactive
+		return this.interactive && this.interactiveChildren
 	}
 
 	set editable (value: boolean) {
-		this.interactive = value
+		this.interactive = this.interactiveChildren = value
+		this.updateEnabled()
 	}
 
 	get text (): string {
@@ -52,21 +56,23 @@ export class GuiTextInput extends Stage
 		this.width = w
 		this.height = h
 		this.interactive = true
+		this.interactiveChildren = true
 
 		TextInputs.push(this)
 
 		this.baseSkin = Resource.cGuiTextAreaBase
 		this.rollSkin = Resource.cGuiTextAreaRoll
+		this.disabledSkin = Resource.cGuiTextAreaDisabled
 
 		if (!format) format = new TextStyle()
 		format.fontFamily = Main.GLOBAL_FONT
 		format.fill = '#4C3D57'
 
 		const backgroundContainer = new Container()
-		const backgroundSprite = new Sprite(this.baseSkin)
-		backgroundSprite.width = w
-		backgroundSprite.height = h
-		backgroundContainer.addChild(backgroundSprite)
+		this.backgroundSprite = new Sprite(this.baseSkin)
+		this.backgroundSprite.width = w
+		this.backgroundSprite.height = h
+		backgroundContainer.addChild(this.backgroundSprite)
 
 		this.textInput = new TextInput({
 			value: '',
@@ -77,11 +83,11 @@ export class GuiTextInput extends Stage
 		})
 
 		this.on('mouseover', () => {
-			backgroundSprite.texture = this.rollSkin
+			this.backgroundSprite.texture = this.rollSkin
 		})
 		this.on('mouseout', () => {
 			if (this.textInput.isFocused) return
-			backgroundSprite.texture = this.baseSkin
+			this.backgroundSprite.texture = this.baseSkin
 		})
 
 		this.textInput.on('click', (event: any) => {
@@ -92,16 +98,23 @@ export class GuiTextInput extends Stage
 			TextInputs.forEach(input => {
 				if (input !== this) input.textInput.blur()
 			})
-			backgroundSprite.texture = this.rollSkin
+			this.backgroundSprite.texture = this.rollSkin
 			this.emit('focus', this.textInput.text)
 		})
 		this.textInput.on('blur', (event: any) => {
-			backgroundSprite.texture = this.baseSkin
+			this.backgroundSprite.texture = this.baseSkin
 			this.emit('blur', this.textInput.text)
 		})
 		this.textInput.on('change', () => {
 			this.emit('change', this.textInput.text)
 			this.text = this.textInput.text
+		})
+		this.textInput.on('keydown', (event:any) => {
+			this.emit('keydown', this)
+		})
+
+		this.textInput.on('keyup', (event:any) => {
+			this.emit('keyup', this)
 		})
 
 		this.textInput.setLayoutOptions(
@@ -116,5 +129,9 @@ export class GuiTextInput extends Stage
 
 	public setSelection(startIndex: number, endIndex: number) {
 		this.textInput.selectRange(startIndex, endIndex)
+	}
+
+	public updateEnabled() {
+		this.backgroundSprite.texture = this.enabled ? this.baseSkin : this.disabledSkin
 	}
 }
