@@ -273,6 +273,18 @@ export class Input {
 		return Input.ascii[k];
 	}
 
+	//======================
+	// get key string
+	//======================
+	public static getKeyNumber(k:string):number|null {
+		const number = Object.keys(Input.ascii).find((key:string) => {
+			return Input.ascii[key] === k || Input.ascii[key] === k.toUpperCase() || Input.ascii[key] === k.toLowerCase()
+		})
+
+		if (number) return +number
+		return null
+	}
+
 
 	//======================
 	// set up ascii text

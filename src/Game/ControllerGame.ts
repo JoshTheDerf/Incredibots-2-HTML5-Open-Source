@@ -3687,17 +3687,18 @@ export class ControllerGame extends Controller {
 			if (input.enabled) {
 				var str:string;
 				var oldKey:number;
-				if (this.selectedParts[0] instanceof RevoluteJoint) {
+				const keyNumber = Input.getKeyNumber(input.text)
+				if (this.selectedParts[0] instanceof RevoluteJoint && keyNumber != null) {
 					oldKey = (this.selectedParts[0] as RevoluteJoint).motorCWKey;
-					(this.selectedParts[0] as RevoluteJoint).motorCWKey = Input.lastKey;
-					if (oldKey != Input.lastKey) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.CW_TYPE, oldKey, Input.lastKey));
-				} else {
+					(this.selectedParts[0] as RevoluteJoint).motorCWKey = keyNumber;
+					if (oldKey != keyNumber) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.CW_TYPE, oldKey, keyNumber));
+				} else if (keyNumber != null) {
 					oldKey = (this.selectedParts[0] as PrismaticJoint).pistonUpKey;
-					(this.selectedParts[0] as PrismaticJoint).pistonUpKey = Input.lastKey;
-					if (oldKey != Input.lastKey) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.EXPAND_TYPE, oldKey, Input.lastKey));
+					(this.selectedParts[0] as PrismaticJoint).pistonUpKey = keyNumber;
+					if (oldKey != keyNumber) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.EXPAND_TYPE, oldKey, keyNumber));
 				}
-				str = Input.getKeyString(Input.lastKey);
-				if (str == null) str = "Unk: " + Input.lastKey;
+				if (keyNumber == null) str = "Unk: " + keyNumber;
+				else str = Input.getKeyString(keyNumber);
 				input.text = str;
 				input.textInput.selectRange(0, 10);
 				ControllerGameGlobals.curRobotID = "";
@@ -3708,17 +3709,18 @@ export class ControllerGame extends Controller {
 			if (input.enabled) {
 				var str:string;
 				var oldKey:number;
-				if (this.selectedParts[0] instanceof RevoluteJoint) {
+				const keyNumber = Input.getKeyNumber(input.text)
+				if (this.selectedParts[0] instanceof RevoluteJoint && keyNumber != null) {
 					oldKey = (this.selectedParts[0] as RevoluteJoint).motorCCWKey;
-					(this.selectedParts[0] as RevoluteJoint).motorCCWKey = Input.lastKey;
-					if (oldKey != Input.lastKey) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.CCW_TYPE, oldKey, Input.lastKey));
-				} else {
+					(this.selectedParts[0] as RevoluteJoint).motorCCWKey = keyNumber;
+					if (oldKey != keyNumber) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.CCW_TYPE, oldKey, keyNumber));
+				} else if (keyNumber != null) {
 					oldKey = (this.selectedParts[0] as PrismaticJoint).pistonDownKey;
-					(this.selectedParts[0] as PrismaticJoint).pistonDownKey = Input.lastKey;
-					if (oldKey != Input.lastKey) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.CONTRACT_TYPE, oldKey, Input.lastKey));
+					(this.selectedParts[0] as PrismaticJoint).pistonDownKey = keyNumber;
+					if (oldKey != keyNumber) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.CONTRACT_TYPE, oldKey, keyNumber));
 				}
-				str = Input.getKeyString(Input.lastKey);
-				if (str == null) str = "Unk: " + Input.lastKey;
+				if (keyNumber == null) str = "Unk: " + keyNumber;
+				else str = Input.getKeyString(keyNumber);
 				input.text = str;
 				input.textInput.selectRange(0, 10);
 				ControllerGameGlobals.curRobotID = "";
@@ -3726,17 +3728,17 @@ export class ControllerGame extends Controller {
 		}
 
 		public thrustKeyText(input:GuiTextInput):void {
-			console.log(input.enabled)
 			if (input.enabled) {
 				var str:string;
 				var oldKey:number;
-				if (this.selectedParts[0] instanceof Thrusters) {
+				const keyNumber = Input.getKeyNumber(input.text)
+				if (this.selectedParts[0] instanceof Thrusters && keyNumber != null) {
 					oldKey = (this.selectedParts[0] as Thrusters).thrustKey;
-					(this.selectedParts[0] as Thrusters).thrustKey = Input.lastKey;
-					if (oldKey != Input.lastKey) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.THRUSTERS_TYPE, oldKey, Input.lastKey));
+					(this.selectedParts[0] as Thrusters).thrustKey = keyNumber;
+					if (oldKey != keyNumber) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.THRUSTERS_TYPE, oldKey, keyNumber));
 				}
-				str = Input.getKeyString(Input.lastKey);
-				if (str == null) str = "Unk: " + Input.lastKey;
+				if (keyNumber == null) str = "Unk: " + keyNumber;
+				else str = Input.getKeyString(keyNumber);
 				input.text = str;
 				input.textInput.selectRange(0, 10);
 				ControllerGameGlobals.curRobotID = "";
@@ -3747,13 +3749,14 @@ export class ControllerGame extends Controller {
 			if (input.enabled) {
 				var str:string;
 				var oldKey:number;
-				if (this.selectedParts[0] instanceof Cannon) {
+				const keyNumber = Input.getKeyNumber(input.text)
+				if (this.selectedParts[0] instanceof Cannon && keyNumber != null) {
 					oldKey = (this.selectedParts[0] as Cannon).fireKey;
-					(this.selectedParts[0] as Cannon).fireKey = Input.lastKey;
-					if (oldKey != Input.lastKey) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.CANNON_TYPE, oldKey, Input.lastKey));
+					(this.selectedParts[0] as Cannon).fireKey = keyNumber;
+					if (oldKey != keyNumber) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.CANNON_TYPE, oldKey, keyNumber));
 				}
-				str = Input.getKeyString(Input.lastKey);
-				if (str == null) str = "Unk: " + Input.lastKey;
+				if (keyNumber == null) str = "Unk: " + keyNumber;
+				else str = Input.getKeyString(keyNumber);
 				input.text = str;
 				input.textInput.selectRange(0, 10);
 				ControllerGameGlobals.curRobotID = "";
