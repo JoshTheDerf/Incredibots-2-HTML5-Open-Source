@@ -1,5 +1,5 @@
 import { TextStyle } from "pixi.js";
-import { b2Color, b2World, b2Vec2, b2Body, b2Shape, b2Joint, b2BroadPhase, b2XForm, b2CircleShape, math, b2PolygonShape, b2_maxPolygonVertices, b2ShapeType, b2Transform, b2JointType, b2Rot } from "@box2d/core";
+import { b2Color, b2World, b2Vec2, b2Body, b2Shape, b2Joint, b2BroadPhase, b2CircleShape, b2PolygonShape, b2_maxPolygonVertices, b2ShapeType, b2Transform, b2JointType, b2Rot, b2Fixture } from "@box2d/core";
 import { Util } from "../General/Util";
 import { Main } from "../Main";
 import { Cannon } from "../Parts/Cannon";
@@ -27,11 +27,8 @@ export class Draw extends b2DebugDraw
 	private static s_jointCreatingColor:b2Color = new b2Color(0.9, 0.4, 0.4);
 	private static s_staticColor:b2Color = new b2Color(0.4, 0.9, 0.4);
 	private static s_staticEditableColor:b2Color = new b2Color(0.6, 0.8, 0.6);
-	private m_world:b2World;
 
-	public DrawWorld(allParts:Array<Part>, selectedParts:Array<any>, world:b2World, notStarted:boolean, drawStatic:boolean = true, showJoints:boolean = true, showOutlines:boolean = true, challenge:Challenge = null):void {
-		this.m_world = world;
-
+	public DrawWorld(allParts:Array<Part>, selectedParts:Array<any>, notStarted:boolean, drawStatic:boolean = true, showJoints:boolean = true, showOutlines:boolean = true, challenge:Challenge = null):void {
 		var i:number;
 
 		if (challenge && (notStarted || challenge.showConditions)) {
@@ -306,8 +303,7 @@ export class Draw extends b2DebugDraw
 			var b:b2Body;
 			var s:b2Shape;
 			var jnt:b2Joint;
-			var bp:b2BroadPhase;
-			var xf:b2XForm;
+			var xf:b2Transform;
 
 			if (this.drawColours && showOutlines) {
 				for (i = 0; i < allParts.length; i++) {
@@ -336,15 +332,16 @@ export class Draw extends b2DebugDraw
 						}
 					} else if (allParts[i] instanceof PrismaticJoint) {
 						const pj = (allParts[i] as PrismaticJoint)
-						var shapes:Array<b2PolygonShape> = pj.GetShapes();
-						for (j = 0; j < shapes.length; j++) {
-							xf = pj.part2.GetBody().GetTransform();
+						var fixtures:Array<b2Fixture> = pj.GetFixtures();
+						for (j = 0; j < fixtures.length; j++) {
+							const f = fixtures[j]
+							xf = f.GetBody().GetTransform();
 							if (this.drawColours) {
-								this.DrawShape(shapes[j], pj.part2.GetUserData(), xf, new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines);
+								this.DrawShape(f.GetShape(), pj.part2.GetUserData(), xf, new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines);
 							} else if (allParts[i].isStatic) {
-								this.DrawShape(shapes[j], pj.part2.GetUserData(), xf, Draw.s_staticColor, 1, showOutlines);
+								this.DrawShape(f.GetShape(), pj.part2.GetUserData(), xf, Draw.s_staticColor, 1, showOutlines);
 							} else {
-								this.DrawShape(shapes[j], pj.part2.GetUserData(), xf, Draw.s_normalColor, 1, showOutlines);
+								this.DrawShape(f.GetShape(), pj.part2.GetUserData(), xf, Draw.s_normalColor, 1, showOutlines);
 							}
 						}
 					}
@@ -400,26 +397,30 @@ export class Draw extends b2DebugDraw
 
 	public DrawJoint(joint:b2Joint) : void{
 		var b1:b2Body = joint.GetBodyA();
-		var b2:b2Body = joint.GetBodyA();
-		var xf1:b2XForm = b1.GetTransform();
-		var xf2:b2XForm = b2.GetTransform();
-		var x1:b2Vec2 = xf1.position;
-		var x2:b2Vec2 = xf2.position;
-		var p1:b2Vec2 = joint.GetAnchorA();
-		var p2:b2Vec2 = joint.GetAnchorB();
+		var b2:b2Body = joint.GetBodyB();
+		var xf1:b2Transform = b1.GetTransform();
+		var xf2:b2Transform = b2.GetTransform();
+		var x1:b2Vec2 = xf1.GetPosition();
+		var x2:b2Vec2 = xf2.GetPosition();
+		var p1:b2Vec2 = new b2Vec2();
+		var p2:b2Vec2 = new b2Vec2();
+		joint.GetAnchorA(p1)
+		joint.GetAnchorB(p2)
 
 		var color:b2Color = Draw.s_jointColor;
 
 		switch (joint.GetType())
 		{
 		case b2JointType.e_revoluteJoint:
-			this.DrawCircle(joint.GetAnchorA(), 0.05 * 30 / this.m_drawScale, color);
-			this.DrawCircle(joint.GetAnchorB(), 0.1 * 30 / this.m_drawScale, color);
+			this.DrawCircle(p1, 0.05 * 30 / this.m_drawScale, color);
+			this.DrawCircle(p2, 0.1 * 30 / this.m_drawScale, color);
 			break;
 
 		case b2JointType.e_prismaticJoint:
-			var end1:b2Vec2 = joint.GetBodyA().GetWorldPoint(joint.GetUserData().localPoint1);
-			var end2:b2Vec2 = joint.GetBodyB().GetWorldPoint(joint.GetUserData().localPoint2);
+			var end1:b2Vec2 = new b2Vec2()
+			var end2:b2Vec2 = new b2Vec2()
+			joint.GetBodyA().GetWorldPoint(joint.GetUserData().localPoint1, end1);
+			joint.GetBodyB().GetWorldPoint(joint.GetUserData().localPoint2, end2);
 			this.DrawSegment(end1, end2, color);
 			var midPoint:b2Vec2 = Util.Midpoint(end1, end2);
 			this.DrawCircle(midPoint, 0.05 * 30 / this.m_drawScale, color);
@@ -431,15 +432,17 @@ export class Draw extends b2DebugDraw
 			break;
 
 		default:
-			if (b1 != this.m_world.m_groundBody)
+			if (!b1.GetUserData().groundBody) {
 				this.DrawSegment(x1, p1, color);
-			this.DrawSegment(p1, p2, color);
-			if (b2 != this.m_world.m_groundBody)
+			}
+			if (!b2.GetUserData().groundBody) {
 				this.DrawSegment(x2, p2, color);
+			}
+			this.DrawSegment(p1, p2, color);
 		}
 	}
 
-	public DrawShape(shape:b2Shape, userData: any, xf:b2XForm, color:b2Color, alpha:number, showOutlines:boolean = true, cannonball:boolean = false) : void{
+	public DrawShape(shape:b2Shape, userData: any, xf:b2Transform, color:b2Color, alpha:number, showOutlines:boolean = true, cannonball:boolean = false) : void{
 		switch (shape.GetType())
 		{
 		case b2ShapeType.e_circle:
@@ -478,7 +481,7 @@ export class Draw extends b2DebugDraw
 		}
 	}
 
-	public DrawCannon(shape:b2Shape, xf:b2XForm, color:b2Color, alpha:number, showOutlines:boolean = true) : void{
+	public DrawCannon(shape:b2Shape, xf:b2Transform, color:b2Color, alpha:number, showOutlines:boolean = true) : void{
 		var poly:b2PolygonShape = (shape as b2PolygonShape);
 		var localVertices:Array<any> = poly.m_vertices;
 		var vertices:Array<any> = new Array();
@@ -493,7 +496,7 @@ export class Draw extends b2DebugDraw
 		this.DrawSolidCannon(vertices, 4, color, false, poly.GetUserData().outline && (!this.drawColours || !poly.GetUserData().terrain) && showOutlines);
 	}
 
-	public DrawShapeForOutline(shape:b2Shape, xf:b2XForm, color:b2Color, alpha:number) : void {
+	public DrawShapeForOutline(shape:b2Shape, xf:b2Transform, color:b2Color, alpha:number) : void {
 		color = Draw.DarkenColour(color);
 		var thickness:number = Math.max(0.1, (this.m_lineThickness * Math.pow(this.m_drawScale, 0.5)) / 8);
 
@@ -536,7 +539,7 @@ export class Draw extends b2DebugDraw
 		}
 	}
 
-	public DrawCannonForOutline(shape:b2Shape, xf:b2XForm, color:b2Color, alpha:number) : void {
+	public DrawCannonForOutline(shape:b2Shape, xf:b2Transform, color:b2Color, alpha:number) : void {
 		color = Draw.DarkenColour(color);
 		var thickness:number = Math.max(0.1, (this.m_lineThickness * Math.pow(this.m_drawScale, 0.5)) / 8);
 

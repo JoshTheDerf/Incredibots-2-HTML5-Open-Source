@@ -17,7 +17,7 @@
 */
 
 import { Graphics } from "pixi.js";
-import { b2Color, b2Vec2, b2Transform, b2Rot } from "@box2d/core";
+import { b2Color, b2Vec2, b2Rot } from "@box2d/core";
 import { Util } from "../../General/Util";
 
 /// Implement and register this class with a b2World to provide debug drawing of physics
@@ -250,5 +250,4 @@ export class b2DebugDraw
 	public m_alpha:number = 1.0;
 	public m_fillAlpha:number = 1.0;
 	public m_xformScale:number = 1.0;
-
 };

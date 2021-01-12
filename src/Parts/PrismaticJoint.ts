@@ -1,4 +1,4 @@
-import { b2Vec2, b2World, b2Body, b2PrismaticJointDef, b2PrismaticJoint, b2PolygonShape, b2FixtureDef } from "@box2d/core";
+import { b2Vec2, b2World, b2Body, b2PrismaticJointDef, b2PrismaticJoint, b2PolygonShape, b2FixtureDef, b2Fixture } from "@box2d/core";
 import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals";
 import { Util } from "../General/Util";
 import { JointPart } from "./JointPart";
@@ -31,13 +31,13 @@ export class PrismaticJoint extends JointPart
 	private expanding:boolean = true;
 	private targetJointDisp:number;
 	private prevJointDisp:number;
-	private m_shapes:Array<any>;
+	private m_shapes:Array<b2PolygonShape> = [];
+	private m_fixtures:Array<b2Fixture> = [];
 
 	public static jbTutorial:boolean = false;
 
 	constructor(p1:ShapePart, p2:ShapePart, x1:number, y1:number, x2:number, y2:number)
 	{
-		// FIXME: Change super call as it must be before everything else but we do extra position calcs after it.
 		super(p1, p2);
 		if (PrismaticJoint.jbTutorial && p1.centerY > p2.centerY) {
 			var temp:ShapePart = p2;
@@ -51,6 +51,9 @@ export class PrismaticJoint extends JointPart
 			y1 = tem;
 			PrismaticJoint.jbTutorial = false;
 		}
+		// Reassign part1 and part2 with new values even though we set them in the constructor.
+		this.part1 = p1
+		this.part2 = p2
 		this.anchorX = (x1 + x2) / 2.0;
 		this.anchorY = (y1 + y2) / 2.0;
 		this.axis = new b2Vec2(x2 - x1, y2 - y1);
@@ -161,18 +164,17 @@ export class PrismaticJoint extends JointPart
 		super.Init(world);
 		this.expanding = true;
 
-		this.m_shapes = new Array();
+		this.m_shapes = []
+		this.m_fixtures = []
 		if (this.part1.GetBody() != this.part2.GetBody()) {
 			var collisionGroup:number = ControllerGameGlobals.collisionGroup;
 			this.part1.GetFixture().SetFilterData({
+				...this.part1.GetFixture().GetFilterData(),
 				categoryBits: collisionGroup,
-				maskBits: 0xFFFF ^ collisionGroup,
-				groupIndex: this.part1.GetFixture().GetFilterData().groupIndex
 			})
 			this.part2.GetFixture().SetFilterData({
+				...this.part2.GetFixture().GetFilterData(),
 				categoryBits: collisionGroup,
-				maskBits: 0xFFFF ^ collisionGroup,
-				groupIndex: this.part1.GetFixture().GetFilterData().groupIndex
 			})
 
 			var x1:number = this.anchorX - this.axis.x * this.initLength / 2;
@@ -183,12 +185,6 @@ export class PrismaticJoint extends JointPart
 			var angle:number = Math.atan2(this.axis.y, this.axis.x);
 			var sd = new b2PolygonShape();
 
-			const fixtureDef = {
-				friction: 0.4,
-				restitution: 0.3,
-				density: 5.0
-			}
-
 			const userData:any  = new Object();
 			userData.red = this.red;
 			userData.green = this.green;
@@ -198,7 +194,27 @@ export class PrismaticJoint extends JointPart
 			userData.editable = this.isEditable;
 			userData.isPiston = collisionGroup;
 
-			this.part1.GetBody().SetUserData(userData)
+			const part1FixtureDef = {
+				friction: 0.4,
+				restitution: 0.3,
+				density: 5.0,
+				filter: {
+					maskBits: 0xFFFF ^ collisionGroup,
+					groupIndex: this.part1.GetFixture().GetFilterData().groupIndex,
+				},
+				userData
+			}
+
+			const part2FixtureDef = {
+				friction: 0.4,
+				restitution: 0.3,
+				density: 5.0,
+				filter: {
+					maskBits: 0xFFFF ^ collisionGroup,
+					groupIndex: this.part2.GetFixture().GetFilterData().groupIndex,
+				},
+				userData
+			}
 
 			var verts:Array<any> = new Array();
 			verts[0] = new b2Vec2(x1 - 0.25, y1 - 0.05);
@@ -213,7 +229,7 @@ export class PrismaticJoint extends JointPart
 				verts[i].y = y1 + dist * Math.sin(vertAngle) - this.part1.GetBody().GetPosition().y;
 			}
 			sd.Set(verts);
-			this.part1.GetBody().CreateFixture({ shape: sd, ...fixtureDef })
+			this.m_fixtures.push(this.part1.GetBody().CreateFixture({ ...part1FixtureDef, shape: sd }))
 			this.m_shapes.push(sd);
 
 			sd = new b2PolygonShape()
@@ -232,7 +248,7 @@ export class PrismaticJoint extends JointPart
 				verts[i].y = centerY + dist * Math.sin(vertAngle) - this.part1.GetBody().GetPosition().y;
 			}
 			sd.Set(verts);
-			this.part1.GetBody().CreateFixture({ shape: sd, ...fixtureDef })
+			this.m_fixtures.push(this.part1.GetBody().CreateFixture({ ...part1FixtureDef, shape: sd }))
 			this.m_shapes.push(sd);
 
 			sd = new b2PolygonShape()
@@ -251,7 +267,7 @@ export class PrismaticJoint extends JointPart
 				verts[i].y = centerY + dist * Math.sin(vertAngle) - this.part1.GetBody().GetPosition().y;
 			}
 			sd.Set(verts);
-			this.part1.GetBody().CreateFixture({ shape: sd, ...fixtureDef })
+			this.m_fixtures.push(this.part1.GetBody().CreateFixture({ ...part1FixtureDef, shape: sd }))
 			this.m_shapes.push(sd);
 
 			sd = new b2PolygonShape()
@@ -270,7 +286,7 @@ export class PrismaticJoint extends JointPart
 				verts[i].y = centerY + dist * Math.sin(vertAngle) - this.part1.GetBody().GetPosition().y;
 			}
 			sd.Set(verts);
-			this.part1.GetBody().CreateFixture({ shape: sd, ...fixtureDef })
+			this.m_fixtures.push(this.part1.GetBody().CreateFixture({ ...part1FixtureDef, shape: sd }))
 			this.m_shapes.push(sd);
 
 			sd = new b2PolygonShape()
@@ -289,7 +305,7 @@ export class PrismaticJoint extends JointPart
 				verts[i].y = centerY + dist * Math.sin(vertAngle) - this.part1.GetBody().GetPosition().y;
 			}
 			sd.Set(verts);
-			this.part1.GetBody().CreateFixture({ shape: sd, ...fixtureDef })
+			this.m_fixtures.push(this.part1.GetBody().CreateFixture({ ...part1FixtureDef, shape: sd }))
 			this.m_shapes.push(sd);
 
 			sd = new b2PolygonShape()
@@ -308,18 +324,20 @@ export class PrismaticJoint extends JointPart
 				verts[i].y = centerY + dist * Math.sin(vertAngle) - this.part2.GetBody().GetPosition().y;
 			}
 			sd.Set(verts);
-			this.part2.GetBody().CreateFixture({ shape: sd, ...fixtureDef })
+			this.m_fixtures.push(this.part2.GetBody().CreateFixture({ ...part2FixtureDef, shape: sd }))
 			this.m_shapes.push(sd);
 
 			sd = new b2PolygonShape()
 			dist = this.initLength - 0.1;
 			centerX = x2 + dist * Math.cos(Math.atan2(this.initLength - 0.1, 0) + angle + Math.PI / 2);
 			centerY = y2 + dist * Math.sin(Math.atan2(this.initLength - 0.1, 0) + angle + Math.PI / 2);
-			verts[0] = new b2Vec2(x2 - 0.14, y2 - 0.05);
-			verts[1] = new b2Vec2(x2 + 0.14, y2 - 0.05);
-			verts[2] = new b2Vec2(x2 + 0.14, y2 + 0.05);
-			verts[3] = new b2Vec2(x2 - 0.14, y2 + 0.05);
-			dist = Math.sqrt(0.05 * 0.05 + 0.14 * 0.14);
+			// NOTE: Values changed from 0.14 to 0.13 here due to 0.14 causing prismatic joints to occasionally "stick" on this newer version of Box2D.
+			// I'm not sure if there's a better magical value, as the sticking still happens occasionally and I'm not 100% sure what is causing it.
+			verts[0] = new b2Vec2(x2 - 0.13, y2 - 0.05);
+			verts[1] = new b2Vec2(x2 + 0.13, y2 - 0.05);
+			verts[2] = new b2Vec2(x2 + 0.13, y2 + 0.05);
+			verts[3] = new b2Vec2(x2 - 0.13, y2 + 0.05);
+			dist = Math.sqrt(0.05 * 0.05 + 0.13 * 0.13);
 			for (i = 0; i < 4; i++) {
 				vertAngle = Math.atan2(verts[i].y - y2, verts[i].x - x2);
 				vertAngle = Util.NormalizeAngle(angle + vertAngle + Math.PI / 2);
@@ -327,7 +345,7 @@ export class PrismaticJoint extends JointPart
 				verts[i].y = centerY + dist * Math.sin(vertAngle) - this.part2.GetBody().GetPosition().y;
 			}
 			sd.Set(verts);
-			this.part2.GetBody().CreateFixture({ shape: sd, ...fixtureDef })
+			this.m_fixtures.push(this.part2.GetBody().CreateFixture({ ...part2FixtureDef, shape: sd }))
 			this.m_shapes.push(sd);
 
 			var jd:b2PrismaticJointDef = new b2PrismaticJointDef();
@@ -373,9 +391,9 @@ export class PrismaticJoint extends JointPart
 		const p2 = new b2Vec2()
 		const axis = new b2Vec2()
 		const axisPoint = new b2Vec2()
-		b1.GetWorldPoint((this.m_joint as b2PrismaticJoint).m_localAnchorA, p1);
-		b2.GetWorldPoint((this.m_joint as b2PrismaticJoint).m_localAnchorB, p2);
-		b1.GetWorldVector((this.m_joint as b2PrismaticJoint).m_localXAxisA, axis);
+		b1.GetWorldPoint((this.m_joint as b2PrismaticJoint).GetLocalAnchorA(), p1);
+		b2.GetWorldPoint((this.m_joint as b2PrismaticJoint).GetLocalAnchorB(), p2);
+		b1.GetWorldVector((this.m_joint as b2PrismaticJoint).GetLocalAxisA(), axis);
 		b1.GetWorldPoint((this.m_joint as b2PrismaticJoint).GetUserData().localPoint1, axisPoint);
 
 		var d1:number = Util.DistanceFromPointToLine(p1, axisPoint, axis);
@@ -407,7 +425,7 @@ export class PrismaticJoint extends JointPart
 				//joint.m_maxMotorForce = Math.max(1, Math.min(30, pistonStrength)) * 30;
 
 				//CE FIX
-				joint.m_maxMotorForce = this.pistonStrength * 30;
+				joint.SetMaxMotorForce(this.pistonStrength * 30)
 
 				this.part1.GetBody().SetAwake(true);
 				this.part2.GetBody().SetAwake(true);
@@ -427,7 +445,7 @@ export class PrismaticJoint extends JointPart
 					//joint.m_maxMotorForce = Math.max(1, Math.min(30, pistonStrength)) * 3000;
 
 					//CE FIX
-					joint.m_maxMotorForce = this.pistonStrength * 3000;
+					joint.SetMaxMotorForce(this.pistonStrength * 3000);
 
 				}
 				if (joint.GetJointTranslation() > this.initLength - 0.4) this.expanding = false;
@@ -446,7 +464,7 @@ export class PrismaticJoint extends JointPart
 					//joint.m_maxMotorForce = Math.max(1, Math.min(30, pistonStrength)) * 3000;
 
 					//CE FIX
-					joint.m_maxMotorForce = this.pistonStrength * 3000;
+					joint.SetMaxMotorForce(this.pistonStrength * 3000);
 
 				}
 				if (joint.GetJointTranslation() < 0.1) this.expanding = true;
@@ -461,7 +479,7 @@ export class PrismaticJoint extends JointPart
 				//joint.m_maxMotorForce = Math.max(1, Math.min(30, pistonStrength)) * 3000;
 
 				//CE FIX
-				joint.m_maxMotorForce = this.pistonStrength * 3000;
+				joint.SetMaxMotorForce(this.pistonStrength * 3000);
 
 			}
 			this.wasKeyDown1 = this.isKeyDown1;
@@ -470,8 +488,12 @@ export class PrismaticJoint extends JointPart
 		}
 	}
 
-	public GetShapes():Array<any> {
+	public GetShapes():Array<b2PolygonShape> {
 		return this.m_shapes;
+	}
+
+	public GetFixtures():Array<b2Fixture> {
+		return this.m_fixtures;
 	}
 
 	public KeyInput(key:number, up:boolean, replay:boolean):void {

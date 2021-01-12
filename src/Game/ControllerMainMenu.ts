@@ -1224,7 +1224,7 @@ export class ControllerMainMenu extends Controller
 			this.frameCounter++;
 		}
 		// FIXME: World drawing
-		this.draw.DrawWorld(this.allParts, new Array(), this.world, false, false, false, true);
+		this.draw.DrawWorld(this.allParts, new Array(), false, false, false, true);
 		this.sSky.Update(false, this.hasPanned);
 		Main.m_fpsCounter.updatePhys(physStart);
 

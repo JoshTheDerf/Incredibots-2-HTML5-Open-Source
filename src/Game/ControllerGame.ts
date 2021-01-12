@@ -586,7 +586,7 @@ export class ControllerGame extends Controller {
 			}
 			if (this.hasPanned || this.hasZoomed || !this.paused || this.draggingPart || this.curAction != -1 || this.redrawRobot) {
 				this.m_canvas.clear();
-				this.draw.DrawWorld(this.allParts, this.selectedParts, this.m_world, !this.simStarted, false, ControllerGameGlobals.showJoints, ControllerGameGlobals.showOutlines, ((this.constructor.name === 'ControllerChallenge') ? this.challenge : undefined));
+				this.draw.DrawWorld(this.allParts, this.selectedParts, !this.simStarted, false, ControllerGameGlobals.showJoints, ControllerGameGlobals.showOutlines, ((this.constructor.name === 'ControllerChallenge') ? this.challenge : undefined));
 				this.redrawRobot = false;
 			}
 			var snapPart:ShapePart = this.FindPartToSnapTo();
@@ -5274,6 +5274,7 @@ export class ControllerGame extends Controller {
 
 			this.m_world = b2World.Create(this.GetGravity());
 			this.m_groundBody = this.m_world.CreateBody()
+			this.m_groundBody.SetUserData({ groundBody: true })
 
 			var filter:ContactFilter = new ContactFilter();
 			this.m_world.SetContactFilter(filter);

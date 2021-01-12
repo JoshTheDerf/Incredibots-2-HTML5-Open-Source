@@ -11,7 +11,7 @@ export class JointPart extends Part
 	public part2Index:number = -1;
 	public anchorX:number;
 	public anchorY:number;
-	public m_joint:b2Joint = null;
+	public m_joint:b2Joint;
 
 	constructor(p1:ShapePart, p2:ShapePart)
 	{
@@ -20,13 +20,15 @@ export class JointPart extends Part
 		this.part2 = p2;
 		this.part1.AddJoint(this);
 		this.part2.AddJoint(this);
+		this.anchorX = 0;
+		this.anchorY = 0;
 	}
 
 	public GetJoint():b2Joint {
 		return this.m_joint;
 	}
 
-	public GetOtherPart(p:ShapePart):ShapePart {
+	public GetOtherPart(p:ShapePart):ShapePart|null {
 		if (p == this.part1) return this.part2;
 		if (p == this.part2) return this.part1;
 		return null;
