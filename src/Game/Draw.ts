@@ -321,13 +321,13 @@ export class Draw extends b2DebugDraw
 					if (allParts[i] instanceof ShapePart) {
 						xf = allParts[i].GetBody().GetTransform()
 						if (this.drawColours) {
-							if (allParts[i] instanceof Cannon) this.DrawCannon(allParts[i].GetShape(), xf, new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines);
+							if (allParts[i] instanceof Cannon) this.DrawCannon(allParts[i].GetShape(), allParts[i].GetUserData(), xf, new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines);
 							else this.DrawShape(allParts[i].GetShape(), allParts[i].GetUserData(), xf, new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines);
 						} else if (allParts[i].isStatic) {
-							if (allParts[i] instanceof Cannon) this.DrawCannon(allParts[i].GetShape(), xf, Draw.s_staticColor, 1, showOutlines);
+							if (allParts[i] instanceof Cannon) this.DrawCannon(allParts[i].GetShape(), allParts[i].GetUserData(), xf, Draw.s_staticColor, 1, showOutlines);
 							else this.DrawShape(allParts[i].GetShape(), allParts[i].GetUserData(), xf, Draw.s_staticColor, 1, showOutlines);
 						} else {
-							if (allParts[i] instanceof Cannon) this.DrawCannon(allParts[i].GetShape(), xf, Draw.s_normalColor, 1, showOutlines);
+							if (allParts[i] instanceof Cannon) this.DrawCannon(allParts[i].GetShape(), allParts[i].GetUserData(), xf, Draw.s_normalColor, 1, showOutlines);
 							else this.DrawShape(allParts[i].GetShape(), allParts[i].GetUserData(), xf, Draw.s_normalColor, 1, showOutlines);
 						}
 					} else if (allParts[i] instanceof PrismaticJoint) {
@@ -349,11 +349,12 @@ export class Draw extends b2DebugDraw
 
 				if (allParts[i] instanceof Cannon) {
 					for (j = 0; j < allParts[i].cannonballs.length; j++) {
-						xf = allParts[i].cannonballs[j].GetTransform();
+						const cannonballBody = (allParts[i].cannonballs[j] as b2Body)
+						xf = cannonballBody.GetTransform();
 						if (this.drawColours) {
-							this.DrawShape(allParts[i].cannonballs[j].GetShapeList(), allParts[i].GetUserData(), xf, new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines, true);
+							this.DrawShape(cannonballBody.GetFixtureList()?.GetShape(), allParts[i].GetUserData(), xf, new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines, true);
 						} else {
-							this.DrawShape(allParts[i].cannonballs[j].GetShapeList(), allParts[i].GetUserData(), xf, Draw.s_normalColor, 1, showOutlines, true);
+							this.DrawShape(cannonballBody.GetFixtureList()?.GetShape(), allParts[i].GetUserData(), xf, Draw.s_normalColor, 1, showOutlines, true);
 						}
 					}
 				}
@@ -468,8 +469,7 @@ export class Draw extends b2DebugDraw
 
 				var vertices:Array<any> = new Array(b2_maxPolygonVertices);
 
-				for (i = 0; i < vertexCount; ++i)
-				{
+				for (i = 0; i < vertexCount; ++i) {
 					const out = new b2Vec2()
 					b2Transform.MultiplyVec2(xf, localVertices[i], out);
 					vertices[i] = out
@@ -481,7 +481,7 @@ export class Draw extends b2DebugDraw
 		}
 	}
 
-	public DrawCannon(shape:b2Shape, xf:b2Transform, color:b2Color, alpha:number, showOutlines:boolean = true) : void{
+	public DrawCannon(shape:b2Shape, userData: any, xf:b2Transform, color:b2Color, alpha:number, showOutlines:boolean = true) : void{
 		var poly:b2PolygonShape = (shape as b2PolygonShape);
 		var localVertices:Array<any> = poly.m_vertices;
 		var vertices:Array<any> = new Array();
@@ -490,10 +490,10 @@ export class Draw extends b2DebugDraw
 			const out = new b2Vec2()
 			b2Transform.MultiplyVec2(xf, localVertices[i], out);
 			vertices[i] = out
-}
+		}
 
 		if (this.drawColours) this.m_fillAlpha = alpha;
-		this.DrawSolidCannon(vertices, 4, color, false, poly.GetUserData().outline && (!this.drawColours || !poly.GetUserData().terrain) && showOutlines);
+		this.DrawSolidCannon(vertices, 4, color, false, userData.outline && (!this.drawColours || !userData.terrain) && showOutlines);
 	}
 
 	public DrawShapeForOutline(shape:b2Shape, xf:b2Transform, color:b2Color, alpha:number) : void {
