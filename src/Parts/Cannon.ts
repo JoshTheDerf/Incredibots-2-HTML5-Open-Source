@@ -213,7 +213,7 @@ import { ShapePart } from "./ShapePart";
 			localPoint.Subtract(Util.Vector(this.centerX, this.centerY));
 			localPoint.Add(this.relativeCannonPos);
 			const pos = new b2Vec2()
-			this.m_body?.GetWorldPoint(localPoint, pos)
+			this.m_body.GetWorldPoint(localPoint, pos)
 			var bd:b2BodyDef = {
 				position: pos,
 				type: b2BodyType.b2_dynamicBody

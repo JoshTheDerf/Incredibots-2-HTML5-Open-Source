@@ -352,9 +352,9 @@ export class Draw extends b2DebugDraw
 						const cannonballBody = (allParts[i].cannonballs[j] as b2Body)
 						xf = cannonballBody.GetTransform();
 						if (this.drawColours) {
-							this.DrawShape(cannonballBody.GetFixtureList()?.GetShape(), allParts[i].GetUserData(), xf, new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines, true);
+							this.DrawShape(cannonballBody.GetFixtureList().GetShape(), allParts[i].GetUserData(), xf, new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines, true);
 						} else {
-							this.DrawShape(cannonballBody.GetFixtureList()?.GetShape(), allParts[i].GetUserData(), xf, Draw.s_normalColor, 1, showOutlines, true);
+							this.DrawShape(cannonballBody.GetFixtureList().GetShape(), allParts[i].GetUserData(), xf, Draw.s_normalColor, 1, showOutlines, true);
 						}
 					}
 				}
