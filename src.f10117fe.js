@@ -73636,50 +73636,61 @@ class Cannon extends ShapePart_1.ShapePart {
   Init(world, body = null) {
     if (this.isInitted) return;
     super.Init(world);
-    var sd = new core_1.b2PolygonDef();
-    sd.friction = 0.4;
-    sd.restitution = 0.3; //CE PROBLEM
-    //sd.density = (Math.max(1, Math.min(30, density)) + 5.0) / 10.0;
-    //CE FIX
-
-    sd.density = (this.density + 5.0) / 10.0;
-    sd.vertexCount = 4;
-    if (this.m_collisionGroup != Number.MIN_VALUE) sd.filter.groupIndex = this.m_collisionGroup;
-    sd.vertices = this.GetVertices();
+    var sd = new core_1.b2PolygonShape();
+    sd.Set(this.GetVertices(), 4);
     var bodyStatic = false;
     var i;
 
     if (body) {
       for (i = 0; i < 4; i++) {
-        sd.vertices[i].x -= body.GetPosition().x;
-        sd.vertices[i].y -= body.GetPosition().y;
+        sd.m_vertices[i].x -= body.GetPosition().x;
+        sd.m_vertices[i].y -= body.GetPosition().y;
       }
 
       this.m_body = body;
-      bodyStatic = body.IsStatic();
+      bodyStatic = body.GetType() === core_1.b2BodyType.b2_staticBody;
     } else {
       for (i = 0; i < 4; i++) {
-        sd.vertices[i].x -= this.centerX;
-        sd.vertices[i].y -= this.centerY;
+        sd.m_vertices[i].x -= this.centerX;
+        sd.m_vertices[i].y -= this.centerY;
       }
 
-      var bd = new core_1.b2BodyDef();
-      bd.position.Set(this.centerX, this.centerY);
+      var bd = {
+        position: {
+          x: this.centerX,
+          y: this.centerY
+        },
+        type: this.isStatic ? core_1.b2BodyType.b2_staticBody : core_1.b2BodyType.b2_dynamicBody
+      };
       this.m_body = world.CreateBody(bd);
     }
 
-    sd.userData = new Object();
-    sd.userData.collide = this.collide;
-    sd.userData.editable = this.isEditable;
-    sd.userData.red = this.red;
-    sd.userData.green = this.green;
-    sd.userData.blue = this.blue;
-    sd.userData.outline = this.outline;
-    sd.userData.terrain = this.terrain;
-    sd.userData.undragable = this.undragable;
-    sd.userData.isPiston = -1;
-    this.m_shape = this.m_body.CreateShape(sd);
-    if (this.isStatic || bodyStatic) this.m_body.SetMass(new core_1.b2MassData());else this.m_body.SetMassFromShapes();
+    this.m_fixture = this.m_body.CreateFixture({
+      shape: sd,
+      friction: 0.4,
+      restitution: 0.3,
+      //CE PROBLEM
+      // density: (Math.max(1, Math.min(30, density)) + 5.0) / 10.0;
+      //CE FIX
+      density: this.density + 5.0 / 10.0
+    });
+    if (this.m_collisionGroup != Number.MIN_VALUE) this.m_fixture.SetFilterData({
+      groupIndex: this.m_collisionGroup
+    });
+    const userData = new Object();
+    userData.collide = this.collide;
+    userData.editable = this.isEditable;
+    userData.red = this.red;
+    userData.green = this.green;
+    userData.blue = this.blue;
+    userData.outline = this.outline;
+    userData.terrain = this.terrain;
+    userData.undragable = this.undragable;
+    userData.isPiston = -1;
+    this.m_body.SetUserData(userData);
+    this.m_fixture.SetUserData(userData);
+    this.m_shape = sd;
+    if (this.isStatic || bodyStatic) this.m_body.SetMassData(new core_1.b2MassData());else this.m_body.ResetMassData();
     this.cannonballs.length = 0;
     this.cannonballCounters.length = 0;
 
@@ -73707,26 +73718,26 @@ class Cannon extends ShapePart_1.ShapePart {
 
     for (var i = 0; i < this.cannonballCounters.length; i++) {
       this.cannonballCounters[i]--;
-      if (this.cannonballCounters[i] == 0) this.cannonballs[i].GetShapeList().m_filter.groupIndex = 0;
+      if (this.cannonballCounters[i] == 0) this.cannonballs[i].GetFixtureList().m_filter.groupIndex = 0;
     }
   }
 
   CreateCannonball(world) {
-    var circ = new core_1.b2CircleDef();
-    circ.radius = this.w / 6;
-    circ.friction = 0.4;
-    circ.restitution = 0.3; //CE PROBLEM
-    //circ.density = (Math.max(1, Math.min(30, density)) + 5.0) / 10.0;
-    //CE FIX
-
-    circ.density = (this.density + 5.0) / 10.0;
-    if (this.m_collisionGroup != Number.MIN_VALUE) circ.filter.groupIndex = this.m_collisionGroup;
-    var bd = new core_1.b2BodyDef();
+    var circ = new core_1.b2CircleShape();
+    circ.Set({
+      x: 0,
+      y: 0
+    }, this.w / 6);
     var localPoint = this.GetSpawnPoint();
     localPoint.Subtract(Util_1.Util.Vector(this.centerX, this.centerY));
     localPoint.Add(this.relativeCannonPos);
-    bd.position.SetV(this.m_body.GetWorldPoint(localPoint));
-    bd.isBullet = true;
+    const pos = new core_1.b2Vec2();
+    this.m_body?.GetWorldPoint(localPoint, pos);
+    var bd = {
+      position: pos,
+      type: core_1.b2BodyType.b2_dynamicBody
+    };
+    bd.bullet = true;
     var body = world.CreateBody(bd);
     this.cannonballs.push(body);
     circ.userData = new Object();
@@ -73739,18 +73750,30 @@ class Cannon extends ShapePart_1.ShapePart {
     circ.userData.terrain = false;
     circ.userData.undragable = true;
     circ.userData.isPiston = -1;
-    body.CreateShape(circ);
-    body.SetMassFromShapes();
+    const fixture = body.CreateFixture({
+      shape: circ,
+      friction: 0.4,
+      restitution: 0.3,
+      //CE PROBLEM
+      //density: (Math.max(1, Math.min(30, density)) + 5.0) / 10.0;
+      //CE FIX
+      density: (this.density + 5.0) / 10.0
+    });
+    if (this.m_collisionGroup != Number.MIN_VALUE) fixture.SetFilterData({
+      groupIndex: this.m_collisionGroup
+    });
+    body.ResetMassData();
     var forceAngle = this.angle + this.m_body.GetAngle(); //CE PROBLEM
     //var forceStrength:number = 0.15 * w * w * circ.density * (4 + 2 * Math.max(1, Math.min(30, strength)));
     //CE FIX
 
-    var forceStrength = 0.15 * this.w * this.w * circ.density * (4 + 2 * this.strength);
+    var forceStrength = 0.15 * this.w * this.w * fixture.GetDensity() * (4 + 2 * this.strength);
     var forceVector = Util_1.Util.Vector(Math.cos(forceAngle) * forceStrength, Math.sin(forceAngle) * forceStrength);
-    var positionVector = this.m_body.GetWorldPoint(this.relativeCannonPos);
-    body.ApplyImpulse(forceVector, body.GetWorldCenter());
-    forceVector = forceVector.Negative();
-    this.m_body.ApplyImpulse(forceVector, positionVector); // FIXME: Disabled to prevent circular references between imports.
+    var positionVector = new core_1.b2Vec2();
+    this.m_body.GetWorldPoint(this.relativeCannonPos, positionVector);
+    body.ApplyLinearImpulse(forceVector, body.GetWorldCenter());
+    forceVector = forceVector.Negate();
+    this.m_body.ApplyLinearImpulse(forceVector, positionVector); // FIXME: Disabled to prevent circular references between imports.
     // if (ControllerGameGlobals.cannonballs) ControllerGameGlobals.cannonballs.push(body);
     // if (ControllerMainMenu.cannonballs) ControllerMainMenu.cannonballs.push(body);
 
@@ -75658,11 +75681,11 @@ class Draw extends b2DebugDraw_1.b2DebugDraw {
             xf = allParts[i].GetBody().GetTransform();
 
             if (this.drawColours) {
-              if (allParts[i] instanceof Cannon_1.Cannon) this.DrawCannon(allParts[i].GetShape(), xf, new core_1.b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines);else this.DrawShape(allParts[i].GetShape(), allParts[i].GetUserData(), xf, new core_1.b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines);
+              if (allParts[i] instanceof Cannon_1.Cannon) this.DrawCannon(allParts[i].GetShape(), allParts[i].GetUserData(), xf, new core_1.b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines);else this.DrawShape(allParts[i].GetShape(), allParts[i].GetUserData(), xf, new core_1.b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines);
             } else if (allParts[i].isStatic) {
-              if (allParts[i] instanceof Cannon_1.Cannon) this.DrawCannon(allParts[i].GetShape(), xf, Draw.s_staticColor, 1, showOutlines);else this.DrawShape(allParts[i].GetShape(), allParts[i].GetUserData(), xf, Draw.s_staticColor, 1, showOutlines);
+              if (allParts[i] instanceof Cannon_1.Cannon) this.DrawCannon(allParts[i].GetShape(), allParts[i].GetUserData(), xf, Draw.s_staticColor, 1, showOutlines);else this.DrawShape(allParts[i].GetShape(), allParts[i].GetUserData(), xf, Draw.s_staticColor, 1, showOutlines);
             } else {
-              if (allParts[i] instanceof Cannon_1.Cannon) this.DrawCannon(allParts[i].GetShape(), xf, Draw.s_normalColor, 1, showOutlines);else this.DrawShape(allParts[i].GetShape(), allParts[i].GetUserData(), xf, Draw.s_normalColor, 1, showOutlines);
+              if (allParts[i] instanceof Cannon_1.Cannon) this.DrawCannon(allParts[i].GetShape(), allParts[i].GetUserData(), xf, Draw.s_normalColor, 1, showOutlines);else this.DrawShape(allParts[i].GetShape(), allParts[i].GetUserData(), xf, Draw.s_normalColor, 1, showOutlines);
             }
           } else if (allParts[i] instanceof PrismaticJoint_1.PrismaticJoint) {
             const pj = allParts[i];
@@ -75685,12 +75708,13 @@ class Draw extends b2DebugDraw_1.b2DebugDraw {
 
         if (allParts[i] instanceof Cannon_1.Cannon) {
           for (j = 0; j < allParts[i].cannonballs.length; j++) {
-            xf = allParts[i].cannonballs[j].GetTransform();
+            const cannonballBody = allParts[i].cannonballs[j];
+            xf = cannonballBody.GetTransform();
 
             if (this.drawColours) {
-              this.DrawShape(allParts[i].cannonballs[j].GetShapeList(), allParts[i].GetUserData(), xf, new core_1.b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines, true);
+              this.DrawShape(cannonballBody.GetFixtureList()?.GetShape(), allParts[i].GetUserData(), xf, new core_1.b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0), allParts[i].opacity / 255.0, showOutlines, true);
             } else {
-              this.DrawShape(allParts[i].cannonballs[j].GetShapeList(), allParts[i].GetUserData(), xf, Draw.s_normalColor, 1, showOutlines, true);
+              this.DrawShape(cannonballBody.GetFixtureList()?.GetShape(), allParts[i].GetUserData(), xf, Draw.s_normalColor, 1, showOutlines, true);
             }
           }
         }
@@ -75815,7 +75839,7 @@ class Draw extends b2DebugDraw_1.b2DebugDraw {
     }
   }
 
-  DrawCannon(shape, xf, color, alpha, showOutlines = true) {
+  DrawCannon(shape, userData, xf, color, alpha, showOutlines = true) {
     var poly = shape;
     var localVertices = poly.m_vertices;
     var vertices = new Array();
@@ -75827,7 +75851,7 @@ class Draw extends b2DebugDraw_1.b2DebugDraw {
     }
 
     if (this.drawColours) this.m_fillAlpha = alpha;
-    this.DrawSolidCannon(vertices, 4, color, false, poly.GetUserData().outline && (!this.drawColours || !poly.GetUserData().terrain) && showOutlines);
+    this.DrawSolidCannon(vertices, 4, color, false, userData.outline && (!this.drawColours || !userData.terrain) && showOutlines);
   }
 
   DrawShapeForOutline(shape, xf, color, alpha) {
@@ -118357,7 +118381,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "42509" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "39481" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
