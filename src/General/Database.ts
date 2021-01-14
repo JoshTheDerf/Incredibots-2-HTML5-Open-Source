@@ -913,7 +913,7 @@ export class Database
 				str = str.substr(str.indexOf("\n") + 1);
 				Database.robotList = new Array();
 				while (str.length > 0) {
-					var curRobot:* = new Object();
+					var curRobot:any = new Object();
 					curRobot.id = str.substr(0, str.indexOf("\t"));
 					str = str.substr(str.indexOf("\t") + 1);
 					curRobot.user = unescape(str.substr(0, str.indexOf("\t"))).replace(/\+/g, " ");
@@ -957,8 +957,6 @@ export class Database
 		decoder.decode(robotStr);
 		var b:ByteArray = decoder.toByteArray();
 		await b.uncompress();
-
-		console.log(Buffer.from(b.buffer).toString('base64'))
 
 		b.readUTF();
 		b.readUTF();
@@ -1116,7 +1114,7 @@ export class Database
 				str = str.substr(str.indexOf("\n") + 1);
 				Database.replayList = new Array();
 				while (str.length > 0) {
-					var curReplay:* = new Object();
+					var curReplay:any = new Object();
 					curReplay.id = str.substr(0, str.indexOf("\t"));
 					str = str.substr(str.indexOf("\t") + 1);
 					curReplay.user = unescape(str.substr(0, str.indexOf("\t"))).replace(/\+/g, " ");
@@ -1268,7 +1266,7 @@ export class Database
 				str = str.substr(str.indexOf("\n") + 1);
 				Database.challengeList = new Array();
 				while (str.length > 0) {
-					var curChallenge:* = new Object();
+					var curChallenge:any = new Object();
 					curChallenge.id = str.substr(0, str.indexOf("\t"));
 					str = str.substr(str.indexOf("\t") + 1);
 					curChallenge.user = unescape(str.substr(0, str.indexOf("\t"))).replace(/\+/g, " ");
@@ -1372,7 +1370,7 @@ export class Database
 				str = str.substr(str.indexOf("\n") + 1);
 				Database.scoreList = new Array();
 				while (str.length > 0) {
-					var curScore:* = new Object();
+					var curScore:any = new Object();
 					curScore.user = unescape(str.substr(0, str.indexOf("\t"))).replace(/\+/g, " ");
 					str = str.substr(str.indexOf("\t") + 1);
 					curScore.score = parseInt(str.substr(0, str.indexOf("\t")));
