@@ -10,8 +10,6 @@
     "dependencies": {
         "@box2d/core": "^0.8.0",
         "@puxi/core": "^1.0.2",
-        "amf0-ts": "^1.3.9",
-        "amf3-ts": "^1.1.0",
         "box2d": "^1.0.0",
         "bytearray-node": "^3.3.5",
         "iconv-lite": "^0.6.2",

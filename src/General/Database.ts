@@ -27,13 +27,6 @@ import { Base64Decoder } from '../mx/utils/Base64Decoder';
 import { Base64Encoder } from '../mx/utils/Base64Encoder';
 import { Circle } from "../Parts/Circle";
 import { Rectangle } from "../Parts/Rectangle";
-import { ObjectEncoding } from "./ByteArrayEnums";
-
-ByteArray.registerClassAlias(ObjectEncoding.AMF3, 'src.Triangle', Triangle)
-ByteArray.registerClassAlias(ObjectEncoding.AMF3, 'src.Circle', Circle)
-ByteArray.registerClassAlias(ObjectEncoding.AMF3, 'src.Rectangle', Rectangle)
-ByteArray.registerClassAlias(ObjectEncoding.AMF3, 'src.RevoluteJoint', RevoluteJoint)
-ByteArray.registerClassAlias(ObjectEncoding.AMF3, 'src.PrismaticJoint', PrismaticJoint)
 
 export class Database
 {

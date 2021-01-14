@@ -1,11 +1,50 @@
+// Abomination produced from combining the object reading code from https://github.com/jamesward/JSAMF/blob/master/web/web/amf.js
+// with the more up-to-date (but broken object reading) ByteArray implementation from https://github.com/Zaseth/bytearray-node
+// Thanks James Ward and Zaseth!
+
+// This desparately needs to be cleaned up and brings in way too many dependencies, but it does at least work for loading basic robots.
 import { deflateSync, deflateRawSync, inflateSync, inflateRawSync } from 'zlib'
 import { LZMA } from 'lzma/src/lzma_worker.js'
 import { encodingExists, decode, encode } from 'iconv-lite'
 
 import { CompressionAlgorithm, Endian, ObjectEncoding } from './ByteArrayEnums'
 
-import { AMF0 } from 'amf0-ts'
-import { AMF3 } from 'amf3-ts'
+const AMF0Types = {
+  kNumberType: 0,
+  kBooleanType: 1,
+  kStringType: 2,
+  kObjectType: 3,
+  kMovieClipType: 4,
+  kNullType: 5,
+  kUndefinedType: 6,
+  kReferenceType: 7,
+  kECMAArrayType: 8,
+  kObjectEndType: 9,
+  kStrictArrayType: 10,
+  kDateType: 11,
+  kLongStringType: 12,
+  kUnsupportedType: 13,
+  kRecordsetType: 14,
+  kXMLObjectType: 15,
+  kTypedObjectType: 16,
+  kAvmPlusObjectType: 17
+};
+
+const AMF3Types = {
+  kUndefinedType: 0,
+  kNullType: 1,
+  kFalseType: 2,
+  kTrueType: 3,
+  kIntegerType: 4,
+  kDoubleType: 5,
+  kStringType: 6,
+  kXMLType: 7,
+  kDateType: 8,
+  kArrayType: 9,
+  kObjectType: 10,
+  kAvmPlusXmlType: 11,
+  kByteArrayType: 12
+};
 
 /**
  * @description Helper function that converts data types to a buffer
@@ -44,6 +83,10 @@ export class ByteArray {
    */
   _objectEncoding
 
+  stringTable = []
+  objectTable = []
+  traitTable = []
+
   public buffer: Buffer;
 
   /**
@@ -74,23 +117,6 @@ export class ByteArray {
      * @type {Number}
      */
     this._objectEncoding = ObjectEncoding.AMF3
-  }
-
-  /**
-   * @static
-   * @description Registers a class alias
-   * @param {Number} encoding
-   * @param {String} aliasName
-   * @param {ObjectEncoding} classObject
-   */
-  static registerClassAlias(encoding, aliasName, classObject) {
-    if (encoding === ObjectEncoding.AMF0) {
-      AMF0.registerClassAlias(aliasName, classObject)
-    } else if (encoding === ObjectEncoding.AMF3) {
-      AMF3.registerClassAlias(aliasName, classObject)
-    } else {
-      throw new Error(`Unknown object encoding: '${encoding}'.`)
-    }
   }
 
   /**
@@ -361,6 +387,62 @@ export class ByteArray {
     return this._readBufferFunc('readBigInt64', 8)
   }
 
+  readUInt29() {
+    var value;
+
+    // Each byte must be treated as unsigned
+    var b = this.readByte() & 0xFF;
+
+    if (b < 128)
+        return b;
+
+    value = (b & 0x7F) << 7;
+    b = this.readByte() & 0xFF;
+
+    if (b < 128)
+        return (value | b);
+
+    value = (value | (b & 0x7F)) << 7;
+    b = this.readByte() & 0xFF;
+
+    if (b < 128)
+        return (value | b);
+
+    value = (value | (b & 0x7F)) << 8;
+    b = this.readByte() & 0xFF;
+
+    return (value | b);
+  }
+
+  readUInt30() {
+    if (this.endian === Endian.BIG_ENDIAN) return this.readUInt30BE()
+    if (this.endian === Endian.LITTLE_ENDIAN) return this.readUInt30LE()
+  }
+
+  readUInt30BE() {
+      var ch1 = this.readByte();
+      var ch2 = this.readByte();
+      var ch3 = this.readByte();
+      var ch4 = this.readByte();
+
+      if (ch1 >= 64)
+          return undefined;
+
+      return ch4 | (ch3 << 8) | (ch2 << 16) | (ch1 << 24);
+  }
+
+  readUInt30LE() {
+      var ch1 = this.readByte();
+      var ch2 = this.readByte();
+      var ch3 = this.readByte();
+      var ch4 = this.readByte();
+
+      if (ch4 >= 64)
+          return undefined;
+
+      return ch1 | (ch2 << 8) | (ch3 << 16) | (ch4 << 24);
+  }
+
   /**
    * @description Reads a multibyte string
    * @param {Number} length
@@ -388,18 +470,314 @@ export class ByteArray {
     }
   }
 
+  stringToXML(str) {
+    var xmlDoc;
+
+    if (window.DOMParser) {
+      var parser = new DOMParser();
+      xmlDoc = parser.parseFromString(str, "text/xml");
+    }
+
+    return xmlDoc;
+  }
+
+  readXML() {
+      var xml = this.readUTFBytes(this.readUInt30());
+
+      return this.stringToXML(xml);
+  }
+
+  readStringAMF3() {
+    var ref = this.readUInt29();
+
+    if ((ref & 1) == 0) // This is a reference
+        return this.stringTable[(ref >> 1)];
+
+    var len = (ref >> 1);
+
+    if (0 == len)
+        return "";
+
+    var str = this.readString(len);
+
+    this.stringTable.push(str);
+
+    return str;
+  }
+
+  readTraits(ref) {
+      var traitInfo = {};
+      traitInfo.properties = [];
+
+      if ((ref & 3) == 1)
+          return this.traitTable[(ref >> 2)];
+
+      traitInfo.externalizable = ((ref & 4) == 4);
+
+      traitInfo.dynamic = ((ref & 8) == 8);
+
+      traitInfo.count = (ref >> 4);
+      traitInfo.className = this.readStringAMF3();
+
+      this.traitTable.push(traitInfo);
+
+      for (var i = 0; i < traitInfo.count; i++) {
+          var propName = this.readStringAMF3();
+          traitInfo.properties.push(propName);
+      }
+
+      return traitInfo;
+  }
+
   /**
    * @description Reads an object
    * @returns {Object}
    */
   readObject() {
-    const [position, value] = this._objectEncoding === ObjectEncoding.AMF0
-      ? AMF0.parse(this.buffer, this._position)
-      : AMF3.parse(this.buffer, this._position)
+    if (this._objectEncoding == ObjectEncoding.AMF0) {
+        return this.readAMF0Object();
+    } else if (this._objectEncoding == ObjectEncoding.AMF3) {
+        return this.readAMF3Object();
+    }
+  }
 
-    this._position += position
+  readAMF0Object() {
+    var marker = this.readByte();
 
-    return value
+    if (marker == AMF0Types.kNumberType) {
+        return this.readDouble();
+    } else if (marker == AMF0Types.kBooleanType) {
+        return this.readBoolean();
+    } else if (marker == AMF0Types.kStringType) {
+        return this.readUTF();
+    } else if ((marker == AMF0Types.kObjectType) || (marker == AMF0Types.kECMAArrayType)) {
+        var o = {};
+
+        var ismixed = (marker == AMF0Types.kECMAArrayType);
+
+        var size = null;
+        if (ismixed)
+            this.readUInt30();
+
+        while (true) {
+            var c1 = this.readByte();
+            var c2 = this.readByte();
+            var name = this.readString((c1 << 8) | c2);
+            var k = this.readByte();
+            if (k == AMF0Types.kObjectEndType)
+                break;
+
+            this.position--;
+
+            o[name] = this.readObject();
+        }
+
+        return o;
+    } else if (marker == AMF0Types.kStrictArrayType) {
+        var size = this.readInt();
+
+        var a = [];
+
+        for (var i = 0; i < size; ++i) {
+            a.push(this.readObject());
+        }
+
+        return a;
+    } else if (marker == AMF0Types.kTypedObjectType) {
+        var o = {};
+
+        var typeName = this.readUTF();
+
+        var propertyName = this.readUTF();
+        var type = this.readByte();
+        while (type != kObjectEndType) {
+            var value = this.readObject();
+            o[propertyName] = value;
+
+            propertyName = this.readUTF();
+            type = this.readByte();
+        }
+
+        return o;
+    } else if (marker == AMF0Types.kAvmPlusObjectType) {
+        return this.readAMF3Object();
+    } else if (marker == AMF0Types.kNullType) {
+        return null;
+    } else if (marker == AMF0Types.kUndefinedType) {
+        return undefined;
+    } else if (marker == AMF0Types.kReferenceType) {
+        var refNum = this.readUnsignedShort();
+
+        var value = this.objectTable[refNum];
+
+        return value;
+    } else if (marker == AMF0Types.kDateType) {
+        return this.readDate();
+    } else if (marker == AMF0Types.kLongStringType) {
+        return this.readUTFBytes(this.readUInt30());
+    } else if (marker == AMF0Types.kXMLObjectType) {
+        return this.readXML();
+    }
+  }
+
+  readAMF3Object() {
+    var marker = this.readByte();
+
+    if (marker == AMF3Types.kUndefinedType) {
+        return undefined;
+    } else if (marker == AMF3Types.kNullType) {
+        return null;
+    } else if (marker == AMF3Types.kFalseType) {
+        return false;
+    } else if (marker == AMF3Types.kTrueType) {
+        return true;
+    } else if (marker == AMF3Types.kIntegerType) {
+        var i = this.readUInt29();
+
+        return i;
+    } else if (marker == AMF3Types.kDoubleType) {
+        return this.readDouble();
+    } else if (marker == AMF3Types.kStringType) {
+        return this.readStringAMF3();
+    } else if (marker == AMF3Types.kXMLType) {
+        return this.readXML();
+    } else if (marker == AMF3Types.kDateType) {
+        var ref = this.readUInt29();
+
+        if ((ref & 1) == 0)
+            return this.objectTable[(ref >> 1)];
+
+        var d = this.readDouble();
+        var value = new Date(d);
+        this.objectTable.push(value);
+
+        return value;
+    } else if (marker == AMF3Types.kArrayType) {
+        var ref = this.readUInt29();
+
+        if ((ref & 1) == 0)
+            return this.objectTable[(ref >> 1)];
+
+        var len = (ref >> 1);
+
+        var key = this.readStringAMF3();
+
+        if (key == "") {
+            var a = [];
+
+            for (var i = 0; i < len; i++) {
+                var value = this.readObject();
+
+                a.push(value);
+            }
+
+            return a;
+        }
+
+        // mixed array
+        var result = {};
+
+        while (key != "") {
+            result[key] = this.readObject();
+            key = this.readStringAMF3();
+        }
+
+        for (var i = 0; i < len; i++) {
+            result[i] = this.readObject();
+        }
+
+        return result;
+    } else if (marker == AMF3Types.kObjectType) {
+        var o = {};
+
+        this.objectTable.push(o);
+
+        var ref = this.readUInt29();
+
+        if ((ref & 1) == 0)
+            return this.objectTable[(ref >> 1)];
+
+        var ti = this.readTraits(ref);
+        var className = ti.className;
+        var externalizable = ti.externalizable;
+
+        if (externalizable) {
+            o = this.readObject();
+        } else {
+            var len = ti.properties.length;
+
+            for (var i = 0; i < len; i++) {
+                var propName = ti.properties[i];
+
+                var value = this.readObject();
+
+                o[propName] = value;
+            }
+
+            if (ti.dynamic) {
+                for (;;) {
+                    var name = this.readStringAMF3();
+                    if (name == null || name.length == 0) break;
+
+                    var value = this.readObject();
+                    o[name] = value;
+                }
+            }
+        }
+
+        return o;
+    } else if (marker == AMF3Types.kAvmPlusXmlType) {
+        var ref = this.readUInt29();
+
+        if ((ref & 1) == 0)
+            return this.stringToXML(this.objectTable[(ref >> 1)]);
+
+        var len = (ref >> 1);
+
+        if (0 == len)
+            return null;
+
+
+        var str = this.readString(len);
+
+        var xml = this.stringToXML(str);
+
+        this.objectTable.push(xml);
+
+        return xml;
+    } else if (marker == AMF3Types.kByteArrayType) {
+        var ref = this.readUInt29();
+        if ((ref & 1) == 0)
+            return this.objectTable[(ref >> 1)];
+
+        var len = (ref >> 1);
+
+        var ba = new ByteArray();
+
+        this.objectTable.push(ba);
+
+        for (var i = 0; i < len; i++) {
+            ba.writeByte(this.readByte());
+        }
+
+        return ba;
+    }
+  }
+
+  readDate() {
+    var time_ms = this.readDouble();
+    var tz_min = this.readUnsignedShort();
+    return new Date(time_ms + tz_min * 60 * 1000);
+  }
+
+  readString(len: number) {
+      var str = "";
+
+      while (len > 0) {
+          str += String.fromCharCode(this.readUnsignedByte());
+          len--;
+      }
+      return str;
   }
 
   /**

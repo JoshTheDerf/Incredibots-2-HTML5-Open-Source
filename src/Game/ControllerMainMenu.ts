@@ -24,7 +24,7 @@ import { Sky } from "./Graphics/Sky";
 import { Replay } from "./Replay";
 import { Robot } from "./Robot";
 import { SandboxSettings } from "./SandboxSettings";
-import { ByteArray } from "../General/a3d";
+import { ByteArray } from "../General/ByteArray";
 
 export class ControllerMainMenu extends Controller
 {

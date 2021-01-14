@@ -4505,7 +4505,7 @@ export class ControllerGame extends Controller {
 
 		public finishGettingSaveRobotData():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_ROBOT_DATA) return;
-			if (Database.FinishGettingRobotData(e)) {
+			if (Database.FinishGettingRobotData()) {
 				this.m_progressDialog.visible = false;
 				if (this.m_chooserWindow) this.removeChild(this.m_chooserWindow);
 				this.m_chooserWindow = new SaveLoadWindow(this, SaveLoadWindow.SAVE_ROBOT_TYPE);
@@ -4515,7 +4515,7 @@ export class ControllerGame extends Controller {
 
 		public finishGettingLoadRobotData():void {
 			if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_ROBOT_DATA) return;
-			if (Database.FinishGettingRobotData(e)) {
+			if (Database.FinishGettingRobotData()) {
 				this.m_progressDialog.visible = false;
 				if (this.m_chooserWindow) this.removeChild(this.m_chooserWindow);
 				this.m_chooserWindow = new SaveLoadWindow(this, SaveLoadWindow.LOAD_ROBOT_TYPE);
