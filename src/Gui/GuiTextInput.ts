@@ -1,18 +1,17 @@
-import { Stage, Button, TextInput, FastLayoutOptions, LayoutOptions, AnchorLayoutOptions, AnchorLayout } from '@puxi/core'
-import { Container, Text, TextStyle, Texture, Sprite, filters } from 'pixi.js'
+import TextInput from 'pixi-text-input'
+import { TextStyle, Texture, Sprite, Container } from 'pixi.js'
 import { Resource } from '../Game/Graphics/Resource'
 import { Main } from '../Main'
 
 const TextInputs: Array<GuiTextInput> = []
 
-export class GuiTextInput extends Stage
+export class GuiTextInput extends Container
 {
 	private baseSkin:Texture;
 	private rollSkin:Texture;
 	private disabledSkin:Texture;
 
 	public textInput: TextInput;
-	private backgroundSprite: Sprite;
 
 	set maxLength (value: number) {
 		this.textInput.maxLength = value || 0
@@ -23,21 +22,19 @@ export class GuiTextInput extends Stage
 	}
 
 	get enabled (): boolean {
-		return this.interactive && this.interactiveChildren
+		return !this.textInput.disabled
 	}
 
 	set enabled (value: boolean) {
-		this.interactive = this.interactiveChildren = value
-		this.updateEnabled()
+		this.textInput.disabled = !value
 	}
 
 	get editable (): boolean {
-		return this.interactive && this.interactiveChildren
+		return !this.textInput.disabled
 	}
 
 	set editable (value: boolean) {
-		this.interactive = this.interactiveChildren = value
-		this.updateEnabled()
+		this.textInput.disabled = !value
 	}
 
 	get text (): string {
@@ -50,13 +47,9 @@ export class GuiTextInput extends Stage
 
 	constructor(xPos:number, yPos:number, w:number, h: number, format:TextStyle|null = null)
 	{
-		super(w, h)
+		super()
 		this.x = xPos
 		this.y = yPos
-		this.width = w
-		this.height = h
-		this.interactive = true
-		this.interactiveChildren = true
 
 		TextInputs.push(this)
 
@@ -68,70 +61,54 @@ export class GuiTextInput extends Stage
 		format.fontFamily = Main.GLOBAL_FONT
 		format.fill = '#4C3D57'
 
-		const backgroundContainer = new Container()
-		this.backgroundSprite = new Sprite(this.baseSkin)
-		this.backgroundSprite.width = w
-		this.backgroundSprite.height = h
-		backgroundContainer.addChild(this.backgroundSprite)
 
 		this.textInput = new TextInput({
-			value: '',
-			width: w,
-			height: h,
-			style: format || new TextStyle(),
-			background: backgroundContainer
-		})
+			input: {
+				fontSize: `${format.fontSize}pt`,
+				color: format.fill,
+				zIndex: 1000,
+				width: `${w}px`,
+				height: `${h}px`,
+				textAlign: `center`
+			},
+			box: (w:number, h:number, state: string) => {
+				const backgroundSprite = new Sprite()
+				backgroundSprite.texture = this.baseSkin
+				backgroundSprite.width = w
+				backgroundSprite.height = h
 
-		this.on('mouseover', () => {
-			this.backgroundSprite.texture = this.rollSkin
-		})
-		this.on('mouseout', () => {
-			if (this.textInput.isFocused) return
-			this.backgroundSprite.texture = this.baseSkin
+				if (state === 'DEFAULT') backgroundSprite.texture = this.baseSkin
+				if (state === 'FOCUSED') backgroundSprite.texture = this.rollSkin
+				if (state === 'DISABLED') backgroundSprite.texture = this.disabledSkin
+
+				return backgroundSprite
+			}
 		})
 
 		this.textInput.on('click', (event: any) => {
 			this.emit('click', event)
 		})
-
 		this.textInput.on('focus', (event: any) => {
-			TextInputs.forEach(input => {
-				if (input !== this) input.textInput.blur()
-			})
-			this.backgroundSprite.texture = this.rollSkin
 			this.emit('focus', this.textInput.text)
 		})
 		this.textInput.on('blur', (event: any) => {
-			this.backgroundSprite.texture = this.baseSkin
 			this.emit('blur', this.textInput.text)
 		})
-		this.textInput.on('change', () => {
-			this.emit('change', this.textInput.text)
-			this.text = this.textInput.text
+		this.textInput.on('input', (text: string) => {
+			this.emit('change', text)
+			this.text = text
 		})
-		this.textInput.on('keydown', (event:any) => {
-			this.emit('keydown', this)
+		this.textInput.on('keydown', (code: number) => {
+			this.emit('keydown', this, code)
 		})
-
-		this.textInput.on('keyup', (event:any) => {
-			this.emit('keyup', this)
+		this.textInput.on('keyup', (code: number) => {
+			this.emit('keyup', this, code)
 		})
-
-		this.textInput.setLayoutOptions(
-			new FastLayoutOptions({
-				width: 0.9999,
-				height: 0.9999
-			})
-		)
 
 		this.addChild(this.textInput)
 	}
 
 	public setSelection(startIndex: number, endIndex: number) {
-		this.textInput.selectRange(startIndex, endIndex)
-	}
-
-	public updateEnabled() {
-		this.backgroundSprite.texture = this.enabled ? this.baseSkin : this.disabledSkin
+		this.textInput.htmlInput.setSelectionRange(startIndex, endIndex)
 	}
 }

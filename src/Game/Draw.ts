@@ -363,17 +363,16 @@ export class Draw extends b2DebugDraw
 
 		for (i = 0; i < allParts.length; i++) {
 			if (allParts[i] instanceof TextPart) {
-				// allParts[i].m_textField.visible = (notStarted || allParts[i].alwaysVisible || allParts[i].displayKeyPressed);
-				// allParts[i].m_textField.x = allParts[i].x * this.m_drawScale - this.m_drawXOff;
-				// allParts[i].m_textField.y = allParts[i].y * this.m_drawScale - this.m_drawYOff;
+				allParts[i].m_textField.visible = (notStarted || allParts[i].alwaysVisible || allParts[i].displayKeyPressed);
+				allParts[i].m_textField.x = allParts[i].x * this.m_drawScale - this.m_drawXOff;
+				allParts[i].m_textField.y = allParts[i].y * this.m_drawScale - this.m_drawYOff;
 				// allParts[i].m_textField.width = allParts[i].w * this.m_drawScale;
 				// allParts[i].m_textField.height = allParts[i].h * this.m_drawScale;
 				var format:TextStyle = new TextStyle();
 				format.fontSize = (allParts[i].scaleWithZoom ? (allParts[i].size * this.m_drawScale / 30) : allParts[i].size);
 				format.fill = allParts[i].red << 16 | allParts[i].green << 8 | allParts[i].blue;
 				format.fontFamily = Main.GLOBAL_FONT;
-				// allParts[i].m_textField.setTextStyle(format);
-				// allParts[i].m_textField.setSelection(0, 0);
+				allParts[i].m_textField.style = format;
 				if (notStarted) {
 					var selected:boolean = Util.ObjectInArray(allParts[i], selectedParts);
 					var color:b2Color = (selected ? new b2Color(1, 1, 1) : new b2Color(0.1, 0.1, 0.1));

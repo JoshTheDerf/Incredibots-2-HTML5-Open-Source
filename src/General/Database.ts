@@ -1,9 +1,39 @@
-﻿import { Challenge } from "../Game/Challenge";
+﻿import { b2AABB, b2Vec2 } from "@box2d/core";
+import { Challenge } from "../Game/Challenge";
 import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals";
 import { Replay } from "../Game/Replay";
 import { Robot } from "../Game/Robot";
 import { SandboxSettings } from "../Game/SandboxSettings";
 import { Util } from "./Util";
+import { ByteArray } from './ByteArray';
+import { CameraMovement } from "../Game/CameraMovement";
+import { ControllerGame } from "../Game/ControllerGame";
+import { KeyPress } from "../Game/KeyPress";
+import { LossCondition } from "../Game/LossCondition";
+import { ReplaySyncPoint } from "../Game/ReplaySyncPoint";
+import { WinCondition } from "../Game/WinCondition";
+import { Main } from "../Main";
+import { Cannon } from "../Parts/Cannon";
+import { FixedJoint } from "../Parts/FixedJoint";
+import { JointPart } from "../Parts/JointPart";
+import { Part } from "../Parts/Part";
+import { PrismaticJoint } from "../Parts/PrismaticJoint";
+import { RevoluteJoint } from "../Parts/RevoluteJoint";
+import { ShapePart } from "../Parts/ShapePart";
+import { TextPart } from "../Parts/TextPart";
+import { Thrusters } from "../Parts/Thrusters";
+import { Triangle } from "../Parts/Triangle";
+import { Base64Decoder } from '../mx/utils/Base64Decoder';
+import { Base64Encoder } from '../mx/utils/Base64Encoder';
+import { Circle } from "../Parts/Circle";
+import { Rectangle } from "../Parts/Rectangle";
+import { ObjectEncoding } from "./ByteArrayEnums";
+
+ByteArray.registerClassAlias(ObjectEncoding.AMF3, 'src.Triangle', Triangle)
+ByteArray.registerClassAlias(ObjectEncoding.AMF3, 'src.Circle', Circle)
+ByteArray.registerClassAlias(ObjectEncoding.AMF3, 'src.Rectangle', Rectangle)
+ByteArray.registerClassAlias(ObjectEncoding.AMF3, 'src.RevoluteJoint', RevoluteJoint)
+ByteArray.registerClassAlias(ObjectEncoding.AMF3, 'src.PrismaticJoint', PrismaticJoint)
 
 export class Database
 {
@@ -929,11 +959,13 @@ export class Database
 		}
 	}
 
-	public static ImportRobot(robotStr:string):Robot {
+	public static async ImportRobot(robotStr:string):Promise<Robot> {
 		var decoder:Base64Decoder = new Base64Decoder();
 		decoder.decode(robotStr);
 		var b:ByteArray = decoder.toByteArray();
-		b.uncompress();
+		await b.uncompress();
+
+		console.log(Buffer.from(b.buffer).toString('base64'))
 
 		b.readUTF();
 		b.readUTF();
@@ -1618,7 +1650,6 @@ export class Database
 	}
 
 	private static ExtractPartsFromByteArray(b:ByteArray):Array<any> {
-		console.log(b)
 		var objectData:Array<any> = (b.readObject() as Array);
 		var partData:Array<any> = new Array();
 
@@ -1739,8 +1770,7 @@ export class Database
 		return robotData;
 	}
 
-	public static async ExtractRobotFromByteArray(data:ByteArray):Robot {
-		data = data.arrayBuffer()
+	public static ExtractRobotFromByteArray(data:ByteArray):Robot {
 		var partData:Array<any> = Database.ExtractPartsFromByteArray(data);
 		if (data.position == data.length) {
 			return new Robot(partData, new SandboxSettings(15.0, 1, 0, 0, 0), Number.MAX_VALUE, Number.MAX_VALUE, Number.MAX_VALUE);
@@ -1802,8 +1832,6 @@ export class Database
 	}
 
 	public static async ExtractReplayFromByteArray(data:ByteArray):Replay {
-		console.log(data)
-		const buffer = await data.arrayBuffer()
 		var cameraMovements:Array<any> = new Array();
 		while (true) {
 			var frame:number = Database.ReadInt(data);

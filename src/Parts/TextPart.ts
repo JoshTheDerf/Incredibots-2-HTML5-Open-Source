@@ -46,6 +46,8 @@ export class TextPart extends Part
 		this.size = 14;
 		this.m_textField = new Text(str);
 		this.m_textField.wordWrap = true;
+		this.m_textField.x = nx
+		this.m_textField.y = ny
 		if (cont) cont.addChildAt(this.m_textField, cont.getChildIndex(cont.m_canvas) + (front ? 1 : 0));
 		this.type = "TextPart";
 	}

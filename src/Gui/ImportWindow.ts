@@ -49,11 +49,11 @@ export class ImportWindow extends GuiWindow
 		this.addChild(this.cancelButton);
 	}
 
-	private doImport(e:Event):void {
+	private async doImport(e:Event) {
 		if (this.linkArea.text.length > 0) {
 			this.cont.HideImportDialog(e);
 			if (this.type == ImportWindow.TYPE_ROBOT) {
-				this.cont.processLoadedRobot(Database.ImportRobot(this.linkArea.text));
+				this.cont.processLoadedRobot(await Database.ImportRobot(this.linkArea.text));
 			} else if (this.type == ImportWindow.TYPE_REPLAY) {
 				this.cont.processLoadedReplay(Database.ImportReplay(this.linkArea.text));
 			} else if (this.type == ImportWindow.TYPE_CHALLENGE) {

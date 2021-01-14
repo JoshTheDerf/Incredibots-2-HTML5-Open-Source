@@ -233,7 +233,6 @@ export class AdvancedSandboxWindow extends GuiWindow
 		this.gravityArea.text = "15";
 		if (defaults) this.gravityArea.text = defaults.gravity + "";
 		this.gravityArea.maxLength = 5;
-		this.gravityArea.height = 20;
 		this.gravityArea.on('change', (text: string) => this.gravityText(text));
 		this.addChild(this.gravityArea);
 

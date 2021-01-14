@@ -24,6 +24,7 @@ import { Sky } from "./Graphics/Sky";
 import { Replay } from "./Replay";
 import { Robot } from "./Robot";
 import { SandboxSettings } from "./SandboxSettings";
+import { ByteArray } from "../General/a3d";
 
 export class ControllerMainMenu extends Controller
 {
@@ -111,7 +112,7 @@ export class ControllerMainMenu extends Controller
 			ControllerMainMenu.introSong.play();
 		}
 
-		// this.LoadReplay()
+		this.LoadReplay()
 
 		this.sGround = new Graphics();
 		this.DrawGroundOutlineCircle(0, 0, 150);
@@ -290,8 +291,7 @@ export class ControllerMainMenu extends Controller
 		button = new GuiButton("Import Replay", 145, 303, 171, 59, this.importReplayButton.bind(this), GuiButton.ORANGE, style);
 		button.disabled = true
 		this.levelSelectGui.addChild(button);
-		button = new GuiButton("Import Bot", 145, 343, 171, 59, this.importRobotButton.bind(this), GuiButton.ORANGE, style);
-		button.disabled = true
+		button = new GuiButton("Import Bot", 145, 343, 171, 59, (event: any) => this.importRobotButton(event), GuiButton.ORANGE, style);
 		this.levelSelectGui.addChild(button);
 
 		button = new GuiButton("Instructions", 620, 454, 153, 50, this.instructionsButton, GuiButton.BLUE, style);
@@ -375,11 +375,13 @@ export class ControllerMainMenu extends Controller
 	}
 
 	private async LoadReplay() {
-		var b:ByteArray = Resource.cReplay;
-		this.replay = await Database.ExtractReplayFromByteArray(b);
-		this.replay.cont = this;
-		b = Resource.cRobot;
-		var robot:Robot = await Database.ExtractRobotFromByteArray(b);
+		const replayData = await Resource.cReplay.arrayBuffer()
+		var b:ByteArray = new ByteArray(new Uint8Array(replayData));
+		// this.replay = await Database.ExtractReplayFromByteArray(b);
+		// this.replay.cont = this;
+		const robotData = await Resource.cRobot.arrayBuffer()
+		b = new ByteArray(new Uint8Array(robotData));
+		var robot:Robot = Database.ExtractRobotFromByteArray(b);
 		this.allParts = robot.allParts;
 		this.replaySplineXs = this.ComputeReplaySplines(0);
 		this.replaySplineYs = this.ComputeReplaySplines(1);

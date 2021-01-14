@@ -380,7 +380,7 @@ export class PartEditWindow extends GuiWindow
 		this.m_strengthArea7.maxLength = 5;
 		this.m_strengthArea7.on('click', (event: any) => this.cannonFocus(event));
 		this.m_strengthArea7.on('focus', (event: any) => this.TextAreaGotFocus(event));
-		this.m_strengthArea7.on('change', (event: any) => this.cont.textEntered(event));
+		this.m_strengthArea7.on('change', (event: any) => this.cont.textEntered());
 		this.m_strengthArea7.on('blur', (event: any) => this.cont.cannonText(event));
 		this.m_strengthArea7.on('hide', (event: any) => this.cont.cannonText(event));
 		this.m_cannonPanel.addChild(this.m_strengthArea7);
@@ -388,7 +388,7 @@ export class PartEditWindow extends GuiWindow
 		this.m_fireKeyArea.editable = true;
 		this.m_fireKeyArea.on('click', (event: any) => this.cannonKeyFocus(event));
 		this.m_fireKeyArea.on('focus', (event: any) => this.TextAreaGotFocus(event));
-		this.m_fireKeyArea.on('keyup', (event: any) => this.cont.fireKeyText(event));
+		this.m_fireKeyArea.on('keyup', (input: GuiTextInput, code: number) => this.cont.fireKeyText(input, code));
 		this.m_fireKeyArea.on('blur', (event: any) => this.TextAreaLostFocus(event));
 		this.m_fireKeyArea.on('hide', (event: any) => this.TextAreaLostFocus(event));
 		this.m_cannonPanel.addChild(this.m_fireKeyArea);
@@ -474,6 +474,7 @@ export class PartEditWindow extends GuiWindow
 		format.fontSize = 14;
 		format.fill = "#242930"
 		this.m_jointHeader = new Text('');
+		this.m_jointHeader.anchor.set(0.5)
 		this.m_jointHeader.text = "Text";
 		this.m_jointHeader.x = 5 + 110 /2;
 		this.m_jointHeader.y = 15 + 20 /2;
@@ -486,26 +487,23 @@ export class PartEditWindow extends GuiWindow
 		format = new TextStyle();
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.fill = "#242930"
+		format.fontSize = 12
 		this.m_textLabel = new Text('');
 		this.m_textLabel.text = "Text:";
-		this.m_textLabel.width = 55;
-		this.m_textLabel.height = 20;
 		this.m_textLabel.x = 45;
 		this.m_textLabel.y = 68;
 		this.m_textLabel.style = format;
 		this.m_textEditPanel.addChild(this.m_textLabel);
-		this.m_textArea = new GuiTextArea(15, 85, 90, 70);
+		this.m_textArea = new GuiTextArea(15, 85, 90, 70, format);
 		this.m_textArea.on('focus', (event: any) => this.TextAreaGotFocus(event));
-		this.m_textArea.on('focus', (event: any) => this.cont.textTextStart(event));
+		this.m_textArea.on('focus', (event: any) => this.cont.textTextStart());
 		this.m_textArea.on('change', (event: any) => this.cont.textText(event));
-		this.m_textArea.on('blur', (event: any) => this.cont.textTextFinish(event));
+		this.m_textArea.on('blur', (event: any) => this.cont.textTextFinish());
 		this.m_textArea.on('blur', (event: any) => this.TextAreaLostFocus(event));
 		this.m_textArea.on('hide', (event: any) => this.TextAreaLostFocus(event));
 		this.m_textEditPanel.addChild(this.m_textArea);
 		this.m_sizeLabel = new Text('');
 		this.m_sizeLabel.text = "Text Size:";
-		this.m_sizeLabel.width = 55;
-		this.m_sizeLabel.height = 20;
 		this.m_sizeLabel.x = 15;
 		this.m_sizeLabel.y = 170;
 		this.m_sizeLabel.style = format;
@@ -549,7 +547,7 @@ export class PartEditWindow extends GuiWindow
 		this.m_textKeyArea.editable = false;
 		this.m_textKeyArea.on('click', (event: any) => this.controlKey1Focus(event));
 		this.m_textKeyArea.on('focus', (event: any) => this.TextAreaGotFocus(event));
-		this.m_textKeyArea.on('keyup', (event: any) => this.cont.textKeyBox(event));
+		this.m_textKeyArea.on('keyup', (input: GuiTextInput, code: number) => this.cont.textKeyBox(input, code));
 		this.m_textKeyArea.on('blur', (event: any) => this.TextAreaLostFocus(event));
 		this.m_textKeyArea.on('hide', (event: any) => this.TextAreaLostFocus(event));
 		this.m_textEditPanel.addChild(this.m_textKeyArea);
@@ -656,7 +654,7 @@ export class PartEditWindow extends GuiWindow
 		this.m_thrustKeyArea.editable = true;
 		this.m_thrustKeyArea.on('click', (event: any) => this.thrustKeyFocus(event));
 		this.m_thrustKeyArea.on('focus', (event: any) => this.TextAreaGotFocus(event));
-		this.m_thrustKeyArea.on('keyup', (event: any) => this.cont.thrustKeyText(event));
+		this.m_thrustKeyArea.on('keyup', (input: GuiTextInput, code: number) => this.cont.thrustKeyText(input, code));
 		this.m_thrustKeyArea.on('blur', (event: any) => this.TextAreaLostFocus(event));
 		this.m_thrustKeyArea.on('hide', (event: any) => this.TextAreaLostFocus(event));
 		this.m_thrustersEditPanel.addChild(this.m_thrustKeyArea);
@@ -827,7 +825,7 @@ export class PartEditWindow extends GuiWindow
 		this.m_controlKeyArea1.editable = false;
 		this.m_controlKeyArea1.on('click', (event: any) => this.controlKey1Focus(event));
 		this.m_controlKeyArea1.on('focus', (event: any) => this.TextAreaGotFocus(event));
-		this.m_controlKeyArea1.on('keyup', (event: any) => this.cont.controlKeyText1(event));
+		this.m_controlKeyArea1.on('keyup', (input: GuiTextInput, code: number) => this.cont.controlKeyText1(input, code));
 		this.m_controlKeyArea1.on('blur', (event: any) => this.TextAreaLostFocus(event));
 		this.m_controlKeyArea1.on('hide', (event: any) => this.TextAreaLostFocus(event));
 		this.m_jointEditPanel.addChild(this.m_controlKeyArea1);
@@ -835,7 +833,7 @@ export class PartEditWindow extends GuiWindow
 		this.m_controlKeyArea2.editable = false;
 		this.m_controlKeyArea2.on('click', (event: any) => this.controlKey2Focus(event));
 		this.m_controlKeyArea2.on('focus', (event: any) => this.TextAreaGotFocus(event));
-		this.m_controlKeyArea2.on('keyup', (event: any) => this.cont.controlKeyText2(event));
+		this.m_controlKeyArea2.on('keyup', (input: GuiTextInput, code: number) => this.cont.controlKeyText2(input, code));
 		this.m_controlKeyArea2.on('blur', (event: any) => this.TextAreaLostFocus(event));
 		this.m_controlKeyArea2.on('hide', (event: any) => this.TextAreaLostFocus(event));
 		this.m_jointEditPanel.addChild(this.m_controlKeyArea2);

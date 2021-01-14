@@ -3525,18 +3525,18 @@ export class ControllerGame extends Controller {
 			}
 		}
 
-		public textKeyBox(input: GuiTextInput):void {
+		public textKeyBox(input: GuiTextInput, keyNumber: number):void {
 			if (input.enabled) {
 				var str:string;
 				if (this.selectedParts[0] instanceof TextPart) {
 					var oldKey:number = (this.selectedParts[0] as TextPart).displayKey;
-					(this.selectedParts[0] as TextPart).displayKey = Input.lastKey;
-					if (oldKey != Input.lastKey) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.TEXT_TYPE, oldKey, Input.lastKey));
+					(this.selectedParts[0] as TextPart).displayKey = keyNumber;
+					if (oldKey != keyNumber) this.AddAction(new ControlKeyAction(this.selectedParts[0], ControlKeyAction.TEXT_TYPE, oldKey, keyNumber));
 				}
-				str = Input.getKeyString(Input.lastKey);
-				if (str == null) str = "Unk: " + Input.lastKey;
+				str = Input.getKeyString(keyNumber);
+				if (str == null) str = "Unk: " + keyNumber;
 				input.text = str;
-				input.textInput.selectRange(0, 10);
+				input.setSelection(0, 10);
 				ControllerGameGlobals.curRobotID = "";
 			}
 		}
@@ -3683,11 +3683,10 @@ export class ControllerGame extends Controller {
 			ControllerGameGlobals.curRobotID = "";
 		}
 
-		public controlKeyText1(input:GuiTextInput):void {
+		public controlKeyText1(input:GuiTextInput, keyNumber: number):void {
 			if (input.enabled) {
 				var str:string;
 				var oldKey:number;
-				const keyNumber = Input.getKeyNumber(input.text)
 				if (this.selectedParts[0] instanceof RevoluteJoint && keyNumber != null) {
 					oldKey = (this.selectedParts[0] as RevoluteJoint).motorCWKey;
 					(this.selectedParts[0] as RevoluteJoint).motorCWKey = keyNumber;
@@ -3700,16 +3699,15 @@ export class ControllerGame extends Controller {
 				if (keyNumber == null) str = "Unk: " + keyNumber;
 				else str = Input.getKeyString(keyNumber);
 				input.text = str;
-				input.textInput.selectRange(0, 10);
+				input.setSelection(0, 10);
 				ControllerGameGlobals.curRobotID = "";
 			}
 		}
 
-		public controlKeyText2(input:GuiTextInput):void {
+		public controlKeyText2(input:GuiTextInput, keyNumber: number):void {
 			if (input.enabled) {
 				var str:string;
 				var oldKey:number;
-				const keyNumber = Input.getKeyNumber(input.text)
 				if (this.selectedParts[0] instanceof RevoluteJoint && keyNumber != null) {
 					oldKey = (this.selectedParts[0] as RevoluteJoint).motorCCWKey;
 					(this.selectedParts[0] as RevoluteJoint).motorCCWKey = keyNumber;
@@ -3722,12 +3720,12 @@ export class ControllerGame extends Controller {
 				if (keyNumber == null) str = "Unk: " + keyNumber;
 				else str = Input.getKeyString(keyNumber);
 				input.text = str;
-				input.textInput.selectRange(0, 10);
+				input.setSelection(0, 10);
 				ControllerGameGlobals.curRobotID = "";
 			}
 		}
 
-		public thrustKeyText(input:GuiTextInput):void {
+		public thrustKeyText(input:GuiTextInput, keyNumber: number):void {
 			if (input.enabled) {
 				var str:string;
 				var oldKey:number;
@@ -3740,12 +3738,12 @@ export class ControllerGame extends Controller {
 				if (keyNumber == null) str = "Unk: " + keyNumber;
 				else str = Input.getKeyString(keyNumber);
 				input.text = str;
-				input.textInput.selectRange(0, 10);
+				input.setSelection(0, 10);
 				ControllerGameGlobals.curRobotID = "";
 			}
 		}
 
-		public fireKeyText(input:GuiTextInput):void {
+		public fireKeyText(input:GuiTextInput, keyNumber: number):void {
 			if (input.enabled) {
 				var str:string;
 				var oldKey:number;
@@ -3758,7 +3756,7 @@ export class ControllerGame extends Controller {
 				if (keyNumber == null) str = "Unk: " + keyNumber;
 				else str = Input.getKeyString(keyNumber);
 				input.text = str;
-				input.textInput.selectRange(0, 10);
+				input.setSelection(0, 10);
 				ControllerGameGlobals.curRobotID = "";
 			}
 		}

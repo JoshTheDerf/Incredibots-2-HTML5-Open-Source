@@ -1,23 +1,22 @@
-import { Stage, Button, TextInput, FastLayoutOptions, LayoutOptions, AnchorLayoutOptions, AnchorLayout } from '@puxi/core'
+import TextInput from 'pixi-text-input'
 import { Container, Text, TextStyle, Texture, Sprite } from 'pixi.js'
 import { Resource } from '../Game/Graphics/Resource'
 import { Main } from '../Main'
 
-export class GuiTextArea extends Stage
+export class GuiTextArea extends Container
 {
 	private baseSkin:Texture;
 	private rollSkin:Texture;
+
+	public textInput: TextInput;
 
 	public text: String = ''
 
 	constructor(xPos:number, yPos:number, w:number, h:number, format:TextStyle|null = null)
 	{
-		super(w, h)
+		super()
 		this.x = xPos
 		this.y = yPos
-		this.width = w
-		this.height = h
-		this.interactive = true
 
 		this.baseSkin = Resource.cGuiTextAreaBase
 		this.rollSkin = Resource.cGuiTextAreaRoll
@@ -32,41 +31,35 @@ export class GuiTextArea extends Stage
 		backgroundSprite.height = h
 		backgroundContainer.addChild(backgroundSprite)
 
-		const textInput = new TextInput({
-			multiLine: true,
-			value: '',
-			width: w,
-			height: h,
-			style: format || new TextStyle(),
-			background: backgroundContainer
-		})
-		textInput.setPadding(5, 5)
+		this.textInput = new TextInput({
+			input: {
+				multiline: true,
+				fontSize: `${format.fontSize}pt`,
+				color: format.fill,
+				zIndex: 1000,
+				width: `${w - 20}px`,
+				height: `${h - 20}px`,
+				padding: `10px`
+			},
+			box: (w:number, h:number, state: string) => {
+				const backgroundSprite = new Sprite()
+				backgroundSprite.texture = this.baseSkin
+				backgroundSprite.width = w
+				backgroundSprite.height = h
 
-		this.on('mouseover', () => {
-			backgroundSprite.texture = this.rollSkin
-		})
-		this.on('mouseout', () => {
-			if (textInput.isFocused) return
-			backgroundSprite.texture = this.baseSkin
-		})
+				if (state === 'DEFAULT') backgroundSprite.texture = this.baseSkin
+				if (state === 'FOCUSED') backgroundSprite.texture = this.rollSkin
+				if (state === 'DISABLED') backgroundSprite.texture = this.baseSkin
 
-		textInput.on('focus', () => {
-			backgroundSprite.texture = this.rollSkin
-		})
-		textInput.on('blur', () => {
-			backgroundSprite.texture = this.baseSkin
-		})
-		textInput.on('change', () => {
-			this.text = textInput.text
+				return backgroundSprite
+			}
 		})
 
-		textInput.setLayoutOptions(
-			new FastLayoutOptions({
-				width: 0.9999,
-				height: 0.9999
-			})
-		)
+		this.textInput.on('input', (text: string) => {
+			this.text = text
+			this.emit('change', text)
+		})
 
-		this.addChild(textInput)
+		this.addChild(this.textInput)
 	}
 }
