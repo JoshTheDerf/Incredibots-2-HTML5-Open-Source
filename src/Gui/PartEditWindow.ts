@@ -261,10 +261,9 @@ export class PartEditWindow extends GuiWindow
 		format.fontSize = 14;
 		this.m_cannonHeader = new Text('');
 		this.m_cannonHeader.text = "Cannon";
-		this.m_cannonHeader.width = 110;
-		this.m_cannonHeader.height = 20;
-		this.m_cannonHeader.x = 5;
-		this.m_cannonHeader.y = 15;
+		this.m_cannonHeader.anchor.set(0.5)
+		this.m_cannonHeader.x = 5 + (110 / 2);
+		this.m_cannonHeader.y = 15 + (20 / 2);
 		this.m_cannonHeader.style = format;
 		this.m_cannonPanel.addChild(this.m_cannonHeader);
 		this.m_backButton = new GuiButton("X", 90, -5, 35, 35, () => this.backButton(), GuiButton.X);

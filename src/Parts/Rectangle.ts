@@ -20,8 +20,7 @@ import { ShapePart } from "./ShapePart";
 
 		constructor(nx:number, ny:number, nw:number, nh:number, checkLimits:boolean = true)
 		{
-			// FIXME: Change super call as it must be before everything else but we do extra position calcs after it.
-			super(nx + nw / 2, ny + nh / 2);
+			super(0, 0);
 
 			if (checkLimits) {
 				if (nw < 0) {
@@ -42,6 +41,9 @@ import { ShapePart } from "./ShapePart";
 			this.y = ny;
 			this.w = nw;
 			this.h = nh;
+
+			this.centerX = nx + nw / 2
+			this.centerY = ny + nh / 2
 
 			this.type = "Rectangle";
 		}

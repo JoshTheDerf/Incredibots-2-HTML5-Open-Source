@@ -1,4 +1,6 @@
 import { b2Vec2, b2World, b2Body, b2BodyDef, b2MassData, b2PolygonShape, b2BodyType, b2CircleShape } from "@box2d/core";
+import { ControllerMainMenu } from "../Game/ControllerMainMenu";
+import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals";
 import { Util } from "../General/Util";
 import { FixedJoint } from "./FixedJoint";
 import { ShapePart } from "./ShapePart";
@@ -24,7 +26,7 @@ import { ShapePart } from "./ShapePart";
 		constructor(nx:number, ny:number, nw:number, checkLimits:boolean = true)
 		{
 			// FIXME: Change super call as it must be before everything else but we do extra position calcs after it.
-			super(nx + nw / 2, ny + nw / 4);
+			super(0, 0);
 			var rotated:boolean = false;
 			if (checkLimits) {
 				if (nw < 0) {
@@ -40,6 +42,8 @@ import { ShapePart } from "./ShapePart";
 			this.x = nx;
 			this.y = ny;
 			this.w = nw;
+			this.centerX = nx + nw / 2
+			this.centerY = ny + nw / 4
 
 			this.fireKey = 40;
 			this.strength = 15;
@@ -221,16 +225,7 @@ import { ShapePart } from "./ShapePart";
 			bd.bullet = true;
 			var body:b2Body = world.CreateBody(bd);
 			this.cannonballs.push(body);
-			circ.userData = new Object();
-			circ.userData.collide = true;
-			circ.userData.editable = this.isEditable;
-			circ.userData.red = this.red;
-			circ.userData.green = this.green;
-			circ.userData.blue = this.blue;
-			circ.userData.outline = this.outline;
-			circ.userData.terrain = false;
-			circ.userData.undragable = true;
-			circ.userData.isPiston = -1;
+
 			const fixture = body.CreateFixture({
 				shape: circ,
 				friction: 0.4,
@@ -242,6 +237,19 @@ import { ShapePart } from "./ShapePart";
 			})
 			if (this.m_collisionGroup != Number.MIN_VALUE) fixture.SetFilterData({ groupIndex: this.m_collisionGroup });
 			body.ResetMassData();
+
+			const userData = new Object();
+			userData.collide = true;
+			userData.editable = this.isEditable;
+			userData.red = this.red;
+			userData.green = this.green;
+			userData.blue = this.blue;
+			userData.outline = this.outline;
+			userData.terrain = false;
+			userData.undragable = true;
+			userData.isPiston = -1;
+			body.SetUserData(userData)
+			fixture.SetUserData(userData)
 
 			var forceAngle:number = this.angle + this.m_body.GetAngle();
 
@@ -258,8 +266,8 @@ import { ShapePart } from "./ShapePart";
 			forceVector = forceVector.Negate();
 			this.m_body.ApplyLinearImpulse(forceVector, positionVector);
 			// FIXME: Disabled to prevent circular references between imports.
-			// if (ControllerGameGlobals.cannonballs) ControllerGameGlobals.cannonballs.push(body);
-			// if (ControllerMainMenu.cannonballs) ControllerMainMenu.cannonballs.push(body);
+			if (ControllerGameGlobals.cannonballs) ControllerGameGlobals.cannonballs.push(body);
+			if (ControllerMainMenu.cannonballs) ControllerMainMenu.cannonballs.push(body);
 
 			this.cannonballCounters.push(5);
 		}

@@ -483,7 +483,14 @@ export class Draw extends b2DebugDraw
 
 	public DrawCannon(shape:b2Shape, userData: any, xf:b2Transform, color:b2Color, alpha:number, showOutlines:boolean = true) : void{
 		var poly:b2PolygonShape = (shape as b2PolygonShape);
-		var localVertices:Array<any> = poly.m_vertices;
+
+		// Reorganize vertices from Box2D defaults so that cannon points the correct direction.
+		var localVertices:Array<any> = [
+			poly.m_vertices[3],
+			poly.m_vertices[0],
+			poly.m_vertices[1],
+			poly.m_vertices[2],
+		];
 		var vertices:Array<any> = new Array();
 
 		for (var i:number = 0; i < 4; ++i) {

@@ -25,7 +25,6 @@ export class Triangle extends ShapePart
 
 	constructor(nx1:number, ny1:number, nx2:number, ny2:number, nx3:number, ny3:number)
 	{
-		// FIXME: Change super call as it must be before everything else but we do extra position calcs after it.
 		super(nx1, nx2);
 		this.x1 = nx1;
 		this.y1 = ny1;
