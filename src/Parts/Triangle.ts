@@ -38,6 +38,8 @@ export class Triangle extends ShapePart
 
 		var avgX:number = (this.x1 + this.x2 + this.x3) / 3.0;
 		var avgY:number = (this.y1 + this.y2 + this.y3) / 3.0;
+		this.centerX = avgX
+		this.centerY = avgY
 
 		this.type = "Triangle";
 	}
