@@ -51,13 +51,14 @@ const AMF3Types = {
  * @param {Buffer|Array|Number} v
  * @returns {Buffer}
  */
-const convert = (v) => Buffer.isBuffer(v)
-  ? v
-  : Array.isArray(v) || v instanceof ArrayBuffer
-    ? Buffer.from(v)
-    : Number.isInteger(v)
-      ? Buffer.alloc(v)
-      : Buffer.alloc(0)
+const convert = (v) => {
+  if (Buffer.isBuffer(v)) return v
+  if (Array.isArray(v)) return Buffer.from(v)
+  if (v instanceof ArrayBuffer) return Buffer.from(new Uint8Array(v))
+  if (v instanceof Uint8Array) return Buffer.from(v)
+  if (Number.isInteger(v)) return Buffer.alloc(v)
+  return Buffer.alloc(0)
+}
 
 /**
  * @exports

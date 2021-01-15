@@ -77,11 +77,6 @@ export class Main {
 		LSOManager.Init();
 		this.Init();
 
-		// TODO: Reimplement.
-		// Hide the mouse
-		// Mouse.hide();
-		// stage.addEventListener(Event.MOUSE_LEAVE,this.rehideMouse);
-
 		if (Main.DEBUG_VERSION) {
 			Main.m_fpsCounter.x = 7;
 			Main.m_fpsCounter.y = 525;

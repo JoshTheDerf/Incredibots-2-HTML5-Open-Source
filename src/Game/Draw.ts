@@ -30,6 +30,7 @@ export class Draw extends b2DebugDraw
 
 	public DrawWorld(allParts:Array<Part>, selectedParts:Array<any>, notStarted:boolean, drawStatic:boolean = true, showJoints:boolean = true, showOutlines:boolean = true, challenge:Challenge = null):void {
 		var i:number;
+		this.m_sprite.clear()
 
 		if (challenge && (notStarted || challenge.showConditions)) {
 			for (i = 0; i < challenge.winConditions.length; i++) {

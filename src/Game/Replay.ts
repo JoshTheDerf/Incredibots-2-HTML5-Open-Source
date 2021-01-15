@@ -13,7 +13,7 @@ export class Replay
 	public cameraMovementIndex:number = 0;
 	public keyPressIndex:number = 0;
 
-	public Replay(m:Array<any>, s:Array<any>, k:Array<any>, f:number, v:string)
+	public constructor(m:Array<any>, s:Array<any>, k:Array<any>, f:number, v:string)
 	{
 		this.cameraMovements = m;
 		this.syncPoints = s;

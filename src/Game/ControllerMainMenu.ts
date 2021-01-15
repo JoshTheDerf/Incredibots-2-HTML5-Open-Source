@@ -1,5 +1,5 @@
 import { Container, DisplayObject, Graphics, Matrix, Sprite, Text, TextStyle } from "pixi.js";
-import { b2World, b2AABB, b2Vec2 } from "@box2d/core";
+import { b2World, b2AABB, b2Vec2, b2Transform } from "@box2d/core";
 import { Database } from "../General/Database";
 import { LSOManager } from "../General/LSOManager";
 import { Util } from "../General/Util";
@@ -25,6 +25,7 @@ import { Replay } from "./Replay";
 import { Robot } from "./Robot";
 import { SandboxSettings } from "./SandboxSettings";
 import { ByteArray } from "../General/ByteArray";
+import { CompressionAlgorithm } from "../General/ByteArrayEnums";
 
 export class ControllerMainMenu extends Controller
 {
@@ -111,8 +112,6 @@ export class ControllerMainMenu extends Controller
 			ControllerMainMenu.introSong.volume = ControllerGameGlobals.introVolume
 			ControllerMainMenu.introSong.play();
 		}
-
-		this.LoadReplay()
 
 		this.sGround = new Graphics();
 		this.DrawGroundOutlineCircle(0, 0, 150);
@@ -349,38 +348,43 @@ export class ControllerMainMenu extends Controller
 		var filter:ContactFilter = new ContactFilter();
 		this.world.SetContactFilter(filter);
 
-		for (var i:number = 0; i < this.allParts.length; i++) {
-			if (this.allParts[i] instanceof ShapePart && this.allParts[i].isCameraFocus) this.cameraPart = this.allParts[i];
-		}
+		this.LoadReplay()
+			.then(() => {
+				for (var i:number = 0; i < this.allParts.length; i++) {
+					if (this.allParts[i] instanceof ShapePart && this.allParts[i].isCameraFocus) this.cameraPart = this.allParts[i];
+				}
 
-		for (i = 0; i < this.allParts.length; i++) {
-			this.allParts[i].checkedCollisionGroup = false;
-		}
-		for (i = 0; i < this.allParts.length; i++) {
-			if (this.allParts[i] instanceof ShapePart) this.allParts[i].SetCollisionGroup(-(i + 1));
-		}
+				for (i = 0; i < this.allParts.length; i++) {
+					this.allParts[i].checkedCollisionGroup = false;
+				}
+				for (i = 0; i < this.allParts.length; i++) {
+					if (this.allParts[i] instanceof ShapePart) this.allParts[i].SetCollisionGroup(-(i + 1));
+				}
 
-		for (i = this.allParts.length; i >= 0; i--) {
-			if (this.allParts[i] instanceof ShapePart) this.allParts[i].Init(this.world);
-		}
-		for (i = 0; i < this.allParts.length; i++) {
-			if (this.allParts[i] instanceof JointPart || this.allParts[i] instanceof Thrusters) this.allParts[i].Init(this.world);
-		}
+				for (i = this.allParts.length; i >= 0; i--) {
+					if (this.allParts[i] instanceof ShapePart) this.allParts[i].Init(this.world);
+				}
+				for (i = 0; i < this.allParts.length; i++) {
+					if (this.allParts[i] instanceof JointPart || this.allParts[i] instanceof Thrusters) this.allParts[i].Init(this.world);
+				}
 
-		ControllerGameGlobals.curRobotID = "";
-		ControllerGameGlobals.curReplayID = "";
-		ControllerGameGlobals.curChallengeID = "";
+				ControllerGameGlobals.curRobotID = "";
+				ControllerGameGlobals.curReplayID = "";
+				ControllerGameGlobals.curChallengeID = "";
 
-		this.Update();
+				this.Update();
+			})
 	}
 
 	private async LoadReplay() {
 		const replayData = await Resource.cReplay.arrayBuffer()
-		var b:ByteArray = new ByteArray(new Uint8Array(replayData));
-		// this.replay = await Database.ExtractReplayFromByteArray(b);
-		// this.replay.cont = this;
+		var b:ByteArray = new ByteArray(replayData);
+		await b.uncompress();
+		this.replay = await Database.ExtractReplayFromByteArray(b);
+		this.replay.cont = this;
 		const robotData = await Resource.cRobot.arrayBuffer()
 		b = new ByteArray(new Uint8Array(robotData));
+		await b.uncompress();
 		var robot:Robot = Database.ExtractRobotFromByteArray(b);
 		this.allParts = robot.allParts;
 		this.replaySplineXs = this.ComputeReplaySplines(0);
@@ -1225,7 +1229,7 @@ export class ControllerMainMenu extends Controller
 		} else {
 			this.frameCounter++;
 		}
-		// FIXME: World drawing
+
 		this.draw.DrawWorld(this.allParts, new Array(), false, false, false, true);
 		this.sSky.Update(false, this.hasPanned);
 		Main.m_fpsCounter.updatePhys(physStart);
@@ -1296,13 +1300,13 @@ export class ControllerMainMenu extends Controller
 		var curIndex:number = 0;
 		for (var i:number = 0; i < this.allParts.length; i++) {
 			if (this.allParts[i] instanceof ShapePart && !this.allParts[i].isStatic && !Util.ObjectInArray(this.allParts[i].GetBody(), bodiesUsed)) {
-				this.allParts[i].GetBody().SetXForm(Util.Vector(syncPoint.positions[curIndex].x, syncPoint.positions[curIndex].y), syncPoint.angles[curIndex]);
+				this.allParts[i].GetBody().SetTransform((new b2Transform().SetPositionAngle(Util.Vector(syncPoint.positions[curIndex].x, syncPoint.positions[curIndex].y), syncPoint.angles[curIndex])));
 				curIndex++;
 				bodiesUsed.push(this.allParts[i].GetBody());
 			}
 		}
 		for (i = 0; i < ControllerMainMenu.cannonballs.length; i++) {
-			ControllerMainMenu.cannonballs[i].SetXForm(syncPoint.cannonballPositions[i], 0);
+			ControllerMainMenu.cannonballs[i].SetTransform((new b2Transform().SetPositionAngle(syncPoint.cannonballPositions[i], 0)));
 		}
 	}
 
@@ -1312,7 +1316,7 @@ export class ControllerMainMenu extends Controller
 		var curIndex:number = 0;
 		for (var i:number = 0; i < this.allParts.length; i++) {
 			if (this.allParts[i] instanceof ShapePart && !this.allParts[i].isStatic && !Util.ObjectInArray(this.allParts[i].GetBody(), bodiesUsed)) {
-				this.allParts[i].GetBody().SetXForm(Util.Vector(this.replaySplineXs[0][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineXs[1][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineXs[2][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * this.replaySplineXs[3][syncPointIndex][curIndex])), this.replaySplineYs[0][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineYs[1][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineYs[2][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * this.replaySplineYs[3][syncPointIndex][curIndex]))), this.replaySplineAngles[0][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineAngles[1][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineAngles[2][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * this.replaySplineAngles[3][syncPointIndex][curIndex])));
+				this.allParts[i].GetBody().SetTransform((new b2Transform().SetPositionAngle(Util.Vector(this.replaySplineXs[0][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineXs[1][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineXs[2][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * this.replaySplineXs[3][syncPointIndex][curIndex])), this.replaySplineYs[0][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineYs[1][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineYs[2][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * this.replaySplineYs[3][syncPointIndex][curIndex]))), this.replaySplineAngles[0][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineAngles[1][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineAngles[2][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * this.replaySplineAngles[3][syncPointIndex][curIndex])))));
 				curIndex++;
 				bodiesUsed.push(this.allParts[i].GetBody());
 			}
@@ -1322,9 +1326,9 @@ export class ControllerMainMenu extends Controller
 				var frameDiff:number = syncPoint2.frame - syncPoint1.frame;
 				var newX:number = (syncPoint1.cannonballPositions[i].x * (syncPoint2.frame - this.frameCounter) + syncPoint2.cannonballPositions[i].x * (this.frameCounter - syncPoint1.frame)) / frameDiff;
 				var newY:number = (syncPoint1.cannonballPositions[i].y * (syncPoint2.frame - this.frameCounter) + syncPoint2.cannonballPositions[i].y * (this.frameCounter - syncPoint1.frame)) / frameDiff;
-				ControllerMainMenu.cannonballs[i].SetXForm(Util.Vector(newX, newY), 0);
+				ControllerMainMenu.cannonballs[i].SetTransform((new b2Transform().SetPositionAngle(Util.Vector(newX, newY), 0)));
 			} else {
-				ControllerMainMenu.cannonballs[i].SetXForm(syncPoint2.cannonballPositions[i], 0);
+				ControllerMainMenu.cannonballs[i].SetTransform((new b2Transform().SetPositionAngle(syncPoint2.cannonballPositions[i], 0)));
 			}
 		}
 	}

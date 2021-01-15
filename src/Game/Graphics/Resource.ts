@@ -1,6 +1,12 @@
 import { Application, Texture } from 'pixi.js'
 import PIXIsound from 'pixi-sound'
 
+// Data
+import cRobot from '../../../resource/robot.dat'
+import cReplay from '../../../resource/replay.dat'
+import cSpaceship from '../../../resource/spaceship.dat'
+import cRace from '../../../resource/race.dat'
+
 // Sounds
 import cRoll from '../../../resource/roll_01.mp3'
 import cClick from '../../../resource/click_02.mp3'
@@ -157,8 +163,10 @@ export class MouseCursor {
 
 export class Resource {
     static paths = {
-        'cReplay': 'resource/replay.dat',
-        'cRobot': 'resource/robot.dat',
+        cReplay: cReplay,
+        cRobot: cRobot,
+        cSpaceship: cSpaceship,
+        cRace: cRace,
     }
 
     static textures = {

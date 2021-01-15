@@ -69,7 +69,6 @@ export class GuiTextInput extends Container
 				zIndex: 1000,
 				width: `${w}px`,
 				height: `${h}px`,
-				textAlign: `center`
 			},
 			box: (w:number, h:number, state: string) => {
 				const backgroundSprite = new Sprite()

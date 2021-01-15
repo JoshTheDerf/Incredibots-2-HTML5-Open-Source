@@ -65,6 +65,7 @@ import { ContactListener } from "./ContactListener";
 import { Rectangle } from "../Parts/Rectangle";
 import { Circle } from "../Parts/Circle";
 import { GuiTextInput } from "../Gui/GuiTextInput";
+import { b2DebugDraw } from "./Graphics/b2DebugDraw";
 
 export class ControllerGame extends Controller {
 		//======================
@@ -289,7 +290,7 @@ export class ControllerGame extends Controller {
 			this.draw.m_drawYOff = -100;
 			if (ControllerGameGlobals.showColours) this.draw.m_fillAlpha = 1.0;
 			else this.draw.m_fillAlpha = 0.5;
-			// TODO: Figure out if we need this at all. this.draw.m_drawFlags = b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit;
+			this.draw.m_drawFlags = b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit;
 
 			if (ControllerGameGlobals.playingReplay) {
 				ControllerGameGlobals.replay.cont = this;
@@ -814,13 +815,13 @@ export class ControllerGame extends Controller {
 			var curIndex:number = 0;
 			for (var i:number = 0; i < this.allParts.length; i++) {
 				if (this.allParts[i] instanceof ShapePart && !this.allParts[i].isStatic && !Util.ObjectInArray(this.allParts[i].GetBody(), bodiesUsed)) {
-					this.allParts[i].GetBody().SetXForm(syncPoint.positions[curIndex], syncPoint.angles[curIndex]);
+					this.allParts[i].GetBody().SetTransform((new b2Transform().SetPositionAngle(syncPoint.positions[curIndex], syncPoint.angles[curIndex])));
 					curIndex++;
 					bodiesUsed.push(this.allParts[i].GetBody());
 				}
 			}
 			for (i = 0; i < ControllerGameGlobals.cannonballs.length; i++) {
-				ControllerGameGlobals.cannonballs[i].SetXForm(syncPoint.cannonballPositions[i], 0);
+				ControllerGameGlobals.cannonballs[i].SetTransform((new b2Transform().SetPositionAngle(syncPoint.cannonballPositions[i], 0)));
 			}
 		}
 
@@ -833,7 +834,7 @@ export class ControllerGame extends Controller {
 					var x:number = this.replaySplineXs[0][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineXs[1][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineXs[2][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * this.replaySplineXs[3][syncPointIndex][curIndex]));
 					var y:number = this.replaySplineYs[0][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineYs[1][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineYs[2][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * this.replaySplineYs[3][syncPointIndex][curIndex]));
 					var angle:number = this.replaySplineAngles[0][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineAngles[1][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineAngles[2][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * this.replaySplineAngles[3][syncPointIndex][curIndex]));
-					this.allParts[i].GetBody().SetXForm(Util.Vector(x, y), angle);
+					this.allParts[i].GetBody().SetTransform((new b2Transform().SetPositionAngle(Util.Vector(x, y), angle)));
 					curIndex++;
 					bodiesUsed.push(this.allParts[i].GetBody());
 				}
@@ -843,9 +844,9 @@ export class ControllerGame extends Controller {
 					var frameDiff:number = syncPoint2.frame - syncPoint1.frame;
 					var newX:number = (syncPoint1.cannonballPositions[i].x * (syncPoint2.frame - this.frameCounter) + syncPoint2.cannonballPositions[i].x * (this.frameCounter - syncPoint1.frame)) / frameDiff;
 					var newY:number = (syncPoint1.cannonballPositions[i].y * (syncPoint2.frame - this.frameCounter) + syncPoint2.cannonballPositions[i].y * (this.frameCounter - syncPoint1.frame)) / frameDiff;
-					ControllerGameGlobals.cannonballs[i].SetXForm(Util.Vector(newX, newY), 0);
+					ControllerGameGlobals.cannonballs[i].SetTransform((new b2Transform().SetPositionAngle(Util.Vector(newX, newY), 0)));
 				} else {
-					ControllerGameGlobals.cannonballs[i].SetXForm(syncPoint2.cannonballPositions[i], 0);
+					ControllerGameGlobals.cannonballs[i].SetTransform((new b2Transform().SetPositionAngle(syncPoint2.cannonballPositions[i], 0)));
 				}
 			}
 		}
