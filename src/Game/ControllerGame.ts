@@ -3371,7 +3371,7 @@ export class ControllerGame extends Controller {
 
 		public fixateBox(value: boolean):void {
 			if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof ShapePart) {
-				(this.selectedParts[0] as ShapePart).isStatic = valueed;
+				(this.selectedParts[0] as ShapePart).isStatic = value;
 				ControllerGameGlobals.curRobotID = "";
 				this.redrawRobot = true;
 				this.AddAction(new ShapeCheckboxAction(this.selectedParts[0], ShapeCheckboxAction.FIXATE_TYPE, value));

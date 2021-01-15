@@ -1032,7 +1032,7 @@ export class PartEditWindow extends GuiWindow
 		this.m_collisionBox.selected = shape.collide;
 		this.m_collisionBox.visible = (this.cont.controllerType === 'sandbox') || ((this.cont.controllerType === 'challenge') && (ControllerChallenge.challenge.nonCollidingAllowed || !ControllerChallenge.playChallengeMode));
 		this.m_fixateBox.selected = shape.isStatic;
-		this.m_fixateBox.visible = (this.cont.conditionsButton === 'sandbox') || ((this.cont.controllerType === 'challenge') && (ControllerChallenge.challenge.fixateAllowed || !ControllerChallenge.playChallengeMode));
+		this.m_fixateBox.visible = (this.cont.controllerType === 'sandbox') || ((this.cont.controllerType === 'challenge') && (ControllerChallenge.challenge.fixateAllowed || !ControllerChallenge.playChallengeMode));
 		this.m_cameraBox.selected = shape.isCameraFocus;
 		this.m_outlineBox.selected = shape.outline;
 		this.m_terrainBox.selected = shape.terrain;
