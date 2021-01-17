@@ -1,4 +1,4 @@
-import { ControllerChallenge, ControllerSandbox, Database, Resource } from "../../imports";
+import { ControllerChallenge, ControllerGameGlobals, ControllerSandbox, Database, Resource } from "../../imports";
 
 export class ControllerRace extends ControllerChallenge {
   constructor() {
@@ -22,7 +22,7 @@ export class ControllerRace extends ControllerChallenge {
 
   public Init(e: Event): void {
     super.Init(e);
-    if (!viewingUnsavedReplay) this.ShowTutorialDialog(107, true);
+    if (!ControllerGameGlobals.viewingUnsavedReplay) this.ShowTutorialDialog(107, true);
   }
 
   public CloseTutorialDialog(num: number): void {

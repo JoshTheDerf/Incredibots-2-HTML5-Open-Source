@@ -1,5 +1,5 @@
 import { Container, Text, TextStyle } from "pixi.js";
-import { ControllerGame, ControllerGameGlobals, GuiButton, GuiWindow, Main, Resource, Util } from "../imports";
+import { ControllerChallenge, ControllerGame, ControllerGameGlobals, GuiButton, GuiWindow, Main, Resource, Util } from "../imports";
 
 export class MainEditPanel extends GuiWindow {
   private cont: ControllerGame;

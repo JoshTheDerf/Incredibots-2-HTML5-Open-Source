@@ -1,5 +1,5 @@
 import { b2AABB } from "@box2d/core";
-import { Challenge, ControllerSandbox, Database, Main, Replay, Robot, TextPart } from "../imports";
+import { Challenge, ControllerGameGlobals, ControllerSandbox, Database, Main, Replay, Robot, TextPart } from "../imports";
 
 export class ControllerChallenge extends ControllerSandbox {
   public static challenge: Challenge;
@@ -268,7 +268,7 @@ export class ControllerChallenge extends ControllerSandbox {
       } else {
         if (userName != "_Public") {
           this.AddSyncPoint();
-          if (viewingUnsavedReplay)
+          if (ControllerGameGlobals.viewingUnsavedReplay)
             Database.SaveReplay(
               userName,
               password,

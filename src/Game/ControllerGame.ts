@@ -76,8 +76,10 @@ import {
 	TextSizeChangeAction,
 	Thrusters,
 	Triangle,
+	TutorialWindow,
 	Util
 } from "../imports";
+import { Gradient } from "./Graphics/Gradient";
 
 export class ControllerGame extends Controller {
   //======================
@@ -407,16 +409,16 @@ export class ControllerGame extends Controller {
     ControllerGameGlobals.initZoom = Number.MAX_VALUE;
 
     if (this.controllerType === "challenge") {
-      ControllerGameGlobals.minDensity = this.challenge.minDensity == -Number.MAX_VALUE ? 1 : this.challenge.minDensity;
-      ControllerGameGlobals.maxDensity = this.challenge.maxDensity == Number.MAX_VALUE ? 30 : this.challenge.maxDensity;
+      ControllerGameGlobals.minDensity = ControllerChallenge.challenge.minDensity == -Number.MAX_VALUE ? 1 : ControllerChallenge.challenge.minDensity;
+      ControllerGameGlobals.maxDensity = ControllerChallenge.challenge.maxDensity == Number.MAX_VALUE ? 30 : ControllerChallenge.challenge.maxDensity;
       ControllerGameGlobals.maxRJStrength =
-        this.challenge.maxRJStrength == Number.MAX_VALUE ? 30 : this.challenge.maxRJStrength;
-      ControllerGameGlobals.maxRJSpeed = this.challenge.maxRJSpeed == Number.MAX_VALUE ? 30 : this.challenge.maxRJSpeed;
+        ControllerChallenge.challenge.maxRJStrength == Number.MAX_VALUE ? 30 : ControllerChallenge.challenge.maxRJStrength;
+      ControllerGameGlobals.maxRJSpeed = ControllerChallenge.challenge.maxRJSpeed == Number.MAX_VALUE ? 30 : ControllerChallenge.challenge.maxRJSpeed;
       ControllerGameGlobals.maxSJStrength =
-        this.challenge.maxSJStrength == Number.MAX_VALUE ? 30 : this.challenge.maxSJStrength;
-      ControllerGameGlobals.maxSJSpeed = this.challenge.maxSJSpeed == Number.MAX_VALUE ? 30 : this.challenge.maxSJSpeed;
+        ControllerChallenge.challenge.maxSJStrength == Number.MAX_VALUE ? 30 : ControllerChallenge.challenge.maxSJStrength;
+      ControllerGameGlobals.maxSJSpeed = ControllerChallenge.challenge.maxSJSpeed == Number.MAX_VALUE ? 30 : ControllerChallenge.challenge.maxSJSpeed;
       ControllerGameGlobals.maxThrusterStrength =
-        this.challenge.maxThrusterStrength == Number.MAX_VALUE ? 30 : this.challenge.maxThrusterStrength;
+        ControllerChallenge.challenge.maxThrusterStrength == Number.MAX_VALUE ? 30 : ControllerChallenge.challenge.maxThrusterStrength;
     } else {
       ControllerGameGlobals.minDensity = 1;
       ControllerGameGlobals.maxDensity = 30;
@@ -447,37 +449,28 @@ export class ControllerGame extends Controller {
 
     var childIndex: number = this.sSky.lastCloudIndex + 1;
     for (i = 0; i < this.NumBuildingAreas(); i++) {
-      var m_buildArea: Sprite = new Sprite();
-      m_buildArea.graphics.lineStyle(6, 0xdeb05d);
+      var m_buildArea: Graphics = new Graphics();
+      m_buildArea.lineStyle(6, 0xdeb05d);
       var m: Matrix = new Matrix();
-      m.createGradientBox(700, 550, Math.PI / 2);
-      m_buildArea.graphics.beginGradientFill(GradientType.LINEAR, [0xff8f17, 0xffc150], [0.15, 0.15], [0, 255], m);
-      m_buildArea.graphics.drawRect(0, 0, 700, 550);
-      m_buildArea.graphics.endFill();
+      m_buildArea.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#ff8f17', '#ffc150']), matrix: m });
+      m_buildArea.drawRect(0, 0, 700, 550);
+      m_buildArea.endFill();
       this.addChildAt(m_buildArea, childIndex);
       this.m_buildAreas.push(m_buildArea);
-      var m_badBuildArea: Sprite = new Sprite();
-      m_badBuildArea.graphics.lineStyle(6, 0xde6a5d);
+      var m_badBuildArea: Graphics = new Graphics();
+      m_badBuildArea.lineStyle(6, 0xde6a5d);
       m = new Matrix();
-      m.createGradientBox(700, 550, Math.PI / 2);
-      m_badBuildArea.graphics.beginGradientFill(GradientType.LINEAR, [0xff4d17, 0xff8f50], [0.15, 0.15], [0, 255], m);
-      m_badBuildArea.graphics.drawRect(0, 0, 700, 550);
-      m_badBuildArea.graphics.endFill();
+      m_badBuildArea.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#ff4d17', '#ff8f50']), matrix: m });
+      m_badBuildArea.drawRect(0, 0, 700, 550);
+      m_badBuildArea.endFill();
       this.addChildAt(m_badBuildArea, childIndex);
       this.m_badBuildAreas.push(m_badBuildArea);
-      var m_selectedBuildArea: Sprite = new Sprite();
-      m_selectedBuildArea.graphics.lineStyle(6, 0xfeca5d);
+      var m_selectedBuildArea: Graphics = new Graphics();
+      m_selectedBuildArea.lineStyle(6, 0xfeca5d);
       m = new Matrix();
-      m.createGradientBox(700, 550, Math.PI / 2);
-      m_selectedBuildArea.graphics.beginGradientFill(
-        GradientType.LINEAR,
-        [0xff4d17, 0xff8f50],
-        [0.15, 0.15],
-        [0, 255],
-        m
-      );
-      m_selectedBuildArea.graphics.drawRect(0, 0, 700, 550);
-      m_selectedBuildArea.graphics.endFill();
+      m_selectedBuildArea.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#ff4d17', '#ff8f50']), matrix: m })
+      m_selectedBuildArea.drawRect(0, 0, 700, 550);
+      m_selectedBuildArea.endFill();
       this.addChildAt(m_selectedBuildArea, childIndex);
       this.m_selectedBuildAreas.push(m_selectedBuildArea);
     }
@@ -665,7 +658,7 @@ export class ControllerGame extends Controller {
         false,
         ControllerGameGlobals.showJoints,
         ControllerGameGlobals.showOutlines,
-        this.constructor.name === "ControllerChallenge" ? this.challenge : undefined
+        this.constructor.name === "ControllerChallenge" ? ControllerChallenge.challenge : undefined
       );
       this.redrawRobot = false;
     }
@@ -760,7 +753,7 @@ export class ControllerGame extends Controller {
       Main.ShowMouse();
     }
 
-    if (!this.paused && this.ChallengeOver()) {
+    if (!this.paused && ControllerChallenge.challengeOver()) {
       this.wonChallenge = true;
       this.pauseButton(new MouseEvent(""));
       if (!ControllerGameGlobals.playingReplay || ControllerGameGlobals.viewingUnsavedReplay) {
@@ -5383,7 +5376,7 @@ export class ControllerGame extends Controller {
           "This replay instanceof saved for a score",
           ControllerGameGlobals.curRobotID,
           new Robot(this.allParts, ControllerSandbox.settings),
-          this.ChallengeOver() ? this.GetScore() : -1,
+          ControllerChallenge.challengeOver() ? this.GetScore() : -1,
           ControllerGameGlobals.curChallengeID,
           1,
           this.finishSavingReplay
@@ -5403,7 +5396,7 @@ export class ControllerGame extends Controller {
           "This replay instanceof saved for a score",
           ControllerGameGlobals.curRobotID,
           new Robot(this.allParts, ControllerSandbox.settings),
-          this.ChallengeOver() ? this.GetScore() : -1,
+          ControllerChallenge.challengeOver() ? this.GetScore() : -1,
           ControllerGameGlobals.curChallengeID,
           1,
           this.finishSavingReplay
@@ -6191,7 +6184,7 @@ export class ControllerGame extends Controller {
             "This replay instanceof saved for a score",
             ControllerGameGlobals.curRobotID,
             new Robot(this.allParts, ControllerSandbox.settings),
-            this.ChallengeOver() ? this.GetScore() : -1,
+            ControllerChallenge.challengeOver() ? this.GetScore() : -1,
             ControllerGameGlobals.curChallengeID,
             1,
             this.finishSavingReplay
@@ -6211,7 +6204,7 @@ export class ControllerGame extends Controller {
             "This replay instanceof saved for a score",
             ControllerGameGlobals.curRobotID,
             new Robot(this.allParts, ControllerSandbox.settings),
-            this.ChallengeOver() ? this.GetScore() : -1,
+            ControllerChallenge.challengeOver() ? this.GetScore() : -1,
             ControllerGameGlobals.curChallengeID,
             1,
             this.finishSavingReplay

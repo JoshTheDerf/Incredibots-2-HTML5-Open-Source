@@ -29,17 +29,19 @@ export * from './Gui/GuiSlider'
 export * from './Gui/GuiWindow'
 export * from './Gui/GuiCombobox'
 export * from './Gui/GuiComboboxItem'
+export * from './Gui/GuiTextInput'
 export * from './Gui/GuiTextArea'
 export * from './Gui/DropDownMenu'
 export * from './Gui/DropDownMenuItem'
 
 // GUI Windows
+export * from './Gui/TutorialSelectWindow'
+export * from './Gui/TutorialWindow'
+export * from './Gui/AdvancedSandboxWindow'
+export * from './Gui/ImportWindow'
+export * from './Gui/MainEditPanel'
 export * from './Gui/PartEditWindow'
 export * from './Gui/ColourChangeWindow'
-export * from './Gui/ImportWindow'
-export * from './Gui/AdvancedSandboxWindow'
-export * from './Gui/GuiTextInput'
-export * from './Gui/MainEditPanel'
 
 // Game Core
 export * from './Game/SandboxSettings'

@@ -1,7 +1,7 @@
 // permanent mochi ID for version 0.02: 1913f89f65e17063
 
 import { Application, Container } from "pixi.js";
-import { Controller, ControllerGameGlobals, ControllerMainMenu, ControllerSandbox, FpsCounter, Input, LSOManager, SandboxSettings } from "./imports";
+import { Controller, ControllerChallenge, ControllerClimb, ControllerGame, ControllerGameGlobals, ControllerMainMenu, ControllerMonkeyBars, ControllerRace, ControllerSandbox, ControllerSpaceship, FpsCounter, Input, LSOManager, SandboxSettings } from "./imports";
 
 export class Main {
 
@@ -149,8 +149,6 @@ export class Main {
 
 			Main.firstFrame = false;
 		}
-
-		//trace(getTimer());
 
 		// Reset
 		if (Main.changeControllers) {

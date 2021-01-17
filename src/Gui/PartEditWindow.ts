@@ -3,6 +3,7 @@ import {
   Cannon,
   Circle,
   ColourChangeWindow,
+	ControllerChallenge,
   ControllerGame,
   ControllerGameGlobals,
   GuiButton,

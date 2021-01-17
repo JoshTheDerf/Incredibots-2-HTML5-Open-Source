@@ -1,6 +1,6 @@
 import { b2AABB } from "@box2d/core";
 import { Graphics, Matrix } from "pixi.js";
-import { Circle, ControllerChallenge, Gradient, Part, Rectangle, Triangle, WinCondition } from "../../imports";
+import { Circle, ControllerChallenge, ControllerGameGlobals, Gradient, Part, Rectangle, Triangle, WinCondition } from "../../imports";
 
 export class ControllerMonkeyBars extends ControllerChallenge {
   private sGround1: Graphics;
@@ -581,7 +581,7 @@ export class ControllerMonkeyBars extends ControllerChallenge {
 
   public Init(e: Event): void {
     super.Init(e);
-    if (!viewingUnsavedReplay) this.ShowTutorialDialog(107, true);
+    if (!ControllerGameGlobals.viewingUnsavedReplay) this.ShowTutorialDialog(107, true);
   }
 
   public CloseTutorialDialog(num: number): void {

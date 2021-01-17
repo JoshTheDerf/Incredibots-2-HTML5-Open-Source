@@ -25,6 +25,7 @@ import {
   ShapePart,
   Sky,
   Thrusters,
+	TutorialSelectWindow,
   Util,
 } from "../imports";
 
@@ -265,7 +266,6 @@ export class ControllerMainMenu extends Controller {
       GuiButton.PINK,
       style
     );
-    button.disabled = true;
     this.levelSelectGui.addChild(button);
     button = new GuiButton("Sandbox Mode", 390, 109, 200, 65, this.sandboxButton.bind(this), GuiButton.PINK, style);
     this.levelSelectGui.addChild(button);

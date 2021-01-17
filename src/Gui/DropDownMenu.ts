@@ -309,7 +309,7 @@ export class DropDownMenu extends Graphics {
       item.y = 40;
       this.m_currentMenu.addChild(item);
     } else if (
-      this.cont.constructor.name === "ControllerChallenge" &&
+      this.cont.controllerType === 'challenge' &&
       ControllerGameGlobals.curChallengeID != "" &&
       ControllerGameGlobals.curChallengePublic
     ) {
