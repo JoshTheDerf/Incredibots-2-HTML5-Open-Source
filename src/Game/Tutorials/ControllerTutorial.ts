@@ -1,11 +1,11 @@
 import { Graphics, Matrix } from "pixi.js";
-import { Circle } from "../../Parts/Circle";
-import { Part } from "../../Parts/Part";
-import { Rectangle } from "../../Parts/Rectangle";
-import { Triangle } from "../../Parts/Triangle";
-import { ControllerGame } from "../ControllerGame";
-import { Gradient } from "../Graphics/Gradient";
-import { Sky } from "../Graphics/Sky";
+import { Circle } from "../../imports";
+import { Part } from "../../imports";
+import { Rectangle } from "../../imports";
+import { Triangle } from "../../imports";
+import { ControllerGame } from "../../imports";
+import { Gradient } from "../../imports";
+import { Sky } from "../../imports";
 
 export class ControllerTutorial extends ControllerGame
 {

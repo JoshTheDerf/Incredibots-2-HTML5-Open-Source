@@ -1,10 +1,10 @@
-import { Cannon } from "../Parts/Cannon";
-import { Part } from "../Parts/Part";
-import { PrismaticJoint } from "../Parts/PrismaticJoint";
-import { RevoluteJoint } from "../Parts/RevoluteJoint";
-import { TextPart } from "../Parts/TextPart";
-import { Thrusters } from "../Parts/Thrusters";
-import { Action } from "./Action";
+import { Cannon } from "../imports";
+import { Part } from "../imports";
+import { PrismaticJoint } from "../imports";
+import { RevoluteJoint } from "../imports";
+import { TextPart } from "../imports";
+import { Thrusters } from "../imports";
+import { Action } from "../imports";
 
 export class ControlKeyAction extends Action
 {

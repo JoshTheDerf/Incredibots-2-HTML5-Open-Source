@@ -3,11 +3,11 @@
 // Thanks James Ward and Zaseth!
 
 // This desparately needs to be cleaned up and brings in way too many dependencies, but it does at least work for loading basic robots.
-import { deflateSync, deflateRawSync, inflateSync, inflateRawSync } from 'zlib'
-import { LZMA } from 'lzma/src/lzma_worker.js'
-import { encodingExists, decode, encode } from 'iconv-lite'
+import { deflateSync, deflateRawSync, inflateSync, inflateRawSync } from "zlib";
+import { LZMA } from "lzma/src/lzma_worker.js";
+import { encodingExists, decode, encode } from "iconv-lite";
 
-import { CompressionAlgorithm, Endian, ObjectEncoding } from './ByteArrayEnums'
+import { CompressionAlgorithm, Endian, ObjectEncoding } from "../imports";
 
 const AMF0Types = {
   kNumberType: 0,
@@ -27,7 +27,7 @@ const AMF0Types = {
   kRecordsetType: 14,
   kXMLObjectType: 15,
   kTypedObjectType: 16,
-  kAvmPlusObjectType: 17
+  kAvmPlusObjectType: 17,
 };
 
 const AMF3Types = {
@@ -43,7 +43,7 @@ const AMF3Types = {
   kArrayType: 9,
   kObjectType: 10,
   kAvmPlusXmlType: 11,
-  kByteArrayType: 12
+  kByteArrayType: 12,
 };
 
 /**
@@ -52,13 +52,13 @@ const AMF3Types = {
  * @returns {Buffer}
  */
 const convert = (v) => {
-  if (Buffer.isBuffer(v)) return v
-  if (Array.isArray(v)) return Buffer.from(v)
-  if (v instanceof ArrayBuffer) return Buffer.from(new Uint8Array(v))
-  if (v instanceof Uint8Array) return Buffer.from(v)
-  if (Number.isInteger(v)) return Buffer.alloc(v)
-  return Buffer.alloc(0)
-}
+  if (Buffer.isBuffer(v)) return v;
+  if (Array.isArray(v)) return Buffer.from(v);
+  if (v instanceof ArrayBuffer) return Buffer.from(new Uint8Array(v));
+  if (v instanceof Uint8Array) return Buffer.from(v);
+  if (Number.isInteger(v)) return Buffer.alloc(v);
+  return Buffer.alloc(0);
+};
 
 /**
  * @exports
@@ -70,23 +70,23 @@ export class ByteArray {
    * @description The current position
    * @type {Number}
    */
-  _position
+  _position;
   /**
    * @private
    * @description The byte order
    * @type {String}
    */
-  _endian
+  _endian;
   /**
    * @private
    * @description The object encoding
    * @type {Number}
    */
-  _objectEncoding
+  _objectEncoding;
 
-  stringTable = []
-  objectTable = []
-  traitTable = []
+  stringTable = [];
+  objectTable = [];
+  traitTable = [];
 
   public buffer: Buffer;
 
@@ -94,30 +94,30 @@ export class ByteArray {
    * @constructor
    * @param {Buffer|Array|Number} buffer
    */
-  constructor(buffer:Buffer|ArrayBuffer|number = 0) {
+  constructor(buffer: Buffer | ArrayBuffer | number = 0) {
     /**
      * @description Holds the data
      * @type {Buffer}
      */
-    this.buffer = convert(buffer)
+    this.buffer = convert(buffer);
     /**
      * @private
      * @description The current position
      * @type {Number}
      */
-    this._position = 0
+    this._position = 0;
     /**
      * @private
      * @description The byte order
      * @type {String}
      */
-    this._endian = Endian.BIG_ENDIAN
+    this._endian = Endian.BIG_ENDIAN;
     /**
      * @private
      * @description The object encoding
      * @type {Number}
      */
-    this._objectEncoding = ObjectEncoding.AMF3
+    this._objectEncoding = ObjectEncoding.AMF3;
   }
 
   /**
@@ -125,7 +125,7 @@ export class ByteArray {
    * @returns {String}
    */
   get [Symbol.toStringTag]() {
-    return 'ByteArray'
+    return "ByteArray";
   }
 
   /**
@@ -133,7 +133,7 @@ export class ByteArray {
    * @returns {Number}
    */
   get position() {
-    return this._position
+    return this._position;
   }
 
   /**
@@ -142,9 +142,9 @@ export class ByteArray {
    */
   set position(value) {
     if (value >= 0) {
-      this._position = value
+      this._position = value;
     } else {
-      throw new TypeError(`Invalid value for position: '${value}'.`)
+      throw new TypeError(`Invalid value for position: '${value}'.`);
     }
   }
 
@@ -153,7 +153,7 @@ export class ByteArray {
    * @returns {String}
    */
   get endian() {
-    return this._endian
+    return this._endian;
   }
 
   /**
@@ -161,10 +161,10 @@ export class ByteArray {
    * @param {String} value
    */
   set endian(value) {
-    if (value === 'LE' || value === 'BE') {
-      this._endian = value
+    if (value === "LE" || value === "BE") {
+      this._endian = value;
     } else {
-      throw new TypeError(`Invalid value for endian: '${value}'.`)
+      throw new TypeError(`Invalid value for endian: '${value}'.`);
     }
   }
 
@@ -173,7 +173,7 @@ export class ByteArray {
    * @returns {Number}
    */
   get objectEncoding() {
-    return this._objectEncoding
+    return this._objectEncoding;
   }
 
   /**
@@ -182,9 +182,9 @@ export class ByteArray {
    */
   set objectEncoding(encoding) {
     if (encoding === ObjectEncoding.AMF0 || encoding === ObjectEncoding.AMF3) {
-      this._objectEncoding = encoding
+      this._objectEncoding = encoding;
     } else {
-      throw new Error(`Unknown object encoding: '${encoding}'.`)
+      throw new Error(`Unknown object encoding: '${encoding}'.`);
     }
   }
 
@@ -193,7 +193,7 @@ export class ByteArray {
    * @returns {Number}
    */
   get length() {
-    return this.buffer.length
+    return this.buffer.length;
   }
 
   /**
@@ -202,17 +202,17 @@ export class ByteArray {
    */
   set length(value) {
     if (!Number.isInteger(value) || value < 0) {
-      throw new TypeError(`Invalid value for length: '${value}'.`)
+      throw new TypeError(`Invalid value for length: '${value}'.`);
     }
 
     if (value === 0) {
-      this.clear()
+      this.clear();
     } else if (value !== this.length) {
       if (value < this.length) {
-        this.buffer = this.buffer.slice(0, value)
-        this._position = this.length
+        this.buffer = this.buffer.slice(0, value);
+        this._position = this.length;
       } else {
-        this._expand(value)
+        this._expand(value);
       }
     }
   }
@@ -222,7 +222,7 @@ export class ByteArray {
    * @returns {Number}
    */
   get bytesAvailable() {
-    return this.length - this._position
+    return this.length - this._position;
   }
 
   /**
@@ -233,11 +233,11 @@ export class ByteArray {
    * @returns {Number}
    */
   _readBufferFunc(func, pos) {
-    const value = this.buffer[`${func}${this._endian}`](this._position)
+    const value = this.buffer[`${func}${this._endian}`](this._position);
 
-    this._position += pos
+    this._position += pos;
 
-    return value
+    return value;
   }
 
   /**
@@ -248,10 +248,10 @@ export class ByteArray {
    * @param {Number} pos
    */
   _writeBufferFunc(value, func, pos) {
-    this._expand(pos)
+    this._expand(pos);
 
-    this.buffer[`${func}${this._endian}`](value, this._position)
-    this._position += pos
+    this.buffer[`${func}${this._endian}`](value, this._position);
+    this._position += pos;
   }
 
   /**
@@ -261,11 +261,11 @@ export class ByteArray {
    */
   _expand(value) {
     if (this.bytesAvailable < value) {
-      const old = this.buffer
-      const size = old.length + (value - this.bytesAvailable)
+      const old = this.buffer;
+      const size = old.length + (value - this.bytesAvailable);
 
-      this.buffer = Buffer.alloc(size)
-      old.copy(this.buffer)
+      this.buffer = Buffer.alloc(size);
+      old.copy(this.buffer);
     }
   }
 
@@ -277,17 +277,17 @@ export class ByteArray {
    * @returns {Number}
    */
   signedOverflow(value, bits) {
-    const sign = 1 << bits - 1
+    const sign = 1 << (bits - 1);
 
-    return (value & sign - 1) - (value & sign)
+    return (value & (sign - 1)) - (value & sign);
   }
 
   /**
    * @description Clears the buffer and sets the position to 0
    */
   clear() {
-    this.buffer = Buffer.alloc(0)
-    this._position = 0
+    this.buffer = Buffer.alloc(0);
+    this._position = 0;
   }
 
   /**
@@ -296,22 +296,22 @@ export class ByteArray {
    */
   async compress(algorithm = CompressionAlgorithm.ZLIB) {
     if (this.length === 0) {
-      return
+      return;
     }
 
-    algorithm = algorithm.toLowerCase()
+    algorithm = algorithm.toLowerCase();
 
     if (algorithm === CompressionAlgorithm.ZLIB) {
-      this.buffer = deflateSync(this.buffer, { level: 9 })
+      this.buffer = deflateSync(this.buffer, { level: 9 });
     } else if (algorithm === CompressionAlgorithm.DEFLATE) {
-      this.buffer = deflateRawSync(this.buffer)
+      this.buffer = deflateRawSync(this.buffer);
     } else if (algorithm === CompressionAlgorithm.LZMA) {
-      this.buffer = await LZMA.compress(this.buffer, 1)
+      this.buffer = await LZMA.compress(this.buffer, 1);
     } else {
-      throw new Error(`Invalid compression algorithm: '${algorithm}'.`)
+      throw new Error(`Invalid compression algorithm: '${algorithm}'.`);
     }
 
-    this._position = this.length
+    this._position = this.length;
   }
 
   /**
@@ -319,7 +319,7 @@ export class ByteArray {
    * @returns {Boolean}
    */
   readBoolean() {
-    return this.readByte() !== 0
+    return this.readByte() !== 0;
   }
 
   /**
@@ -327,7 +327,7 @@ export class ByteArray {
    * @returns {Number}
    */
   readByte() {
-    return this.buffer.readInt8(this._position++)
+    return this.buffer.readInt8(this._position++);
   }
 
   /**
@@ -338,22 +338,22 @@ export class ByteArray {
    */
   readBytes(bytes, offset = 0, length = 0) {
     if (length === 0) {
-      length = this.bytesAvailable
+      length = this.bytesAvailable;
     }
 
     if (length > this.bytesAvailable) {
-      throw new RangeError('End of buffer was encountered.')
+      throw new RangeError("End of buffer was encountered.");
     }
 
     if (bytes.length < offset + length) {
-      bytes._expand(offset + length)
+      bytes._expand(offset + length);
     }
 
     for (let i = 0; i < length; i++) {
-      bytes.buffer[i + offset] = this.buffer[i + this._position]
+      bytes.buffer[i + offset] = this.buffer[i + this._position];
     }
 
-    this._position += length
+    this._position += length;
   }
 
   /**
@@ -361,7 +361,7 @@ export class ByteArray {
    * @returns {Number}
    */
   readDouble() {
-    return this._readBufferFunc('readDouble', 8)
+    return this._readBufferFunc("readDouble", 8);
   }
 
   /**
@@ -369,7 +369,7 @@ export class ByteArray {
    * @returns {Number}
    */
   readFloat() {
-    return this._readBufferFunc('readFloat', 4)
+    return this._readBufferFunc("readFloat", 4);
   }
 
   /**
@@ -377,7 +377,7 @@ export class ByteArray {
    * @returns {Number}
    */
   readInt() {
-    return this._readBufferFunc('readInt32', 4)
+    return this._readBufferFunc("readInt32", 4);
   }
 
   /**
@@ -385,63 +385,58 @@ export class ByteArray {
    * @returns {BigInt}
    */
   readLong() {
-    return this._readBufferFunc('readBigInt64', 8)
+    return this._readBufferFunc("readBigInt64", 8);
   }
 
   readUInt29() {
     var value;
 
     // Each byte must be treated as unsigned
-    var b = this.readByte() & 0xFF;
+    var b = this.readByte() & 0xff;
 
-    if (b < 128)
-        return b;
+    if (b < 128) return b;
 
-    value = (b & 0x7F) << 7;
-    b = this.readByte() & 0xFF;
+    value = (b & 0x7f) << 7;
+    b = this.readByte() & 0xff;
 
-    if (b < 128)
-        return (value | b);
+    if (b < 128) return value | b;
 
-    value = (value | (b & 0x7F)) << 7;
-    b = this.readByte() & 0xFF;
+    value = (value | (b & 0x7f)) << 7;
+    b = this.readByte() & 0xff;
 
-    if (b < 128)
-        return (value | b);
+    if (b < 128) return value | b;
 
-    value = (value | (b & 0x7F)) << 8;
-    b = this.readByte() & 0xFF;
+    value = (value | (b & 0x7f)) << 8;
+    b = this.readByte() & 0xff;
 
-    return (value | b);
+    return value | b;
   }
 
   readUInt30() {
-    if (this.endian === Endian.BIG_ENDIAN) return this.readUInt30BE()
-    if (this.endian === Endian.LITTLE_ENDIAN) return this.readUInt30LE()
+    if (this.endian === Endian.BIG_ENDIAN) return this.readUInt30BE();
+    if (this.endian === Endian.LITTLE_ENDIAN) return this.readUInt30LE();
   }
 
   readUInt30BE() {
-      var ch1 = this.readByte();
-      var ch2 = this.readByte();
-      var ch3 = this.readByte();
-      var ch4 = this.readByte();
+    var ch1 = this.readByte();
+    var ch2 = this.readByte();
+    var ch3 = this.readByte();
+    var ch4 = this.readByte();
 
-      if (ch1 >= 64)
-          return undefined;
+    if (ch1 >= 64) return undefined;
 
-      return ch4 | (ch3 << 8) | (ch2 << 16) | (ch1 << 24);
+    return ch4 | (ch3 << 8) | (ch2 << 16) | (ch1 << 24);
   }
 
   readUInt30LE() {
-      var ch1 = this.readByte();
-      var ch2 = this.readByte();
-      var ch3 = this.readByte();
-      var ch4 = this.readByte();
+    var ch1 = this.readByte();
+    var ch2 = this.readByte();
+    var ch3 = this.readByte();
+    var ch4 = this.readByte();
 
-      if (ch4 >= 64)
-          return undefined;
+    if (ch4 >= 64) return undefined;
 
-      return ch1 | (ch2 << 8) | (ch3 << 16) | (ch4 << 24);
+    return ch1 | (ch2 << 8) | (ch3 << 16) | (ch4 << 24);
   }
 
   /**
@@ -450,24 +445,25 @@ export class ByteArray {
    * @param {String} charset
    * @returns {String}
    */
-  readMultiByte(length, charset = 'utf8') {
-    const position = this._position
-    this._position += length
+  readMultiByte(length, charset = "utf8") {
+    const position = this._position;
+    this._position += length;
 
     if (encodingExists(charset)) {
-      const b = this.buffer.slice(position, this._position)
-      const stripBOM = (charset === 'utf8' || charset === 'utf-8') && b.length >= 3 && b[0] === 0xEF && b[1] === 0xBB && b[2] === 0xBF
-      const value = decode(b, charset, { stripBOM })
+      const b = this.buffer.slice(position, this._position);
+      const stripBOM =
+        (charset === "utf8" || charset === "utf-8") && b.length >= 3 && b[0] === 0xef && b[1] === 0xbb && b[2] === 0xbf;
+      const value = decode(b, charset, { stripBOM });
 
-      stripBOM ? length -= 3 : 0
+      stripBOM ? (length -= 3) : 0;
 
       if (Buffer.byteLength(value) !== length) {
-        throw new RangeError('End of buffer was encountered.')
+        throw new RangeError("End of buffer was encountered.");
       }
 
-      return value
+      return value;
     } else {
-      throw new Error(`Invalid character set: '${charset}'.`)
+      throw new Error(`Invalid character set: '${charset}'.`);
     }
   }
 
@@ -483,21 +479,21 @@ export class ByteArray {
   }
 
   readXML() {
-      var xml = this.readUTFBytes(this.readUInt30());
+    var xml = this.readUTFBytes(this.readUInt30());
 
-      return this.stringToXML(xml);
+    return this.stringToXML(xml);
   }
 
   readStringAMF3() {
     var ref = this.readUInt29();
 
-    if ((ref & 1) == 0) // This is a reference
-        return this.stringTable[(ref >> 1)];
+    if ((ref & 1) == 0)
+      // This is a reference
+      return this.stringTable[ref >> 1];
 
-    var len = (ref >> 1);
+    var len = ref >> 1;
 
-    if (0 == len)
-        return "";
+    if (0 == len) return "";
 
     var str = this.readString(len);
 
@@ -507,27 +503,26 @@ export class ByteArray {
   }
 
   readTraits(ref) {
-      var traitInfo = {};
-      traitInfo.properties = [];
+    var traitInfo = {};
+    traitInfo.properties = [];
 
-      if ((ref & 3) == 1)
-          return this.traitTable[(ref >> 2)];
+    if ((ref & 3) == 1) return this.traitTable[ref >> 2];
 
-      traitInfo.externalizable = ((ref & 4) == 4);
+    traitInfo.externalizable = (ref & 4) == 4;
 
-      traitInfo.dynamic = ((ref & 8) == 8);
+    traitInfo.dynamic = (ref & 8) == 8;
 
-      traitInfo.count = (ref >> 4);
-      traitInfo.className = this.readStringAMF3();
+    traitInfo.count = ref >> 4;
+    traitInfo.className = this.readStringAMF3();
 
-      this.traitTable.push(traitInfo);
+    this.traitTable.push(traitInfo);
 
-      for (var i = 0; i < traitInfo.count; i++) {
-          var propName = this.readStringAMF3();
-          traitInfo.properties.push(propName);
-      }
+    for (var i = 0; i < traitInfo.count; i++) {
+      var propName = this.readStringAMF3();
+      traitInfo.properties.push(propName);
+    }
 
-      return traitInfo;
+    return traitInfo;
   }
 
   /**
@@ -536,9 +531,9 @@ export class ByteArray {
    */
   readObject() {
     if (this._objectEncoding == ObjectEncoding.AMF0) {
-        return this.readAMF0Object();
+      return this.readAMF0Object();
     } else if (this._objectEncoding == ObjectEncoding.AMF3) {
-        return this.readAMF3Object();
+      return this.readAMF3Object();
     }
   }
 
@@ -546,78 +541,76 @@ export class ByteArray {
     var marker = this.readByte();
 
     if (marker == AMF0Types.kNumberType) {
-        return this.readDouble();
+      return this.readDouble();
     } else if (marker == AMF0Types.kBooleanType) {
-        return this.readBoolean();
+      return this.readBoolean();
     } else if (marker == AMF0Types.kStringType) {
-        return this.readUTF();
-    } else if ((marker == AMF0Types.kObjectType) || (marker == AMF0Types.kECMAArrayType)) {
-        var o = {};
+      return this.readUTF();
+    } else if (marker == AMF0Types.kObjectType || marker == AMF0Types.kECMAArrayType) {
+      var o = {};
 
-        var ismixed = (marker == AMF0Types.kECMAArrayType);
+      var ismixed = marker == AMF0Types.kECMAArrayType;
 
-        var size = null;
-        if (ismixed)
-            this.readUInt30();
+      var size = null;
+      if (ismixed) this.readUInt30();
 
-        while (true) {
-            var c1 = this.readByte();
-            var c2 = this.readByte();
-            var name = this.readString((c1 << 8) | c2);
-            var k = this.readByte();
-            if (k == AMF0Types.kObjectEndType)
-                break;
+      while (true) {
+        var c1 = this.readByte();
+        var c2 = this.readByte();
+        var name = this.readString((c1 << 8) | c2);
+        var k = this.readByte();
+        if (k == AMF0Types.kObjectEndType) break;
 
-            this.position--;
+        this.position--;
 
-            o[name] = this.readObject();
-        }
+        o[name] = this.readObject();
+      }
 
-        return o;
+      return o;
     } else if (marker == AMF0Types.kStrictArrayType) {
-        var size = this.readInt();
+      var size = this.readInt();
 
-        var a = [];
+      var a = [];
 
-        for (var i = 0; i < size; ++i) {
-            a.push(this.readObject());
-        }
+      for (var i = 0; i < size; ++i) {
+        a.push(this.readObject());
+      }
 
-        return a;
+      return a;
     } else if (marker == AMF0Types.kTypedObjectType) {
-        var o = {};
+      var o = {};
 
-        var typeName = this.readUTF();
+      var typeName = this.readUTF();
 
-        var propertyName = this.readUTF();
-        var type = this.readByte();
-        while (type != kObjectEndType) {
-            var value = this.readObject();
-            o[propertyName] = value;
+      var propertyName = this.readUTF();
+      var type = this.readByte();
+      while (type != kObjectEndType) {
+        var value = this.readObject();
+        o[propertyName] = value;
 
-            propertyName = this.readUTF();
-            type = this.readByte();
-        }
+        propertyName = this.readUTF();
+        type = this.readByte();
+      }
 
-        return o;
+      return o;
     } else if (marker == AMF0Types.kAvmPlusObjectType) {
-        return this.readAMF3Object();
+      return this.readAMF3Object();
     } else if (marker == AMF0Types.kNullType) {
-        return null;
+      return null;
     } else if (marker == AMF0Types.kUndefinedType) {
-        return undefined;
+      return undefined;
     } else if (marker == AMF0Types.kReferenceType) {
-        var refNum = this.readUnsignedShort();
+      var refNum = this.readUnsignedShort();
 
-        var value = this.objectTable[refNum];
+      var value = this.objectTable[refNum];
 
-        return value;
+      return value;
     } else if (marker == AMF0Types.kDateType) {
-        return this.readDate();
+      return this.readDate();
     } else if (marker == AMF0Types.kLongStringType) {
-        return this.readUTFBytes(this.readUInt30());
+      return this.readUTFBytes(this.readUInt30());
     } else if (marker == AMF0Types.kXMLObjectType) {
-        return this.readXML();
+      return this.readXML();
     }
   }
 
@@ -625,143 +618,136 @@ export class ByteArray {
     var marker = this.readByte();
 
     if (marker == AMF3Types.kUndefinedType) {
-        return undefined;
+      return undefined;
     } else if (marker == AMF3Types.kNullType) {
-        return null;
+      return null;
     } else if (marker == AMF3Types.kFalseType) {
-        return false;
+      return false;
     } else if (marker == AMF3Types.kTrueType) {
-        return true;
+      return true;
     } else if (marker == AMF3Types.kIntegerType) {
-        var i = this.readUInt29();
+      var i = this.readUInt29();
 
-        return i;
+      return i;
     } else if (marker == AMF3Types.kDoubleType) {
-        return this.readDouble();
+      return this.readDouble();
     } else if (marker == AMF3Types.kStringType) {
-        return this.readStringAMF3();
+      return this.readStringAMF3();
     } else if (marker == AMF3Types.kXMLType) {
-        return this.readXML();
+      return this.readXML();
     } else if (marker == AMF3Types.kDateType) {
-        var ref = this.readUInt29();
+      var ref = this.readUInt29();
 
-        if ((ref & 1) == 0)
-            return this.objectTable[(ref >> 1)];
+      if ((ref & 1) == 0) return this.objectTable[ref >> 1];
 
-        var d = this.readDouble();
-        var value = new Date(d);
-        this.objectTable.push(value);
+      var d = this.readDouble();
+      var value = new Date(d);
+      this.objectTable.push(value);
 
-        return value;
+      return value;
     } else if (marker == AMF3Types.kArrayType) {
-        var ref = this.readUInt29();
+      var ref = this.readUInt29();
 
-        if ((ref & 1) == 0)
-            return this.objectTable[(ref >> 1)];
+      if ((ref & 1) == 0) return this.objectTable[ref >> 1];
 
-        var len = (ref >> 1);
+      var len = ref >> 1;
 
-        var key = this.readStringAMF3();
+      var key = this.readStringAMF3();
 
-        if (key == "") {
-            var a = [];
-
-            for (var i = 0; i < len; i++) {
-                var value = this.readObject();
-
-                a.push(value);
-            }
-
-            return a;
-        }
-
-        // mixed array
-        var result = {};
-
-        while (key != "") {
-            result[key] = this.readObject();
-            key = this.readStringAMF3();
-        }
+      if (key == "") {
+        var a = [];
 
         for (var i = 0; i < len; i++) {
-            result[i] = this.readObject();
+          var value = this.readObject();
+
+          a.push(value);
         }
 
-        return result;
+        return a;
+      }
+
+      // mixed array
+      var result = {};
+
+      while (key != "") {
+        result[key] = this.readObject();
+        key = this.readStringAMF3();
+      }
+
+      for (var i = 0; i < len; i++) {
+        result[i] = this.readObject();
+      }
+
+      return result;
     } else if (marker == AMF3Types.kObjectType) {
-        var o = {};
+      var o = {};
 
-        this.objectTable.push(o);
+      this.objectTable.push(o);
 
-        var ref = this.readUInt29();
+      var ref = this.readUInt29();
 
-        if ((ref & 1) == 0)
-            return this.objectTable[(ref >> 1)];
+      if ((ref & 1) == 0) return this.objectTable[ref >> 1];
 
-        var ti = this.readTraits(ref);
-        var className = ti.className;
-        var externalizable = ti.externalizable;
+      var ti = this.readTraits(ref);
+      var className = ti.className;
+      var externalizable = ti.externalizable;
 
-        if (externalizable) {
-            o = this.readObject();
-        } else {
-            var len = ti.properties.length;
-
-            for (var i = 0; i < len; i++) {
-                var propName = ti.properties[i];
-
-                var value = this.readObject();
-
-                o[propName] = value;
-            }
-
-            if (ti.dynamic) {
-                for (;;) {
-                    var name = this.readStringAMF3();
-                    if (name == null || name.length == 0) break;
-
-                    var value = this.readObject();
-                    o[name] = value;
-                }
-            }
-        }
-
-        return o;
-    } else if (marker == AMF3Types.kAvmPlusXmlType) {
-        var ref = this.readUInt29();
-
-        if ((ref & 1) == 0)
-            return this.stringToXML(this.objectTable[(ref >> 1)]);
-
-        var len = (ref >> 1);
-
-        if (0 == len)
-            return null;
-
-
-        var str = this.readString(len);
-
-        var xml = this.stringToXML(str);
-
-        this.objectTable.push(xml);
-
-        return xml;
-    } else if (marker == AMF3Types.kByteArrayType) {
-        var ref = this.readUInt29();
-        if ((ref & 1) == 0)
-            return this.objectTable[(ref >> 1)];
-
-        var len = (ref >> 1);
-
-        var ba = new ByteArray();
-
-        this.objectTable.push(ba);
+      if (externalizable) {
+        o = this.readObject();
+      } else {
+        var len = ti.properties.length;
 
         for (var i = 0; i < len; i++) {
-            ba.writeByte(this.readByte());
+          var propName = ti.properties[i];
+
+          var value = this.readObject();
+
+          o[propName] = value;
         }
 
-        return ba;
+        if (ti.dynamic) {
+          for (;;) {
+            var name = this.readStringAMF3();
+            if (name == null || name.length == 0) break;
+
+            var value = this.readObject();
+            o[name] = value;
+          }
+        }
+      }
+
+      return o;
+    } else if (marker == AMF3Types.kAvmPlusXmlType) {
+      var ref = this.readUInt29();
+
+      if ((ref & 1) == 0) return this.stringToXML(this.objectTable[ref >> 1]);
+
+      var len = ref >> 1;
+
+      if (0 == len) return null;
+
+      var str = this.readString(len);
+
+      var xml = this.stringToXML(str);
+
+      this.objectTable.push(xml);
+
+      return xml;
+    } else if (marker == AMF3Types.kByteArrayType) {
+      var ref = this.readUInt29();
+      if ((ref & 1) == 0) return this.objectTable[ref >> 1];
+
+      var len = ref >> 1;
+
+      var ba = new ByteArray();
+
+      this.objectTable.push(ba);
+
+      for (var i = 0; i < len; i++) {
+        ba.writeByte(this.readByte());
+      }
+
+      return ba;
     }
   }
 
@@ -772,13 +758,13 @@ export class ByteArray {
   }
 
   readString(len: number) {
-      var str = "";
+    var str = "";
 
-      while (len > 0) {
-          str += String.fromCharCode(this.readUnsignedByte());
-          len--;
-      }
-      return str;
+    while (len > 0) {
+      str += String.fromCharCode(this.readUnsignedByte());
+      len--;
+    }
+    return str;
   }
 
   /**
@@ -786,7 +772,7 @@ export class ByteArray {
    * @returns {Number}
    */
   readShort() {
-    return this._readBufferFunc('readInt16', 2)
+    return this._readBufferFunc("readInt16", 2);
   }
 
   /**
@@ -794,7 +780,7 @@ export class ByteArray {
    * @returns {Number}
    */
   readUnsignedByte() {
-    return this.buffer.readUInt8(this._position++)
+    return this.buffer.readUInt8(this._position++);
   }
 
   /**
@@ -802,7 +788,7 @@ export class ByteArray {
    * @returns {Number}
    */
   readUnsignedInt() {
-    return this._readBufferFunc('readUInt32', 4)
+    return this._readBufferFunc("readUInt32", 4);
   }
 
   /**
@@ -810,7 +796,7 @@ export class ByteArray {
    * @returns {Number}
    */
   readUnsignedShort() {
-    return this._readBufferFunc('readUInt16', 2)
+    return this._readBufferFunc("readUInt16", 2);
   }
 
   /**
@@ -818,7 +804,7 @@ export class ByteArray {
    * @returns {BigInt}
    */
   readUnsignedLong() {
-    return this._readBufferFunc('readBigUInt64', 8)
+    return this._readBufferFunc("readBigUInt64", 8);
   }
 
   /**
@@ -826,7 +812,7 @@ export class ByteArray {
    * @returns {String}
    */
   readUTF() {
-    return this.readMultiByte(this.readUnsignedShort())
+    return this.readMultiByte(this.readUnsignedShort());
   }
 
   /**
@@ -835,7 +821,7 @@ export class ByteArray {
    * @returns {String}
    */
   readUTFBytes(length) {
-    return this.readMultiByte(length)
+    return this.readMultiByte(length);
   }
 
   /**
@@ -843,7 +829,7 @@ export class ByteArray {
    * @returns {Object}
    */
   toJSON() {
-    return Object.assign({}, this.buffer.toJSON().data)
+    return Object.assign({}, this.buffer.toJSON().data);
   }
 
   /**
@@ -851,11 +837,11 @@ export class ByteArray {
    * @param {String} charset
    * @returns {String}
    */
-  toString(charset = 'utf8') {
+  toString(charset = "utf8") {
     if (encodingExists(charset)) {
-      return decode(this.buffer, charset)
+      return decode(this.buffer, charset);
     } else {
-      throw new Error(`Invalid character set: '${charset}'.`)
+      throw new Error(`Invalid character set: '${charset}'.`);
     }
   }
 
@@ -865,22 +851,22 @@ export class ByteArray {
    */
   async uncompress(algorithm = CompressionAlgorithm.ZLIB) {
     if (this.length === 0) {
-      return
+      return;
     }
 
-    algorithm = algorithm.toLowerCase()
+    algorithm = algorithm.toLowerCase();
 
     if (algorithm === CompressionAlgorithm.ZLIB) {
-      this.buffer = inflateSync(this.buffer, { level: 9 })
+      this.buffer = inflateSync(this.buffer, { level: 9 });
     } else if (algorithm === CompressionAlgorithm.DEFLATE) {
-      this.buffer = inflateRawSync(this.buffer)
+      this.buffer = inflateRawSync(this.buffer);
     } else if (algorithm === CompressionAlgorithm.LZMA) {
-      this.buffer = await LZMA.decompress(this.buffer)
+      this.buffer = await LZMA.decompress(this.buffer);
     } else {
-      throw new Error(`Invalid decompression algorithm: '${algorithm}'.`)
+      throw new Error(`Invalid decompression algorithm: '${algorithm}'.`);
     }
 
-    this._position = 0
+    this._position = 0;
   }
 
   /**
@@ -888,7 +874,7 @@ export class ByteArray {
    * @param {Boolean} value
    */
   writeBoolean(value) {
-    this.writeByte(value ? 1 : 0)
+    this.writeByte(value ? 1 : 0);
   }
 
   /**
@@ -896,8 +882,8 @@ export class ByteArray {
    * @param {Number} value
    */
   writeByte(value) {
-    this._expand(1)
-    this.buffer.writeInt8(this.signedOverflow(value, 8), this._position++)
+    this._expand(1);
+    this.buffer.writeInt8(this.signedOverflow(value, 8), this._position++);
   }
 
   /**
@@ -908,24 +894,24 @@ export class ByteArray {
    */
   writeBytes(bytes, offset = 0, length = 0) {
     if (length === 0) {
-      length = bytes.length - offset
+      length = bytes.length - offset;
     }
 
-    this._expand(length)
+    this._expand(length);
 
     for (let i = 0; i < length; i++) {
-      this.buffer[i + this._position] = bytes.buffer[i + offset]
+      this.buffer[i + this._position] = bytes.buffer[i + offset];
     }
 
-    this._position += length
+    this._position += length;
   }
 
   /**
-  * @description Writes a double
-  * @param {Number} value
-  */
+   * @description Writes a double
+   * @param {Number} value
+   */
   writeDouble(value) {
-    this._writeBufferFunc(value, 'writeDouble', 8)
+    this._writeBufferFunc(value, "writeDouble", 8);
   }
 
   /**
@@ -933,7 +919,7 @@ export class ByteArray {
    * @param {Number} value
    */
   writeFloat(value) {
-    this._writeBufferFunc(value, 'writeFloat', 4)
+    this._writeBufferFunc(value, "writeFloat", 4);
   }
 
   /**
@@ -941,7 +927,7 @@ export class ByteArray {
    * @param {Number} value
    */
   writeInt(value) {
-    this._writeBufferFunc(this.signedOverflow(value, 32), 'writeInt32', 4)
+    this._writeBufferFunc(this.signedOverflow(value, 32), "writeInt32", 4);
   }
 
   /**
@@ -949,7 +935,7 @@ export class ByteArray {
    * @param {BigInt} value
    */
   writeLong(value) {
-    this._writeBufferFunc(value, 'writeBigInt64', 8)
+    this._writeBufferFunc(value, "writeBigInt64", 8);
   }
 
   /**
@@ -957,13 +943,13 @@ export class ByteArray {
    * @param {String} value
    * @param {String} charset
    */
-  writeMultiByte(value, charset = 'utf8') {
-    this._position += Buffer.byteLength(value)
+  writeMultiByte(value, charset = "utf8") {
+    this._position += Buffer.byteLength(value);
 
     if (encodingExists(charset)) {
-      this.buffer = Buffer.concat([this.buffer, encode(value, charset)])
+      this.buffer = Buffer.concat([this.buffer, encode(value, charset)]);
     } else {
-      throw new Error(`Invalid character set: '${charset}'.`)
+      throw new Error(`Invalid character set: '${charset}'.`);
     }
   }
 
@@ -972,12 +958,10 @@ export class ByteArray {
    * @param {Object} value
    */
   writeObject(value) {
-    const bytes = this._objectEncoding === ObjectEncoding.AMF0
-      ? AMF0.stringify(value)
-      : AMF3.stringify(value)
+    const bytes = this._objectEncoding === ObjectEncoding.AMF0 ? AMF0.stringify(value) : AMF3.stringify(value);
 
-    this._position += bytes.length
-    this.buffer = Buffer.concat([this.buffer, Buffer.from(bytes)])
+    this._position += bytes.length;
+    this.buffer = Buffer.concat([this.buffer, Buffer.from(bytes)]);
   }
 
   /**
@@ -985,7 +969,7 @@ export class ByteArray {
    * @param {Number} value
    */
   writeShort(value) {
-    this._writeBufferFunc(this.signedOverflow(value, 16), 'writeInt16', 2)
+    this._writeBufferFunc(this.signedOverflow(value, 16), "writeInt16", 2);
   }
 
   /**
@@ -993,8 +977,8 @@ export class ByteArray {
    * @param {Number} value
    */
   writeUnsignedByte(value) {
-    this._expand(1)
-    this.buffer.writeUInt8(value, this._position++)
+    this._expand(1);
+    this.buffer.writeUInt8(value, this._position++);
   }
 
   /**
@@ -1002,7 +986,7 @@ export class ByteArray {
    * @param {Number} value
    */
   writeUnsignedInt(value) {
-    this._writeBufferFunc(value, 'writeUInt32', 4)
+    this._writeBufferFunc(value, "writeUInt32", 4);
   }
 
   /**
@@ -1010,7 +994,7 @@ export class ByteArray {
    * @param {Number} value
    */
   writeUnsignedShort(value) {
-    this._writeBufferFunc(value, 'writeUInt16', 2)
+    this._writeBufferFunc(value, "writeUInt16", 2);
   }
 
   /**
@@ -1018,7 +1002,7 @@ export class ByteArray {
    * @param {BigInt} value
    */
   writeUnsignedLong(value) {
-    this._writeBufferFunc(value, 'writeBigUInt64', 8)
+    this._writeBufferFunc(value, "writeBigUInt64", 8);
   }
 
   /**
@@ -1026,8 +1010,8 @@ export class ByteArray {
    * @param {String} value
    */
   writeUTF(value) {
-    this.writeUnsignedShort(Buffer.byteLength(value))
-    this.writeMultiByte(value)
+    this.writeUnsignedShort(Buffer.byteLength(value));
+    this.writeMultiByte(value);
   }
 
   /**
@@ -1035,6 +1019,6 @@ export class ByteArray {
    * @param {String} value
    */
   writeUTFBytes(value) {
-    this.writeMultiByte(value)
+    this.writeMultiByte(value);
   }
 }

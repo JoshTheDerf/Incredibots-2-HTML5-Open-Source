@@ -1,6 +1,6 @@
-import { ShapePart } from "../Parts/ShapePart";
-import { TextPart } from "../Parts/TextPart";
-import { Action } from "./Action";
+import { ShapePart } from "../imports";
+import { TextPart } from "../imports";
+import { Action } from "../imports";
 
 export class MassCreateAction extends Action
 {

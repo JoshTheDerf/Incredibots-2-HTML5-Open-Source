@@ -1,9 +1,9 @@
-import { Util } from "../General/Util";
-import { Part } from "../Parts/Part";
-import { PrismaticJoint } from "../Parts/PrismaticJoint";
-import { ShapePart } from "../Parts/ShapePart";
-import { Thrusters } from "../Parts/Thrusters";
-import { Action } from "./Action";
+import { Util } from "../imports";
+import { Part } from "../imports";
+import { PrismaticJoint } from "../imports";
+import { ShapePart } from "../imports";
+import { Thrusters } from "../imports";
+import { Action } from "../imports";
 
 export class RotateAction extends Action
 {

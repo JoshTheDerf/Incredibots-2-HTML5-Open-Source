@@ -1,4 +1,4 @@
-import { Action } from "./Action";
+import { Action } from "../imports";
 
 export class ClearAction extends Action
 {

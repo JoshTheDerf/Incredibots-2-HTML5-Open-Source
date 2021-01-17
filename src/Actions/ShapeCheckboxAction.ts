@@ -1,7 +1,7 @@
-import { Part } from "../Parts/Part";
-import { PrismaticJoint } from "../Parts/PrismaticJoint";
-import { ShapePart } from "../Parts/ShapePart";
-import { Action } from "./Action";
+import { Part } from "../imports";
+import { PrismaticJoint } from "../imports";
+import { ShapePart } from "../imports";
+import { Action } from "../imports";
 
 export class ShapeCheckboxAction extends Action
 {

@@ -1,14 +1,7 @@
 // permanent mochi ID for version 0.02: 1913f89f65e17063
 
-import { Application, Container, Sprite } from "pixi.js";
-import { Controller } from "./Game/Controller";
-import { ControllerGameGlobals } from "./Game/Globals/ControllerGameGlobals";
-import { ControllerMainMenu } from "./Game/ControllerMainMenu";
-import { ControllerSandbox } from "./Game/ControllerSandbox";
-import { SandboxSettings } from "./Game/SandboxSettings";
-import { FpsCounter } from "./General/FpsCounter";
-import { LSOManager } from "./General/LSOManager";
-import { Input } from "./General/Input";
+import { Application, Container } from "pixi.js";
+import { Controller, ControllerGameGlobals, ControllerMainMenu, ControllerSandbox, FpsCounter, Input, LSOManager, SandboxSettings } from "./imports";
 
 export class Main {
 

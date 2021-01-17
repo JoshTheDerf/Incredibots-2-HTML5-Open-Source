@@ -1,7 +1,7 @@
-import { Util } from "../General/Util";
-import { Part } from "../Parts/Part";
-import { TextPart } from "../Parts/TextPart";
-import { Action } from "./Action";
+import { Util } from "../imports";
+import { Part } from "../imports";
+import { TextPart } from "../imports";
+import { Action } from "../imports";
 
 export class MoveZAction extends Action
 {

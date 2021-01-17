@@ -1,5 +1,5 @@
-import { TextPart } from "../Parts/TextPart";
-import { Action } from "./Action";
+import { TextPart } from "../imports";
+import { Action } from "../imports";
 
 export class MultiColourChangeAction extends Action
 {

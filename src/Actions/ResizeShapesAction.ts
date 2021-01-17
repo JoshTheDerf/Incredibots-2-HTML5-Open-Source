@@ -1,11 +1,11 @@
 import { Circle, Rectangle } from "pixi.js";
-import { Cannon } from "../Parts/Cannon";
-import { JointPart } from "../Parts/JointPart";
-import { PrismaticJoint } from "../Parts/PrismaticJoint";
-import { TextPart } from "../Parts/TextPart";
-import { Thrusters } from "../Parts/Thrusters";
-import { Triangle } from "../Parts/Triangle";
-import { Action } from "./Action";
+import { Cannon } from "../imports";
+import { JointPart } from "../imports";
+import { PrismaticJoint } from "../imports";
+import { TextPart } from "../imports";
+import { Thrusters } from "../imports";
+import { Triangle } from "../imports";
+import { Action } from "../imports";
 
 export class ResizeShapesAction extends Action
 {

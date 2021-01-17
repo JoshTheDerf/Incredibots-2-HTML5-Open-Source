@@ -1,8 +1,8 @@
-import { Part } from "../Parts/Part";
-import { PrismaticJoint } from "../Parts/PrismaticJoint";
-import { RevoluteJoint } from "../Parts/RevoluteJoint";
-import { Thrusters } from "../Parts/Thrusters";
-import { Action } from "./Action";
+import { Part } from "../imports";
+import { PrismaticJoint } from "../imports";
+import { RevoluteJoint } from "../imports";
+import { Thrusters } from "../imports";
+import { Action } from "../imports";
 
 export class JointCheckboxAction extends Action
 {
