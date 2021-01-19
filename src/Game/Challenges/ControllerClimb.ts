@@ -5,8 +5,8 @@ import { Circle, ControllerChallenge, ControllerGameGlobals, Gradient, Rectangle
 export class ControllerClimb extends ControllerChallenge {
   constructor() {
     super();
-    ControllerClimb.playChallengeMode = true;
-    ControllerClimb.playOnlyMode = true;
+    ControllerChallenge.playChallengeMode = true;
+    ControllerChallenge.playOnlyMode = true;
 
     var cond: WinCondition = new WinCondition("Cond", 2, 1);
     cond.minY = -10.5;
@@ -138,8 +138,9 @@ export class ControllerClimb extends ControllerChallenge {
 
     // body
     var m: Matrix = new Matrix();
-    this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#6BD354", "#54BA3D"]), matrix: m });
     for (i = 0; i < 29; i++) {
+      m.translate(0, 307 + i * 35.6)
+      this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#6BD354", "#54BA3D"], 35.6), matrix: m });
       p = new Rectangle(15 + (28 - i), (i + 1) * 0.75 - 11.5, i + 7.1, 0.75, false);
       p.isStatic = true;
       p.isEditable = false;
@@ -229,7 +230,8 @@ export class ControllerClimb extends ControllerChallenge {
 
   public DrawGroundCircle(xPos: number, yPos: number, radius: number): void {
     var m: Matrix = new Matrix();
-    this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#6BD354", "#54BA3D"]), matrix: m });
+    m.translate(0, yPos + radius)
+    this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#6BD354", "#54BA3D"], radius * 2), matrix: m });
     this.sGround.drawCircle(xPos, yPos, radius);
     this.sGround.endFill();
   }
@@ -237,9 +239,11 @@ export class ControllerClimb extends ControllerChallenge {
   public DrawRock(type: number, xPos: number, yPos: number, radius: number): void {
     this.sGround.lineStyle(6, 0x6bb05a);
     var m: Matrix = new Matrix();
+    m.translate(0, yPos)
     this.sGround.beginTextureFill({
       texture: Gradient.getLinearGradientTexture(
-        type == 0 ? ["#8EDB82", "#7FBF72"] : type == 1 ? ["#80D970", "#6DBE5D"] : ["#70C160", "#63AB52"]
+        type == 0 ? ["#8EDB82", "#7FBF72"] : type == 1 ? ["#80D970", "#6DBE5D"] : ["#70C160", "#63AB52"],
+        radius * 2
       ),
       matrix: m,
     });
@@ -277,41 +281,41 @@ export class ControllerClimb extends ControllerChallenge {
     this.hasZoomed = false;
   }
 
-  public saveButton(e: MouseEvent): void {
+  public saveButton(): void {
     this.ShowDisabledDialog();
   }
 
-  public saveReplayButton(e: MouseEvent): void {
-    this.ShowDisabledDialog();
-    if (this.m_scoreWindow && this.m_scoreWindow.visible) this.m_scoreWindow.ShowFader();
-  }
-
-  public submitButton(e: MouseEvent): void {
+  public saveReplayButton(): void {
     this.ShowDisabledDialog();
     if (this.m_scoreWindow && this.m_scoreWindow.visible) this.m_scoreWindow.ShowFader();
   }
 
-  public commentButton(e: MouseEvent, robotID: String = "", robotPublic: boolean = false): void {
+  public submitButton(): void {
+    this.ShowDisabledDialog();
+    if (this.m_scoreWindow && this.m_scoreWindow.visible) this.m_scoreWindow.ShowFader();
+  }
+
+  public commentButton(robotID: String = "", robotPublic: boolean = false): void {
     this.ShowDisabledDialog();
   }
 
-  public linkButton(e: MouseEvent, robotID: String = "", robotPublic: boolean = false): void {
+  public linkButton(robotID: String = "", robotPublic: boolean = false): void {
     this.ShowDisabledDialog();
   }
 
-  public embedButton(e: MouseEvent, robotID: String = "", robotPublic: boolean = false): void {
+  public embedButton(robotID: String = "", robotPublic: boolean = false): void {
     this.ShowDisabledDialog();
   }
 
-  public commentReplayButton(e: MouseEvent, replayID: String = "", replayPublic: boolean = false): void {
+  public commentReplayButton(replayID: String = "", replayPublic: boolean = false): void {
     this.ShowDisabledDialog();
   }
 
-  public linkReplayButton(e: MouseEvent, replayID: String = "", replayPublic: boolean = false): void {
+  public linkReplayButton(replayID: String = "", replayPublic: boolean = false): void {
     this.ShowDisabledDialog();
   }
 
-  public embedReplayButton(e: MouseEvent, replayID: String = "", replayPublic: boolean = false): void {
+  public embedReplayButton(replayID: String = "", replayPublic: boolean = false): void {
     this.ShowDisabledDialog();
   }
 }

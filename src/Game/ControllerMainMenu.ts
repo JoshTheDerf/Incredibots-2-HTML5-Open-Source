@@ -472,35 +472,42 @@ export class ControllerMainMenu extends Controller {
   }
 
   private DrawGroundOutlineCircle(xPos: number, yPos: number, radius: number): void {
+    const matrix = new Matrix()
+    matrix.translate(0, yPos)
     const texture = Gradient.getLinearGradientTexture([
       Util.HexColourString(177, 102, 46),
       Util.HexColourString(171, 59, 34),
-    ]);
-    this.sGround.beginTextureFill({ texture });
+    ], radius * 2);
+    this.sGround.beginTextureFill({ texture, matrix });
     this.sGround.drawCircle(xPos + radius, yPos + radius, radius + 6);
     this.sGround.endFill();
   }
 
   private DrawGroundCircle(xPos: number, yPos: number, radius: number): void {
+    const matrix = new Matrix()
+    matrix.translate(0, yPos)
     const texture = Gradient.getLinearGradientTexture([
       Util.HexColourString(249, 172, 101),
       Util.HexColourString(240, 70, 45),
-    ]);
-    this.sGround.beginTextureFill({ texture });
+    ], radius * 2);
+    this.sGround.beginTextureFill({ texture, matrix });
     this.sGround.drawCircle(xPos + radius, yPos + radius, radius);
     this.sGround.endFill();
   }
 
   private DrawRock(type: number, xPos: number, yPos: number, radius: number, outlineThickness: number = 6): void {
+    const matrix = new Matrix()
+    matrix.translate(0, yPos)
     this.sGround.lineStyle(outlineThickness, 0xba643d);
     const texture = Gradient.getLinearGradientTexture(
       type == 0
         ? [Util.HexColourString(194, 130, 87), Util.HexColourString(172, 114, 77)]
         : type == 1
         ? [Util.HexColourString(197, 115, 66), Util.HexColourString(175, 103, 58)]
-        : [Util.HexColourString(198, 121, 69), Util.HexColourString(179, 105, 57)]
+        : [Util.HexColourString(198, 121, 69), Util.HexColourString(179, 105, 57)],
+      radius * 2
     );
-    this.sGround.beginTextureFill({ texture });
+    this.sGround.beginTextureFill({ texture, matrix });
     this.sGround.drawCircle(xPos + radius, yPos + radius, radius);
     this.sGround.endFill();
   }

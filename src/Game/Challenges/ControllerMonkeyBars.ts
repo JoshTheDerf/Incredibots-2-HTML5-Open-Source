@@ -11,25 +11,25 @@ export class ControllerMonkeyBars extends ControllerChallenge {
     this.draw.m_drawXOff = 0;
     this.draw.m_drawYOff = -190;
 
-    ControllerMonkeyBars.playChallengeMode = true;
-    ControllerMonkeyBars.playOnlyMode = true;
+    ControllerChallenge.playChallengeMode = true;
+    ControllerChallenge.playOnlyMode = true;
 
     var cond: WinCondition = new WinCondition("Cond", 2, 1);
     cond.minY = 11;
     cond.maxY = 11;
-    ControllerMonkeyBars.challenge.winConditions.push(cond);
+    ControllerChallenge.challenge.winConditions.push(cond);
     cond = new WinCondition("Cond", 2, 4);
     cond.minX = 44;
     cond.maxX = 44;
-    ControllerMonkeyBars.challenge.winConditions.push(cond);
-    ControllerMonkeyBars.challenge.cannonsAllowed = false;
-    ControllerMonkeyBars.challenge.thrustersAllowed = false;
-    ControllerMonkeyBars.challenge.mouseDragAllowed = false;
-    ControllerMonkeyBars.challenge.winConditionsAnded = true;
+    ControllerChallenge.challenge.winConditions.push(cond);
+    ControllerChallenge.challenge.cannonsAllowed = false;
+    ControllerChallenge.challenge.thrustersAllowed = false;
+    ControllerChallenge.challenge.mouseDragAllowed = false;
+    ControllerChallenge.challenge.winConditionsAnded = true;
     var buildArea: b2AABB = new b2AABB();
     buildArea.lowerBound.Set(1, 1);
     buildArea.upperBound.Set(15, 11.1);
-    ControllerMonkeyBars.challenge.buildAreas.push(buildArea);
+    ControllerChallenge.challenge.buildAreas.push(buildArea);
     this.BuildBuildArea();
 
     var p: Part;

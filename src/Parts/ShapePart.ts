@@ -134,11 +134,11 @@ export class ShapePart extends Part {
   }
 
   public GetActiveJoints(): Array<any> {
-    return this.m_joints.filter(this.IsEnabled);
+    return this.m_joints.filter(() => this.IsEnabled());
   }
 
   public GetActiveThrusters(): Array<any> {
-    return this.m_thrusters.filter(this.IsEnabled);
+    return this.m_thrusters.filter(() => this.IsEnabled());
   }
 
   public WillBeStatic(shapeList: Array<any> = null): boolean {

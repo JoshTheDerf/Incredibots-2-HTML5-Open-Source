@@ -3,8 +3,8 @@ import { ControllerChallenge, ControllerGameGlobals, ControllerSandbox, Database
 export class ControllerRace extends ControllerChallenge {
   constructor() {
     super();
-    ControllerRace.playChallengeMode = true;
-    ControllerRace.playOnlyMode = true;
+    ControllerChallenge.playChallengeMode = true;
+    ControllerChallenge.playOnlyMode = true;
 
     if (!playingReplay) {
       var b: ByteArray = new Resource.cRace();

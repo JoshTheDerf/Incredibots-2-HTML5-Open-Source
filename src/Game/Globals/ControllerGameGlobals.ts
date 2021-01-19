@@ -96,30 +96,30 @@ export class ControllerGameGlobals {
   public static ratedCurChallenge: boolean = false;
 
   public static loadAndInsert: boolean = false;
-  public static potentialRobotID: String = "";
+  public static potentialRobotID: string = "";
   public static potentialRobotEditable: boolean = false;
   public static potentialRobotPublic: boolean = false;
   public static potentialRobotFeatured: boolean = false;
-  public static potentialChallengeID: String = "";
+  public static potentialChallengeID: string = "";
   public static potentialChallengeEditable: boolean = false;
   public static potentialChallengePublic: boolean = false;
   public static potentialChallengeFeatured: boolean = false;
-  public static potentialReplayID: String = "";
+  public static potentialReplayID: string = "";
   public static potentialReplayPublic: boolean = false;
   public static potentialReplayFeatured: boolean = false;
-  public static curRobotID: String = "";
+  public static curRobotID: string = "";
   public static curRobotEditable: boolean = true;
   public static curRobotPublic: boolean = false;
   public static curRobotFeatured: boolean = false;
-  public static curChallengeID: String = "";
+  public static curChallengeID: string = "";
   public static curChallengePublic: boolean = false;
   public static curChallengeFeatured: boolean = false;
-  public static curReplayID: String = "";
+  public static curReplayID: string = "";
   public static curReplayPublic: boolean = false;
   public static curReplayFeatured: boolean = false;
-  public static userName: String = "_Public";
-  public static password: String = "";
-  public static sessionID: String = "";
+  public static userName: string = "_Public";
+  public static password: string = "";
+  public static sessionID: string = "";
 
   public static clipboardParts: Array<any> = [];
 

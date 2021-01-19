@@ -1,4 +1,4 @@
-import { b2AABB } from "@box2d/core";
+import { b2AABB, b2Contact } from "@box2d/core";
 import { Challenge, ControllerGameGlobals, ControllerSandbox, Database, Main, Replay, Robot, TextPart } from "../imports";
 
 export class ControllerChallenge extends ControllerSandbox {
@@ -19,10 +19,10 @@ export class ControllerChallenge extends ControllerSandbox {
 
     if (this.simStarted && !this.paused) {
       for (var i: number = 0; i < ControllerChallenge.challenge.winConditions.length; i++) {
-        ControllerChallenge.challenge.winConditions[i].Update(this.allParts, cannonballs);
+        ControllerChallenge.challenge.winConditions[i].Update(this.allParts, ControllerGameGlobals.cannonballs);
       }
       for (i = 0; i < ControllerChallenge.challenge.lossConditions.length; i++) {
-        ControllerChallenge.challenge.lossConditions[i].Update(this.allParts, cannonballs);
+        ControllerChallenge.challenge.lossConditions[i].Update(this.allParts, ControllerGameGlobals.cannonballs);
       }
     }
 
@@ -33,7 +33,7 @@ export class ControllerChallenge extends ControllerSandbox {
     }
   }
 
-  public playButton(e: MouseEvent, maybeShowAd: boolean = true): void {
+  public playButton (maybeShowAd: boolean = true): void {
     if (!ControllerChallenge.playChallengeMode) {
       ControllerChallenge.challenge.allParts = this.allParts.filter(this.PartIsEditable);
       ControllerChallenge.playChallengeMode = true;
@@ -54,11 +54,11 @@ export class ControllerChallenge extends ControllerSandbox {
           ControllerChallenge.challenge.lossConditions[i].isSatisfied = false;
         }
       }
-      super.playButton(e, maybeShowAd);
+      super.playButton(maybeShowAd);
     }
   }
 
-  public editButton(e: MouseEvent, confirmed: boolean = false): void {
+  public editButton(confirmed: boolean = false): void {
     if (confirmed) {
       this.m_fader.visible = false;
       this.m_progressDialog.visible = false;
@@ -94,91 +94,91 @@ export class ControllerChallenge extends ControllerSandbox {
     }
   }
 
-  public circleButton(e: MouseEvent): void {
+  public circleButton(): void {
     if (ControllerChallenge.playChallengeMode && !ControllerChallenge.challenge.circlesAllowed) {
       this.m_fader.visible = true;
       this.ShowDialog3("Circles are not allowed in this challenge!");
       this.m_progressDialog.ShowOKButton();
       this.m_progressDialog.StopTimer();
     } else {
-      super.circleButton(e);
+      super.circleButton();
     }
   }
 
-  public rectButton(e: MouseEvent): void {
+  public rectButton(): void {
     if (ControllerChallenge.playChallengeMode && !ControllerChallenge.challenge.rectanglesAllowed) {
       this.m_fader.visible = true;
       this.ShowDialog3("Rectangles are not allowed in this challenge!");
       this.m_progressDialog.ShowOKButton();
       this.m_progressDialog.StopTimer();
     } else {
-      super.rectButton(e);
+      super.rectButton();
     }
   }
 
-  public triangleButton(e: MouseEvent): void {
+  public triangleButton(): void {
     if (ControllerChallenge.playChallengeMode && !ControllerChallenge.challenge.trianglesAllowed) {
       this.m_fader.visible = true;
       this.ShowDialog3("Triangles are not allowed in this challenge!");
       this.m_progressDialog.ShowOKButton();
       this.m_progressDialog.StopTimer();
     } else {
-      super.triangleButton(e);
+      super.triangleButton();
     }
   }
 
-  public fjButton(e: MouseEvent): void {
+  public fjButton(): void {
     if (ControllerChallenge.playChallengeMode && !ControllerChallenge.challenge.fixedJointsAllowed) {
       this.m_fader.visible = true;
       this.ShowDialog3("Fixed Joints are not allowed in this challenge!");
       this.m_progressDialog.ShowOKButton();
       this.m_progressDialog.StopTimer();
     } else {
-      super.fjButton(e);
+      super.fjButton();
     }
   }
 
-  public rjButton(e: MouseEvent): void {
+  public rjButton(): void {
     if (ControllerChallenge.playChallengeMode && !ControllerChallenge.challenge.rotatingJointsAllowed) {
       this.m_fader.visible = true;
       this.ShowDialog3("Rotating Joints are not allowed in this challenge!");
       this.m_progressDialog.ShowOKButton();
       this.m_progressDialog.StopTimer();
     } else {
-      super.rjButton(e);
+      super.rjButton();
     }
   }
 
-  public pjButton(e: MouseEvent): void {
+  public pjButton(): void {
     if (ControllerChallenge.playChallengeMode && !ControllerChallenge.challenge.slidingJointsAllowed) {
       this.m_fader.visible = true;
       this.ShowDialog3("Sliding Joints are not allowed in this challenge!");
       this.m_progressDialog.ShowOKButton();
       this.m_progressDialog.StopTimer();
     } else {
-      super.pjButton(e);
+      super.pjButton();
     }
   }
 
-  public thrustersButton(e: MouseEvent): void {
+  public thrustersButton(): void {
     if (ControllerChallenge.playChallengeMode && !ControllerChallenge.challenge.thrustersAllowed) {
       this.m_fader.visible = true;
       this.ShowDialog3("Thrusters are not allowed in this challenge!");
       this.m_progressDialog.ShowOKButton();
       this.m_progressDialog.StopTimer();
     } else {
-      super.thrustersButton(e);
+      super.thrustersButton();
     }
   }
 
-  public cannonButton(e: MouseEvent): void {
+  public cannonButton(): void {
     if (ControllerChallenge.playChallengeMode && !ControllerChallenge.challenge.cannonsAllowed) {
       this.m_fader.visible = true;
       this.ShowDialog3("Cannons are not allowed in this challenge!");
       this.m_progressDialog.ShowOKButton();
       this.m_progressDialog.StopTimer();
     } else {
-      super.cannonButton(e);
+      super.cannonButton();
     }
   }
 
@@ -209,16 +209,16 @@ export class ControllerChallenge extends ControllerSandbox {
     this.redrawBuildArea = true;
   }
 
-  public ContactAdded(point: b2ContactPoint): void {
+  public ContactAdded(contact: b2Contact): void {
     for (var i: number = 0; i < ControllerChallenge.challenge.winConditions.length; i++) {
-      ControllerChallenge.challenge.winConditions[i].ContactAdded(point, this.allParts, cannonballs);
+      ControllerChallenge.challenge.winConditions[i].ContactAdded(contact, this.allParts, ControllerGameGlobals.cannonballs);
     }
     for (i = 0; i < ControllerChallenge.challenge.lossConditions.length; i++) {
-      ControllerChallenge.challenge.lossConditions[i].ContactAdded(point, this.allParts, cannonballs);
+      ControllerChallenge.challenge.lossConditions[i].ContactAdded(contact, this.allParts, ControllerGameGlobals.cannonballs);
     }
   }
 
-  protected ChallengeOver(): boolean {
+  public ChallengeOver(): boolean {
     return this.WonChallenge() || this.LostChallenge();
   }
 
@@ -307,7 +307,7 @@ export class ControllerChallenge extends ControllerSandbox {
           this.clickedSubmitScore = true;
         } else {
           this.clickedSubmitScore = true;
-          this.loginButton(e, true, false);
+          this.loginButton(true, false);
         }
       }
     }

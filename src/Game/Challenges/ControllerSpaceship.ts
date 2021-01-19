@@ -3,8 +3,8 @@ import { ControllerChallenge, ControllerGameGlobals, ControllerSandbox, Database
 export class ControllerSpaceship extends ControllerChallenge {
   constructor() {
     super();
-    ControllerSpaceship.playChallengeMode = true;
-    ControllerSpaceship.playOnlyMode = true;
+    ControllerChallenge.playChallengeMode = true;
+    ControllerChallenge.playOnlyMode = true;
 
     if (!playingReplay) {
       var b: ByteArray = new Resource.cSpaceship();

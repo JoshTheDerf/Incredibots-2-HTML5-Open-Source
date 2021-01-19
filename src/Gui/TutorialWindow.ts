@@ -38,7 +38,7 @@ export class TutorialWindow extends GuiWindow
 		msg = this.TUTORIAL_MESSAGES[id];
 
 		this.msgArea = new Text('');
-		this.msgArea.anchor.set(0.5, 0);
+		this.msgArea.anchor.set(0.5, 0.5);
 		this.msgArea.x = 10 + (228 / 2);
 		this.msgArea.y = 16;
 		this.msgArea.text = (numAreas == 1 ? msg : msg.substr(0, msg.search("\n\n")));
@@ -48,6 +48,8 @@ export class TutorialWindow extends GuiWindow
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.leading = 2;
 		format.fill = 0x242930;
+		format.wordWrap = true;
+		format.wordWrapWidth = 228;
 		this.msgArea.style = format;
 		this.addChild(this.msgArea);
 

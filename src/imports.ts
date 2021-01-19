@@ -35,6 +35,7 @@ export * from './Gui/DropDownMenu'
 export * from './Gui/DropDownMenuItem'
 
 // GUI Windows
+export * from './Gui/DialogWindow'
 export * from './Gui/TutorialSelectWindow'
 export * from './Gui/TutorialWindow'
 export * from './Gui/AdvancedSandboxWindow'

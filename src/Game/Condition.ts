@@ -1,4 +1,4 @@
-import { b2CircleShape, b2ContactPoint, b2Math, b2PolygonShape, b2Vec2 } from "@box2d/core";
+import { b2CircleShape, b2Contact, b2PolygonShape, b2Transform, b2Vec2 } from "@box2d/core";
 import { Part, ShapePart } from "../imports";
 
 export class Condition {
@@ -32,18 +32,20 @@ export class Condition {
     if (this.subject == 0) {
       if (this.shape1.GetShape() instanceof b2CircleShape) {
         var circle: b2CircleShape = this.shape1.GetShape() as b2CircleShape;
-        var center: b2Vec2 = b2Math.b2MulX(this.shape1.GetBody().GetXForm(), circle.GetLocalPosition());
-        minShapeX = center.x - circle.GetRadius();
-        maxShapeX = center.x + circle.GetRadius();
-        minShapeY = center.y - circle.GetRadius();
-        maxShapeY = center.y + circle.GetRadius();
+        var center = new b2Vec2()
+        b2Transform.MultiplyVec2(parts[i].GetBody().GetTransform(), circle.m_p, center);m_p);
+        minShapeX = center.x - circle.m_radius;
+        maxShapeX = center.x + circle.m_radius;
+        minShapeY = center.y - circle.m_radius;
+        maxShapeY = center.y + circle.m_radius;
       } else if (this.shape1.GetShape() instanceof b2PolygonShape) {
         var poly: b2PolygonShape = this.shape1.GetShape() as b2PolygonShape;
-        var vertexCount: number = poly.GetVertexCount();
-        var localVertices: Array<any> = poly.GetVertices();
+        var vertexCount: number = poly.m_count;
+        var localVertices: Array<any> = poly.m_vertices;
 
         for (i = 0; i < vertexCount; i++) {
-          var vertex: b2Vec2 = b2Math.b2MulX(this.shape1.GetBody().GetXForm(), localVertices[i]);
+          const vertex = new b2Vec2()
+          b2Transform.MultiplyVec2(this.shape1.GetBody().GetTransform(), localVertices[i], vertex)
           if (vertex.x < minShapeX) minShapeX = vertex.x;
           if (vertex.x > maxShapeX) maxShapeX = vertex.x;
           if (vertex.y < minShapeY) minShapeY = vertex.y;
@@ -75,18 +77,20 @@ export class Condition {
             (maxShapeY = -Number.MAX_VALUE);
           if (parts[i].GetShape() instanceof b2CircleShape) {
             circle = parts[i].GetShape() as b2CircleShape;
-            center = b2Math.b2MulX(parts[i].GetBody().GetXForm(), circle.GetLocalPosition());
-            minShapeX = center.x - circle.GetRadius();
-            maxShapeX = center.x + circle.GetRadius();
-            minShapeY = center.y - circle.GetRadius();
-            maxShapeY = center.y + circle.GetRadius();
+            var center = new b2Vec2()
+            b2Transform.MultiplyVec2(parts[i].GetBody().GetTransform(), circle.m_p, center);
+            minShapeX = center.x - circle.m_radius;
+            maxShapeX = center.x + circle.m_radius;
+            minShapeY = center.y - circle.m_radius;
+            maxShapeY = center.y + circle.m_radius;
           } else if (parts[i].GetShape() instanceof b2PolygonShape) {
             poly = parts[i].GetShape() as b2PolygonShape;
-            vertexCount = poly.GetVertexCount();
-            localVertices = poly.GetVertices();
+            vertexCount = poly.m_count;
+            localVertices = poly.m_vertices;
 
             for (var j: number = 0; j < vertexCount; j++) {
-              vertex = b2Math.b2MulX(parts[i].GetBody().GetXForm(), localVertices[j]);
+              const vertex = new b2Vec2()
+              b2Transform.MultiplyVec2(parts[i].GetBody().GetTransform(), localVertices[j], vertex)
               if (vertex.x < minShapeX) minShapeX = vertex.x;
               if (vertex.x > maxShapeX) maxShapeX = vertex.x;
               if (vertex.y < minShapeY) minShapeY = vertex.y;
@@ -108,11 +112,12 @@ export class Condition {
         }
         for (i = 0; i < cannonballs.length; i++) {
           circle = cannonballs[i].GetShapeList() as b2CircleShape;
-          center = b2Math.b2MulX(cannonballs[i].GetXForm(), circle.GetLocalPosition());
-          minShapeX = center.x - circle.GetRadius();
-          maxShapeX = center.x + circle.GetRadius();
-          minShapeY = center.y - circle.GetRadius();
-          maxShapeY = center.y + circle.GetRadius();
+          const center = new b2Vec2()
+          b2Transform.MultiplyVec2(cannonballs[i].GetTransform(), circle.m_p, center);
+          minShapeX = center.x - circle.m_radius;
+          maxShapeX = center.x + circle.m_radius;
+          minShapeY = center.y - circle.m_radius;
+          maxShapeY = center.y + circle.m_radius;
           if (this.object == 0) {
             if (minShapeX > this.minX && maxShapeX < this.maxX && minShapeY > this.minY && maxShapeY < this.maxY)
               this.isSatisfied = true;
@@ -144,18 +149,20 @@ export class Condition {
             (maxShapeY = -Number.MAX_VALUE);
           if (parts[i].GetShape() instanceof b2CircleShape) {
             circle = parts[i].GetShape() as b2CircleShape;
-            center = b2Math.b2MulX(parts[i].GetBody().GetXForm(), circle.GetLocalPosition());
-            minShapeX = center.x - circle.GetRadius();
-            maxShapeX = center.x + circle.GetRadius();
-            minShapeY = center.y - circle.GetRadius();
-            maxShapeY = center.y + circle.GetRadius();
+            var center = new b2Vec2()
+            b2Transform.MultiplyVec2(parts[i].GetBody().GetTransform(), circle.m_p, center);
+            minShapeX = center.x - circle.m_radius;
+            maxShapeX = center.x + circle.m_radius;
+            minShapeY = center.y - circle.m_radius;
+            maxShapeY = center.y + circle.m_radius;
           } else if (parts[i].GetShape() instanceof b2PolygonShape) {
             poly = parts[i].GetShape() as b2PolygonShape;
-            vertexCount = poly.GetVertexCount();
-            localVertices = poly.GetVertices();
+            vertexCount = poly.m_count;
+            localVertices = poly.m_vertices;
 
             for (j = 0; j < vertexCount; j++) {
-              vertex = b2Math.b2MulX(parts[i].GetBody().GetXForm(), localVertices[j]);
+              const vertex = new b2Vec2()
+              b2Transform.MultiplyVec2(parts[i].GetBody().GetTransform(), localVertices[j], vertex)
               if (vertex.x < minShapeX) minShapeX = vertex.x;
               if (vertex.x > maxShapeX) maxShapeX = vertex.x;
               if (vertex.y < minShapeY) minShapeY = vertex.y;
@@ -189,18 +196,20 @@ export class Condition {
             (maxShapeY = -Number.MAX_VALUE);
           if (parts[i].GetShape() instanceof b2CircleShape) {
             circle = parts[i].GetShape() as b2CircleShape;
-            center = b2Math.b2MulX(parts[i].GetBody().GetXForm(), circle.GetLocalPosition());
-            minShapeX = center.x - circle.GetRadius();
-            maxShapeX = center.x + circle.GetRadius();
-            minShapeY = center.y - circle.GetRadius();
-            maxShapeY = center.y + circle.GetRadius();
+            var center = new b2Vec2()
+            b2Transform.MultiplyVec2(parts[i].GetBody().GetTransform(), circle.m_p, center);
+            minShapeX = center.x - circle.m_radius;
+            maxShapeX = center.x + circle.m_radius;
+            minShapeY = center.y - circle.m_radius;
+            maxShapeY = center.y + circle.m_radius;
           } else if (parts[i].GetShape() instanceof b2PolygonShape) {
             poly = parts[i].GetShape() as b2PolygonShape;
-            vertexCount = poly.GetVertexCount();
-            localVertices = poly.GetVertices();
+            vertexCount = poly.m_count;
+            localVertices = poly.m_vertices;
 
             for (j = 0; j < vertexCount; j++) {
-              vertex = b2Math.b2MulX(parts[i].GetBody().GetXForm(), localVertices[j]);
+              const vertex = new b2Vec2()
+              b2Transform.MultiplyVec2(parts[i].GetBody().GetTransform(), localVertices[j], vertex)
               if (vertex.x < minShapeX) minShapeX = vertex.x;
               if (vertex.x > maxShapeX) maxShapeX = vertex.x;
               if (vertex.y < minShapeY) minShapeY = vertex.y;
@@ -228,11 +237,12 @@ export class Condition {
         this.isSatisfied = false;
         for (i = 0; i < cannonballs.length; i++) {
           circle = cannonballs[i].GetShapeList() as b2CircleShape;
-          center = b2Math.b2MulX(cannonballs[i].GetXForm(), circle.GetLocalPosition());
-          minShapeX = center.x - circle.GetRadius();
-          maxShapeX = center.x + circle.GetRadius();
-          minShapeY = center.y - circle.GetRadius();
-          maxShapeY = center.y + circle.GetRadius();
+          var center = new b2Vec2()
+          b2Transform.MultiplyVec2(parts[i].GetBody().GetTransform(), circle.m_p, center);
+          minShapeX = center.x - circle.m_radius;
+          maxShapeX = center.x + circle.m_radius;
+          minShapeY = center.y - circle.m_radius;
+          maxShapeY = center.y + circle.m_radius;
           if (this.object == 0) {
             if (minShapeX > this.minX && maxShapeX < this.maxX && minShapeY > this.minY && maxShapeY < this.maxY)
               this.isSatisfied = true;
@@ -250,34 +260,36 @@ export class Condition {
     }
   }
 
-  public ContactAdded(point: b2ContactPoint, parts: Array<any>, cannonballs: Array<any>): void {
+  public ContactAdded(contact: b2Contact, parts: Array<any>, cannonballs: Array<any>): void {
+    const shapeA = contact.GetFixtureA().GetShape()
+    const shapeB = contact.GetFixtureB().GetShape()
     if (this.object == 5 || this.object == 6) {
       if (this.subject == 0) {
         if (
-          (point.shape1 == this.shape1.GetShape() && point.shape2 == this.shape2.GetShape()) ||
-          (point.shape1 == this.shape2.GetShape() && point.shape2 == this.shape1.GetShape())
+          (shapeA == this.shape1.GetShape() && shapeB == this.shape2.GetShape()) ||
+          (shapeA == this.shape2.GetShape() && shapeB == this.shape1.GetShape())
         )
           this.isSatisfied = true;
       } else if (this.subject == 1) {
-        if (point.shape1 == this.shape2.GetShape() || point.shape2 == this.shape2.GetShape()) this.isSatisfied = true;
+        if (shapeA == this.shape2.GetShape() || shapeB == this.shape2.GetShape()) this.isSatisfied = true;
       } else if (this.subject == 2) {
-        if (point.shape1 == this.shape2.GetShape() || point.shape2 == this.shape2.GetShape()) {
+        if (shapeA == this.shape2.GetShape() || shapeB == this.shape2.GetShape()) {
           parts = parts.filter(this.PartIsEditable);
           for (var i: number = 0; i < parts.length; i++) {
-            if (point.shape1 == parts[i].GetShape() || point.shape2 == parts[i].GetShape()) this.isSatisfied = true;
+            if (shapeA == parts[i].GetShape() || shapeB == parts[i].GetShape()) this.isSatisfied = true;
           }
         }
       } else if (this.subject == 3) {
-        if (point.shape1 == this.shape2.GetShape() || point.shape2 == this.shape2.GetShape()) {
+        if (shapeA == this.shape2.GetShape() || shapeB == this.shape2.GetShape()) {
           parts = parts.filter(this.PartIsntEditable);
           for (i = 0; i < parts.length; i++) {
-            if (point.shape1 == parts[i].GetShape() || point.shape2 == parts[i].GetShape()) this.isSatisfied = true;
+            if (shapeA == parts[i].GetShape() || shapeB == parts[i].GetShape()) this.isSatisfied = true;
           }
         }
       } else {
-        if (point.shape1 == this.shape2.GetShape() || point.shape2 == this.shape2.GetShape()) {
+        if (shapeA == this.shape2.GetShape() || shapeB == this.shape2.GetShape()) {
           for (i = 0; i < cannonballs.length; i++) {
-            if (point.shape1 == cannonballs[i].GetShapeList() || point.shape2 == cannonballs[i].GetShapeList()) {
+            if (shapeA == cannonballs[i].GetShapeList() || shapeB == cannonballs[i].GetShapeList()) {
               this.isSatisfied = true;
             }
           }

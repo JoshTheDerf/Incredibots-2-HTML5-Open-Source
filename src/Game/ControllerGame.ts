@@ -7,6 +7,7 @@
 	b2LinearStiffness,
 	b2MouseJoint,
 	b2MouseJointDef,
+  b2Transform,
 	b2Vec2,
 	b2World
 } from "@box2d/core";
@@ -30,9 +31,11 @@ import {
 	ControllerChallenge,
 	ControllerGameGlobals,
 	ControllerSandbox,
+  ControllerTutorial,
 	CreateAction,
 	Database,
 	DeleteAction,
+  DialogWindow,
 	Draw,
 	DropDownMenu,
 	EnterTextAction,
@@ -452,7 +455,7 @@ export class ControllerGame extends Controller {
       var m_buildArea: Graphics = new Graphics();
       m_buildArea.lineStyle(6, 0xdeb05d);
       var m: Matrix = new Matrix();
-      m_buildArea.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#ff8f17', '#ffc150']), matrix: m });
+      m_buildArea.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#ff8f17', '#ffc150']), matrix: m, alpha: 0.2 });
       m_buildArea.drawRect(0, 0, 700, 550);
       m_buildArea.endFill();
       this.addChildAt(m_buildArea, childIndex);
@@ -460,7 +463,7 @@ export class ControllerGame extends Controller {
       var m_badBuildArea: Graphics = new Graphics();
       m_badBuildArea.lineStyle(6, 0xde6a5d);
       m = new Matrix();
-      m_badBuildArea.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#ff4d17', '#ff8f50']), matrix: m });
+      m_badBuildArea.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#ff4d17', '#ff8f50']), matrix: m, alpha: 0.2 });
       m_badBuildArea.drawRect(0, 0, 700, 550);
       m_badBuildArea.endFill();
       this.addChildAt(m_badBuildArea, childIndex);
@@ -468,7 +471,7 @@ export class ControllerGame extends Controller {
       var m_selectedBuildArea: Graphics = new Graphics();
       m_selectedBuildArea.lineStyle(6, 0xfeca5d);
       m = new Matrix();
-      m_selectedBuildArea.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#ff4d17', '#ff8f50']), matrix: m })
+      m_selectedBuildArea.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#ff4d17', '#ff8f50']), matrix: m, alpha: 0.2 })
       m_selectedBuildArea.drawRect(0, 0, 700, 550);
       m_selectedBuildArea.endFill();
       this.addChildAt(m_selectedBuildArea, childIndex);
@@ -753,16 +756,16 @@ export class ControllerGame extends Controller {
       Main.ShowMouse();
     }
 
-    if (!this.paused && ControllerChallenge.challengeOver()) {
+    if (!this.paused && this.ChallengeOver()) {
       this.wonChallenge = true;
-      this.pauseButton(new MouseEvent(""));
+      this.pauseButton();
       if (!ControllerGameGlobals.playingReplay || ControllerGameGlobals.viewingUnsavedReplay) {
         this.m_fader.visible = true;
         if (this instanceof ControllerTutorial || this.WonChallenge()) {
           if (this.m_scoreWindow) {
             try {
               this.removeChild(this.m_scoreWindow);
-            } catch (type: Error) {}
+            } catch (type) {}
           }
           this.m_scoreWindow = new ScoreWindow(this, this.GetScore());
           if (Main.enableSound) {
@@ -1211,7 +1214,7 @@ export class ControllerGame extends Controller {
     if (!this.paused) {
       if (ControllerGameGlobals.playingReplay) {
         if (ControllerGameGlobals.replay.Update(this.frameCounter)) {
-          this.pauseButton(new MouseEvent(""));
+          this.pauseButton();
         }
       }
       for (var i: number = 0; i < this.allParts.length; i++) {
@@ -2734,7 +2737,7 @@ export class ControllerGame extends Controller {
 
   private mochiAdFinished(): void {
     ControllerGameGlobals.adStarted = false;
-    this.playButton(new MouseEvent(""), false);
+    this.playButton(false);
   }
 
   public playButton(maybeShowAd: boolean = true): void {
@@ -4583,7 +4586,7 @@ export class ControllerGame extends Controller {
   }
 
   public textText(e: Event): void {
-    this.textEntered(e);
+    this.textEntered();
     if (this.lastSelectedText instanceof TextPart) {
       this.newText = e.target;
       ControllerGameGlobals.curRobotID = "";
@@ -5376,7 +5379,7 @@ export class ControllerGame extends Controller {
           "This replay instanceof saved for a score",
           ControllerGameGlobals.curRobotID,
           new Robot(this.allParts, ControllerSandbox.settings),
-          ControllerChallenge.challengeOver() ? this.GetScore() : -1,
+          ControllerChallenge.ChallengeOver() ? this.GetScore() : -1,
           ControllerGameGlobals.curChallengeID,
           1,
           this.finishSavingReplay
@@ -5396,7 +5399,7 @@ export class ControllerGame extends Controller {
           "This replay instanceof saved for a score",
           ControllerGameGlobals.curRobotID,
           new Robot(this.allParts, ControllerSandbox.settings),
-          ControllerChallenge.challengeOver() ? this.GetScore() : -1,
+          ControllerChallenge.ChallengeOver() ? this.GetScore() : -1,
           ControllerGameGlobals.curChallengeID,
           1,
           this.finishSavingReplay
@@ -6184,7 +6187,7 @@ export class ControllerGame extends Controller {
             "This replay instanceof saved for a score",
             ControllerGameGlobals.curRobotID,
             new Robot(this.allParts, ControllerSandbox.settings),
-            ControllerChallenge.challengeOver() ? this.GetScore() : -1,
+            ControllerChallenge.ChallengeOver() ? this.GetScore() : -1,
             ControllerGameGlobals.curChallengeID,
             1,
             this.finishSavingReplay
@@ -6204,7 +6207,7 @@ export class ControllerGame extends Controller {
             "This replay instanceof saved for a score",
             ControllerGameGlobals.curRobotID,
             new Robot(this.allParts, ControllerSandbox.settings),
-            ControllerChallenge.challengeOver() ? this.GetScore() : -1,
+            ControllerChallenge.ChallengeOver() ? this.GetScore() : -1,
             ControllerGameGlobals.curChallengeID,
             1,
             this.finishSavingReplay

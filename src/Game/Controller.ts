@@ -24,82 +24,81 @@ export class Controller extends Container {
     isEmbedChallenge: boolean = false
   ): void {}
 
-  public HideDialog(e: Event): void {}
+  public HideDialog(): void {}
 
-  public HideLinkDialog(e: Event): void {}
+  public HideLinkDialog(): void {}
 
-  public HideExportDialog(e: Event): void {}
+  public HideExportDialog(): void {}
 
-  public HideImportDialog(e: Event): void {}
+  public HideImportDialog(): void {}
 
   public ShowImportWindow(type: number): void {}
 
   public ShowConfirmDialog(msg: string, type: number): void {}
 
-  public HideConfirmDialog(e: Event): void {}
+  public HideConfirmDialog(): void {}
 
-  public ConfirmDeleteRobot(e: MouseEvent): void {}
+  public ConfirmDeleteRobot(): void {}
 
-  public ConfirmDeleteReplay(e: MouseEvent): void {}
+  public ConfirmDeleteReplay(): void {}
 
-  public ConfirmDeleteChallenge(e: MouseEvent): void {}
+  public ConfirmDeleteChallenge(): void {}
 
-  public ConfirmLogout(e: MouseEvent): void {}
+  public ConfirmLogout(): void {}
 
-  public DialogOK(e: Event): void {}
+  public DialogOK(): void {}
 
-  public finishGettingLoadRobotData(e: Event): void {}
+  public finishGettingLoadRobotData(): void {}
 
-  public finishGettingLoadReplayData(e: Event): void {}
+  public finishGettingLoadReplayData(): void {}
 
-  public finishGettingLoadChallengeData(e: Event): void {}
+  public finishGettingLoadChallengeData(): void {}
 
-  public finishGettingLoadChallengeForScoreData(e: Event): void {}
+  public finishGettingLoadChallengeForScoreData(): void {}
 
-  public finishGettingScoreData(e: Event): void {}
+  public finishGettingScoreData(): void {}
 
-  public finishLoading(e: Event): void {}
+  public finishLoading(): void {}
 
-  public finishLoadingReplay(e: Event): void {}
+  public finishLoadingReplay(): void {}
 
-  public finishLoadingChallenge(e: Event): void {}
+  public finishLoadingChallenge(): void {}
 
-  public finishDeleting(e: Event): void {}
+  public finishDeleting(): void {}
 
-  public finishDeletingReplay(e: Event): void {}
+  public finishDeletingReplay(): void {}
 
-  public finishDeletingChallenge(e: Event): void {}
+  public finishDeletingChallenge(): void {}
 
   public loginButton(
-    e: MouseEvent,
     displayMessage: boolean = false,
     backToSave: boolean = false,
     saveLoadWindowOpen: boolean = false
   ): void {}
 
-  public finishLoggingIn(e: Event): void {}
+  public finishLoggingIn(): void {}
 
-  public finishAddingUser(e: Event): void {}
+  public finishAddingUser(): void {}
 
   public finishExporting(exportStr: string, robotStr: string): void {}
 
-  public commentButton(e: MouseEvent, robotID: string = "", robotPublic: boolean = false): void {}
+  public commentButton(robotID: string = "", robotPublic: boolean = false): void {}
 
-  public linkButton(e: MouseEvent, robotID: string = "", robotPublic: boolean = false): void {}
+  public linkButton(robotID: string = "", robotPublic: boolean = false): void {}
 
-  public embedButton(e: MouseEvent, robotID: string = "", robotPublic: boolean = false): void {}
+  public embedButton(robotID: string = "", robotPublic: boolean = false): void {}
 
-  public commentReplayButton(e: MouseEvent, replayID: string = "", replayPublic: boolean = false): void {}
+  public commentReplayButton(replayID: string = "", replayPublic: boolean = false): void {}
 
-  public linkReplayButton(e: MouseEvent, replayID: string = "", replayPublic: boolean = false): void {}
+  public linkReplayButton(replayID: string = "", replayPublic: boolean = false): void {}
 
-  public embedReplayButton(e: MouseEvent, replayID: string = "", replayPublic: boolean = false): void {}
+  public embedReplayButton(replayID: string = "", replayPublic: boolean = false): void {}
 
-  public commentChallengeButton(e: MouseEvent, challengeID: string = "", challengePublic: boolean = false): void {}
+  public commentChallengeButton(challengeID: string = "", challengePublic: boolean = false): void {}
 
-  public linkChallengeButton(e: MouseEvent, challengeID: string = "", challengePublic: boolean = false): void {}
+  public linkChallengeButton(challengeID: string = "", challengePublic: boolean = false): void {}
 
-  public embedChallengeButton(e: MouseEvent, challengeID: string = "", challengePublic: boolean = false): void {}
+  public embedChallengeButton(challengeID: string = "", challengePublic: boolean = false): void {}
 
   public processLoadedRobot(robot: Robot): void {}
 
