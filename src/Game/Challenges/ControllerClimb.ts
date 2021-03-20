@@ -1,8 +1,10 @@
 import { b2AABB } from "@box2d/core";
-import { Graphics, Matrix } from "pixi.js";
+import { Graphics, Matrix, Texture } from "pixi.js";
 import { Circle, ControllerChallenge, ControllerGameGlobals, Gradient, Rectangle, ShapePart, WinCondition } from "../../imports";
 
 export class ControllerClimb extends ControllerChallenge {
+  private groundTex: Texture;
+
   constructor() {
     super();
     ControllerChallenge.playChallengeMode = true;
@@ -35,6 +37,8 @@ export class ControllerClimb extends ControllerChallenge {
     p.isEditable = false;
     p.drawAnyway = false;
     this.allParts.push(p);
+
+    this.groundTex = Gradient.getLinearGradientTexture(["#6BD354", "#54BA3D"], 255);
 
     this.removeChild(this.sGround);
     this.sGround = new Graphics();
@@ -137,10 +141,10 @@ export class ControllerClimb extends ControllerChallenge {
     this.sGround.endFill();
 
     // body
-    var m: Matrix = new Matrix();
     for (i = 0; i < 29; i++) {
-      m.translate(0, 307 + i * 35.6)
-      this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#6BD354", "#54BA3D"], 35.6), matrix: m });
+      var m: Matrix = new Matrix();
+      m.scale(1, 2000 / 255)
+      this.sGround.beginTextureFill({ texture: this.groundTex, matrix: m });
       p = new Rectangle(15 + (28 - i), (i + 1) * 0.75 - 11.5, i + 7.1, 0.75, false);
       p.isStatic = true;
       p.isEditable = false;
@@ -230,8 +234,8 @@ export class ControllerClimb extends ControllerChallenge {
 
   public DrawGroundCircle(xPos: number, yPos: number, radius: number): void {
     var m: Matrix = new Matrix();
-    m.translate(0, yPos + radius)
-    this.sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#6BD354", "#54BA3D"], radius * 2), matrix: m });
+    m.scale(1, 2000 / 255)
+    this.sGround.beginTextureFill({ texture: this.groundTex, matrix: m });
     this.sGround.drawCircle(xPos, yPos, radius);
     this.sGround.endFill();
   }
