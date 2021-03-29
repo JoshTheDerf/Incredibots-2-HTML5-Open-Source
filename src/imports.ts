@@ -65,6 +65,7 @@ export * from './Game/Challenges/ControllerRace'
 export * from './Game/Challenges/ControllerMonkeyBars'
 export * from './Game/Tutorials/ControllerTutorial'
 export * from './Game/Tutorials/ControllerCar'
+export * from './Game/Tutorials/ControllerTank'
 export * from './General/Database'
 
 // Conditions
