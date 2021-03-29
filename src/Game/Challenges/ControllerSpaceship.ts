@@ -1,4 +1,6 @@
+import { ByteArray } from "../../General/ByteArray";
 import { ControllerChallenge, ControllerGameGlobals, ControllerSandbox, Database, Resource } from "../../imports";
+import { Challenge } from "../Challenge";
 
 export class ControllerSpaceship extends ControllerChallenge {
   constructor() {
@@ -6,12 +8,19 @@ export class ControllerSpaceship extends ControllerChallenge {
     ControllerChallenge.playChallengeMode = true;
     ControllerChallenge.playOnlyMode = true;
 
-    if (!playingReplay) {
-      var b: ByteArray = new Resource.cSpaceship();
-      b.uncompress();
-      ControllerSpaceship.challenge = Database.ExtractChallengeFromByteArray(b);
-      loadedParts = ControllerSpaceship.challenge.allParts;
-      ControllerSandbox.settings = ControllerSpaceship.challenge.settings;
+    if (!ControllerGameGlobals.playingReplay) {
+      Resource.cSpaceship.arrayBuffer()
+        .then((b: ArrayBuffer) => new ByteArray(b))
+        .then((b: ByteArray) => {
+          b.uncompress()
+          return b
+        })
+        .then((b: ByteArray) => Database.ExtractChallengeFromByteArray(b))
+        .then((c:Challenge) => {
+          ControllerSpaceship.challenge = c;
+          ControllerGameGlobals.loadedParts = ControllerSpaceship.challenge.allParts;
+          // ControllerSandbox.settings = ControllerSpaceship.challenge.settings;
+        })
     }
 
     this.draw.m_drawXOff = -10000;
@@ -36,41 +45,41 @@ export class ControllerSpaceship extends ControllerChallenge {
     this.ShowTutorialWindow(num, 276, 130, moreButton);
   }
 
-  public saveButton(e: MouseEvent): void {
+  public saveButton(): void {
     this.ShowDisabledDialog();
   }
 
-  public saveReplayButton(e: MouseEvent): void {
-    this.ShowDisabledDialog();
-    if (this.m_scoreWindow && this.m_scoreWindow.visible) this.m_scoreWindow.ShowFader();
-  }
-
-  public submitButton(e: MouseEvent): void {
+  public saveReplayButton(): void {
     this.ShowDisabledDialog();
     if (this.m_scoreWindow && this.m_scoreWindow.visible) this.m_scoreWindow.ShowFader();
   }
 
-  public commentButton(e: MouseEvent, robotID: String = "", robotPublic: boolean = false): void {
+  public submitButton(): void {
+    this.ShowDisabledDialog();
+    if (this.m_scoreWindow && this.m_scoreWindow.visible) this.m_scoreWindow.ShowFader();
+  }
+
+  public commentButton(robotID: String = "", robotPublic: boolean = false): void {
     this.ShowDisabledDialog();
   }
 
-  public linkButton(e: MouseEvent, robotID: String = "", robotPublic: boolean = false): void {
+  public linkButton(robotID: String = "", robotPublic: boolean = false): void {
     this.ShowDisabledDialog();
   }
 
-  public embedButton(e: MouseEvent, robotID: String = "", robotPublic: boolean = false): void {
+  public embedButton(robotID: String = "", robotPublic: boolean = false): void {
     this.ShowDisabledDialog();
   }
 
-  public commentReplayButton(e: MouseEvent, replayID: String = "", replayPublic: boolean = false): void {
+  public commentReplayButton(replayID: String = "", replayPublic: boolean = false): void {
     this.ShowDisabledDialog();
   }
 
-  public linkReplayButton(e: MouseEvent, replayID: String = "", replayPublic: boolean = false): void {
+  public linkReplayButton(replayID: String = "", replayPublic: boolean = false): void {
     this.ShowDisabledDialog();
   }
 
-  public embedReplayButton(e: MouseEvent, replayID: String = "", replayPublic: boolean = false): void {
+  public embedReplayButton(replayID: String = "", replayPublic: boolean = false): void {
     this.ShowDisabledDialog();
   }
 }

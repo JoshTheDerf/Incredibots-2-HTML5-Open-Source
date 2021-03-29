@@ -26,6 +26,7 @@ import cLose from "../../../resource/Incredibots_Lose_r2.mp3";
 
 // Main Menu Resources
 import cMainMenuLogo from "../../../resource/incredibots2_logo.png";
+import cCongrats from "../../../resource/Incredibots_Congratulations_1.png";
 
 // Level Select Resources
 import cLevelSelectBox1L from "../../../resource/levelselect_box_1_L.png";
@@ -170,6 +171,7 @@ export class Resource {
 
   static textures = {
     cMainMenuLogo: cMainMenuLogo,
+    cCongrats: cCongrats,
     cLevelSelectBox1L: cLevelSelectBox1L,
     cLevelSelectBox1M: cLevelSelectBox1M,
     cLevelSelectBox1R: cLevelSelectBox1R,
@@ -308,10 +310,15 @@ export class Resource {
   static cWin = PIXIsound.Sound.from(cWin);
   static cLose = PIXIsound.Sound.from(cLose);
 
+  // Challenge resources
+  static cSpaceship: any;
+  static cRace: any;
+
   // Main menu resources
   static cReplay: any;
   static cRobot: any;
   static cMainMenuLogo: Texture;
+  static cCongrats: Texture;
 
   // Level select resources
   static cLevelSelectBox1L: Texture;

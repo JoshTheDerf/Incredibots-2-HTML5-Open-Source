@@ -29,6 +29,7 @@ import {
 	ControlKeyAction,
 	Controller,
 	ControllerChallenge,
+  ControllerClimb,
 	ControllerGameGlobals,
 	ControllerSandbox,
   ControllerTutorial,
@@ -71,6 +72,7 @@ import {
 	RevoluteJoint,
 	Robot,
 	RotateAction,
+  ScoreWindow,
 	ShapeCheckboxAction,
 	ShapePart,
 	Sky,
@@ -769,9 +771,7 @@ export class ControllerGame extends Controller {
           }
           this.m_scoreWindow = new ScoreWindow(this, this.GetScore());
           if (Main.enableSound) {
-            ControllerGameGlobals.musicChannel = ControllerGameGlobals.winSound.play();
-            st = new SoundTransform(0.5);
-            ControllerGameGlobals.musicChannel.soundTransform = st;
+            ControllerGameGlobals.winSound.play()
           }
           this.addChild(this.m_scoreWindow);
           if (this instanceof ControllerTutorial) {
@@ -790,9 +790,7 @@ export class ControllerGame extends Controller {
           this.m_progressDialog.ShowOKButton();
           this.m_progressDialog.StopTimer();
           if (Main.enableSound) {
-            ControllerGameGlobals.musicChannel = ControllerGameGlobals.loseSound.play();
-            st = new SoundTransform(0.5);
-            ControllerGameGlobals.musicChannel.soundTransform = st;
+            ControllerGameGlobals.loseSound.play();
           }
         }
       }

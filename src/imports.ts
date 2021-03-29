@@ -43,6 +43,7 @@ export * from './Gui/ImportWindow'
 export * from './Gui/MainEditPanel'
 export * from './Gui/PartEditWindow'
 export * from './Gui/ColourChangeWindow'
+export * from './Gui/ScoreWindow'
 
 // Game Core
 export * from './Game/SandboxSettings'
@@ -63,6 +64,7 @@ export * from './Game/Challenges/ControllerSpaceship'
 export * from './Game/Challenges/ControllerRace'
 export * from './Game/Challenges/ControllerMonkeyBars'
 export * from './Game/Tutorials/ControllerTutorial'
+export * from './Game/Tutorials/ControllerCar'
 export * from './General/Database'
 
 // Conditions

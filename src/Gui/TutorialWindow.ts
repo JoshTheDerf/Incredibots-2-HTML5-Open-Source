@@ -30,15 +30,11 @@ export class TutorialWindow extends GuiWindow
 
 		var msg:string = this.TUTORIAL_MESSAGES[id];
 		var numAreas:number = 1;
-		while (msg.search("\n\n") != -1) {
-			numAreas++;
-			msg = msg.substr(msg.search("\n\n") + 2);
-		}
 
 		msg = this.TUTORIAL_MESSAGES[id];
 
 		this.msgArea = new Text('');
-		this.msgArea.anchor.set(0.5, 0.5);
+		this.msgArea.anchor.set(0.5, 0);
 		this.msgArea.x = 10 + (228 / 2);
 		this.msgArea.y = 16;
 		this.msgArea.text = (numAreas == 1 ? msg : msg.substr(0, msg.search("\n\n")));
@@ -52,8 +48,6 @@ export class TutorialWindow extends GuiWindow
 		format.wordWrapWidth = 228;
 		this.msgArea.style = format;
 		this.addChild(this.msgArea);
-
-		msg = msg.substr(msg.search("\n\n") + 2);
 
 		if (numAreas > 1) {
 			this.msgArea2 = new Text('');
@@ -76,8 +70,6 @@ export class TutorialWindow extends GuiWindow
 			this.msgArea2.style = format;
 			this.addChild(this.msgArea2);
 		}
-
-		msg = msg.substr(msg.search("\n\n") + 2);
 
 		if (numAreas > 2) {
 			this.msgArea3 = new Text('');
@@ -110,7 +102,7 @@ export class TutorialWindow extends GuiWindow
 		this.y = this.initY;
 	}
 
-	public closeWindow(e:MouseEvent):void {
+	public closeWindow():void {
 		this.cont.CloseTutorialDialog(this.num);
 	}
 

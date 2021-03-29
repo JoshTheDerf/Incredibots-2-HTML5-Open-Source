@@ -338,7 +338,7 @@ export class ControllerMonkeyBars extends ControllerChallenge {
     // cave walls
     this.sGround1.lineStyle(6, 0x889598, 1);
     var m: Matrix = new Matrix();
-    this.sGround1.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#B6C6CA", "#9AA9AD"]), matrix: m });
+    this.sGround1.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#B6C6CA", "#9AA9AD"], 1500), matrix: m });
     this.sGround1.moveTo(1101, 1364);
     this.sGround1.lineTo(1085, 1294);
     this.sGround1.lineTo(1035, 1207);
@@ -400,7 +400,7 @@ export class ControllerMonkeyBars extends ControllerChallenge {
     this.sGround1.endFill();
 
     this.sGround2.lineStyle(6, 0x889598, 1);
-    this.sGround2.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#B6C6CA", "#9AA9AD"]), matrix: m });
+    this.sGround2.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#B6C6CA", "#9AA9AD"], 1500), matrix: m });
     this.sGround2.moveTo(4167, 1380);
     this.sGround2.lineTo(4293, 1324);
     this.sGround2.lineTo(4322, 1252);
@@ -512,10 +512,11 @@ export class ControllerMonkeyBars extends ControllerChallenge {
 
     // body
     m = new Matrix();
-    this.sGround1.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#6BD354", "#54BA3D"]), matrix: m });
+    m.translate(0, 550)
+    this.sGround1.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#6BD354", "#54BA3D"], 700), matrix: m });
     this.sGround1.drawRect(1550, 1391, 600, 100);
     this.sGround1.endFill();
-    this.sGround2.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#6BD354", "#54BA3D"]), matrix: m });
+    this.sGround2.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#6BD354", "#54BA3D"], 700), matrix: m });
     this.sGround2.drawRect(3483, 1375, 1071, 185);
     this.sGround2.endFill();
     this.DrawGroundCircle(1029, 1353, 63);
@@ -606,7 +607,9 @@ export class ControllerMonkeyBars extends ControllerChallenge {
   public DrawGroundCircle(xPos: number, yPos: number, radius: number): void {
     var sGround: Graphics = xPos < 3000 ? this.sGround1 : this.sGround2;
     var m: Matrix = new Matrix();
-    sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#6BD354", "#54BA3D"]), matrix: m });
+    m.scale(1, 700 / 255)
+    m.translate(0, 550)
+    sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#6BD354", "#54BA3D"], 255), matrix: m });
     sGround.drawCircle(xPos + radius, yPos + radius, radius);
     sGround.endFill();
   }
@@ -614,7 +617,7 @@ export class ControllerMonkeyBars extends ControllerChallenge {
   public DrawCaveRock(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): void {
     var sGround: Graphics = x1 < 3000 ? this.sGround1 : this.sGround2;
     var m: Matrix = new Matrix();
-    sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#AAB9BD", "#95A1A5"]), matrix: m });
+    sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#AAB9BD", "#95A1A5"], 1500), matrix: m });
     sGround.moveTo(x1, y1);
     sGround.lineTo(x2, y2);
     sGround.lineTo(x3, y3);
@@ -626,9 +629,11 @@ export class ControllerMonkeyBars extends ControllerChallenge {
     var sGround: Graphics = xPos < 3000 ? this.sGround1 : this.sGround2;
     sGround.lineStyle(6, 0x6bb05a);
     var m: Matrix = new Matrix();
+    m.translate(0, yPos)
     sGround.beginTextureFill({
       texture: Gradient.getLinearGradientTexture(
-        type == 0 ? ["#8EDB82", "#7FBF72"] : type == 1 ? ["#80D970", "#6DBE5D"] : ["#70C160", "#63AB52"]
+        type == 0 ? ["#8EDB82", "#7FBF72"] : type == 1 ? ["#80D970", "#6DBE5D"] : ["#70C160", "#63AB52"],
+        radius * 2
       ),
       matrix: m,
     });
@@ -678,41 +683,41 @@ export class ControllerMonkeyBars extends ControllerChallenge {
     this.hasZoomed = false;
   }
 
-  public saveButton(e: MouseEvent): void {
+  public saveButton(): void {
     this.ShowDisabledDialog();
   }
 
-  public saveReplayButton(e: MouseEvent): void {
-    this.ShowDisabledDialog();
-    if (this.m_scoreWindow && this.m_scoreWindow.visible) this.m_scoreWindow.ShowFader();
-  }
-
-  public submitButton(e: MouseEvent): void {
+  public saveReplayButton(): void {
     this.ShowDisabledDialog();
     if (this.m_scoreWindow && this.m_scoreWindow.visible) this.m_scoreWindow.ShowFader();
   }
 
-  public commentButton(e: MouseEvent, robotID: String = "", robotPublic: boolean = false): void {
+  public submitButton(): void {
+    this.ShowDisabledDialog();
+    if (this.m_scoreWindow && this.m_scoreWindow.visible) this.m_scoreWindow.ShowFader();
+  }
+
+  public commentButton(robotID: String = "", robotPublic: boolean = false): void {
     this.ShowDisabledDialog();
   }
 
-  public linkButton(e: MouseEvent, robotID: String = "", robotPublic: boolean = false): void {
+  public linkButton(robotID: String = "", robotPublic: boolean = false): void {
     this.ShowDisabledDialog();
   }
 
-  public embedButton(e: MouseEvent, robotID: String = "", robotPublic: boolean = false): void {
+  public embedButton(robotID: String = "", robotPublic: boolean = false): void {
     this.ShowDisabledDialog();
   }
 
-  public commentReplayButton(e: MouseEvent, replayID: String = "", replayPublic: boolean = false): void {
+  public commentReplayButton(replayID: String = "", replayPublic: boolean = false): void {
     this.ShowDisabledDialog();
   }
 
-  public linkReplayButton(e: MouseEvent, replayID: String = "", replayPublic: boolean = false): void {
+  public linkReplayButton(replayID: String = "", replayPublic: boolean = false): void {
     this.ShowDisabledDialog();
   }
 
-  public embedReplayButton(e: MouseEvent, replayID: String = "", replayPublic: boolean = false): void {
+  public embedReplayButton(replayID: String = "", replayPublic: boolean = false): void {
     this.ShowDisabledDialog();
   }
 }

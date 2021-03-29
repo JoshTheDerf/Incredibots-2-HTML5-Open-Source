@@ -1142,7 +1142,7 @@ export class ControllerTutorial extends ControllerGame
 		return 1000;
 	}
 
-	public submitButton(e:MouseEvent):void {
+	public submitButton():void {
 		if (this.m_scoreWindow && this.m_scoreWindow.visible) this.m_scoreWindow.ShowFader();
 		this.ShowDisabledDialog();
 	}
