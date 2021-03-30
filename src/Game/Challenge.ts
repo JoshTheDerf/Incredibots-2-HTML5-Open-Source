@@ -38,7 +38,7 @@ export class Challenge {
 
   public winConditionsAnded: boolean = true;
 
-  cosntructor(s: SandboxSettings) {
+  constructor(s: SandboxSettings) {
     this.settings = s;
   }
 }

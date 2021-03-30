@@ -1,7 +1,7 @@
 // permanent mochi ID for version 0.02: 1913f89f65e17063
 
 import { Application, Container } from "pixi.js";
-import { Controller, ControllerCar, ControllerChallenge, ControllerClimb, ControllerGame, ControllerGameGlobals, ControllerMainMenu, ControllerMonkeyBars, ControllerRace, ControllerSandbox, ControllerSpaceship, ControllerTank, FpsCounter, Input, LSOManager, SandboxSettings } from "./imports";
+import { ByteArray, Controller, ControllerCar, ControllerCatapult, ControllerChallenge, ControllerChallengeEditor, ControllerClimb, ControllerDumpbot, ControllerGame, ControllerGameGlobals, ControllerHomeMovies, ControllerJumpbot, ControllerMainMenu, ControllerMonkeyBars, ControllerNewFeatures, ControllerRace, ControllerRubeGoldberg, ControllerSandbox, ControllerShapes, ControllerSpaceship, ControllerTank, FpsCounter, Input, LSOManager, Resource, SandboxSettings } from "./imports";
 
 export class Main {
 
@@ -36,6 +36,11 @@ export class Main {
 	public static lastAdTime:number = 0;
 
 	public static const GLOBAL_FONT:string = "Arial";
+
+	private preloadedBots = {
+		cRace: null,
+		cSpaceship: null
+	}
 
 	public static BrowserRedirect(url:string|null = null, newWindow:boolean = false, parent:boolean = false):void {
 		const target = url || "http://www.incredibots.com/"
@@ -82,6 +87,14 @@ export class Main {
 
 	private Init():void {
 		Input.Init();
+
+		Resource.cSpaceship.arrayBuffer()
+		.then((b: ArrayBuffer) => new ByteArray(b))
+		.then((b: ByteArray) => (this.preloadedBots.cSpaceship = b))
+
+		Resource.cRace.arrayBuffer()
+		.then((b: ArrayBuffer) => new ByteArray(b))
+		.then((b: ByteArray) => (this.preloadedBots.cRace = b))
 	}
 
 	private rehideMouse(e:Event):void {
@@ -182,9 +195,9 @@ export class Main {
 			} else if (Main.nextControllerType == 3) {
 				Main.m_curController = new ControllerClimb();
 			} else if (Main.nextControllerType == 4) {
-				Main.m_curController = new ControllerRace();
+				Main.m_curController = new ControllerRace(this.preloadedBots.cRace);
 			} else if (Main.nextControllerType == 5) {
-				Main.m_curController = new ControllerSpaceship();
+				Main.m_curController = new ControllerSpaceship(this.preloadedBots.cSpaceship);
 			} else {
 				Main.m_curController = new ControllerSandbox();
 			}

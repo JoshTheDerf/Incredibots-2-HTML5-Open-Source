@@ -1,27 +1,23 @@
 import { ByteArray, ControllerChallenge, ControllerGameGlobals, ControllerSandbox, Database, Resource } from "../../imports";
 
 export class ControllerRace extends ControllerChallenge {
-  constructor() {
+  constructor(cRace: any) {
     super();
     ControllerChallenge.playChallengeMode = true;
     ControllerChallenge.playOnlyMode = true;
 
-    if (!ControllerGameGlobals.playingReplay) {
-      this.loadRace()
+    if (!ControllerGameGlobals.playingReplay && cRace) {
+      cRace.uncompress();
+      const challenge = Database.ExtractChallengeFromByteArray(cRace);
+      ControllerRace.challenge = challenge;
+      ControllerGameGlobals.loadedParts = ControllerRace.challenge.allParts;
+      ControllerSandbox.settings = ControllerRace.challenge.settings;
     }
 
     this.draw.m_drawXOff = -10000;
     this.draw.m_drawYOff = -10000;
     ControllerGameGlobals.initZoom = ControllerRace.challenge.zoomLevel;
     this.m_physScale = ControllerRace.challenge.zoomLevel;
-  }
-
-  async loadRace() {
-    var b: ByteArray = new ByteArray(await Resource.cRace.arrayBuffer());
-    await b.uncompress();
-    ControllerRace.challenge = Database.ExtractChallengeFromByteArray(b);
-    ControllerGameGlobals.loadedParts = ControllerRace.challenge.allParts;
-    // ControllerSandbox.settings = ControllerRace.challenge.settings;
   }
 
   public Init(e: Event): void {

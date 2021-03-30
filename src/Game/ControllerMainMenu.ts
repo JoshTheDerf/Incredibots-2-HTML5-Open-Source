@@ -270,7 +270,6 @@ export class ControllerMainMenu extends Controller {
     button = new GuiButton("Sandbox Mode", 390, 109, 200, 65, this.sandboxButton.bind(this), GuiButton.PINK, style);
     this.levelSelectGui.addChild(button);
     button = new GuiButton("Challenge Editor", 210, 158, 200, 65, this.editorButton.bind(this), GuiButton.PINK, style);
-    button.disabled = true;
     this.levelSelectGui.addChild(button);
     button = new GuiButton(
       " Advanced Sandbox ",

@@ -2,6 +2,8 @@ import { b2Body, b2World } from "@box2d/core";
 import { Text } from "pixi.js";
 import { ControllerGame, Part } from "../imports";
 
+// FIXME: Very broken.
+
 export class TextPart extends Part {
   public x: number;
   public y: number;
@@ -53,7 +55,8 @@ export class TextPart extends Part {
     this.m_textField.wordWrap = true;
     this.m_textField.x = nx;
     this.m_textField.y = ny;
-    if (cont) cont.addChildAt(this.m_textField, cont.getChildIndex(cont.m_canvas) + (front ? 1 : 0));
+    // FIXME: Very error.
+    // if (cont) cont.addChildAt(this.m_textField, cont.getChildIndex(cont.m_canvas) + (front ? 1 : 0));
     this.type = "TextPart";
   }
 

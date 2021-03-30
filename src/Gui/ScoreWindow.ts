@@ -1,5 +1,5 @@
 import { Sprite, Text, TextStyle } from "pixi.js";
-import { ControllerGame, ControllerGameGlobals, ControllerSandbox, ControllerTutorial, GuiButton, GuiWindow, Main, Resource, SandboxSettings } from "../imports";
+import { ControllerChallengeEditor, ControllerGame, ControllerGameGlobals, ControllerHomeMovies, ControllerNewFeatures, ControllerRubeGoldberg, ControllerSandbox, ControllerTutorial, GuiButton, GuiWindow, Main, Resource, SandboxSettings } from "../imports";
 
 export class ScoreWindow extends GuiWindow
 {
@@ -45,18 +45,18 @@ export class ScoreWindow extends GuiWindow
 			this.addChild(this.m_scoreField);
 		}
 
-		this.m_viewReplayButton = new GuiButton((ControllerGameGlobals.viewingUnsavedReplay ? "View Again!" : "View Replay"), 45, y, 110, 35, this.viewReplayButton, GuiButton.PURPLE);
+		this.m_viewReplayButton = new GuiButton((ControllerGameGlobals.viewingUnsavedReplay ? "View Again!" : "View Replay"), 45, y, 110, 35, this.viewReplayButton.bind(this), GuiButton.PURPLE);
 		this.addChild(this.m_viewReplayButton);
-		this.m_saveReplayButton = new GuiButton("Save Replay", 45, y + 30, 110, 35, this.saveReplayButton, GuiButton.PURPLE);
+		this.m_saveReplayButton = new GuiButton("Save Replay", 45, y + 30, 110, 35, this.saveReplayButton.bind(this), GuiButton.PURPLE);
 		this.addChild(this.m_saveReplayButton);
-		this.m_submitScoreButton = new GuiButton("Submit Score", 45, y + 60, 110, 35, this.cont.submitButton, GuiButton.PURPLE);
+		this.m_submitScoreButton = new GuiButton("Submit Score", 45, y + 60, 110, 35, this.cont.submitButton.bind(this), GuiButton.PURPLE);
 		this.addChild(this.m_submitScoreButton);
-		this.m_mainMenuButton = new GuiButton("Main Menu", 45, y + 90, 110, 35, this.cont.newButton, GuiButton.PURPLE);
+		this.m_mainMenuButton = new GuiButton("Main Menu", 45, y + 90, 110, 35, this.cont.newButton.bind(this), GuiButton.PURPLE);
 		this.addChild(this.m_mainMenuButton);
-		this.m_cancelButton = new GuiButton((this.cont instanceof ControllerHomeMovies || this.cont instanceof ControllerChallengeEditor ? "Close" : "Retry"), 45, y + 120, 110, 35, this.cancelButton, GuiButton.PURPLE);
+		this.m_cancelButton = new GuiButton((this.cont instanceof ControllerHomeMovies || this.cont instanceof ControllerChallengeEditor ? "Close" : "Retry"), 45, y + 120, 110, 35, this.cancelButton.bind(this), GuiButton.PURPLE);
 		this.addChild(this.m_cancelButton);
 		if (this.cont instanceof ControllerTutorial || this.cont instanceof ControllerHomeMovies || this.cont instanceof ControllerRubeGoldberg || this.cont instanceof ControllerNewFeatures) {
-			this.m_nextLevelButton = new GuiButton("Next Level", 45, y + 150, 110, 35, this.nextButton, GuiButton.BLUE);
+			this.m_nextLevelButton = new GuiButton("Next Level", 45, y + 150, 110, 35, this.nextButton.bind(this), GuiButton.BLUE);
 			this.addChild(this.m_nextLevelButton);
 		}
 	}
