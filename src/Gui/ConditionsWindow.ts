@@ -1,5 +1,4 @@
-import { CheckBox, TextInput } from "@puxi/core";
-import { Sprite, Text, TextStyle } from "pixi.js";
+import { Text, TextStyle } from "pixi.js";
 import { ControllerChallenge, ShapePart, Main, WinCondition, LossCondition, Util, Condition } from "../imports";
 import { GuiButton } from "./GuiButton";
 import { GuiCheckBox } from "./GuiCheckBox";
@@ -16,16 +15,16 @@ export class ConditionsWindow extends GuiWindow
 	private is1:Text;
 	private is2:Text;
 
-	private allConditionsBox:CheckBox;
-	private immediateLossBox:CheckBox;
+	private allConditionsBox:GuiCheckBox;
+	private immediateLossBox:GuiCheckBox;
 
 	private winSubjectBox:GuiCombobox;
 	private winObjectBox:GuiCombobox;
 	private lossSubjectBox:GuiCombobox;
 	private lossObjectBox:GuiCombobox;
 
-	private winNameArea:TextInput;
-	private lossNameArea:TextInput;
+	private winNameArea:GuiTextInput;
+	private lossNameArea:GuiTextInput;
 
 	private winConditions:Array<any>;
 	private lossConditions:Array<any>;

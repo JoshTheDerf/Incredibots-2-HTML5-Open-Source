@@ -57,7 +57,7 @@ export class Base64Encoder {
    *
    * The default is true.
    */
-  public insertNewLines: Boolean = true;
+  public insertNewLines: boolean = true;
 
   //--------------------------------------------------------------------------
   //
@@ -251,8 +251,8 @@ export class Base64Encoder {
    * An Array of buffer Arrays.
    */
   private _buffers: Array<any> = [];
-  private _count: number;
-  private _line: number;
+  private _count: number = 0;
+  private _line: number = 0;
   private _work: Array<any> = [0, 0, 0];
 
   /**

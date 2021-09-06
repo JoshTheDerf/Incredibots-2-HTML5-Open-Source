@@ -4588,10 +4588,11 @@ export class ControllerGame extends Controller {
     }
   }
 
-  public textText(e: Event): void {
+  public textText(text: string): void {
     this.textEntered();
     if (this.lastSelectedText instanceof TextPart) {
-      this.newText = e.target;
+      this.lastSelectedText.text = text
+      this.newText = this.lastSelectedText
       ControllerGameGlobals.curRobotID = "";
       this.redrawRobot = true;
     }

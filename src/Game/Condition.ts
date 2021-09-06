@@ -33,7 +33,7 @@ export class Condition {
       if (this.shape1.GetShape() instanceof b2CircleShape) {
         var circle: b2CircleShape = this.shape1.GetShape() as b2CircleShape;
         var center = new b2Vec2()
-        b2Transform.MultiplyVec2(parts[i].GetBody().GetTransform(), circle.m_p, center);m_p);
+        b2Transform.MultiplyVec2(parts[i].GetBody().GetTransform(), circle.m_p, center);
         minShapeX = center.x - circle.m_radius;
         maxShapeX = center.x + circle.m_radius;
         minShapeY = center.y - circle.m_radius;

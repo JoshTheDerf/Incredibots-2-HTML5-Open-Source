@@ -1,0 +1,7 @@
+{
+  "extends": "@parcel/config-default",
+  "transformers": {
+    "*.dat": ["@parcel/transformer-raw"],
+    "*.mp3": ["@parcel/transformer-raw"]
+  }
+}

@@ -28,14 +28,14 @@ export class Main {
 	public static premiumMode:boolean = false;
 	public static enableSound:boolean = true;
 
-	public static const VERSION_STRING:string = "2.23 CE";
-	public static const DEBUG_VERSION:boolean = true;
-	public static const ENABLE_SITE_LOCK:number = 643 - (Main.DEBUG_VERSION ? 2 : 1);
+	public static VERSION_STRING:string = "2.23 CE";
+	public static DEBUG_VERSION:boolean = true;
+	public static ENABLE_SITE_LOCK:number = 643 - (Main.DEBUG_VERSION ? 2 : 1);
 	public static _mochiads_game_id:string = "50feb50977299858";
 
 	public static lastAdTime:number = 0;
 
-	public static const GLOBAL_FONT:string = "Arial";
+	public static GLOBAL_FONT:string = "Arial";
 
 	private preloadedBots = {
 		cRace: null,

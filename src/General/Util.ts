@@ -18,7 +18,7 @@ export class Util {
     return Math.floor(n);
   }
 
-  public static FormatDate(d: number): String {
+  public static FormatDate(d: number): string {
     if (isNaN(d)) {
       return "Oct. 17, 2008";
     } else {
@@ -38,7 +38,7 @@ export class Util {
         "Nov.",
         "Dec.",
       ];
-      var month: String = MONTHS[date.getMonth()];
+      var month: string = MONTHS[date.getMonth()];
       var day: number = date.getDate();
       var year: number = date.getFullYear();
       return month + " " + day + ", " + year;

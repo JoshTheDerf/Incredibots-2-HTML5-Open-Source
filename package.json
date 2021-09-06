@@ -19,13 +19,13 @@
         "pixi.js": "^5.3.6"
     },
     "devDependencies": {
-        "@babel/core": "^7.12.10",
-        "@babel/preset-env": "^7.12.11",
-        "@babel/plugin-proposal-class-properties": "^7.12.1",
-        "@babel/plugin-proposal-private-property-in-object": "^7.12.1",
+        "@babel/core": "^7.15",
+        "@babel/preset-env": "^7.15",
+        "@parcel/transformer-image": "^2.0.0-rc.0",
+        "@babel/preset-typescript": "^7.15.0",
+        "parcel": "^2.0.0-rc.0",
+        "@parcel/transformer-raw": "^2.0.0-rc.0",
         "gh-pages": "^3.1.0",
-        "parcel": "^2.0.0-nightly.491",
-        "parcel-bundler": "^1.12.4",
         "typescript": "^4.1.3"
     }
 }

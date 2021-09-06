@@ -1,5 +1,5 @@
 import TextInput from "pixi-text-input";
-import { Container, Sprite, TextStyle, Texture } from "pixi.js";
+import { Container, Sprite, TextStyle, Texture, TilingSprite } from "pixi.js";
 import { Main, Resource } from "../imports";
 
 export class GuiTextArea extends Container {
@@ -55,6 +55,14 @@ export class GuiTextArea extends Container {
     this.textInput.on("input", (text: string) => {
       this.text = text;
       this.emit("change", text);
+    });
+
+    this.textInput.on("focus", () => {
+      this.emit("focus")
+    });
+
+    this.textInput.on("blur", () => {
+      this.emit("blur")
     });
 
     this.addChild(this.textInput);
