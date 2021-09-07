@@ -1,6 +1,16 @@
 // Utilities
+
+// Quick and dirty because ByteArray testing was causing the console to crash.
+window.logCount = 100
+
+window.limitedLog = (...args) => {
+  if (window.logCount > 0) console.log(...args)
+  window.logCount -= 1
+}
+
 export * from './General/ByteArrayEnums'
-export * from './General/ByteArray'
+// export * from './General/ByteArrayProxy'
+export * from './General/vendor/ByteArray/ByteArray'
 export * from './mx/utils/Base64Encoder'
 export * from './mx/utils/Base64Decoder'
 export * from './General/Util'

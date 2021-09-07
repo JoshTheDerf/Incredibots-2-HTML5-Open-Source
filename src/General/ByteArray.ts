@@ -327,7 +327,8 @@ export class ByteArray {
    * @returns {Number}
    */
   readByte() {
-    return this.buffer.readInt8(this._position++);
+    const pos = this._position++
+    return this.buffer.readInt8(pos);
   }
 
   /**
