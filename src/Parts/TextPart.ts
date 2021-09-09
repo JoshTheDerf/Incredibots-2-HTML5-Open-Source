@@ -63,6 +63,7 @@ export class TextPart extends Part {
     this.m_textField.y = ny;
     this.type = "TextPart";
     this.inFront = front
+    this.m_textField.zIndex = 0;
     this.m_controller.addChild(this.m_textField);
   }
 

@@ -10,6 +10,14 @@ export class GuiTextArea extends Container {
 
   public text: string = "";
 
+  get editable() {
+    return !this.textInput.disabled
+  }
+
+  set editable(value) {
+    this.textInput.disabled = !value
+  }
+
   constructor(xPos: number, yPos: number, w: number, h: number, format: TextStyle | null = null) {
     super();
     this.x = xPos;
@@ -68,11 +76,7 @@ export class GuiTextArea extends Container {
     this.addChild(this.textInput);
   }
 
-  get editable() {
-    return !this.textInput.disabled
-  }
-
-  set editable(value) {
-    this.textInput.disabled = !value
+  focus() {
+    this.textInput.focus()
   }
 }

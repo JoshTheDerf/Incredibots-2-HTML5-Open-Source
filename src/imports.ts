@@ -42,6 +42,7 @@ export * from './Gui/GuiTextInput'
 export * from './Gui/GuiTextArea'
 export * from './Gui/DropDownMenu'
 export * from './Gui/DropDownMenuItem'
+export * from './Gui/GuiList'
 
 // GUI Windows
 export * from './Gui/DialogWindow'

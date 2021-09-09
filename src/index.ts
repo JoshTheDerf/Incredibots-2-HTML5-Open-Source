@@ -7,7 +7,6 @@ async function main() {
     await Resource.load()
 
     const renderer = new Application({
-        transparent: false,
         antialias: true,
         width: 800,
         height: 600

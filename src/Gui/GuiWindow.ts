@@ -10,6 +10,7 @@ export class GuiWindow extends Graphics {
     this.y = yPos;
     // Use this to prevent clicks from going through the parent.
     this.interactive = true;
+    this.sortableChildren = true;
 
     var m: Matrix;
     this.lineStyle(0, 0, 0);

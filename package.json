@@ -13,9 +13,11 @@
         "bytearray-node": "^3.3.5",
         "iconv-lite": "^0.6.2",
         "lzma": "^2.3.2",
+        "pixi-scrollbox": "^2.3.1",
         "pixi-sound": "^3.0.5",
         "pixi-text-input": "^1.0.5",
-        "pixi.js": "^5.3.6"
+        "pixi-viewport": "^4.32.0",
+        "pixi.js": "^6.1.2"
     },
     "devDependencies": {
         "@babel/core": "^7.15",

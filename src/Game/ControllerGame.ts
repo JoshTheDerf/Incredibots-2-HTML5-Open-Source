@@ -12,6 +12,7 @@
 	b2World
 } from "@box2d/core";
 import { Graphics, Matrix, Sprite, Text, TextStyle } from "pixi.js";
+import { ConditionsWindow } from "../Gui/ConditionsWindow";
 import {
 	Action,
 	AdvancedSandboxWindow,
@@ -33,9 +34,12 @@ import {
   ControllerClimb,
 	ControllerGameGlobals,
   ControllerHomeMovies,
+  ControllerMonkeyBars,
   ControllerNewFeatures,
+  ControllerRace,
   ControllerRubeGoldberg,
 	ControllerSandbox,
+  ControllerSpaceship,
   ControllerTutorial,
 	CreateAction,
 	Database,
@@ -222,6 +226,7 @@ export class ControllerGame extends Controller {
 
   constructor() {
     super();
+    this.sortableChildren = true
 
     this.allParts = new Array();
     ControllerGameGlobals.cannonballs = new Array();

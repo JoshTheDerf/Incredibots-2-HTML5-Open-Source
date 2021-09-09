@@ -65,6 +65,7 @@ export class GuiCombobox extends Container {
     this.height = h;
     this.x = xPos;
     this.y = yPos;
+    this.zIndex = 1000;
 
     ComboBoxes.push(this);
 
