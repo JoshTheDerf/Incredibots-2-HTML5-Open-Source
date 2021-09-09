@@ -155,7 +155,7 @@ export class ByteArray {
 	 * Compresses the byte array.
 	 * @param {string} type
 	 */
-	async compress(type) {
+	async compress(type = Values.ZLIB) {
 		type = this.axCoerceString(type)
 		let algorithm = ""
 		if (type === Values.DEFLATE) algorithm = Values.DEFLATE
@@ -201,6 +201,9 @@ export class ByteArray {
 	updatePosition(n) {
 		if (n > Values.MAX_BUFFER_SIZE) {
 			throw new RangeError(`ByteArray::updatePosition - Error: Trying to access beyond buffer length with position: ${n}`)
+		}
+		if (this.offset + n >= this.length) {
+			this.buffer = Buffer.concat([this.buffer, Buffer.alloc(n)])
 		}
 		let a = this.offset
 		this.offset += n
@@ -473,14 +476,16 @@ export class ByteArray {
 	 * @param {boolean} value
 	 */
 	writeBoolean(value) {
-		return this.buffer.writeInt8(Number(value), this.updatePosition(1))
+		const pos = this.updatePosition(1)
+		return this.buffer.writeInt8(Number(value), pos)
 	}
 	/**
 	 * Writes a byte to the byte stream.
 	 * @param {number} value
 	 */
 	writeByte(value) {
-		return this.buffer.writeInt8(value, this.updatePosition(1))
+		const pos = this.updatePosition(1)
+		return this.buffer.writeInt8(value, pos)
 	}
 	/**
 	 * Writes a sequence of length bytes from the specified byte array, bytes, starting offset(zero-based index) bytes into the byte stream.
@@ -509,7 +514,7 @@ export class ByteArray {
 				this.writeByte(bytes[i])
 			}
 		} else {
-			for (let i = offset; i < endOffset && this.bytesAvailable > 0; i++) {
+			for (let i = offset; i < endOffset; i++) {
 				this.writeByte(bytes[i])
 			}
 		}
@@ -519,27 +524,30 @@ export class ByteArray {
 	 * @param {number} value
 	 */
 	writeDouble(value) {
+		const pos = this.updatePosition(8)
 		return this.endian === Values.BIG_ENDIAN
-			? this.buffer.writeDoubleBE(value, this.updatePosition(8))
-			: this.buffer.writeDoubleLE(value, this.updatePosition(8))
+			? this.buffer.writeDoubleBE(value, pos)
+			: this.buffer.writeDoubleLE(value, pos)
 	}
 	/**
 	 * Writes an IEEE 754 single-precision (32-bit) floating-point number to the byte stream.
 	 * @param {number} value
 	 */
 	writeFloat(value) {
+		const pos = this.updatePosition(4)
 		return this.endian === Values.BIG_ENDIAN
-			? this.buffer.writeFloatBE(value, this.updatePosition(4))
-			: this.buffer.writeFloatLE(value, this.updatePosition(4))
+			? this.buffer.writeFloatBE(value, pos)
+			: this.buffer.writeFloatLE(value, pos)
 	}
 	/**
 	 * Writes a 32-bit signed integer to the byte stream.
 	 * @param {number} value
 	 */
 	writeInt(value) {
+		const pos = this.updatePosition(4)
 		return this.endian === Values.BIG_ENDIAN
-			? this.buffer.writeInt32BE(value, this.updatePosition(4))
-			: this.buffer.writeInt32LE(value, this.updatePosition(4))
+			? this.buffer.writeInt32BE(value, pos)
+			: this.buffer.writeInt32LE(value, pos)
 	}
 	/**
 	 * Writes a multibyte string to the byte stream using the specified character set.
@@ -575,9 +583,10 @@ export class ByteArray {
 	 * @param {number} value
 	 */
 	writeShort(value) {
+		const pos = this.updatePosition(2)
 		return this.endian === Values.BIG_ENDIAN
-			? this.buffer.writeInt16BE(value, this.updatePosition(2))
-			: this.buffer.writeInt16LE(value, this.updatePosition(2))
+			? this.buffer.writeInt16BE(value, pos)
+			: this.buffer.writeInt16LE(value, pos)
 	}
 	/**
 	 * Writes an unsigned byte to the byte stream.
@@ -613,7 +622,9 @@ export class ByteArray {
 		str = this.axCoerceString(str)
 		let length = Buffer.byteLength(str)
 		this.writeShort(length)
-		return this.buffer.write(str, this.offset, this.offset += length, "utf8")
+		this.buffer = Buffer.concat([this.buffer, Buffer.from(str)])
+		// return this.buffer.write(str, this.offset, this.offset += length, "utf8")
+		return length
 	}
 	/**
 	 * Writes a UTF-8 string to the byte stream. Similar to the writeUTF() method, but writeUTFBytes() does not prefix the string with a 16-bit length word.

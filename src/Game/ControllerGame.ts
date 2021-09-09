@@ -44,6 +44,7 @@ import {
 	Draw,
 	DropDownMenu,
 	EnterTextAction,
+	ExportWindow,
 	FixedJoint,
 	GuiTextInput,
 	IllegalOperationError,
@@ -5602,7 +5603,7 @@ export class ControllerGame extends Controller {
             1,
             1,
             0,
-            this.finishExporting
+            (...args) => this.finishExporting(...args)
           );
         }
         this.m_fader.visible = true;

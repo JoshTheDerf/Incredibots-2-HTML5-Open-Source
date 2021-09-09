@@ -415,6 +415,8 @@ amf3.Writer.prototype.writeMap = function (v) {
 		this.traitCount++
 		this.writeString("")
 		for (let key in v) {
+			// FIX: Ignore private properties.
+			if (key.startsWith('m_')) continue;
 			if (key) {
 				this.writeString(key)
 			} else {
