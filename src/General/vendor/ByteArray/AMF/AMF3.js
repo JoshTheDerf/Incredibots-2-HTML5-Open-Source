@@ -19,7 +19,7 @@ const AMF3Types = {
   kByteArrayType: 12,
 };
 
-amf3 = {
+const amf3 = {
 	classes: {},
 	const: {
 		CLASS_ALIAS: "_explicitType",

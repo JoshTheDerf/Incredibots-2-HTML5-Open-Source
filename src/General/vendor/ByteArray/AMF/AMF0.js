@@ -1,4 +1,4 @@
-amf0 = {
+const amf0 = {
 	toString: function (buffer) {
 		return buffer.toString("utf8", 0, Buffer.byteLength(buffer))
 	},
