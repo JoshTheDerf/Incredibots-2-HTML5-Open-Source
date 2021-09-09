@@ -12,7 +12,6 @@
 	b2World
 } from "@box2d/core";
 import { Graphics, Matrix, Sprite, Text, TextStyle } from "pixi.js";
-import { ConditionsWindow } from "../Gui/ConditionsWindow";
 import {
 	Action,
 	AdvancedSandboxWindow,
@@ -93,7 +92,9 @@ import {
 	Thrusters,
 	Triangle,
 	TutorialWindow,
-	Util
+  ConditionsWindow,
+	Util,
+  RestrictionsWindow
 } from "../imports";
 import { Gradient } from "./Graphics/Gradient";
 

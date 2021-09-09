@@ -1303,11 +1303,11 @@ export class Database {
     return Database.ExtractRobotFromByteArray(b);
   }
 
-  public static ImportReplay(replayStr: string): Array<any> {
+  public static async ImportReplay(replayStr: string): Promise<Array<any>> {
     var decoder: Base64Decoder = new Base64Decoder();
     decoder.decode(replayStr);
     var b: ByteArray = decoder.toByteArray();
-    b.uncompress();
+    await b.uncompress();
     var replayLength: number = b.readInt();
     var robotLength: number = b.readInt();
     var replayData: ByteArray = new ByteArray();
@@ -1315,11 +1315,11 @@ export class Database {
     while (b.position < replayLength + 8) {
       replayData.writeByte(b.readByte());
     }
-    replayData.uncompress();
+    await replayData.uncompress();
     while (b.position < replayLength + robotLength + 8) {
       robotData.writeByte(b.readByte());
     }
-    robotData.uncompress();
+    await robotData.uncompress();
     var replay: Replay = Database.ExtractReplayFromByteArray(replayData);
     var robot: Robot = Database.ExtractRobotFromByteArray(robotData);
 
@@ -1333,11 +1333,11 @@ export class Database {
     return [replay, robot];
   }
 
-  public static ImportChallenge(challengeStr: string): Challenge {
+  public static async ImportChallenge(challengeStr: string): Promise<Challenge> {
     var decoder: Base64Decoder = new Base64Decoder();
     decoder.decode(challengeStr);
     var b: ByteArray = decoder.toByteArray();
-    b.uncompress();
+    await b.uncompress();
 
     b.readUTF();
     b.readUTF();

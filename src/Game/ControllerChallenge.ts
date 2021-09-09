@@ -10,7 +10,7 @@ export class ControllerChallenge extends ControllerSandbox {
 
   constructor() {
     super();
-    if (!ControllerChallenge.challenge) ControllerChallenge.challenge = new Challenge();
+    if (!ControllerChallenge.challenge) ControllerChallenge.challenge = new Challenge(ControllerChallenge.settings);
     this.BuildBuildArea();
   }
 

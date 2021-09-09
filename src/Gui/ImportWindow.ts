@@ -8,7 +8,7 @@ export class ImportWindow extends GuiWindow {
 
   private cont: Controller;
   private msgArea: Text;
-  private linkArea: TextArea;
+  private linkArea: GuiTextArea;
   private importButton: GuiButton;
   private cancelButton: GuiButton;
   private type: number;
@@ -42,7 +42,7 @@ export class ImportWindow extends GuiWindow {
     this.linkArea = new GuiTextArea(15, 85, 265, 260, format);
     this.addChild(this.linkArea);
 
-    this.importButton = new GuiButton("Import", 100, 345, 100, 35, (e: Event) => this.doImport(e), GuiButton.ORANGE);
+    this.importButton = new GuiButton("Import", 100, 345, 100, 35, () => this.doImport(), GuiButton.ORANGE);
     this.addChild(this.importButton);
     this.cancelButton = new GuiButton(
       "Cancel",
@@ -50,15 +50,15 @@ export class ImportWindow extends GuiWindow {
       375,
       100,
       35,
-      (e: Event) => this.cont.HideImportDialog(e),
+      () => this.cont.HideImportDialog(),
       GuiButton.PURPLE
     );
     this.addChild(this.cancelButton);
   }
 
-  private async doImport(e: Event) {
+  private async doImport() {
     if (this.linkArea.text.length > 0) {
-      this.cont.HideImportDialog(e);
+      this.cont.HideImportDialog();
       if (this.type == ImportWindow.TYPE_ROBOT) {
         this.cont.processLoadedRobot(await Database.ImportRobot(this.linkArea.text));
       } else if (this.type == ImportWindow.TYPE_REPLAY) {

@@ -57,6 +57,8 @@ export * from './Gui/PartEditWindow'
 export * from './Gui/ColourChangeWindow'
 export * from './Gui/ScoreWindow'
 export * from './Gui/PostReplayWindow'
+export * from './Gui/ConditionsWindow'
+export * from './Gui/RestrictionsWindow'
 
 // Game Core
 export * from './Game/SandboxSettings'

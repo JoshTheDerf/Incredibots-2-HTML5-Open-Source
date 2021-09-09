@@ -344,7 +344,6 @@ export class ControllerMainMenu extends Controller {
       GuiButton.ORANGE,
       style
     );
-    button.disabled = true;
     this.levelSelectGui.addChild(button);
     button = new GuiButton(
       "Import Replay",
