@@ -62,9 +62,9 @@ export class ImportWindow extends GuiWindow {
       if (this.type == ImportWindow.TYPE_ROBOT) {
         this.cont.processLoadedRobot(await Database.ImportRobot(this.linkArea.text));
       } else if (this.type == ImportWindow.TYPE_REPLAY) {
-        this.cont.processLoadedReplay(Database.ImportReplay(this.linkArea.text));
+        this.cont.processLoadedReplay(await Database.ImportReplay(this.linkArea.text));
       } else if (this.type == ImportWindow.TYPE_CHALLENGE) {
-        this.cont.processLoadedChallenge(Database.ImportChallenge(this.linkArea.text));
+        this.cont.processLoadedChallenge(await Database.ImportChallenge(this.linkArea.text));
       }
     }
   }

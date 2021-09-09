@@ -289,9 +289,7 @@ export class Database {
     exportData.compress();
     exportData.position = 0;
 
-    var encoder: Base64Encoder = new Base64Encoder();
-    encoder.encodeBytes(exportData);
-    completionFunction(encoder.toString(), "robot");
+    completionFunction(exportData.buffer.toString('base64'), "robot");
   }
 
   public static ExportReplay(
@@ -2271,7 +2269,7 @@ export class Database {
     return b;
   }
 
-  public static async ExtractReplayFromByteArray(data: ByteArray): Replay {
+  public static ExtractReplayFromByteArray(data: ByteArray): Replay {
     var cameraMovements: Array<any> = new Array();
     while (true) {
       var frame: number = Database.ReadInt(data);

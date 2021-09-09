@@ -11,6 +11,7 @@ import {
   ControllerGameGlobals,
   ControllerSandbox,
   Database,
+  DialogWindow,
   Draw,
   Gradient,
   GuiButton,
@@ -355,7 +356,6 @@ export class ControllerMainMenu extends Controller {
       GuiButton.ORANGE,
       style
     );
-    button.disabled = true;
     this.levelSelectGui.addChild(button);
     button = new GuiButton(
       "Import Bot",

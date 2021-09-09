@@ -931,7 +931,7 @@ export class ByteArray {
    * @param {Number} value
    */
   writeInt(value) {
-    this._writeBufferFunc(this.signedOverflow(value, 32), "writeInt32", 4);
+    this._writeBufferFunc(value, "writeInt32", 4);
   }
 
   /**

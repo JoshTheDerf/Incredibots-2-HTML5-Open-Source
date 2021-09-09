@@ -29,17 +29,11 @@ export class FpsCounter extends Container {
     this.textBox2.width = 150;
     this.textBox2.style.fill = "#aa1144";
     this.textBox2.y = 15;
-
-    this.textBox3 = new Text("...");
-    this.textBox3.style.fill = "#aa1144";
-    this.textBox3.y = 30;
-
     // set initial lastTime
     this.oldT = window.performance.now();
 
     this.addChild(this.textBox);
     this.addChild(this.textBox2);
-    this.addChild(this.textBox3);
   }
 
   //======================
@@ -56,8 +50,6 @@ export class FpsCounter extends Container {
     }
     this.avgCount--;
     this.oldT = window.performance.now();
-
-    this.textBox3.text = Math.round(window.performance.memory.usedJSHeapSize / (1024 * 1024)) + " MB used";
   }
 
   public updatePhys(oldT2: number): void {
@@ -83,7 +75,6 @@ export class FpsCounter extends Container {
   //======================
   private textBox: Text;
   private textBox2: Text;
-  private textBox3: Text;
   private mfpsCount: number = 0;
   private mfpsCount2: number = 0;
   private avgCount: number = 30;

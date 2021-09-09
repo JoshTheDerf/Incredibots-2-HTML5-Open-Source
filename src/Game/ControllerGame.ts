@@ -5923,7 +5923,7 @@ export class ControllerGame extends Controller {
       this.m_fader.visible = true;
       this.ShowConfirmDialog("Redirect to incredibots2.com?", 7);
     } else {
-      this.pauseButton(e);
+      this.pauseButton();
       if (this.canSaveReplay) {
         if (true || ControllerGameGlobals.userName != "_Public") {
           //if (Database.curSortPeriod == Database.SORT_PERIOD_PROP) Database.curSortPeriod = Database.SORT_PERIOD_ALLTIME;
@@ -5942,7 +5942,7 @@ export class ControllerGame extends Controller {
               -1,
               "",
               1,
-              this.finishExporting
+              (...args) => this.finishExporting(...args)
             );
           else
             Database.ExportReplay(
@@ -5960,7 +5960,7 @@ export class ControllerGame extends Controller {
               -1,
               "",
               1,
-              this.finishExporting
+              (...args) => this.finishExporting(...args)
             );
         } else {
           this.clickedSaveReplay = true;
@@ -6321,9 +6321,9 @@ export class ControllerGame extends Controller {
     }
   }
 
-  public finishLoadingReplay(): void {
+  public async finishLoadingReplay(): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_LOAD_REPLAY) return;
-    var replayAndRobot: Array<any> = Database.FinishLoadingReplay(e);
+    var replayAndRobot: Array<any> = await Database.FinishLoadingReplay();
     this.processLoadedReplay(replayAndRobot);
   }
 
