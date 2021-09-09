@@ -70,8 +70,6 @@ export class Main {
 		renderer.ticker.maxFPS = 30 // Cap FPS to 30 as the FPS is tied directly to the game loop and the flash version was designed this way. :(
 		renderer.ticker.add((delta) => this.update())
 
-		addEventListener(Event.ADDED_TO_STAGE, this.Init, false, 0, true);
-
 		LSOManager.Init();
 		this.Init();
 
@@ -97,10 +95,6 @@ export class Main {
 		.then((b: ByteArray) => (this.preloadedBots.cRace = b))
 	}
 
-	private rehideMouse(e:Event):void {
-		Mouse.hide();
-	}
-
 	public update():void {
 		Main.frameCounter++;
 		if (Main.firstFrame) {
@@ -124,7 +118,7 @@ export class Main {
 			if (Main.loadReplayMode && !Main.premiumMode) {
 				ControllerSandbox.settings = new SandboxSettings(15.0, 0, 0, 0, 0);
 				Main.m_curController = new ControllerSandbox();
-				(Main.m_curController as ControllerGame).LoadReplayNow(replayID);
+				Main.m_curController.LoadReplayNow(replayID);
 				ControllerGameGlobals.potentialReplayID = replayID;
 				ControllerGameGlobals.potentialReplayPublic = true;
 				ControllerGameGlobals.replayDirectlyLinked = true;
@@ -133,7 +127,7 @@ export class Main {
 			} else if (Main.loadRobotMode && !Main.premiumMode) {
 				ControllerSandbox.settings = new SandboxSettings(15.0, 0, 0, 0, 0);
 				Main.m_curController = new ControllerSandbox();
-				(Main.m_curController as ControllerGame).LoadRobotNow(robotID);
+				Main.m_curController.LoadRobotNow(robotID);
 				ControllerGameGlobals.potentialRobotID = robotID;
 				ControllerGameGlobals.potentialRobotPublic = true;
 				Main.theRoot.addChild(Main.m_curController);
@@ -141,7 +135,7 @@ export class Main {
 			} else if (Main.loadChallengeMode && !Main.premiumMode) {
 				ControllerSandbox.settings = new SandboxSettings(15.0, 0, 0, 0, 0);
 				Main.m_curController = new ControllerSandbox();
-				(Main.m_curController as ControllerGame).LoadChallengeNow(challengeID);
+				Main.m_curController.LoadChallengeNow(challengeID);
 				ControllerGameGlobals.potentialChallengeID = challengeID;
 				ControllerGameGlobals.potentialChallengePublic = true;
 				Main.theRoot.addChild(Main.m_curController);
@@ -211,21 +205,5 @@ export class Main {
 
 		// Update input (last)
 		Input.update();
-
-		//trace(getTimer() + "\n");
-
-		// update counter and limit framerate
-		if (Main.DEBUG_VERSION) Main.m_fpsCounter.update();
-		//FRateLimiter.limitFrame(30);
-	}
-
-	public static ShowMouse():void {
-		// Main.mouseHourglass.visible = false;
-		// Main.mouseCursor.visible = true;
-	}
-
-	public static ShowHourglass():void {
-		// Main.mouseCursor.visible = false;
-		// Main.mouseHourglass.visible = true;
 	}
 }
