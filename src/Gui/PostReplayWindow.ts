@@ -19,7 +19,6 @@ export class PostReplayWindow extends GuiWindow
 
 		this.m_header = new Text('');
 		this.m_header.text = "End of Replay";
-		this.m_header.height = 20;
 		this.m_header.x = 27 + 50;
 		this.m_header.y = 20;
 		this.m_header.anchor.set(0.5, 0);

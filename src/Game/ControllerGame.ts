@@ -54,6 +54,7 @@ import {
 	JointPart,
 	KeyPress,
 	LimitChangeAction,
+	LoadWindow,
 	LSOManager,
 	Main,
 	MainEditPanel,
@@ -6321,9 +6322,9 @@ export class ControllerGame extends Controller {
     }
   }
 
-  public async finishLoadingReplay(): void {
+  public async finishLoadingReplay(e): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_LOAD_REPLAY) return;
-    var replayAndRobot: Array<any> = await Database.FinishLoadingReplay();
+    var replayAndRobot: Array<any> = await Database.FinishLoadingReplay(e);
     this.processLoadedReplay(replayAndRobot);
   }
 

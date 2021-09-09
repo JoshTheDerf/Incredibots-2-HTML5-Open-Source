@@ -2222,7 +2222,7 @@ export class Database {
 
   private static PutReplayIntoByteArray(replay: Replay): ByteArray {
     var b: ByteArray = new ByteArray();
-    for (var i: number = 0; i < replay.cameraMovements.length; i++) {
+    for (let i: number = 0; i < replay.cameraMovements.length; i++) {
       Database.WriteInt(b, replay.cameraMovements[i].frame);
       Database.WriteFloat(b, replay.cameraMovements[i].x / 100);
       Database.WriteFloat(b, replay.cameraMovements[i].y / 100);
@@ -2230,7 +2230,7 @@ export class Database {
     }
     Database.WriteInt(b, Number.MIN_VALUE);
     Database.WriteInt(b, Number.MIN_VALUE);
-    for (i = 0; i < replay.syncPoints.length; i++) {
+    for (let i = 0; i < replay.syncPoints.length; i++) {
       Database.WriteInt(b, replay.syncPoints[i].frame);
       for (var j: number = 0; j < replay.syncPoints[i].positions.length; j++) {
         if (
@@ -2242,9 +2242,11 @@ export class Database {
         ) {
           Database.WriteFloat(b, replay.syncPoints[i].positions[j].x);
           Database.WriteFloat(b, replay.syncPoints[i].positions[j].y);
-          if (replay.syncPoints[i].angles[j] <= -32.7 || replay.syncPoints[i].angles[j] >= 32.8)
+          if (replay.syncPoints[i].angles[j] <= -32.7 || replay.syncPoints[i].angles[j] >= 32.8) {
             Database.WriteFloat(b, Database.NormalizeAngle(replay.syncPoints[i].angles[j]) * 10);
-          else Database.WriteFloat(b, replay.syncPoints[i].angles[j] * 10);
+          } else {
+            Database.WriteFloat(b, replay.syncPoints[i].angles[j] * 10);
+          }
           Database.WriteInt(b, j);
         }
       }
@@ -2261,7 +2263,7 @@ export class Database {
     Database.WriteInt(b, Number.MIN_VALUE);
     b.writeObject(replay.version);
     Database.WriteInt(b, replay.numFrames);
-    for (i = 0; i < replay.keyPresses.length; i++) {
+    for (let i = 0; i < replay.keyPresses.length; i++) {
       Database.WriteInt(b, replay.keyPresses[i].frame);
       Database.WriteInt(b, replay.keyPresses[i].key);
     }
@@ -2272,18 +2274,18 @@ export class Database {
   public static ExtractReplayFromByteArray(data: ByteArray): Replay {
     var cameraMovements: Array<any> = new Array();
     while (true) {
-      var frame: number = Database.ReadInt(data);
+      let frame: number = Database.ReadInt(data);
       if (frame == Number.MIN_VALUE) break;
-      var x: number = Database.ReadFloat(data) * 100;
-      var y: number = Database.ReadFloat(data) * 100;
-      var scale: number = Database.ReadFloat(data);
+      let x: number = Database.ReadFloat(data) * 100;
+      let y: number = Database.ReadFloat(data) * 100;
+      let scale: number = Database.ReadFloat(data);
       cameraMovements.push(new CameraMovement(frame, x, y, scale));
     }
     var syncPoints: Array<any> = new Array();
 
     var divideAngles: boolean = false;
     var firstIter: boolean = true;
-    frame = Database.ReadInt(data);
+    let frame = Database.ReadInt(data);
     if (frame == Number.MIN_VALUE) {
       divideAngles = true;
       firstIter = false;
@@ -2295,9 +2297,9 @@ export class Database {
       if (frame == Number.MIN_VALUE) break;
       else if (frame == -1) {
         while (true) {
-          x = Database.ReadFloat(data);
+          const x = Database.ReadFloat(data);
           if (x == Number.NEGATIVE_INFINITY) break;
-          y = Database.ReadFloat(data);
+          const y = Database.ReadFloat(data);
           syncPoints[syncPoints.length - 1].cannonballPositions.push(Util.Vector(x, y));
         }
       } else {
@@ -2305,10 +2307,12 @@ export class Database {
         syncPoint.frame = frame;
         var i: number = 0;
         while (true) {
-          x = Database.ReadFloat(data);
+          let x = Database.ReadFloat(data);
+          let angle: number = 0;
+          let y: number = 0;
           if (x != Number.NEGATIVE_INFINITY) {
             y = Database.ReadFloat(data);
-            var angle: number = Database.ReadFloat(data);
+            angle = Database.ReadFloat(data);
             if (divideAngles) angle /= 10;
           }
           var nextI: number;
@@ -2361,7 +2365,7 @@ export class Database {
     n += 327;
     n *= 100;
     var i: number = Util.NearestInt(n);
-    var b1: number = i / 256;
+    var b1: number = ~~(i / 256);
     var b2: number = i % 256;
     b.writeByte(b1 - 128);
     b.writeByte(b2 - 128);
@@ -2381,8 +2385,9 @@ export class Database {
   }
 
   private static ReadFloat(b: ByteArray): number {
-    var b1: number = b.readByte() + 128;
-    var b2: number = b.readByte() + 128;
+    let b1 = b.readByte() + 128;
+    let b2 = b.readByte() + 128;
+
     if (b1 == 0 && b2 == 0) return Number.NEGATIVE_INFINITY;
     if (b1 == 255 && b2 == 255) return Number.POSITIVE_INFINITY;
     var i: number = b1 * 256 + b2;
