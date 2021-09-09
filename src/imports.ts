@@ -9,8 +9,7 @@ window.limitedLog = (...args) => {
 }
 
 export * from './General/ByteArrayEnums'
-// export * from './General/ByteArrayProxy'
-export * from './General/vendor/ByteArray/ByteArray'
+export * from './General/ByteArray'
 export * from './mx/utils/Base64Encoder'
 export * from './mx/utils/Base64Decoder'
 export * from './General/Util'

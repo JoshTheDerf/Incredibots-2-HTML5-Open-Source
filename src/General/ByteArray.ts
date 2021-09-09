@@ -9,6 +9,9 @@ import { encodingExists, decode, encode } from "iconv-lite";
 
 import { CompressionAlgorithm, Endian, ObjectEncoding } from "../imports";
 
+import amf0 from "./AMF/AMF0.js"
+import amf3 from "./AMF/AMF3.js"
+
 const AMF0Types = {
   kNumberType: 0,
   kBooleanType: 1,
@@ -959,10 +962,24 @@ export class ByteArray {
    * @param {Object} value
    */
   writeObject(value) {
-    const bytes = this._objectEncoding === ObjectEncoding.AMF0 ? AMF0.stringify(value) : AMF3.stringify(value);
+    // Kludge version using old AMF writing libraries. Only AMF3 tested so far.
+    switch (this._objectEncoding) {
+			case ObjectEncoding.AMF0:
+				let AMF_0 = new amf0.Writer()
+				this.buffer = Buffer.concat([this.buffer, AMF_0.writeObject(value)])
+				break
+			case ObjectEncoding.AMF3:
+				let AMF_3 = new amf3.Writer()
+				AMF_3.writeObject(value)
+        const buff = Buffer.from(AMF_3.data)
+				this.buffer = Buffer.concat([this.buffer, buff])
+        this._position += buff.length;
+				break
+		}
 
-    this._position += bytes.length;
-    this.buffer = Buffer.concat([this.buffer, Buffer.from(bytes)]);
+    // Old implementation, missing AMF0/AMF3 library
+    // const bytes = this._objectEncoding === ObjectEncoding.AMF0 ? AMF0.stringify(value) : AMF3.stringify(value);
+    // this.buffer = Buffer.concat([this.buffer, Buffer.from(bytes)]);
   }
 
   /**
