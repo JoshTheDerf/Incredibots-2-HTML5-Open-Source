@@ -1,4 +1,4 @@
-import { b2AABB, b2Contact } from "@box2d/core";
+import { b2AABB, b2Contact } from "../Box2D";
 import { Challenge, ControllerGameGlobals, ControllerSandbox, Database, Main, Replay, Robot, TextPart } from "../imports";
 
 export class ControllerChallenge extends ControllerSandbox {

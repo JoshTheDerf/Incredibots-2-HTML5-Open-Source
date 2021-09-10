@@ -1,4 +1,3 @@
-import { b2Body, b2Vec2, b2World } from "@box2d/core";
 import { ControllerGameGlobals, Part, ShapePart, Util } from "../imports";
 
 export class Thrusters extends Part {
@@ -13,7 +12,7 @@ export class Thrusters extends Part {
   public isBalloon: boolean = false;
   public shapeIndex: number = -1;
   private isKeyDown: boolean = false;
-  private relativeThrusterPos: b2Vec2;
+  private relativeThrusterPos;
 
   constructor(p1: ShapePart, x: number, y: number) {
     super();
@@ -45,7 +44,7 @@ export class Thrusters extends Part {
     return Util.GetDist(this.centerX, this.centerY, xVal, yVal) < (0.25 * 30) / scale;
   }
 
-  public Init(world: b2World, body: b2Body = null): void {
+  public Init(world, body = null): void {
     if (this.isInitted || !this.shape.isInitted) return;
     super.Init(world);
     this.isKeyDown = false;
@@ -57,7 +56,7 @@ export class Thrusters extends Part {
     if (key == this.thrustKey) this.isKeyDown = !up;
   }
 
-  public Update(world: b2World): void {
+  public Update(world): void {
     if (this.isInitted && (this.isKeyDown || this.autoOn)) {
       var forceAngle: number = this.angle + this.shape.GetBody().GetAngle();
       if (this.isBalloon) forceAngle = -Math.PI / 2;
@@ -68,9 +67,8 @@ export class Thrusters extends Part {
       //CE FIX
       var forceStrength: number = 10 + this.strength * this.strength * 10;
 
-      var forceVector: b2Vec2 = Util.Vector(Math.cos(forceAngle) * forceStrength, Math.sin(forceAngle) * forceStrength);
-      var positionVector: b2Vec2 = new b2Vec2();
-      this.shape.GetBody().GetWorldPoint(this.relativeThrusterPos, positionVector);
+      var forceVector = Util.Vector(Math.cos(forceAngle) * forceStrength, Math.sin(forceAngle) * forceStrength);
+      var positionVector = this.shape.GetBody().GetWorldPoint(this.relativeThrusterPos);
       this.shape.GetBody().ApplyForce(forceVector, positionVector);
     }
   }

@@ -8,7 +8,6 @@
         "last 1 chrome version"
     ],
     "dependencies": {
-        "@box2d/core": "^0.8.0",
         "box2d": "^1.0.0",
         "bytearray-node": "^3.3.5",
         "iconv-lite": "^0.6.2",

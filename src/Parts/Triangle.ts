@@ -1,4 +1,4 @@
-import { b2Body, b2BodyDef, b2BodyType, b2MassData, b2PolygonShape, b2Vec2, b2World } from "@box2d/core";
+import { b2BodyDef, b2MassData, b2PolygonDef, b2Vec2 } from "../Box2D";
 import { FixedJoint, ShapePart, Util } from "../imports";
 
 export class Triangle extends ShapePart {
@@ -128,80 +128,72 @@ export class Triangle extends ShapePart {
     return tri;
   }
 
-  public Init(world: b2World, body: b2Body | null = null): void {
+  public Init(world, body = null): void {
     if (this.isInitted) return;
     super.Init(world);
 
-    var sd: b2PolygonShape = new b2PolygonShape();
-    sd.Set(this.GetVertices(), 3);
+    var sd = new b2PolygonDef();
+    sd.friction = 0.4;
+    sd.restitution = 0.3;
 
-    var bodyStatic: boolean = false;
+    //CE PROBLEM
+    //sd.density = (Math.max(1, Math.min(30, density)) + 5.0) / 10.0;
 
-    var i: number;
+    //CE FIX
+    sd.density = (this.density + 5.0) / 10.0;
+
+    sd.vertexCount = 3;
+    if (this.m_collisionGroup != Number.MIN_VALUE) sd.filter.groupIndex = this.m_collisionGroup;
+    sd.vertices = this.GetVertices();
+
+    var bodyStatic:boolean = false;
+
+    var i:number;
     if (body) {
       for (i = 0; i < 3; i++) {
-        sd.m_vertices[i].x -= body.GetPosition().x;
-        sd.m_vertices[i].y -= body.GetPosition().y;
+        sd.vertices[i].x -= body.GetPosition().x;
+        sd.vertices[i].y -= body.GetPosition().y;
       }
       this.m_body = body;
-      bodyStatic = body.GetType() === b2BodyType.b2_staticBody;
+      bodyStatic = body.IsStatic();
     } else {
       for (i = 0; i < 3; i++) {
-        sd.m_vertices[i].x -= this.centerX;
-        sd.m_vertices[i].y -= this.centerY;
+        sd.vertices[i].x -= this.centerX;
+        sd.vertices[i].y -= this.centerY;
       }
-      var bd: b2BodyDef = {
-        position: { x: this.centerX, y: this.centerY },
-        type: this.isStatic ? b2BodyType.b2_staticBody : b2BodyType.b2_dynamicBody,
-      };
+      var bd = new b2BodyDef();
+      bd.position.Set(this.centerX, this.centerY);
       if (this.isEditable) {
-        var hasJoints: boolean = false;
-        for (var j: number = 0; j < this.m_joints.length; j++) {
+        var hasJoints:boolean = false;
+        for (var j:number = 0; j < this.m_joints.length; j++) {
           if (this.m_joints[j].isEnabled) {
             hasJoints = true;
             break;
           }
         }
-        if (!hasJoints) bd.bullet = true;
+        if (!hasJoints) bd.isBullet = true;
       }
-      if (this.isBullet) bd.bullet = true;
+      if (this.isBullet) bd.isBullet = true;
       this.m_body = world.CreateBody(bd);
     }
-
-    this.m_fixture = this.m_body.CreateFixture({
-      shape: sd,
-      friction: 0.4,
-      restitution: 0.3,
-      //CE PROBLEM
-      // density: (Math.max(1, Math.min(30, this.density)) + 5.0) / 10.0;
-      //CE FIX
-      density: (this.density + 5.0) / 10.0,
-    });
-
-    if (this.m_collisionGroup != Number.MIN_VALUE) this.m_fixture.SetFilterData({ groupIndex: this.m_collisionGroup });
-
-    const userData = new Object();
-    userData.collide = this.collide;
-    userData.editable = this.isEditable;
-    userData.red = this.red;
-    userData.green = this.green;
-    userData.blue = this.blue;
-    userData.outline = this.outline;
-    userData.terrain = this.terrain;
-    userData.undragable = this.undragable;
-    userData.isPiston = -1;
-    userData.isSandbox = this.isSandbox;
-
-    this.m_body.SetUserData(userData);
-    this.m_fixture.SetUserData(userData);
-    this.m_shape = sd;
-
-    if (this.isStatic || bodyStatic) this.m_body.SetMassData(new b2MassData());
-    else this.m_body.ResetMassData();
+    sd.userData = new Object();
+    sd.userData.collide = this.collide;
+    sd.userData.editable = this.isEditable;
+    sd.userData.red = this.red;
+    sd.userData.green = this.green;
+    sd.userData.blue = this.blue;
+    sd.userData.outline = this.outline;
+    sd.userData.terrain = this.terrain;
+    sd.userData.undragable = this.undragable;
+    sd.userData.isPiston = -1;
+    sd.userData.isSandbox = this.isSandbox;
+    this.m_shape = this.m_body.CreateShape(sd);
+    if (this.isStatic || bodyStatic) this.m_body.SetMass(new b2MassData());
+    else this.m_body.SetMassFromShapes();
 
     for (i = 0; i < this.m_joints.length; i++) {
       if (this.m_joints[i].isEnabled && this.m_joints[i] instanceof FixedJoint) {
-        var connectedPart: ShapePart = this.m_joints[i].GetOtherPart(this);
+        var connectedPart:ShapePart = this.m_joints[i].GetOtherPart(this);
         if (connectedPart.isEnabled) connectedPart.Init(world, this.m_body);
       }
     }

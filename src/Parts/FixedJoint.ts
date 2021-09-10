@@ -1,4 +1,4 @@
-import { b2Body, b2World } from "@box2d/core";
+import { b2Body, b2World } from "../Box2D";
 import { JointPart, ShapePart, Util } from "../imports";
 
 export class FixedJoint extends JointPart {

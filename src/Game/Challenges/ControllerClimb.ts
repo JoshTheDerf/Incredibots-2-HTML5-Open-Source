@@ -1,4 +1,4 @@
-import { b2AABB } from "@box2d/core";
+import { b2AABB } from "../../Box2D";
 import { Graphics, Matrix, Texture } from "pixi.js";
 import { Circle, ControllerChallenge, ControllerGameGlobals, Gradient, Rectangle, ShapePart, WinCondition } from "../../imports";
 
@@ -22,7 +22,7 @@ export class ControllerClimb extends ControllerChallenge {
     ControllerClimb.challenge.thrustersAllowed = false;
     ControllerClimb.challenge.mouseDragAllowed = false;
     ControllerClimb.challenge.winConditionsAnded = true;
-    var buildArea: b2AABB = new b2AABB();
+    var buildArea = new b2AABB();
     buildArea.lowerBound.Set(1, 1);
     buildArea.upperBound.Set(15, 11.1);
     ControllerClimb.challenge.buildAreas.push(buildArea);

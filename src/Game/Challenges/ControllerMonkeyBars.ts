@@ -1,4 +1,4 @@
-import { b2AABB } from "@box2d/core";
+import { b2AABB } from "../../Box2D";
 import { Graphics, Matrix } from "pixi.js";
 import { Circle, ControllerChallenge, ControllerGameGlobals, Gradient, Part, Rectangle, Triangle, WinCondition } from "../../imports";
 

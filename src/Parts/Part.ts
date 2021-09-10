@@ -1,4 +1,4 @@
-import { b2Body, b2World } from "@box2d/core";
+import { b2Body, b2World } from "../Box2D";
 
 export class IllegalOperationError extends Error {}
 

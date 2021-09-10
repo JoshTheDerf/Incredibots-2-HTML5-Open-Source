@@ -1,8 +1,8 @@
-import { b2Color, b2Mat22, b2Vec2 } from "@box2d/core";
+import { b2Mat22, b2Vec2 } from "../Box2D";
 
 export class Util {
-  public static Vector(x: number, y: number): b2Vec2 {
-    var vec: b2Vec2 = new b2Vec2();
+  public static Vector(x: number, y: number) {
+    var vec = new b2Vec2();
     vec.x = x;
     vec.y = y;
     return vec;
@@ -49,7 +49,7 @@ export class Util {
     return Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
   }
 
-  public static GetAngle(vec: b2Vec2): number {
+  public static GetAngle(vec): number {
     return Math.atan2(vec.y, vec.x);
   }
 
@@ -59,7 +59,7 @@ export class Util {
     return angle;
   }
 
-  public static Midpoint(p1: b2Vec2, p2: b2Vec2): b2Vec2 {
+  public static Midpoint(p1, p2) {
     return new b2Vec2((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0);
   }
 
@@ -71,8 +71,8 @@ export class Util {
     return `#${[r, g, b].map((x) => x.toString(16).padStart(2, "0")).join("")}`;
   }
 
-  public static b2ColorToHex(color: b2Color): number {
-    return (color.b * 255) | ((color.g * 255) << 8) | ((color.r * 255) << 16);
+  public static b2ColorToHex(color): number {
+    return (color._b) | ((color._g) << 8) | ((color._r) << 16);
   }
 
   public static ObjectInArray(obj: Object, array: Array<any>): boolean {
@@ -158,13 +158,13 @@ export class Util {
     return false;
   }
 
-  public static DistanceFromPointToLine(point: b2Vec2, linePoint: b2Vec2, lineVect: b2Vec2): number {
+  public static DistanceFromPointToLine(point, linePoint, lineVect): number {
     lineVect.Normalize();
-    var r: b2Vec2 = new b2Vec2(linePoint.x - point.x, linePoint.y - point.y);
+    var r = new b2Vec2(linePoint.x - point.x, linePoint.y - point.y);
     return Math.abs(Util.Determinant(new b2Mat22(0, lineVect, r)));
   }
 
-  public static Determinant(matrix: b2Mat22): number {
+  public static Determinant(matrix): number {
     return matrix.col1.x * matrix.col2.y - matrix.col1.y * matrix.col2.x;
   }
 }

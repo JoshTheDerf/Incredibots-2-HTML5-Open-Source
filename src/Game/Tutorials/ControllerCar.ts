@@ -1,5 +1,5 @@
+import { b2AABB } from "../../Box2D";
 import { Text, TextStyle } from 'pixi.js'
-import { b2AABB } from "@box2d/core";
 import { Circle, ControllerGameGlobals, ControllerTutorial, FixedJoint, Main, Part, Rectangle, RevoluteJoint, ShapePart, Triangle } from "../../imports";
 
 export class ControllerCar extends ControllerTutorial

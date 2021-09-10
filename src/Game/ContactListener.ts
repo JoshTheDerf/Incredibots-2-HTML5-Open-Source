@@ -1,4 +1,4 @@
-import { b2Contact, b2ContactListener } from "@box2d/core";
+import { b2ContactListener } from "../Box2D";
 import { ControllerGame } from "../imports";
 
 export class ContactListener extends b2ContactListener {
@@ -11,7 +11,7 @@ export class ContactListener extends b2ContactListener {
 
   /// Called when a contact point is added. This includes the geometry
   /// and the forces.
-  public BeginContact(point: b2Contact): void {
+  public BeginContact(point): void {
     this.cont.ContactAdded(point);
   }
 }

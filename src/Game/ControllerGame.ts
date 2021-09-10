@@ -1,17 +1,5 @@
-﻿import {
-	b2AABB,
-	b2Body,
-	b2BodyType,
-	b2ContactPoint,
-	b2Fixture,
-	b2LinearStiffness,
-	b2MouseJoint,
-	b2MouseJointDef,
-  b2Transform,
-	b2Vec2,
-	b2World
-} from "@box2d/core";
-import { Graphics, Matrix, Sprite, Text, TextStyle } from "pixi.js";
+﻿import { Graphics, Matrix, Sprite, Text, TextStyle } from "pixi.js";
+import { b2AABB, b2MouseJointDef, b2Vec2, b2World } from "../Box2D";
 import {
 	Action,
 	AdvancedSandboxWindow,
@@ -108,9 +96,8 @@ export class ControllerGame extends Controller {
   private replaySplineYs: Array<any>;
   private replaySplineAngles: Array<any>;
 
-  public m_world: b2World = null;
-  public m_groundBody: b2Body = null;
-  public m_mouseJoint: b2MouseJoint = null;
+  public m_world = null;
+  public m_mouseJoint = null;
   public m_iterations: number = 10;
   public m_timeStep: number = 1.0 / 30;
   public m_physScale: number = ControllerGameGlobals.INIT_PHYS_SCALE;
@@ -193,7 +180,7 @@ export class ControllerGame extends Controller {
   public saveAfterRestrictions: boolean = false;
 
   public selectedParts: Array<any> = new Array();
-  public selectedBuildArea: b2AABB;
+  public selectedBuildArea;
   public rotatingPart: Object = null;
   public rotatingParts: Array<any> = null;
   public draggingPart: Part = null;
@@ -574,7 +561,7 @@ export class ControllerGame extends Controller {
       ControllerGameGlobals.mouseXWorld = Input.mouseX;
       ControllerGameGlobals.mouseYWorld = Input.mouseY;
 
-      Main.ShowMouse();
+
 
       if (!this.paused && this.autoPanning) {
         this.HandleCamera();
@@ -607,14 +594,8 @@ export class ControllerGame extends Controller {
       if (!this.paused) {
         if (!ControllerGameGlobals.playingReplay) {
           if (this.frameCounter % ControllerGameGlobals.REPLAY_SYNC_FRAMES == 0) this.AddSyncPoint();
-          this.m_world.Step(1 / 60, {
-            velocityIterations: 5,
-            positionIterations: 5,
-          });
-          this.m_world.Step(1 / 60, {
-            velocityIterations: this.m_iterations,
-            positionIterations: this.m_iterations,
-          });
+          this.m_world.Step(1 / 60, 5);
+          this.m_world.Step(1 / 60, this.m_iterations);
         }
         this.frameCounter++;
         this.m_guiPanel.SetTimer(this.frameCounter);
@@ -627,7 +608,7 @@ export class ControllerGame extends Controller {
     this.draw.drawColours = ControllerGameGlobals.showColours;
     if (!this.simStarted) {
       for (i = 0; i < this.m_buildAreas.length; i++) {
-        var box: b2AABB = this.GetBuildingAreaNumber(i);
+        var box = this.GetBuildingAreaNumber(i);
         if (this.hasPanned || this.hasZoomed || this.redrawBuildArea) {
           this.m_buildAreas[i].x = this.World2ScreenX(box.lowerBound.x);
           this.m_buildAreas[i].y = this.World2ScreenY(box.lowerBound.y);
@@ -672,6 +653,7 @@ export class ControllerGame extends Controller {
       this.draw.DrawWorld(
         this.allParts,
         this.selectedParts,
+        this.m_world,
         !this.simStarted,
         false,
         ControllerGameGlobals.showJoints,
@@ -768,7 +750,7 @@ export class ControllerGame extends Controller {
       }
       this.removeChild(this.m_progressDialog);
       this.addChild(this.m_progressDialog);
-      Main.ShowMouse();
+
     }
 
     if (!this.paused && this.ChallengeOver()) {
@@ -1007,17 +989,13 @@ export class ControllerGame extends Controller {
         !this.allParts[i].isStatic &&
         !Util.ObjectInArray(this.allParts[i].GetBody(), bodiesUsed)
       ) {
-        this.allParts[i]
-          .GetBody()
-          .SetTransform(new b2Transform().SetPositionAngle(syncPoint.positions[curIndex], syncPoint.angles[curIndex]));
+        this.allParts[i].GetBody().SetXForm(syncPoint.positions[curIndex], syncPoint.angles[curIndex]);
         curIndex++;
         bodiesUsed.push(this.allParts[i].GetBody());
       }
     }
     for (i = 0; i < ControllerGameGlobals.cannonballs.length; i++) {
-      ControllerGameGlobals.cannonballs[i].SetTransform(
-        new b2Transform().SetPositionAngle(syncPoint.cannonballPositions[i], 0)
-      );
+      ControllerGameGlobals.cannonballs[i].SetXForm(syncPoint.cannonballPositions[i], 0);
     }
   }
 
@@ -1052,7 +1030,7 @@ export class ControllerGame extends Controller {
               (this.frameCounter - syncPoint1.frame) *
                 (this.replaySplineAngles[2][syncPointIndex][curIndex] +
                   (this.frameCounter - syncPoint1.frame) * this.replaySplineAngles[3][syncPointIndex][curIndex]));
-        this.allParts[i].GetBody().SetTransform(new b2Transform().SetPositionAngle(Util.Vector(x, y), angle));
+        this.allParts[i].GetBody().SetXForm(Util.Vector(x, y), angle);
         curIndex++;
         bodiesUsed.push(this.allParts[i].GetBody());
       }
@@ -1068,13 +1046,9 @@ export class ControllerGame extends Controller {
           (syncPoint1.cannonballPositions[i].y * (syncPoint2.frame - this.frameCounter) +
             syncPoint2.cannonballPositions[i].y * (this.frameCounter - syncPoint1.frame)) /
           frameDiff;
-        ControllerGameGlobals.cannonballs[i].SetTransform(
-          new b2Transform().SetPositionAngle(Util.Vector(newX, newY), 0)
-        );
+        ControllerGameGlobals.cannonballs[i].SetXForm(Util.Vector(newX, newY), 0);
       } else {
-        ControllerGameGlobals.cannonballs[i].SetTransform(
-          new b2Transform().SetPositionAngle(syncPoint2.cannonballPositions[i], 0)
-        );
+        ControllerGameGlobals.cannonballs[i].SetXForm(syncPoint2.cannonballPositions[i], 0);
       }
     }
   }
@@ -1115,13 +1089,13 @@ export class ControllerGame extends Controller {
     throw new IllegalOperationError("abstract ControllerGameGlobals.GetScore() called");
   }
 
-  public ContactAdded(point: b2ContactPoint): void {}
+  public ContactAdded(point): void {}
 
-  protected GetBuildingArea(): b2AABB {
+  protected GetBuildingArea() {
     throw new IllegalOperationError("abstract ControllerGameGlobals.GetBuildingArea() called");
   }
 
-  protected GetBuildingAreaNumber(i: number): b2AABB {
+  protected GetBuildingAreaNumber(i: number) {
     return this.GetBuildingArea();
   }
 
@@ -1175,7 +1149,7 @@ export class ControllerGame extends Controller {
     for (var i: number = 0; i < partsToCheck.length; i++) {
       var partFits: boolean = false;
       for (var j: number = 0; j < numAreas; j++) {
-        var buildingArea: b2AABB = this.GetBuildingAreaNumber(j);
+        var buildingArea = this.GetBuildingAreaNumber(j);
         if (partsToCheck[i] instanceof Circle) {
           minX = partsToCheck[i].centerX - partsToCheck[i].radius;
           maxX = partsToCheck[i].centerX + partsToCheck[i].radius;
@@ -1824,23 +1798,23 @@ export class ControllerGame extends Controller {
     ) {
       // mouse press
       if (Input.mouseDown && !this.m_mouseJoint) {
-        var body: b2Body = this.GetBodyAtMouse();
+        var body = this.GetBodyAtMouse();
 
         if (!ControllerGameGlobals.playingReplay && body) {
-          var md: b2MouseJointDef = new b2MouseJointDef();
-          md.bodyA = this.m_groundBody;
-          md.bodyB = body;
+          var md = new b2MouseJointDef();
+          md.body1 = this.m_world.m_groundBody;
+          md.body2 = body;
           md.target.Set(ControllerGameGlobals.mouseXWorldPhys, ControllerGameGlobals.mouseYWorldPhys);
-          md.maxForce = 300 * body.GetMass();
-          b2LinearStiffness(md, 5, 0.7, md.bodyA, md.bodyB);
-          this.m_mouseJoint = this.m_world.CreateJoint(md) as b2MouseJoint;
-          body.SetAwake(true);
-        }
+          md.maxForce = 300.0 * body.m_mass;
+          md.timeStep = this.m_timeStep;
+          this.m_mouseJoint = this.m_world.CreateJoint(md);
+          body.WakeUp();
+      }
       }
 
       // mouse move
       if (this.m_mouseJoint) {
-        var p2: b2Vec2 = new b2Vec2(ControllerGameGlobals.mouseXWorldPhys, ControllerGameGlobals.mouseYWorldPhys);
+        var p2 = new b2Vec2(ControllerGameGlobals.mouseXWorldPhys, ControllerGameGlobals.mouseYWorldPhys);
         this.m_mouseJoint.SetTarget(p2);
       }
 
@@ -2166,7 +2140,7 @@ export class ControllerGame extends Controller {
         Math.abs(this.firstClickY - ControllerGameGlobals.mouseYWorldPhys) > 0.5
       ) {
         this.curAction = -1;
-        var buildArea: b2AABB = new b2AABB();
+        var buildArea = new b2AABB();
         buildArea.lowerBound = Util.Vector(
           Math.min(this.firstClickX, ControllerGameGlobals.mouseXWorldPhys),
           Math.min(this.firstClickY, ControllerGameGlobals.mouseYWorldPhys)
@@ -2987,7 +2961,7 @@ export class ControllerGame extends Controller {
       this.ShowDialog3("Thank you, the moderators have been notified.");
       this.m_progressDialog.ShowOKButton();
       this.m_progressDialog.StopTimer();
-      Main.ShowMouse();
+
     }
   }
 
@@ -3038,7 +3012,7 @@ export class ControllerGame extends Controller {
       this.m_progressDialog.SetMessage("Success!");
       this.m_progressDialog.HideInXSeconds(1);
       this.m_fader.visible = false;
-      Main.ShowMouse();
+
       if (ControllerGameGlobals.playingReplay)
         ControllerGameGlobals.curReplayFeatured = !ControllerGameGlobals.curReplayFeatured;
       else if (ControllerGameGlobals.curChallengeID != "")
@@ -3184,7 +3158,7 @@ export class ControllerGame extends Controller {
           (ControllerGameGlobals.userName == "_Public" ? "" : "&sid=" + ControllerGameGlobals.sessionID),
         true
       );
-      Main.ShowMouse();
+
     }
   }
 
@@ -3198,7 +3172,7 @@ export class ControllerGame extends Controller {
       if (this.m_postReplayWindow && this.m_postReplayWindow.visible) this.m_postReplayWindow.HideFader();
       else this.m_fader.visible = false;
       this.m_rateDialog.visible = false;
-      Main.ShowMouse();
+
     }
     if (this.redirectAfterRating == 1) {
       this.loadButton();
@@ -3224,7 +3198,7 @@ export class ControllerGame extends Controller {
       if (this.m_postReplayWindow && this.m_postReplayWindow.visible) this.m_postReplayWindow.HideFader();
       else this.m_fader.visible = false;
       this.m_rateDialog.visible = false;
-      Main.ShowMouse();
+
     }
     if (this.redirectAfterRating == 1) {
       this.loadButton();
@@ -3250,7 +3224,7 @@ export class ControllerGame extends Controller {
       if (this.m_postReplayWindow && this.m_postReplayWindow.visible) this.m_postReplayWindow.HideFader();
       else this.m_fader.visible = false;
       this.m_rateDialog.visible = false;
-      Main.ShowMouse();
+
     }
     if (this.redirectAfterRating == 1) {
       this.loadButton();
@@ -5109,21 +5083,21 @@ export class ControllerGame extends Controller {
       this.ShowDialog3("Sorry, some of the copied parts are not allowed in this challenge!");
       this.m_progressDialog.ShowOKButton();
       this.m_progressDialog.StopTimer();
-      Main.ShowMouse();
+
       return;
     } else if (/*!Main.premiumMode && (hasThrusters || copiedThrusters)*/ false) {
       this.m_fader.visible = true;
       this.ShowDialog3("Sorry, only supporters are allowed to paste thrusters!");
       this.m_progressDialog.ShowOKButton();
       this.m_progressDialog.StopTimer();
-      Main.ShowMouse();
+
       return;
     } else if (/*!Main.premiumMode && hasCannons*/ false) {
       this.m_fader.visible = true;
       this.ShowDialog3("Sorry, only supporters are allowed to paste cannons!");
       this.m_progressDialog.ShowOKButton();
       this.m_progressDialog.StopTimer();
-      Main.ShowMouse();
+
       return;
     }
     if (
@@ -5575,7 +5549,7 @@ export class ControllerGame extends Controller {
               this.ShowDialog3("Sorry, only supporters are allowed to save robots containing thrusters!");
               this.m_progressDialog.ShowOKButton();
               this.m_progressDialog.StopTimer();
-              Main.ShowMouse();
+
               return;
             }
             if (this.allParts[i] instanceof Cannon) {
@@ -5583,7 +5557,7 @@ export class ControllerGame extends Controller {
               this.ShowDialog3("Sorry, only supporters are allowed to save robots containing cannons!");
               this.m_progressDialog.ShowOKButton();
               this.m_progressDialog.StopTimer();
-              Main.ShowMouse();
+
               return;
             }
           }
@@ -5846,7 +5820,7 @@ export class ControllerGame extends Controller {
           this.ShowDialog3("Sorry, that robot contains parts that are not allowed in this challenge!");
           this.m_progressDialog.ShowOKButton();
           this.m_progressDialog.StopTimer();
-          Main.ShowMouse();
+
           return;
         } else {
           ControllerGameGlobals.curRobotID = "";
@@ -6275,7 +6249,6 @@ export class ControllerGame extends Controller {
       this.m_guiPanel.ShowLogout();
       this.loginHidden(true);
     }
-    Main.ShowMouse();
   }
 
   public finishSavingReplay(): void {
@@ -6300,7 +6273,7 @@ export class ControllerGame extends Controller {
           this.highScoresButton(new MouseEvent(""));
         } else {
           this.m_scoreWindow.HideFader();
-          Main.ShowMouse();
+
         }
       }
     }
@@ -6358,7 +6331,7 @@ export class ControllerGame extends Controller {
             "This replay was saved using an older version of IncrediBots.  Redirect there now?",
             6
           );
-          Main.ShowMouse();
+
         }
       } else {
         var robot: Robot = replayAndRobot[1];
@@ -6413,7 +6386,7 @@ export class ControllerGame extends Controller {
       if (!this.m_scoreWindow || !this.m_scoreWindow.visible) this.m_fader.visible = false;
       else {
         this.m_scoreWindow.HideFader();
-        Main.ShowMouse();
+
       }
     }
   }
@@ -6719,15 +6692,13 @@ export class ControllerGame extends Controller {
   // Private Part:
 
   private CreateWorld(): void {
-    var worldAABB: b2AABB = new b2AABB();
+    var worldAABB = new b2AABB();
     worldAABB.lowerBound.Set(-300.0, -200.0);
     worldAABB.upperBound.Set(300.0, 200.0);
 
     // Construct a world object
 
-    this.m_world = b2World.Create(this.GetGravity());
-    this.m_groundBody = this.m_world.CreateBody();
-    this.m_groundBody.SetUserData({ groundBody: true });
+    this.m_world = new b2World(worldAABB, this.GetGravity(), true);
 
     var filter: ContactFilter = new ContactFilter();
     this.m_world.SetContactFilter(filter);
@@ -7070,18 +7041,19 @@ export class ControllerGame extends Controller {
 
     // Query the world for overlapping shapes.
     var k_maxCount: number = 10;
-    var shapes: Array<any> = this.m_world.QueryAllAABB(aabb);
+    var shapes: Array<any> = [];
+    var count:int = this.m_world.Query(aabb, shapes, k_maxCount);
     var body: b2Body = null;
     for (var i: number = 0; i < shapes.length; ++i) {
       if (
-        shapes[i].m_body.GetType() != b2BodyType.b2_staticBody &&
-        !shapes[i].m_body.GetUserData().undragable &&
-        shapes[i].m_body.GetUserData().isPiston == -1
+        shapes[i].m_body.IsStatic() === false &&
+        !shapes[i].GetUserData().undragable &&
+        shapes[i].GetUserData().isPiston == -1
       ) {
-        var tShape: b2Fixture = shapes[i] as b2Fixture;
-        var inside: boolean = tShape.TestPoint(mousePVec);
+        var tShape = shapes[i];
+        var inside: boolean = tShape.TestPoint(tShape.m_body.GetXForm(), mousePVec);
         if (inside) {
-          body = tShape.GetBody();
+          body = tShape.m_body;
           break;
         }
       }

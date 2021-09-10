@@ -1,4 +1,4 @@
-import { b2Contact } from "@box2d/core";
+import { b2Contact } from "../Box2D";
 import { ShapePart, JointPart, Thrusters, RevoluteJoint, Rectangle, Circle, Triangle, FixedJoint, TextPart, LSOManager, ScoreWindow, ControllerChallenge, ControllerGameGlobals } from "../../imports";
 
 export class ControllerChallengeEditor extends ControllerChallenge

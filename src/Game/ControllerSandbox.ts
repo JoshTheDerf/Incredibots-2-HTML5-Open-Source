@@ -1,5 +1,5 @@
-import { b2Vec2 } from "@box2d/core";
 import { Graphics, Matrix, Text } from "pixi.js";
+import { b2Vec2 } from "../Box2D";
 import { Circle, ControllerGame, Gradient, Part, Rectangle, SandboxSettings, Sky, TextPart, Util } from "../imports";
 
 export class ControllerSandbox extends ControllerGame {
@@ -746,7 +746,7 @@ export class ControllerSandbox extends ControllerGame {
     }
   }
 
-  protected GetGravity(): b2Vec2 {
+  protected GetGravity() {
     return new b2Vec2(0.0, ControllerSandbox.settings.gravity);
   }
 

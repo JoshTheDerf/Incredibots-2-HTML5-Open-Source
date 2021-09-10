@@ -1,4 +1,4 @@
-import { b2AABB } from "@box2d/core";
+import { b2AABB } from "../../Box2D";
 import { Rectangle, Circle } from "pixi.js";
 import { ControllerGameGlobals, Triangle } from "../../imports";
 import { ControllerTutorial } from "./ControllerTutorial";

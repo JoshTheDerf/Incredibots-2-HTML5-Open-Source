@@ -1,4 +1,4 @@
-import { b2AABB, b2Vec2 } from "@box2d/core";
+import { b2AABB, b2Vec2 } from "../../Box2D";
 import { Text, TextStyle } from 'pixi.js'
 import { Circle, ControllerGameGlobals, ControllerTutorial, Main, Part, PrismaticJoint, Rectangle, RevoluteJoint, ShapePart, Triangle } from "../../imports";
 
@@ -250,7 +250,7 @@ export class ControllerJumpbot extends ControllerTutorial
 		this.ShowDisabledDialog();
 	}
 
-	protected GetGravity():b2Vec2 {
+	protected GetGravity() {
 		if (this.decreasedDensity) {
 			return new b2Vec2(0.0, 12.0);
 		} else {

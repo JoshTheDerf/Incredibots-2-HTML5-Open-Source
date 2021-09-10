@@ -1,4 +1,4 @@
-import { b2Joint, b2World } from "@box2d/core";
+import { b2Joint, b2World } from "../Box2D";
 import { IllegalOperationError, Part, ShapePart, Util } from "../imports";
 
 export class JointPart extends Part {

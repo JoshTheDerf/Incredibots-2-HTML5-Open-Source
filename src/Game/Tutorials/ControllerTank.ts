@@ -1,4 +1,4 @@
-import { b2AABB } from "@box2d/core";
+import { b2AABB } from "../../Box2D";
 import { Text, TextStyle } from "pixi.js";
 import { Circle, ControllerGameGlobals, ControllerTutorial, FixedJoint, Main, Part, Rectangle, RevoluteJoint, ShapePart, Triangle } from "../../imports";
 

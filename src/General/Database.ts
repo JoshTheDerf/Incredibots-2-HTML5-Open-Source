@@ -1,4 +1,4 @@
-﻿import { b2AABB, b2Vec2 } from "@box2d/core";
+﻿import { b2AABB, b2Vec2 } from "../Box2D";
 import {
   Base64Decoder,
   Base64Encoder,
@@ -1909,7 +1909,7 @@ export class Database {
     var buildAreas: Array<any> = data.readObject();
     c.buildAreas = new Array();
     for (var i: number = 0; i < buildAreas.length; i++) {
-      var area: b2AABB = new b2AABB();
+      var area = new b2AABB();
       area.lowerBound = Util.Vector(buildAreas[i].lowerBound.x, buildAreas[i].lowerBound.y);
       area.upperBound = Util.Vector(buildAreas[i].upperBound.x, buildAreas[i].upperBound.y);
       c.buildAreas.push(area);
@@ -2365,7 +2365,7 @@ export class Database {
     n += 327;
     n *= 100;
     var i: number = Util.NearestInt(n);
-    var b1: number = ~~(i / 256);
+    var b1: number = parseInt(i / 256);
     var b2: number = i % 256;
     b.writeByte(b1 - 128);
     b.writeByte(b2 - 128);

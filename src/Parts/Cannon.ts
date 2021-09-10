@@ -1,4 +1,4 @@
-import { b2Body, b2BodyDef, b2BodyType, b2CircleShape, b2MassData, b2PolygonShape, b2Vec2, b2World } from "@box2d/core";
+import { b2BodyDef, b2CircleDef, b2CircleShape, b2MassData, b2PolygonDef, b2Vec2 } from "../Box2D";
 import { ControllerGameGlobals, ControllerMainMenu, FixedJoint, ShapePart, Util } from "../imports";
 
 export class Cannon extends ShapePart {
@@ -10,7 +10,7 @@ export class Cannon extends ShapePart {
 
   private createCannonball: boolean = false;
   public initW: number;
-  private relativeCannonPos: b2Vec2;
+  private relativeCannonPos;
 
   public cannonballs: Array<any> = new Array();
   private cannonballCounters: Array<any> = new Array();
@@ -64,7 +64,7 @@ export class Cannon extends ShapePart {
     verts[3] = new b2Vec2(this.x, this.y + this.w / 2);
     var dist: number = Math.sqrt((5 * this.w * this.w) / 16);
     for (var i: number = 0; i < 4; i++) {
-      var vertAngle: number = Math.atan2((verts[i] as b2Vec2).y - this.centerY, (verts[i] as b2Vec2).x - this.centerX);
+      var vertAngle: number = Math.atan2((verts[i]).y - this.centerY, (verts[i]).x - this.centerX);
       vertAngle = Util.NormalizeAngle(this.angle + vertAngle);
       verts[i].x = this.centerX + dist * Math.cos(vertAngle);
       verts[i].y = this.centerY + dist * Math.sin(vertAngle);
@@ -72,7 +72,7 @@ export class Cannon extends ShapePart {
     return verts;
   }
 
-  public GetSpawnPoint(): b2Vec2 {
+  public GetSpawnPoint() {
     return Util.Vector(
       this.centerX + (Math.cos(this.angle) * 2 * this.w) / 3,
       this.centerY + (Math.sin(this.angle) * 2 * this.w) / 3
@@ -118,156 +118,139 @@ export class Cannon extends ShapePart {
     return c;
   }
 
-  public Init(world: b2World, body: b2Body = null): void {
+  public Init(world, body = null): void {
     if (this.isInitted) return;
     super.Init(world);
 
-    var sd: b2PolygonShape = new b2PolygonShape();
-    sd.Set(this.GetVertices(), 4);
+    var sd:b2PolygonDef = new b2PolygonDef();
+    sd.friction = 0.4;
+    sd.restitution = 0.3;
 
-    var bodyStatic: boolean = false;
-    var i: number;
+    //CE PROBLEM
+    //sd.density = (Math.max(1, Math.min(30, density)) + 5.0) / 10.0;
+
+    //CE FIX
+    sd.density = (this.density + 5.0) / 10.0;
+
+    sd.vertexCount = 4;
+    if (this.m_collisionGroup != Number.MIN_VALUE) sd.filter.groupIndex = this.m_collisionGroup;
+    sd.vertices = this.GetVertices();
+
+    var bodyStatic:Boolean = false;
+    var i:int;
     if (body) {
       for (i = 0; i < 4; i++) {
-        sd.m_vertices[i].x -= body.GetPosition().x;
-        sd.m_vertices[i].y -= body.GetPosition().y;
+        sd.vertices[i].x -= body.GetPosition().x;
+        sd.vertices[i].y -= body.GetPosition().y;
       }
       this.m_body = body;
-      bodyStatic = body.GetType() === b2BodyType.b2_staticBody;
+      bodyStatic = body.IsStatic();
     } else {
       for (i = 0; i < 4; i++) {
-        sd.m_vertices[i].x -= this.centerX;
-        sd.m_vertices[i].y -= this.centerY;
+        sd.vertices[i].x -= this.centerX;
+        sd.vertices[i].y -= this.centerY;
       }
-      var bd: b2BodyDef = {
-        position: { x: this.centerX, y: this.centerY },
-        type: this.isStatic ? b2BodyType.b2_staticBody : b2BodyType.b2_dynamicBody,
-      };
+      var bd:b2BodyDef = new b2BodyDef();
+      bd.position.Set(this.centerX, this.centerY);
       this.m_body = world.CreateBody(bd);
     }
+    sd.userData = new Object();
+    sd.userData.collide = this.collide;
+    sd.userData.editable = this.isEditable;
+    sd.userData.red = this.red;
+    sd.userData.green = this.green;
+    sd.userData.blue = this.blue;
+    sd.userData.outline = this.outline;
+    sd.userData.terrain = this.terrain;
+    sd.userData.undragable = this.undragable;
+    sd.userData.isPiston = -1;
+    this.m_shape = this.m_body.CreateShape(sd);
 
-    this.m_fixture = this.m_body.CreateFixture({
-      shape: sd,
-      friction: 0.4,
-      restitution: 0.3,
-      //CE PROBLEM
-      // density: (Math.max(1, Math.min(30, density)) + 5.0) / 10.0;
-      //CE FIX
-      density: this.density + 5.0 / 10.0,
-    });
-
-    if (this.m_collisionGroup != Number.MIN_VALUE) this.m_fixture.SetFilterData({ groupIndex: this.m_collisionGroup });
-
-    const userData = new Object();
-    userData.collide = this.collide;
-    userData.editable = this.isEditable;
-    userData.red = this.red;
-    userData.green = this.green;
-    userData.blue = this.blue;
-    userData.outline = this.outline;
-    userData.terrain = this.terrain;
-    userData.undragable = this.undragable;
-    userData.isPiston = -1;
-
-    this.m_body.SetUserData(userData);
-    this.m_fixture.SetUserData(userData);
-    this.m_shape = sd;
-
-    if (this.isStatic || bodyStatic) this.m_body.SetMassData(new b2MassData());
-    else this.m_body.ResetMassData();
+    if (this.isStatic || bodyStatic) this.m_body.SetMass(new b2MassData());
+    else this.m_body.SetMassFromShapes();
 
     this.cannonballs.length = 0;
     this.cannonballCounters.length = 0;
 
     for (i = 0; i < this.m_joints.length; i++) {
       if (this.m_joints[i].isEnabled && this.m_joints[i] instanceof FixedJoint) {
-        var connectedPart: ShapePart = this.m_joints[i].GetOtherPart(this);
+        var connectedPart:ShapePart = this.m_joints[i].GetOtherPart(this);
         if (connectedPart.isEnabled) connectedPart.Init(world, this.m_body);
       }
     }
 
     this.relativeCannonPos = Util.Vector(this.centerX, this.centerY);
     this.relativeCannonPos.Subtract(this.m_body.GetPosition());
-  }
+}
 
   public KeyInput(key: number, up: boolean, replay: boolean): void {
     if (key == this.fireKey && up) this.createCannonball = true;
   }
 
-  public Update(world: b2World): void {
+  public Update(world): void {
     if (this.isInitted && this.createCannonball && this.cannonballs.length < 50) {
       this.CreateCannonball(world);
     }
     this.createCannonball = false;
 
-    for (var i: number = 0; i < this.cannonballCounters.length; i++) {
+    for (var i = 0; i < this.cannonballCounters.length; i++) {
       this.cannonballCounters[i]--;
-      if (this.cannonballCounters[i] == 0) this.cannonballs[i].GetFixtureList().m_filter.groupIndex = 0;
+      if (this.cannonballCounters[i] == 0) this.cannonballs[i].GetShapeList().m_filter.groupIndex = 0;
     }
-  }
+}
 
-  private CreateCannonball(world: b2World): void {
-    var circ: b2CircleShape = new b2CircleShape();
-    circ.Set({ x: 0, y: 0 }, this.w / 6);
-
-    var localPoint: b2Vec2 = this.GetSpawnPoint();
-    localPoint.Subtract(Util.Vector(this.centerX, this.centerY));
-    localPoint.Add(this.relativeCannonPos);
-    const pos = new b2Vec2();
-    this.m_body.GetWorldPoint(localPoint, pos);
-    var bd: b2BodyDef = {
-      position: pos,
-      type: b2BodyType.b2_dynamicBody,
-    };
-    bd.bullet = true;
-    var body: b2Body = world.CreateBody(bd);
-    this.cannonballs.push(body);
-
-    const fixture = body.CreateFixture({
-      shape: circ,
-      friction: 0.4,
-      restitution: 0.3,
-      //CE PROBLEM
-      //density: (Math.max(1, Math.min(30, density)) + 5.0) / 10.0;
-      //CE FIX
-      density: (this.density + 5.0) / 10.0,
-    });
-    if (this.m_collisionGroup != Number.MIN_VALUE) fixture.SetFilterData({ groupIndex: this.m_collisionGroup });
-    body.ResetMassData();
-
-    const userData = new Object();
-    userData.collide = true;
-    userData.editable = this.isEditable;
-    userData.red = this.red;
-    userData.green = this.green;
-    userData.blue = this.blue;
-    userData.outline = this.outline;
-    userData.terrain = false;
-    userData.undragable = true;
-    userData.isPiston = -1;
-    body.SetUserData(userData);
-    fixture.SetUserData(userData);
-
-    var forceAngle: number = this.angle + this.m_body.GetAngle();
+  private CreateCannonball(world): void {
+    var circ = new b2CircleDef();
+    circ.radius = this.w / 6;
+    circ.friction = 0.4;
+    circ.restitution = 0.3;
 
     //CE PROBLEM
-    //var forceStrength:number = 0.15 * w * w * circ.density * (4 + 2 * Math.max(1, Math.min(30, strength)));
+    //circ.density = (Math.max(1, Math.min(30, density)) + 5.0) / 10.0;
 
     //CE FIX
-    var forceStrength: number = 0.15 * this.w * this.w * fixture.GetDensity() * (4 + 2 * this.strength);
+    circ.density = (this.density + 5.0) / 10.0;
 
-    var forceVector: b2Vec2 = Util.Vector(Math.cos(forceAngle) * forceStrength, Math.sin(forceAngle) * forceStrength);
-    var positionVector: b2Vec2 = new b2Vec2();
-    this.m_body.GetWorldPoint(this.relativeCannonPos, positionVector);
-    body.ApplyLinearImpulse(forceVector, body.GetWorldCenter());
-    forceVector = forceVector.Negate();
-    this.m_body.ApplyLinearImpulse(forceVector, positionVector);
-    // FIXME: Disabled to prevent circular references between imports.
+    if (this.m_collisionGroup != Number.MIN_VALUE) circ.filter.groupIndex = this.m_collisionGroup;
+    var bd:b2BodyDef = new b2BodyDef();
+    var localPoint:b2Vec2 = this.GetSpawnPoint();
+    localPoint.Subtract(Util.Vector(this.centerX, this.centerY));
+    localPoint.Add(this.relativeCannonPos);
+    bd.position.SetV(this.m_body.GetWorldPoint(localPoint));
+    bd.isBullet = true;
+    var body:b2Body = world.CreateBody(bd);
+    this.cannonballs.push(body);
+    circ.userData = new Object();
+    circ.userData.collide = true;
+    circ.userData.editable = this.isEditable;
+    circ.userData.red = this.red;
+    circ.userData.green = this.green;
+    circ.userData.blue = this.blue;
+    circ.userData.outline = this.outline;
+    circ.userData.terrain = false;
+    circ.userData.undragable = true;
+    circ.userData.isPiston = -1;
+    body.CreateShape(circ);
+    body.SetMassFromShapes();
+
+    var forceAngle:Number = this.angle + this.m_body.GetAngle();
+
+    //CE PROBLEM
+    //var forceStrength:Number = 0.15 * w * w * circ.density * (4 + 2 * Math.max(1, Math.min(30, strength)));
+
+    //CE FIX
+    var forceStrength:Number = 0.15 * this.w * this.w * circ.density * (4 + 2 * this.strength);
+
+    var forceVector:b2Vec2 = Util.Vector(Math.cos(forceAngle) * forceStrength, Math.sin(forceAngle) * forceStrength);
+    var positionVector:b2Vec2 = this.m_body.GetWorldPoint(this.relativeCannonPos);
+    body.ApplyImpulse(forceVector, body.GetWorldCenter());
+    forceVector = forceVector.Negative();
+    this.m_body.ApplyImpulse(forceVector, positionVector);
     if (ControllerGameGlobals.cannonballs) ControllerGameGlobals.cannonballs.push(body);
     if (ControllerMainMenu.cannonballs) ControllerMainMenu.cannonballs.push(body);
 
     this.cannonballCounters.push(5);
-  }
+}
 
   public IntersectsBox(boxX: number, boxY: number, boxW: number, boxH: number): boolean {
     if (this.centerX >= boxX && this.centerX <= boxX + boxW && this.centerY >= boxY && this.centerY <= boxY + boxH) {

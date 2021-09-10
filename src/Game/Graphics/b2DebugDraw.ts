@@ -16,7 +16,7 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-import { b2Color, b2Rot, b2Vec2 } from "@box2d/core";
+import { b2Color, b2Vec2 } from "../../Box2D";
 import { Graphics } from "pixi.js";
 import { Util } from "../../imports";
 
@@ -61,7 +61,7 @@ export class b2DebugDraw {
   }
 
   /// Draw a closed polygon provided in CCW order.
-  public DrawPolygon(vertices: Array<any>, vertexCount: number, color: b2Color): void {
+  public DrawPolygon(vertices: Array<any>, vertexCount: number, color): void {
     if (this.IsPolygonOnScreen(vertices, vertexCount)) {
       this.m_sprite.lineStyle(1, Util.b2ColorToHex(color), this.m_alpha);
       this.m_sprite.moveTo(
@@ -85,12 +85,12 @@ export class b2DebugDraw {
   public DrawSolidPolygon(
     vertices: Array<any>,
     vertexCount: number,
-    color: b2Color,
+    color,
     isHighlighted: boolean = false,
     drawOutlines: boolean = true
   ): void {
     if (this.IsPolygonOnScreen(vertices, vertexCount)) {
-      var outlineColour: b2Color = b2DebugDraw.DarkenColour(color);
+      var outlineColour = b2DebugDraw.DarkenColour(color);
       if (drawOutlines)
         this.m_sprite.lineStyle(
           this.m_lineThickness * this.m_drawScale,
@@ -129,12 +129,12 @@ export class b2DebugDraw {
   public DrawSolidCannon(
     vertices: Array<any>,
     vertexCount: number,
-    color: b2Color,
+    color,
     isHighlighted: boolean = false,
     drawOutlines: boolean = true
   ): void {
     if (this.IsPolygonOnScreen(vertices, vertexCount)) {
-      var outlineColour: b2Color = b2DebugDraw.DarkenColour(color);
+      var outlineColour = b2DebugDraw.DarkenColour(color);
       if (drawOutlines)
         this.m_sprite.lineStyle(
           this.m_lineThickness * this.m_drawScale,
@@ -182,7 +182,7 @@ export class b2DebugDraw {
   }
 
   /// Draw a circle.
-  public DrawCircle(center: b2Vec2, radius: number, color: b2Color): void {
+  public DrawCircle(center, radius: number, color): void {
     if (this.IsCircleOnScreen(center, radius)) {
       this.m_sprite.lineStyle(1, Util.b2ColorToHex(color), this.m_alpha);
       this.m_sprite.drawCircle(
@@ -197,15 +197,15 @@ export class b2DebugDraw {
   public DrawSolidCircle(
     center: b2Vec2,
     radius: number,
-    axis: b2Rot,
+    axis: b2Vec2,
     color: b2Color,
     isHighlighted: boolean = false,
     drawOutlines: boolean = true,
     cannonball: boolean = false
   ): void {
     if (this.IsCircleOnScreen(center, radius)) {
-      var outlineColour: b2Color = b2DebugDraw.DarkenColour(color);
-      if (drawOutlines)
+      var outlineColour = b2DebugDraw.DarkenColour(color);
+      if (drawOutlines) {
         this.m_sprite.lineStyle(
           this.m_lineThickness * this.m_drawScale,
           this.drawColours
@@ -213,7 +213,9 @@ export class b2DebugDraw {
             : Util.b2ColorToHex(color),
           this.m_alpha
         );
-      else this.m_sprite.lineStyle(0, 0, 0);
+      } else {
+        this.m_sprite.lineStyle(0, 0, 0);
+      }
       this.m_sprite.moveTo(0, 0);
       this.m_sprite.beginFill(
         this.drawColours
@@ -230,7 +232,7 @@ export class b2DebugDraw {
       if (drawOutlines && !cannonball) {
         var numSpokes: number = 16;
         for (var i: number = 0; i < numSpokes; i++) {
-          var angle: number = Math.atan2(axis.s, axis.c) + (2 * i * Math.PI) / numSpokes;
+          var angle: number = Math.atan2(axis.y, axis.x) + (2 * i * Math.PI) / numSpokes;
           //m_sprite.moveTo(center.x * m_drawScale - m_drawXOff, center.y * m_drawScale - m_drawYOff);
           this.m_sprite.moveTo(
             (center.x + Math.cos(angle) * (radius * 0.9)) * this.m_drawScale - this.m_drawXOff,
@@ -246,13 +248,13 @@ export class b2DebugDraw {
   }
 
   /// Draw a line segment.
-  public DrawSegment(p1: b2Vec2, p2: b2Vec2, color: b2Color): void {
+  public DrawSegment(p1, p2, color): void {
     this.m_sprite.lineStyle(1, Util.b2ColorToHex(color), this.m_alpha);
     this.m_sprite.moveTo(p1.x * this.m_drawScale - this.m_drawXOff, p1.y * this.m_drawScale - this.m_drawYOff);
     this.m_sprite.lineTo(p2.x * this.m_drawScale - this.m_drawXOff, p2.y * this.m_drawScale - this.m_drawYOff);
   }
 
-  public DrawSolidSegment(p1: b2Vec2, p2: b2Vec2, color: b2Color): void {
+  public DrawSolidSegment(p1, p2, color): void {
     this.m_sprite.lineStyle(this.m_lineThickness * this.m_drawScale, Util.b2ColorToHex(color), this.m_alpha);
     this.m_sprite.moveTo(p1.x * this.m_drawScale - this.m_drawXOff, p1.y * this.m_drawScale - this.m_drawYOff);
     this.m_sprite.lineTo(p2.x * this.m_drawScale - this.m_drawXOff, p2.y * this.m_drawScale - this.m_drawYOff);
@@ -271,8 +273,8 @@ export class b2DebugDraw {
     return false;
   }
 
-  public IsCircleOnScreen(center: b2Vec2, radius: number): boolean {
-    var screenCenter: b2Vec2 = new b2Vec2();
+  public IsCircleOnScreen(center, radius: number): boolean {
+    var screenCenter = new b2Vec2(0, 0);
     var newRadius: number = radius * this.m_drawScale;
     screenCenter.x = center.x * this.m_drawScale - this.m_drawXOff;
     screenCenter.y = center.y * this.m_drawScale - this.m_drawYOff;
@@ -284,7 +286,7 @@ export class b2DebugDraw {
     );
   }
 
-  public static BrightenColour(color: b2Color): b2Color {
+  public static BrightenColour(color) {
     var r: number = b2DebugDraw.GetR(color);
     var g: number = b2DebugDraw.GetG(color);
     var b: number = b2DebugDraw.GetB(color);
@@ -314,7 +316,7 @@ export class b2DebugDraw {
     return new b2Color(newR / 255.0, newG / 255.0, newB / 255.0);
   }
 
-  public static DarkenColour(color: b2Color): b2Color {
+  public static DarkenColour(color) {
     var r: number = b2DebugDraw.GetR(color);
     var g: number = b2DebugDraw.GetG(color);
     var b: number = b2DebugDraw.GetB(color);
@@ -339,15 +341,15 @@ export class b2DebugDraw {
     return new b2Color(newR / 255.0, newG / 255.0, newB / 255.0);
   }
 
-  public static GetR(colour: b2Color): number {
+  public static GetR(colour): number {
     return (Util.b2ColorToHex(colour) & 0xff0000) >> 16;
   }
 
-  public static GetG(colour: b2Color): number {
+  public static GetG(colour): number {
     return (Util.b2ColorToHex(colour) & 0x00ff00) >> 8;
   }
 
-  public static GetB(colour: b2Color): number {
+  public static GetB(colour): number {
     return Util.b2ColorToHex(colour) & 0x0000ff;
   }
 

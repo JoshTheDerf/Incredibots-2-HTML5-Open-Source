@@ -1,4 +1,4 @@
-import { b2Body, b2RevoluteJoint, b2RevoluteJointDef, b2Vec2, b2World } from "@box2d/core";
+import { b2Body, b2RevoluteJoint, b2RevoluteJointDef, b2Vec2, b2World } from "../Box2D";
 import { Circle, ControllerGameGlobals, JointPart, ShapePart, Util } from "../imports";
 
 export class RevoluteJoint extends JointPart {
@@ -73,12 +73,12 @@ export class RevoluteJoint extends JointPart {
     return j;
   }
 
-  public Init(world: b2World, body: b2Body = null): void {
+  public Init(world, body = null): void {
     if (this.isInitted || !this.part1.isInitted || !this.part2.isInitted) return;
     super.Init(world);
 
     if (this.part1.GetBody() != this.part2.GetBody()) {
-      var jd: b2RevoluteJointDef = new b2RevoluteJointDef();
+      var jd = new b2RevoluteJointDef();
       jd.enableMotor = this.enableMotor;
 
       //CE PROBLEM
@@ -87,11 +87,11 @@ export class RevoluteJoint extends JointPart {
       //CE FIX
       jd.maxMotorTorque = this.motorStrength * 30;
 
-      jd.enableLimit = this.motorLowerLimit != -Number.MAX_VALUE || this.motorUpperLimit != Number.MAX_VALUE;
+      jd.enableLimit = (this.motorLowerLimit != -Number.MAX_VALUE || this.motorUpperLimit != Number.MAX_VALUE);
       if (this.motorLowerLimit == -Number.MAX_VALUE) jd.lowerAngle = -Number.MAX_VALUE;
-      else jd.lowerAngle = (this.motorLowerLimit * Math.PI) / 180.0;
+      else jd.lowerAngle = this.motorLowerLimit * Math.PI / 180.0;
       if (this.motorUpperLimit == Number.MAX_VALUE) jd.upperAngle = Number.MAX_VALUE;
-      else jd.upperAngle = (this.motorUpperLimit * Math.PI) / 180.0;
+      else jd.upperAngle = this.motorUpperLimit * Math.PI / 180.0;
       if (this.part1 instanceof Circle && !(this.part2 instanceof Circle)) {
         jd.Initialize(this.part2.GetBody(), this.part1.GetBody(), new b2Vec2(this.anchorX, this.anchorY));
       } else if (this.part2 instanceof Circle && !(this.part1 instanceof Circle)) {
@@ -109,18 +109,14 @@ export class RevoluteJoint extends JointPart {
       this.wasKeyDown1 = false;
       this.wasKeyDown2 = false;
     }
-  }
+}
 
-  public CheckForBreakage(world: b2World): void {
+  public CheckForBreakage(world): void {
     if (this.m_joint) {
-      var joint: b2RevoluteJoint = this.m_joint as b2RevoluteJoint;
+      var joint = (this.m_joint);
 
-      const anchorA = new b2Vec2();
-      const anchorB = new b2Vec2();
-      joint.GetAnchorA(anchorA);
-      joint.GetAnchorB(anchorB);
       // Check joint constraints to see if the joint should break
-      var dist: number = Util.GetDist(anchorA.x, anchorA.y, anchorB.x, anchorB.y);
+      var dist:Number = Util.GetDist(joint.GetAnchor1().x, joint.GetAnchor1().y, joint.GetAnchor2().x, joint.GetAnchor2().y);
       if (dist > 3.0) {
         world.DestroyJoint(this.m_joint);
         this.m_joint = null;
@@ -128,9 +124,9 @@ export class RevoluteJoint extends JointPart {
     }
   }
 
-  public Update(world: b2World): void {
+  public Update(world): void {
     if (this.m_joint && this.enableMotor) {
-      var joint: b2RevoluteJoint = this.m_joint as b2RevoluteJoint;
+      var joint = (this.m_joint);
       if (this.isKeyDown1 || this.isKeyDown2) {
         joint.EnableMotor(true);
 
@@ -140,10 +136,11 @@ export class RevoluteJoint extends JointPart {
         //CE FIX
         joint.m_maxMotorTorque = this.motorStrength * 30;
 
-        this.part1.GetBody().SetAwake(true);
-        this.part2.GetBody().SetAwake(true);
+        this.part1.GetBody().WakeUp();
+        this.part2.GetBody().WakeUp();
       }
       if (this.isKeyDown1 || (this.autoCW && !this.isKeyDown2)) {
+
         //CE PROBLEM
         //joint.SetMotorSpeed(Math.max(1, Math.min(30, motorSpeed)));
 
@@ -151,15 +148,17 @@ export class RevoluteJoint extends JointPart {
         joint.SetMotorSpeed(this.motorSpeed);
 
         if (this.isStiff && this.wasKeyDown1 && joint.GetJointAngle() < this.prevJointAngle) {
-          joint.SetMotorSpeed(0 /*(prevJointAngle - joint.GetJointAngle()) * 2*/);
+          joint.SetMotorSpeed(0/*(prevJointAngle - joint.GetJointAngle()) * 2*/);
 
           //CE PROBLEM
           //joint.m_maxMotorTorque = Math.max(1, Math.min(30, motorStrength)) * 3000;
 
           //CE FIX
           joint.m_maxMotorTorque = this.motorStrength * 3000;
+
         }
       } else if (this.isKeyDown2 || this.autoCCW) {
+
         //CE PROBLEM
         //joint.SetMotorSpeed(-Math.max(1, Math.min(30, motorSpeed)));
 
@@ -167,26 +166,28 @@ export class RevoluteJoint extends JointPart {
         joint.SetMotorSpeed(0.0 - this.motorSpeed);
 
         if (this.isStiff && this.wasKeyDown2 && joint.GetJointAngle() > this.prevJointAngle) {
-          joint.SetMotorSpeed(0 /*(prevJointAngle - joint.GetJointAngle()) * 2*/);
+          joint.SetMotorSpeed(0/*(prevJointAngle - joint.GetJointAngle()) * 2*/);
 
           //CE PROBLEM
           //joint.m_maxMotorTorque = Math.max(1, Math.min(30, motorStrength)) * 3000;
 
           //CE FIX
           joint.m_maxMotorTorque = this.motorStrength * 3000;
+
         }
       } else {
         if (this.wasKeyDown1 || this.wasKeyDown2) {
           this.targetJointAngle = joint.GetJointAngle();
         }
         joint.EnableMotor(this.isStiff);
-        joint.SetMotorSpeed(0 /*(targetJointAngle - joint.GetJointAngle()) * 2*/);
+        joint.SetMotorSpeed(0/*(targetJointAngle - joint.GetJointAngle()) * 2*/);
 
         //CE PROBLEM
         //joint.m_maxMotorTorque = Math.max(1, Math.min(30, motorStrength)) * 3000;
 
         //CE FIX
         joint.m_maxMotorTorque = this.motorStrength * 3000;
+
       }
       this.wasKeyDown1 = this.isKeyDown1;
       this.wasKeyDown2 = this.isKeyDown2;

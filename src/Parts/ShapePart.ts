@@ -1,4 +1,3 @@
-import { b2Body, b2Fixture, b2Shape, b2Vec2, b2World } from "@box2d/core";
 import { ControllerGameGlobals, FixedJoint, IllegalOperationError, JointPart, Part, Thrusters, Util } from "../imports";
 
 export class ShapePart extends Part {
@@ -18,9 +17,9 @@ export class ShapePart extends Part {
   public outline: boolean;
   public terrain: boolean;
   public undragable: boolean;
-  protected m_body: b2Body | null = null;
-  protected m_shape: b2Shape | null = null;
-  protected m_fixture: b2Fixture | null = null;
+  protected m_body = null;
+  protected m_shape = null;
+  protected m_fixture = null;
   protected m_joints: Array<any>;
   protected m_thrusters: Array<any>;
 
@@ -47,15 +46,15 @@ export class ShapePart extends Part {
     this.m_thrusters = new Array();
   }
 
-  public GetBody(): b2Body {
+  public GetBody() {
     return this.m_body;
   }
 
-  public GetShape(): b2Shape {
+  public GetShape() {
     return this.m_shape;
   }
 
-  public GetFixture(): b2Fixture {
+  public GetFixture() {
     return this.m_fixture;
   }
 
@@ -100,7 +99,7 @@ export class ShapePart extends Part {
     throw new IllegalOperationError("abstract ShapePart.GetArea() called");
   }
 
-  public UnInit(world: b2World): void {
+  public UnInit(world): void {
     if (!this.isInitted) return;
     super.UnInit(world);
     if (this.m_body) {
@@ -113,7 +112,7 @@ export class ShapePart extends Part {
     }
   }
 
-  public Update(world: b2World): void {
+  public Update(world): void {
     // do nothing
   }
 
@@ -186,7 +185,7 @@ export class ShapePart extends Part {
   public static GetOutlineVertices(verts: Array<any>, numVerts: number, thickness: number): Array<any> {
     var newVerts: Array<any> = new Array();
     if (numVerts == 3) {
-      var center: b2Vec2 = Util.Vector(
+      var center = Util.Vector(
         (verts[0].x + verts[1].x + verts[2].x) / 3,
         (verts[0].y + verts[1].y + verts[2].y) / 3
       );
@@ -217,9 +216,9 @@ export class ShapePart extends Part {
       );
     } else {
       for (var i: number = 0; i < numVerts; i++) {
-        var prev: b2Vec2 = i == 0 ? verts[numVerts - 1] : verts[i - 1];
-        var cur: b2Vec2 = verts[i];
-        var next: b2Vec2 = i == numVerts - 1 ? verts[0] : verts[i + 1];
+        var prev = i == 0 ? verts[numVerts - 1] : verts[i - 1];
+        var cur = verts[i];
+        var next = i == numVerts - 1 ? verts[0] : verts[i + 1];
         var angle1: number = Math.atan2(prev.y - cur.y, prev.x - cur.x);
         var angle2: number = Math.atan2(next.y - cur.y, next.x - cur.x);
         var bisectorAngle: number = Util.NormalizeAngle(

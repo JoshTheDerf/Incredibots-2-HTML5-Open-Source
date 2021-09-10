@@ -1,5 +1,5 @@
-import { b2AABB, b2Transform, b2Vec2, b2World } from "@box2d/core";
 import { Container, DisplayObject, Graphics, Matrix, Sprite, Text, TextStyle } from "pixi.js";
+import { b2AABB, b2Vec2, b2World } from "../Box2D";
 import {
   AdvancedSandboxWindow,
   ByteArray,
@@ -99,7 +99,7 @@ export class ControllerMainMenu extends Controller {
   public static channel: SoundChannel;
 
   private draw: Draw = new Draw();
-  private world: b2World;
+  private world;
   private allParts: Array<any> = new Array();
   public static cannonballs: Array<any> = new Array();
 
@@ -418,10 +418,10 @@ export class ControllerMainMenu extends Controller {
     this.addChild(this.fader2);
 
     this.draw.m_drawScale = 23.73;
-    var aabb: b2AABB = new b2AABB();
+    var aabb = new b2AABB();
     aabb.lowerBound.Set(-100.0, -100.0);
     aabb.upperBound.Set(100.0, 100.0);
-    this.world = b2World.Create(new b2Vec2(0.0, 15.0));
+    this.world = new b2World(aabb, new b2Vec2(0.0, 15.0), true);
     var filter: ContactFilter = new ContactFilter();
     this.world.SetContactFilter(filter);
 
@@ -721,7 +721,7 @@ export class ControllerMainMenu extends Controller {
       ControllerGameGlobals.replay = replayAndRobot[0];
       if (ControllerGameGlobals.replay.version != Database.VERSION_STRING_FOR_REPLAYS) {
         this.ShowConfirmDialog("This replay was saved using an older version of IncrediBots.  Redirect there now?", 6);
-        Main.ShowMouse();
+
       } else {
         var robot: Robot = replayAndRobot[1];
         ControllerGameGlobals.replayParts = robot.allParts;
@@ -746,7 +746,7 @@ export class ControllerMainMenu extends Controller {
     ControllerGameGlobals.replay = replayAndRobot[0];
     if (ControllerGameGlobals.replay.version != Database.VERSION_STRING_FOR_REPLAYS) {
       this.ShowConfirmDialog("This replay was saved using an older version of IncrediBots.  Redirect there now?", 6);
-      Main.ShowMouse();
+
     } else {
       var robot: Robot = replayAndRobot[1];
       ControllerGameGlobals.replayParts = robot.allParts;
@@ -897,7 +897,6 @@ export class ControllerMainMenu extends Controller {
       this.logInButton.visible = false;
       this.logOutButton.visible = true;
     }
-    Main.ShowMouse();
 
     var format: TextFormat = new TextFormat();
     format.font = Main.GLOBAL_FONT;
@@ -931,7 +930,6 @@ export class ControllerMainMenu extends Controller {
       this.logInButton.visible = false;
       this.logOutButton.visible = true;
     }
-    Main.ShowMouse();
 
     var format: TextFormat = new TextFormat();
     format.font = Main.GLOBAL_FONT;
@@ -1064,7 +1062,7 @@ export class ControllerMainMenu extends Controller {
           (ControllerGameGlobals.userName == "_Public" ? "" : "&sid=" + ControllerGameGlobals.sessionID),
         true
       );
-      Main.ShowMouse();
+
     }
   }
 
@@ -1453,7 +1451,7 @@ export class ControllerMainMenu extends Controller {
       this.frameCounter++;
     }
 
-    this.draw.DrawWorld(this.allParts, new Array(), false, false, false, true);
+    this.draw.DrawWorld(this.allParts, new Array(), this.world, false, false, false, true);
     this.sSky.Update(false, this.hasPanned);
     Main.m_fpsCounter.updatePhys(physStart);
 
@@ -1507,7 +1505,7 @@ export class ControllerMainMenu extends Controller {
       }
       this.removeChild(this.m_progressDialog);
       this.addChild(this.m_progressDialog);
-      Main.ShowMouse();
+
     }
   }
 
@@ -1527,22 +1525,13 @@ export class ControllerMainMenu extends Controller {
         !this.allParts[i].isStatic &&
         !Util.ObjectInArray(this.allParts[i].GetBody(), bodiesUsed)
       ) {
-        this.allParts[i]
-          .GetBody()
-          .SetTransform(
-            new b2Transform().SetPositionAngle(
-              Util.Vector(syncPoint.positions[curIndex].x, syncPoint.positions[curIndex].y),
-              syncPoint.angles[curIndex]
-            )
-          );
+        this.allParts[i].GetBody().SetXForm(Util.Vector(syncPoint.positions[curIndex].x, syncPoint.positions[curIndex].y), syncPoint.angles[curIndex]);
         curIndex++;
         bodiesUsed.push(this.allParts[i].GetBody());
       }
     }
     for (i = 0; i < ControllerMainMenu.cannonballs.length; i++) {
-      ControllerMainMenu.cannonballs[i].SetTransform(
-        new b2Transform().SetPositionAngle(syncPoint.cannonballPositions[i], 0)
-      );
+      ControllerMainMenu.cannonballs[i].SetXForm(syncPoint.cannonballPositions[i], 0);
     }
   }
 
@@ -1556,32 +1545,8 @@ export class ControllerMainMenu extends Controller {
         !this.allParts[i].isStatic &&
         !Util.ObjectInArray(this.allParts[i].GetBody(), bodiesUsed)
       ) {
-        this.allParts[i]
-          .GetBody()
-          .SetTransform(
-            new b2Transform().SetPositionAngle(
-              Util.Vector(
-                this.replaySplineXs[0][syncPointIndex][curIndex] +
-                  (this.frameCounter - syncPoint1.frame) *
-                    (this.replaySplineXs[1][syncPointIndex][curIndex] +
-                      (this.frameCounter - syncPoint1.frame) *
-                        (this.replaySplineXs[2][syncPointIndex][curIndex] +
-                          (this.frameCounter - syncPoint1.frame) * this.replaySplineXs[3][syncPointIndex][curIndex])),
-                this.replaySplineYs[0][syncPointIndex][curIndex] +
-                  (this.frameCounter - syncPoint1.frame) *
-                    (this.replaySplineYs[1][syncPointIndex][curIndex] +
-                      (this.frameCounter - syncPoint1.frame) *
-                        (this.replaySplineYs[2][syncPointIndex][curIndex] +
-                          (this.frameCounter - syncPoint1.frame) * this.replaySplineYs[3][syncPointIndex][curIndex]))
-              ),
-              this.replaySplineAngles[0][syncPointIndex][curIndex] +
-                (this.frameCounter - syncPoint1.frame) *
-                  (this.replaySplineAngles[1][syncPointIndex][curIndex] +
-                    (this.frameCounter - syncPoint1.frame) *
-                      (this.replaySplineAngles[2][syncPointIndex][curIndex] +
-                        (this.frameCounter - syncPoint1.frame) * this.replaySplineAngles[3][syncPointIndex][curIndex]))
-            )
-          );
+        this.allParts[i].GetBody().SetXForm(Util.Vector(this.replaySplineXs[0][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineXs[1][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineXs[2][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * this.replaySplineXs[3][syncPointIndex][curIndex])), this.replaySplineYs[0][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineYs[1][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineYs[2][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * this.replaySplineYs[3][syncPointIndex][curIndex]))), this.replaySplineAngles[0][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineAngles[1][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * (this.replaySplineAngles[2][syncPointIndex][curIndex] + (this.frameCounter - syncPoint1.frame) * this.replaySplineAngles[3][syncPointIndex][curIndex])));
+
         curIndex++;
         bodiesUsed.push(this.allParts[i].GetBody());
       }
@@ -1597,11 +1562,9 @@ export class ControllerMainMenu extends Controller {
           (syncPoint1.cannonballPositions[i].y * (syncPoint2.frame - this.frameCounter) +
             syncPoint2.cannonballPositions[i].y * (this.frameCounter - syncPoint1.frame)) /
           frameDiff;
-        ControllerMainMenu.cannonballs[i].SetTransform(new b2Transform().SetPositionAngle(Util.Vector(newX, newY), 0));
+        ControllerMainMenu.cannonballs[i].SetXForm(Util.Vector(newX, newY), 0);
       } else {
-        ControllerMainMenu.cannonballs[i].SetTransform(
-          new b2Transform().SetPositionAngle(syncPoint2.cannonballPositions[i], 0)
-        );
+        ControllerMainMenu.cannonballs[i].SetXForm(syncPoint2.cannonballPositions[i], 0);
       }
     }
   }
