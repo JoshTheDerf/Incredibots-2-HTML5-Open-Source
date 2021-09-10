@@ -51,6 +51,7 @@ export class DropDownMenu extends Graphics {
     this.cont = contr;
     this.m_currentMenu = null;
     this.interactive = true;
+    this.zIndex = 150;
 
     this.menuBitmap = Resource.cGuiMenuBar;
     this.menuBitmapRoll = Resource.cGuiMenuBarRoll;
