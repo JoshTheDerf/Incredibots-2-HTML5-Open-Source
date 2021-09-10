@@ -695,7 +695,7 @@ export class Draw extends b2DebugDraw {
           var circle = shape;
 
 					var center = b2Math.b2MulX(xf, circle.GetLocalPosition());
-          var radius: number = circle.m_radius;
+          var radius: number = circle.GetRadius() + thickness;
           var axis = xf.R.col1;
 
           if (this.drawColours) this.m_fillAlpha = alpha;

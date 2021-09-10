@@ -22,6 +22,7 @@ export class GuiButton extends Container {
 
   private buttonOffset: boolean = false;
   public depressed: boolean = false;
+  public stopPropagation: boolean = false;
 
   public label: Text = null;
   public background: Sprite = null;
@@ -123,6 +124,7 @@ export class GuiButton extends Container {
 
     this.on("click", (event: InteractionEvent) => {
       if (this.disabled) return;
+      if (this.stopPropagation) event.stopPropagation()
       clickListener(event);
     })
       .on("tap", (event: InteractionEvent) => {

@@ -168,8 +168,10 @@ export class PartEditWindow extends GuiWindow {
     this.m_copyButton = new GuiButton("Copy", 10, 90, 100, 35, () => this.cont.copyButton(), GuiButton.ORANGE);
     this.m_objectEditPanel.addChild(this.m_copyButton);
     this.m_pasteButton = new GuiButton("Paste", 10, 120, 100, 35, () => this.cont.pasteButton(), GuiButton.ORANGE);
+    this.m_pasteButton.stopPropagation = true
     this.m_objectEditPanel.addChild(this.m_pasteButton);
     this.m_rotateButton = new GuiButton("Rotate", 10, 150, 100, 35, () => this.cont.rotateButton(), GuiButton.BLUE);
+    this.m_rotateButton.stopPropagation = true
     this.m_objectEditPanel.addChild(this.m_rotateButton);
     format = new TextStyle();
     format.fontFamily = Main.GLOBAL_FONT;
@@ -275,6 +277,7 @@ export class PartEditWindow extends GuiWindow {
     this.m_copyButton = new GuiButton("Copy", 10, 90, 100, 35, () => this.cont.copyButton(), GuiButton.ORANGE);
     this.m_cannonPanel.addChild(this.m_copyButton);
     this.m_rotateButton = new GuiButton("Rotate", 10, 120, 100, 35, () => this.cont.rotateButton(), GuiButton.BLUE);
+    this.m_rotateButton.stopPropagation = true
     this.m_cannonPanel.addChild(this.m_rotateButton);
     format = new TextStyle();
     format.fontFamily = Main.GLOBAL_FONT;
@@ -432,8 +435,10 @@ export class PartEditWindow extends GuiWindow {
     this.m_copyButton = new GuiButton("Copy", 10, 90, 100, 35, () => this.cont.copyButton(), GuiButton.ORANGE);
     this.m_multiEditPanel.addChild(this.m_copyButton);
     this.m_pasteButton = new GuiButton("Paste", 10, 120, 100, 35, () => this.cont.pasteButton(), GuiButton.ORANGE);
+    this.m_pasteButton.stopPropagation = true
     this.m_multiEditPanel.addChild(this.m_pasteButton);
     this.m_rotateButton = new GuiButton("Rotate", 10, 150, 100, 35, () => this.cont.rotateButton(), GuiButton.BLUE);
+    this.m_rotateButton.stopPropagation = true
     this.m_multiEditPanel.addChild(this.m_rotateButton);
     format = new TextStyle();
     format.fontFamily = Main.GLOBAL_FONT;
@@ -628,8 +633,10 @@ export class PartEditWindow extends GuiWindow {
     this.m_copyButton = new GuiButton("Copy", 10, 90, 100, 35, () => this.cont.copyButton(), GuiButton.ORANGE);
     this.m_thrustersEditPanel.addChild(this.m_copyButton);
     this.m_pasteButton = new GuiButton("Paste", 10, 120, 100, 35, () => this.cont.pasteButton(), GuiButton.ORANGE);
+    this.m_pasteButton.stopPropagation = true
     this.m_thrustersEditPanel.addChild(this.m_pasteButton);
     this.m_rotateButton = new GuiButton("Rotate", 10, 150, 100, 35, () => this.cont.rotateButton(), GuiButton.BLUE);
+    this.m_rotateButton.stopPropagation = true
     this.m_thrustersEditPanel.addChild(this.m_rotateButton);
     format = new TextStyle();
     format.fontSize = 10;
@@ -717,6 +724,7 @@ export class PartEditWindow extends GuiWindow {
     this.m_copyButton = new GuiButton("Copy", 10, 90, 100, 35, () => this.cont.copyButton(), GuiButton.ORANGE);
     this.m_jointEditPanel.addChild(this.m_copyButton);
     this.m_pasteButton = new GuiButton("Paste", 10, 120, 100, 35, () => this.cont.pasteButton(), GuiButton.ORANGE);
+    this.m_pasteButton.stopPropagation = true
     this.m_jointEditPanel.addChild(this.m_pasteButton);
     format = new TextStyle();
     format.fontSize = 9;
