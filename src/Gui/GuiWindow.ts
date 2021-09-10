@@ -8,6 +8,7 @@ export class GuiWindow extends Graphics {
     super();
     this.x = xPos;
     this.y = yPos;
+    this.zIndex = 100;
     // Use this to prevent clicks from going through the parent.
     this.interactive = true;
     this.sortableChildren = true;

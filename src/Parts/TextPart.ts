@@ -14,8 +14,6 @@ export class TextPart extends Part {
   public displayKey: number = 32;
   public displayKeyPressed: boolean = false;
 
-  public text: string;
-
   public red: number;
   public green: number;
   public blue: number;
@@ -30,6 +28,17 @@ export class TextPart extends Part {
   private m_controller: ControllerGame;
 
   private is_added: boolean = false;
+
+  private _text: string;
+
+  get text(): string {
+    return this._text;
+  }
+
+  set text(value: string) {
+    this._text = value
+    this.m_textField.text = this._text
+  }
 
   constructor(
     cont: ControllerGame,
@@ -46,19 +55,13 @@ export class TextPart extends Part {
     this.y = ny;
     this.w = nw;
     this.h = nh;
-    this.text = str;
+    this._text = str;
     this.red = 0;
     this.green = 0;
     this.blue = 0;
     this.size = 14;
 
-    const style = new TextStyle({
-      wordWrap: true,
-      wordWrapWidth: 1,
-      breakWords: true
-    });
-
-    this.m_textField = new Text(str, style);
+    this.m_textField = new Text(this._text);
     this.m_textField.x = nx;
     this.m_textField.y = ny;
     this.m_textField.zIndex = 0;

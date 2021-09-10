@@ -533,6 +533,9 @@ export class Draw extends b2DebugDraw {
         format.fontSize = allParts[i].scaleWithZoom ? (allParts[i].size * this.m_drawScale) / 30 : allParts[i].size;
         format.fill = (allParts[i].red << 16) | (allParts[i].green << 8) | allParts[i].blue;
         format.fontFamily = Main.GLOBAL_FONT;
+        format.breakWords = true
+        format.wordWrap = true
+        format.wordWrapWidth = allParts[i].w * this.m_drawScale
         allParts[i].m_textField.style = format;
         if (notStarted) {
           var selected: boolean = Util.ObjectInArray(allParts[i], selectedParts);

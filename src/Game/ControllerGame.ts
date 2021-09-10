@@ -1,4 +1,4 @@
-﻿import { Graphics, Matrix, Sprite, Text, TextStyle } from "pixi.js";
+﻿import { Graphics, Matrix, Text, TextStyle } from "pixi.js";
 import { b2AABB, b2MouseJointDef, b2Vec2, b2World } from "../Box2D";
 import {
 	Action,
@@ -240,9 +240,9 @@ export class ControllerGame extends Controller {
     this.m_fader.visible = false;
 
     this.uneditableText = new Text("");
-    this.uneditableText.x = 0;
+    this.uneditableText.anchor.set(0.5, 0)
+    this.uneditableText.x = 0 + 800 / 2;
     this.uneditableText.y = 102;
-    this.uneditableText.width = 800;
     this.uneditableText.text =
       "The current robot is uneditable.  Some features, including saving and submitting scores, will be disabled.";
     this.uneditableText.visible = false;
@@ -253,32 +253,33 @@ export class ControllerGame extends Controller {
     this.uneditableText.style = format;
 
     this.rotatingText = new Text("");
-    this.rotatingText.x = 0;
+    this.rotatingText.anchor.set(0.5, 0)
+    this.rotatingText.x = 0 + 800 / 2;
     this.rotatingText.y = 102;
-    this.rotatingText.width = 800;
     this.rotatingText.text = "Move the mouse around to rotate the shape, and click when you're done.";
     this.rotatingText.visible = false;
     this.rotatingText.style = format;
 
     this.scalingText = new Text("");
-    this.scalingText.x = 0;
+    this.scalingText.anchor.set(0.5, 0)
+    this.scalingText.x = 0 + 800 / 2;
     this.scalingText.y = 102;
-    this.scalingText.width = 800;
     this.scalingText.text = "Move the mouse to the right to increase the shape's size, and left to decrease it.";
     this.scalingText.visible = false;
     this.scalingText.style = format;
 
     this.boxText = new Text("");
-    this.boxText.x = 0;
+    this.boxText.anchor.set(0.5, 0)
+    this.boxText.x = 0 + 800 / 2;
     this.boxText.y = 102;
-    this.boxText.width = 800;
     this.boxText.text =
       "Use the mouse to click and drag a box for the given condition.  You can use the arrow keys to scroll.";
     this.boxText.visible = false;
     this.boxText.style = format;
 
     this.horizLineText = new Text("");
-    this.horizLineText.x = 0;
+    this.horizLineText.anchor.set(0.5, 0)
+    this.horizLineText.x = 0 + 800 / 2;
     this.horizLineText.y = 102;
     this.horizLineText.width = 800;
     this.horizLineText.text =
@@ -287,18 +288,18 @@ export class ControllerGame extends Controller {
     this.horizLineText.style = format;
 
     this.vertLineText = new Text("");
-    this.vertLineText.x = 0;
+    this.vertLineText.anchor.set(0.5, 0)
+    this.vertLineText.x = 0 + 800 / 2;
     this.vertLineText.y = 102;
-    this.vertLineText.width = 800;
     this.vertLineText.text =
       "Use the mouse to draw a vertical line for the given condition.  You can use the arrow keys to scroll.";
     this.vertLineText.visible = false;
     this.vertLineText.style = format;
 
     this.shapeText = new Text("");
-    this.shapeText.x = 0;
+    this.shapeText.anchor.set(0.5, 0)
+    this.shapeText.x = 0 + 800 / 2;
     this.shapeText.y = 102;
-    this.shapeText.width = 800;
     this.shapeText.text = "Select a shape for the given condition.  You can use the arrow keys to scroll.";
     this.shapeText.visible = false;
     this.shapeText.style = format;
@@ -585,7 +586,6 @@ export class ControllerGame extends Controller {
 
       if (this.newText && this.lastSelectedText instanceof TextPart) {
         this.lastSelectedText.text = this.newText.text;
-        this.lastSelectedText.m_textField.text = this.newText.text;
         this.newText = null;
       }
 

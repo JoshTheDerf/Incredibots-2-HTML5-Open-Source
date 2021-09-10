@@ -16,11 +16,9 @@ export class EnterTextAction extends Action
 
 	public UndoAction():void {
 		(this.partAffected as TextPart).text = this.oldText;
-		(this.partAffected as TextPart).m_textField.text = this.oldText;
 	}
 
 	public RedoAction():void {
 		(this.partAffected as TextPart).text = this.newText;
-		(this.partAffected as TextPart).m_textField.text = this.newText;
 	}
 }
