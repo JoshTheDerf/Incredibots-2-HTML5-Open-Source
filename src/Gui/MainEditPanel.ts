@@ -131,6 +131,7 @@ export class MainEditPanel extends GuiWindow {
       this.m_textButton = new GuiButton("Text", 310, 45, 60, 35, () => this.cont.textButton(), GuiButton.BLUE);
       this.m_editPanel.addChild(this.m_textButton);
       this.m_pasteButton = new GuiButton("Paste", 370, 45, 60, 35, () => this.cont.pasteButton(), GuiButton.ORANGE);
+      this.m_pasteButton.stopPropagation = true
       this.m_editPanel.addChild(this.m_pasteButton);
       this.m_undoButton = new GuiButton("Undo", 310, 15, 60, 35, () => this.cont.undoButton(), GuiButton.ORANGE);
       this.m_editPanel.addChild(this.m_undoButton);
