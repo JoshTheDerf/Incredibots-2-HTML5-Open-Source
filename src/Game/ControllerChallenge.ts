@@ -256,7 +256,7 @@ export class ControllerChallenge extends ControllerSandbox {
     return 10000 - this.frameCounter;
   }
 
-  public submitButton(e: MouseEvent): void {
+  public submitButton(): void {
     if (Main.inIFrame) {
       this.m_fader.visible = true;
       this.ShowConfirmDialog("Redirect to incredibots2.com?", 7);

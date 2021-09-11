@@ -1,7 +1,7 @@
 {
     "scripts": {
-        "dev": "parcel index.html",
-        "build": "parcel build index.html --public-url /Incredibots-2-HTML5-Open-Source/ --no-scope-hoist",
+        "dev": "parcel serve index.html",
+        "build": "parcel build index.html --public-url /Incredibots-2-HTML5-Open-Source/ --no-optimize --no-scope-hoist",
         "deploy": "gh-pages -d dist"
     },
     "browserslist": [

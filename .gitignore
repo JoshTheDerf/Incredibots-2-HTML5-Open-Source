@@ -199,3 +199,6 @@ $RECYCLE.BIN/
 # Parcel build
 .cache/
 dist/
+
+# Internal symlink for testing production build locally.
+/Incredibots-2-HTML5-Open-Source
