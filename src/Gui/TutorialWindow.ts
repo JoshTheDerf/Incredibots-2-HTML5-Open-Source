@@ -40,6 +40,7 @@ export class TutorialWindow extends GuiWindow
 		this.msgArea.text = (numAreas == 1 ? msg : msg.substr(0, msg.search("\n\n")));
 		var format:TextStyle = new TextStyle();
 		format.fontSize = 12;
+		format.lineHeight = format.fontSize;
 		format.align = 'center';
 		format.fontFamily = Main.GLOBAL_FONT;
 		format.leading = 2;
@@ -63,6 +64,7 @@ export class TutorialWindow extends GuiWindow
 			this.msgArea2.text = (numAreas == 2 ? msg : msg.substr(0, msg.search("\n\n")));
 			format = new TextStyle();
 			format.fontSize = 12;
+			format.lineHeight = format.fontSize;
 			format.align = 'center';
 			format.fontFamily = Main.GLOBAL_FONT;
 			format.leading = 2;
@@ -85,6 +87,7 @@ export class TutorialWindow extends GuiWindow
 			this.msgArea3.text = msg;
 			format = new TextStyle();
 			format.fontSize = 12;
+			format.lineHeight = format.fontSize;
 			format.align = 'center';
 			format.fontFamily = Main.GLOBAL_FONT;
 			format.leading = 2;
