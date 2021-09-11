@@ -630,7 +630,7 @@ export class ByteArray {
     } else if (marker == AMF3Types.kTrueType) {
       return true;
     } else if (marker == AMF3Types.kIntegerType) {
-      var i = this.readUInt29();
+      var i = (((this.readUInt29()) << 3) >> 3);
 
       return i;
     } else if (marker == AMF3Types.kDoubleType) {

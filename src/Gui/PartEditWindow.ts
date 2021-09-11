@@ -668,7 +668,7 @@ export class PartEditWindow extends GuiWindow {
     this.m_thrustArea.maxLength = 5;
     this.m_thrustArea.on("click", (event: any) => this.thrustFocus(event));
     this.m_thrustArea.on("focus", (event: any) => this.TextAreaGotFocus(event));
-    this.m_thrustArea.on("change", (event: any) => this.cont.textEntered());
+    this.m_thrustArea.on("change", () => this.cont.textEntered());
     this.m_thrustArea.on("blur", (event: any) => this.cont.thrustText(event));
     this.m_thrustArea.on("hide", (event: any) => this.cont.thrustText(event));
     this.m_thrustersEditPanel.addChild(this.m_thrustArea);

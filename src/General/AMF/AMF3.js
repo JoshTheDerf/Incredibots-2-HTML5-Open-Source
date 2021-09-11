@@ -19,6 +19,10 @@ const AMF3Types = {
   kByteArrayType: 12,
 };
 
+const UINT29_MASK     = 2^29 - 1;
+const INT28_MAX_VALUE = 0x0FFFFFFF; // 2^28 - 1
+const INT28_MIN_VALUE = 0xF0000000; // -2^28 in 2^29 scheme
+
 const amf3 = {
 	classes: {},
 	const: {
@@ -232,10 +236,10 @@ amf3.Writer.prototype.writeBoolean = function (v) {
 }
 /* 3.6 Integer Type. */
 amf3.Writer.prototype.writeInt = function (v) {
-	if (v >= -268435456 && v <= 268435455 && (v % 1 == 0)) {
-		v &= 0x1FFFFFFF // 2^29 - 1
+	if (v >= INT28_MIN_VALUE && v <= INT28_MAX_VALUE) {
+		// v &= 0x0FFFFFFF // 2^29 - 1
 		this.write(0x04)
-		this.writeUInt29(v) // How many times can our integer fit?
+		this.writeUInt29(v & UINT29_MASK) // How many times can our integer fit?
 	} else {
 		this.write(0x05)
 		this.writeDouble(v, true)
