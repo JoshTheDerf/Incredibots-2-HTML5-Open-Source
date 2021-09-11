@@ -668,7 +668,7 @@ export class PartEditWindow extends GuiWindow {
     this.m_thrustArea.maxLength = 5;
     this.m_thrustArea.on("click", (event: any) => this.thrustFocus(event));
     this.m_thrustArea.on("focus", (event: any) => this.TextAreaGotFocus(event));
-    this.m_thrustArea.on("change", (event: any) => this.cont.textEntered(event));
+    this.m_thrustArea.on("change", (event: any) => this.cont.textEntered());
     this.m_thrustArea.on("blur", (event: any) => this.cont.thrustText(event));
     this.m_thrustArea.on("hide", (event: any) => this.cont.thrustText(event));
     this.m_thrustersEditPanel.addChild(this.m_thrustArea);
@@ -1292,8 +1292,8 @@ export class PartEditWindow extends GuiWindow {
       this.m_speedArea.focusEnabled = pjoint.enablePiston;
       this.m_speedArea.editable = pjoint.enablePiston;
       this.m_autoBox1.enabled = pjoint.enablePiston;
-      this.m_inputLabel1.x = -3;
-      this.m_inputLabel2.x = -3;
+      this.m_inputLabel1.x += 5;
+      this.m_inputLabel2.x += 5;
       this.m_controlKeyArea1.x = 60;
       this.m_controlKeyArea2.x = 60;
       this.m_autoBox1.label = "Auto Oscillate";

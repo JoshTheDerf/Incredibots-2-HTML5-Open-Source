@@ -4695,7 +4695,6 @@ export class ControllerGame extends Controller {
     if (input.enabled) {
       var str: string;
       var oldKey: number;
-      const keyNumber = Input.getKeyNumber(input.text);
       if (this.selectedParts[0] instanceof Thrusters && keyNumber != null) {
         oldKey = (this.selectedParts[0] as Thrusters).thrustKey;
         (this.selectedParts[0] as Thrusters).thrustKey = keyNumber;
@@ -4716,7 +4715,6 @@ export class ControllerGame extends Controller {
     if (input.enabled) {
       var str: string;
       var oldKey: number;
-      const keyNumber = Input.getKeyNumber(input.text);
       if (this.selectedParts[0] instanceof Cannon && keyNumber != null) {
         oldKey = (this.selectedParts[0] as Cannon).fireKey;
         (this.selectedParts[0] as Cannon).fireKey = keyNumber;
