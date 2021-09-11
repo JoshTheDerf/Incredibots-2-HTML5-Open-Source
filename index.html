@@ -1,1 +1,106 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Incredibots 2 HTML5 Open Source</title><style>body,html{font-size:62.5%;margin:0;padding:0}#page_wrapper{align-items:center;background:#686d77;display:flex;height:100vh;justify-content:center}#logo{height:70.5px;margin-bottom:-2.5rem;margin-left:-1.5rem;position:relative;width:313px;z-index:1}#logo:before{left:0;top:0;z-index:1}#logo:after,#logo:before{background-image:url(logo.d33ce15b.png);background-position:bottom;background-repeat:no-repeat;background-size:contain;content:"";height:100%;position:absolute;width:100%}#logo:after{filter:grayscale(1) brightness(0) blur(1px);left:4px;margin-bottom:-2rem;opacity:.5;top:7px}#game_box{border:solid;border-image:url(box_small.cfc844d8.png);border-image-repeat:stretch;border-image-slice:15 23 24 15;border-image-width:15px 24px 25px 15px;border-width:15px 24px 25px 15px}#game_wrapper{align-items:center;background:#9ea2c2;display:flex;height:600px;justify-content:center;padding:2rem;width:800px}#loading_indicator{font-size:2rem;opacity:.5}</style></head><body> <div id="page_wrapper"> <div style="z-index:10"> <div id="logo"></div> <div id="game_box" style="z-index:5"> <div id="game_wrapper"> <div id="loading_indicator"> Loading assets... </div> </div> </div> </div> <script src="/Incredibots-2-HTML5-Open-Source/index.bceffa9f.js" defer></script> </div> </body></html>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incredibots 2 HTML5 Open Source</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            font-size: 62.5%;
+        }
+
+        #page_wrapper {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #686d77;
+        }
+
+        #logo {
+            position: relative;
+            height: calc(141px / 2);
+            width: calc(626px / 2);
+            margin-bottom: -2.5rem;
+            margin-left: -1.5rem;
+            z-index: 1;
+        }
+
+        #logo::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('logo.d33ce15b.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: bottom;
+            z-index: 1;
+        }
+
+        #logo::after {
+            content: '';
+            position: absolute;
+            left: 4px;
+            top: 7px;
+            width: 100%;
+            height: 100%;
+            margin-bottom: -2rem;
+            background-image: url('logo.d33ce15b.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: bottom;
+            filter: grayscale(1) brightness(0) blur(1px);
+            opacity: 0.5;
+        }
+
+        #game_box {
+            border: solid;
+            border-width: 15px 24px 25px 15px;
+            border-image: url('box_small.cfc844d8.png');
+            border-image-slice: 15 23 24 15;
+            border-image-width: 15px 24px 25px 15px;
+            border-image-repeat: stretch;
+        }
+
+        #game_wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 800px;
+            height: 600px;
+            padding: 2rem;
+            background: #9ea2c2;
+        }
+
+        #loading_indicator {
+            font-size: 2rem;
+            opacity: 0.5;
+        }
+    
+</style>
+</head>
+
+<body>
+    <div id="page_wrapper">
+        <div style="z-index: 10;">
+            <div id="logo"></div>
+            <div id="game_box" style="z-index: 5;">
+                <div id="game_wrapper">
+                    <div id="loading_indicator">
+                        Loading assets...
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="/Incredibots-2-HTML5-Open-Source/index.3550a238.js" defer=""></script>
+    </div>
+</body>
+
+</html>
