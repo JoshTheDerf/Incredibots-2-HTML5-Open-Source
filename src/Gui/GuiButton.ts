@@ -99,6 +99,7 @@ export class GuiButton extends Container {
     if (!style) {
       style = new TextStyle();
       style.fontSize = 11;
+      style.lineHeight = style.fontSize;
     }
     style.fill = "#573D40";
     style.fontFamily = Main.GLOBAL_FONT;
