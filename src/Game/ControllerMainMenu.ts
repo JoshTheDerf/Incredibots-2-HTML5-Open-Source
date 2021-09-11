@@ -368,14 +368,14 @@ export class ControllerMainMenu extends Controller {
     );
     this.levelSelectGui.addChild(button);
 
-    button = new GuiButton("Instructions", 620, 454, 153, 50, this.instructionsButton, GuiButton.BLUE, style);
-    button.disabled = true;
+    button = new GuiButton("Instructions", 620, 454, 153, 50, () => this.instructionsButton(), GuiButton.BLUE, style);
+    // button.disabled = true;
     this.levelSelectGui.addChild(button);
-    button = new GuiButton("Credits", 620, 489, 153, 50, this.creditsButton, GuiButton.BLUE, style);
-    button.disabled = true;
+    button = new GuiButton("Credits", 620, 489, 153, 50, () => this.creditsButton(), GuiButton.BLUE, style);
+    // button.disabled = true;
     this.levelSelectGui.addChild(button);
-    button = new GuiButton("Suggestions?", 620, 524, 153, 50, this.suggestionsButton, GuiButton.BLUE, style);
-    button.disabled = true;
+    button = new GuiButton("Suggestions?", 620, 524, 153, 50, () => this.suggestionsButton(), GuiButton.BLUE, style);
+    // button.disabled = true;
     this.levelSelectGui.addChild(button);
 
     style = new TextStyle();
@@ -1401,16 +1401,16 @@ export class ControllerMainMenu extends Controller {
     this.userText.setTextFormat(format);
   }
 
-  private instructionsButton(e: MouseEvent): void {
-    Main.BrowserRedirect("http://www.incredifriends.com/", true);
+  private instructionsButton(): void {
+    Main.BrowserRedirect("https://incredibots.com/if/help.php", true);
   }
 
-  private creditsButton(e: MouseEvent): void {
-    Main.BrowserRedirect("http://www.incredifriends.com/", true);
+  private creditsButton(): void {
+    Main.BrowserRedirect("https://incredibots.com/if/about.php", true);
   }
 
-  private suggestionsButton(e: MouseEvent): void {
-    Main.BrowserRedirect("http://www.incredifriends.com/", true);
+  private suggestionsButton(): void {
+    Main.BrowserRedirect("https://incredibots.com/if/viewforum.php?f=11", true);
   }
 
   public Update(): void {
