@@ -1,8 +1,0 @@
-{
-  "presets": [
-      ["@babel/preset-typescript", {
-          "targets": ["last 1 Chrome version"],
-          "shippedProposals": true
-      }]
-  ]
-}

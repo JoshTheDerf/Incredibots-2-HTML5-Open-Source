@@ -1,4 +1,4 @@
-import { b2BodyDef, b2CircleDef, b2CircleShape, b2MassData, b2PolygonDef, b2Vec2 } from "../Box2D";
+import { b2Body, b2BodyDef, b2CircleDef, b2CircleShape, b2MassData, b2PolygonDef, b2Vec2, b2World } from "../Box2D";
 import { ControllerGameGlobals, ControllerMainMenu, FixedJoint, ShapePart, Util } from "../imports";
 
 export class Cannon extends ShapePart {
@@ -9,8 +9,8 @@ export class Cannon extends ShapePart {
   public strength: number;
 
   private createCannonball: boolean = false;
-  public initW: number;
-  private relativeCannonPos;
+  public initW!: number;
+  private relativeCannonPos!: b2Vec2;
 
   public cannonballs: Array<any> = new Array();
   private cannonballCounters: Array<any> = new Array();
@@ -118,7 +118,7 @@ export class Cannon extends ShapePart {
     return c;
   }
 
-  public Init(world, body = null): void {
+  public Init(world: b2World, body: b2Body | null = null): void {
     if (this.isInitted) return;
     super.Init(world);
 
@@ -136,8 +136,8 @@ export class Cannon extends ShapePart {
     if (this.m_collisionGroup != Number.MIN_VALUE) sd.filter.groupIndex = this.m_collisionGroup;
     sd.vertices = this.GetVertices();
 
-    var bodyStatic:Boolean = false;
-    var i:int;
+    var bodyStatic:boolean = false;
+    var i:number;
     if (body) {
       for (i = 0; i < 4; i++) {
         sd.vertices[i].x -= body.GetPosition().x;
@@ -187,7 +187,7 @@ export class Cannon extends ShapePart {
     if (key == this.fireKey && up) this.createCannonball = true;
   }
 
-  public Update(world): void {
+  public Update(world: b2World): void {
     if (this.isInitted && this.createCannonball && this.cannonballs.length < 50) {
       this.CreateCannonball(world);
     }
@@ -199,7 +199,7 @@ export class Cannon extends ShapePart {
     }
 }
 
-  private CreateCannonball(world): void {
+  private CreateCannonball(world: b2World): void {
     var circ = new b2CircleDef();
     circ.radius = this.w / 6;
     circ.friction = 0.4;
@@ -216,7 +216,7 @@ export class Cannon extends ShapePart {
     var localPoint:b2Vec2 = this.GetSpawnPoint();
     localPoint.Subtract(Util.Vector(this.centerX, this.centerY));
     localPoint.Add(this.relativeCannonPos);
-    bd.position.SetV(this.m_body.GetWorldPoint(localPoint));
+    bd.position.SetV(this.m_body!.GetWorldPoint(localPoint));
     bd.isBullet = true;
     var body:b2Body = world.CreateBody(bd);
     this.cannonballs.push(body);
@@ -233,19 +233,19 @@ export class Cannon extends ShapePart {
     body.CreateShape(circ);
     body.SetMassFromShapes();
 
-    var forceAngle:Number = this.angle + this.m_body.GetAngle();
+    var forceAngle:number = this.angle + this.m_body!.GetAngle();
 
     //CE PROBLEM
     //var forceStrength:Number = 0.15 * w * w * circ.density * (4 + 2 * Math.max(1, Math.min(30, strength)));
 
     //CE FIX
-    var forceStrength:Number = 0.15 * this.w * this.w * circ.density * (4 + 2 * this.strength);
+    var forceStrength:number = 0.15 * this.w * this.w * circ.density * (4 + 2 * this.strength);
 
     var forceVector:b2Vec2 = Util.Vector(Math.cos(forceAngle) * forceStrength, Math.sin(forceAngle) * forceStrength);
-    var positionVector:b2Vec2 = this.m_body.GetWorldPoint(this.relativeCannonPos);
+    var positionVector:b2Vec2 = this.m_body!.GetWorldPoint(this.relativeCannonPos);
     body.ApplyImpulse(forceVector, body.GetWorldCenter());
     forceVector = forceVector.Negative();
-    this.m_body.ApplyImpulse(forceVector, positionVector);
+    this.m_body!.ApplyImpulse(forceVector, positionVector);
     if (ControllerGameGlobals.cannonballs) ControllerGameGlobals.cannonballs.push(body);
     if (ControllerMainMenu.cannonballs) ControllerMainMenu.cannonballs.push(body);
 

@@ -1,4 +1,4 @@
-import { b2BodyDef, b2MassData, b2PolygonDef, b2Vec2 } from "../Box2D";
+import { b2Body, b2BodyDef, b2MassData, b2PolygonDef, b2Vec2, b2World } from "../Box2D";
 import { FixedJoint, ShapePart, Util } from "../imports";
 
 export class Triangle extends ShapePart {
@@ -9,12 +9,12 @@ export class Triangle extends ShapePart {
   public x3: number;
   public y3: number;
 
-  public initX1: number;
-  public initY1: number;
-  public initX2: number;
-  public initY2: number;
-  public initX3: number;
-  public initY3: number;
+  public initX1!: number;
+  public initY1!: number;
+  public initX2!: number;
+  public initY2!: number;
+  public initX3!: number;
+  public initY3!: number;
 
   public static MIN_SIDE_LENGTH: number = 0.1;
   public static MAX_SIDE_LENGTH: number = 10.0;
@@ -128,7 +128,7 @@ export class Triangle extends ShapePart {
     return tri;
   }
 
-  public Init(world, body = null): void {
+  public Init(world: b2World, body: b2Body | null = null): void {
     if (this.isInitted) return;
     super.Init(world);
 

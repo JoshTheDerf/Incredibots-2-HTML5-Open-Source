@@ -1,4 +1,4 @@
-import { b2BodyDef, b2BodyType, b2MassData, b2PolygonDef, b2PolygonShape, b2Vec2 } from "../Box2D";
+import { b2Body, b2BodyDef, b2MassData, b2PolygonDef, b2PolygonShape, b2Vec2, b2World } from "../Box2D";
 import { FixedJoint, ShapePart, Util } from "../imports";
 
 export class Rectangle extends ShapePart {
@@ -7,8 +7,8 @@ export class Rectangle extends ShapePart {
   public w: number;
   public h: number;
 
-  public initW: number;
-  public initH: number;
+  public initW!: number;
+  public initH!: number;
 
   public isTank: boolean = false;
 
@@ -107,7 +107,7 @@ export class Rectangle extends ShapePart {
     return rect;
   }
 
-  public Init(world, body = null): void {
+  public Init(world: b2World, body: b2Body | null = null): void {
     if (this.isInitted) return;
     super.Init(world);
 

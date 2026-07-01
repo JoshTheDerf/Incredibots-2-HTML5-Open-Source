@@ -10,18 +10,18 @@ export class Part {
   public checkedCollisionGroup: boolean = false;
   public drawAnyway: boolean = true;
   public isSandbox: boolean = false;
-  public type: string;
+  public type!: string;
 
-  public rotateAngle: number;
-  public rotateOrientation: number;
-  public dragXOff: number;
-  public dragYOff: number;
+  public rotateAngle!: number;
+  public rotateOrientation!: number;
+  public dragXOff!: number;
+  public dragYOff!: number;
 
-  protected IsEnabled(p: Part, i: number, a: Array<any>): boolean {
+  protected IsEnabled(p?: Part, i?: number, a?: Array<any>): boolean {
     return this.isEnabled;
   }
 
-  public Init(world: b2World, body: b2Body = null): void {
+  public Init(world: b2World, body: b2Body | null = null): void {
     this.isInitted = true;
   }
 
@@ -49,7 +49,7 @@ export class Part {
     throw new IllegalOperationError("abstract Part.Update() called");
   }
 
-  public GetAttachedParts(partList: Array<any> = null): Array<any> {
+  public GetAttachedParts(partList: Array<any> | null = null): Array<any> {
     throw new IllegalOperationError("abstract Part.GetAttachedParts() called");
   }
 

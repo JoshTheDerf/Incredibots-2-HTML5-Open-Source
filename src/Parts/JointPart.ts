@@ -8,7 +8,7 @@ export class JointPart extends Part {
   public part2Index: number = -1;
   public anchorX: number;
   public anchorY: number;
-  public m_joint: b2Joint;
+  public m_joint: b2Joint | null = null;
 
   constructor(p1: ShapePart, p2: ShapePart) {
     super();
@@ -20,7 +20,7 @@ export class JointPart extends Part {
     this.anchorY = 0;
   }
 
-  public GetJoint(): b2Joint {
+  public GetJoint(): b2Joint | null {
     return this.m_joint;
   }
 
@@ -51,7 +51,7 @@ export class JointPart extends Part {
     throw new IllegalOperationError("abstract JointPart.MakeCopy() called");
   }
 
-  public GetAttachedParts(partList: Array<any> = null): Array<any> {
+  public GetAttachedParts(partList: Array<any> | null = null): Array<any> {
     if (partList == null) partList = new Array();
     partList.push(this);
 

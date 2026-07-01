@@ -1,10 +1,10 @@
-import { b2BodyDef, b2CircleDef, b2MassData, b2Vec2 } from "../Box2D";
+import { b2Body, b2BodyDef, b2CircleDef, b2MassData, b2Vec2, b2World } from "../Box2D";
 import { FixedJoint, ShapePart, Util } from "../imports";
 
 export class Circle extends ShapePart {
   public radius: number;
 
-  public initRadius: number;
+  public initRadius!: number;
 
   public static MIN_RADIUS: number = 0.1;
   public static MAX_RADIUS: number = 5.0;
@@ -45,7 +45,7 @@ export class Circle extends ShapePart {
     return circ;
   }
 
-  public Init(world, body = null): void {
+  public Init(world: b2World, body: b2Body | null = null): void {
     if (this.isInitted) return;
     super.Init(world);
 

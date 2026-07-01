@@ -9,7 +9,7 @@ export class FixedJoint extends JointPart {
     this.type = "FixedJoint";
   }
 
-  public Init(world: b2World, body: b2Body = null): void {
+  public Init(world: b2World, body: b2Body | null = null): void {
     if (this.isInitted || !this.part1.isInitted || !this.part2.isInitted) return;
     super.Init(world);
   }

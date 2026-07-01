@@ -206,11 +206,6 @@ export class ControllerMainMenu extends Controller {
       this.addChild(this.playButton);
     }
 
-    if (Main.premiumMode && ControllerMainMenu.firstLoad) {
-      this.m_goldLoginWindow = new GoldLoginWindow(this);
-      this.addChild(this.m_goldLoginWindow);
-      this.playButton.visible = false;
-    }
     ControllerMainMenu.firstLoad = false;
 
     this.levelSelectGui = new Sprite();
@@ -877,33 +872,6 @@ export class ControllerMainMenu extends Controller {
     this.addChild(this.m_loginWindow);
     this.fader2.visible = true;
     this.backToSaveWindow = backToSave;
-  }
-
-  public finishLoggingInGold(e: Event): void {
-    if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_LOGIN_GOLD) return;
-    var retVal: String = Database.FinishLoggingIn(e);
-    if (retVal != "") {
-      this.m_progressDialog.SetMessage("Success!");
-      this.m_progressDialog.HideInXSeconds(1);
-      this.m_goldLoginWindow.visible = false;
-      ControllerGameGlobals.userName = retVal.substring(retVal.indexOf("user: ") + 6, retVal.indexOf("password: ") - 1);
-      ControllerGameGlobals.password = retVal.substring(
-        retVal.indexOf("password: ") + 10,
-        retVal.indexOf("session: ") - 1
-      );
-      ControllerGameGlobals.sessionID = retVal.substr(retVal.indexOf("session: ") + 9);
-      this.fader.visible = false;
-      this.playButton.visible = true;
-      this.logInButton.visible = false;
-      this.logOutButton.visible = true;
-    }
-
-    var format: TextFormat = new TextFormat();
-    format.font = Main.GLOBAL_FONT;
-    format.color = 0xffffff;
-    this.userText.text =
-      "Welcome, " + (ControllerGameGlobals.userName == "_Public" ? "Guest" : ControllerGameGlobals.userName);
-    this.userText.setTextFormat(format);
   }
 
   public finishLoggingIn(e: Event): void {

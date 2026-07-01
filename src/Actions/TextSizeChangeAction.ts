@@ -4,7 +4,7 @@ import { Action } from "../imports";
 
 export class TextSizeChangeAction extends Action
 {
-	private type:number;
+	private type!:number;
 	private change:number;
 
 	constructor(p:Part, delta:number)

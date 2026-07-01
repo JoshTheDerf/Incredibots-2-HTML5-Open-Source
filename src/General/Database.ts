@@ -161,66 +161,6 @@ export class Database {
     return str;
   }
 
-  public static AddUser(username: string, password: string, completionFunction: Function): void {
-    if (Database.waitingForResponse) return;
-    Database.loader = new URLLoader();
-    var request: URLRequest = new URLRequest(
-      Database.Encrypt(Database.BASE_URL + "op=addUser&user=" + escape(username) + "&password=" + MD5.encrypt(password))
-    );
-    request.method = URLRequestMethod.GET;
-    Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
-    Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
-    Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
-    Database.loader.load(request);
-    Database.curAction = Database.ACTION_ADD_USER;
-    Database.nonfatalErrorOccurred = true;
-    Database.latestCompletionFunction = completionFunction;
-    Database.StartTimer();
-  }
-
-  public static Login(username: string, password: string, completionFunction: Function): void {
-    if (Database.waitingForResponse) return;
-    Database.loader = new URLLoader();
-    var request: URLRequest = new URLRequest(
-      Database.Encrypt(Database.BASE_URL + "op=login&user=" + escape(username) + "&password=" + MD5.encrypt(password))
-    );
-    request.method = URLRequestMethod.GET;
-    Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
-    Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
-    Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
-    Database.loader.load(request);
-    Database.curAction = Database.ACTION_LOGIN;
-    Database.nonfatalErrorOccurred = true;
-    Database.latestCompletionFunction = completionFunction;
-    Database.StartTimer();
-    Database.waitingForResponse = true;
-    Database.curTransactionType = Database.curAction;
-  }
-
-  public static LoginGold(username: string, password: string, completionFunction: Function): void {
-    if (Database.waitingForResponse) return;
-    Database.loader = new URLLoader();
-    var request: URLRequest = new URLRequest(
-      Database.Encrypt(
-        Database.BASE_URL + "op=goldLogin&user=" + escape(username) + "&password=" + MD5.encrypt(password)
-      )
-    );
-    request.method = URLRequestMethod.GET;
-    Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
-    Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
-    Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
-    Database.loader.load(request);
-    Database.curAction = Database.ACTION_LOGIN_GOLD;
-    Database.nonfatalErrorOccurred = true;
-    Database.latestCompletionFunction = completionFunction;
-    Database.StartTimer();
-    Database.waitingForResponse = true;
-    Database.curTransactionType = Database.curAction;
-  }
-
   public static SaveRobot(
     user: string,
     password: string,

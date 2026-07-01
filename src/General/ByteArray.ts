@@ -4,7 +4,7 @@
 
 // This desparately needs to be cleaned up and brings in way too many dependencies, but it does at least work for loading basic robots.
 import { deflateSync, deflateRawSync, inflateSync, inflateRawSync } from "zlib";
-import { LZMA } from "lzma/src/lzma_worker.js";
+import { LZMA } from "../vendor/lzma_worker.js";
 import { encodingExists, decode, encode } from "iconv-lite";
 
 import { CompressionAlgorithm, Endian, ObjectEncoding } from "../imports";

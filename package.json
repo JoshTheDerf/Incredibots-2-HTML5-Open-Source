@@ -1,31 +1,27 @@
 {
+    "type": "module",
     "scripts": {
-        "dev": "parcel serve index.html",
-        "build": "parcel build index.html --public-url /Incredibots-2-HTML5-Open-Source/ --no-optimize --no-scope-hoist",
-        "deploy": "gh-pages -d dist"
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "typecheck": "tsc --noEmit",
+        "check:core": "scripts/check-core-purity.sh",
+        "gate": "npm run typecheck ; npm run check:core"
     },
     "browserslist": [
         "last 1 chrome version"
     ],
     "dependencies": {
-        "box2d": "^1.0.0",
-        "bytearray-node": "^3.3.5",
         "iconv-lite": "^0.6.2",
-        "lzma": "^2.3.2",
         "pixi-scrollbox": "^2.3.1",
         "pixi-sound": "^3.0.5",
         "pixi-text-input": "^1.0.5",
-        "pixi-viewport": "^4.32.0",
+        "pixi-viewport": "^4.38.0",
         "pixi.js": "^6.1.2"
     },
     "devDependencies": {
-        "@babel/core": "^7.15",
-        "@babel/preset-env": "^7.15",
-        "@babel/preset-typescript": "^7.15.0",
-        "@parcel/transformer-image": "^2.0.0-rc.0",
-        "@parcel/transformer-raw": "^2.0.0-rc.0",
-        "gh-pages": "^3.1.0",
-        "parcel": "^2.0.0-rc.0",
-        "typescript": "^4.1.3"
+        "typescript": "^5.7.0",
+        "vite": "^8.1.2",
+        "vite-plugin-node-polyfills": "^0.28.0"
     }
 }

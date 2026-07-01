@@ -22,19 +22,19 @@ export class ColourChangeAction extends Action
 
 	public UndoAction():void {
 		if (this.partAffected instanceof ShapePart || this.partAffected instanceof PrismaticJoint || this.partAffected instanceof TextPart) {
-			(this.partAffected as Object).red -= this.red;
-			(this.partAffected as Object).green -= this.green;
-			(this.partAffected as Object).blue -= this.blue;
-			if (!(this.partAffected instanceof TextPart)) (this.partAffected as Object).opacity -= this.opacity;
+			(this.partAffected as any).red -= this.red;
+			(this.partAffected as any).green -= this.green;
+			(this.partAffected as any).blue -= this.blue;
+			if (!(this.partAffected instanceof TextPart)) (this.partAffected as any).opacity -= this.opacity;
 		}
 	}
 
 	public RedoAction():void {
 		if (this.partAffected instanceof ShapePart || this.partAffected instanceof PrismaticJoint || this.partAffected instanceof TextPart) {
-			(this.partAffected as Object).red += this.red;
-			(this.partAffected as Object).green += this.green;
-			(this.partAffected as Object).blue += this.blue;
-			if (!(this.partAffected instanceof TextPart)) (this.partAffected as Object).opacity += this.opacity;
+			(this.partAffected as any).red += this.red;
+			(this.partAffected as any).green += this.green;
+			(this.partAffected as any).blue += this.blue;
+			if (!(this.partAffected instanceof TextPart)) (this.partAffected as any).opacity += this.opacity;
 		}
 	}
 }

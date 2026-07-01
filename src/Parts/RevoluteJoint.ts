@@ -17,8 +17,8 @@ export class RevoluteJoint extends JointPart {
   private isKeyDown2: boolean = false;
   private wasKeyDown1: boolean = false;
   private wasKeyDown2: boolean = false;
-  private targetJointAngle: number;
-  private prevJointAngle: number;
+  private targetJointAngle!: number;
+  private prevJointAngle!: number;
 
   constructor(p1: ShapePart, p2: ShapePart, x: number, y: number) {
     super(p1, p2);
@@ -73,7 +73,7 @@ export class RevoluteJoint extends JointPart {
     return j;
   }
 
-  public Init(world, body = null): void {
+  public Init(world: b2World, body: b2Body | null = null): void {
     if (this.isInitted || !this.part1.isInitted || !this.part2.isInitted) return;
     super.Init(world);
 
@@ -93,13 +93,13 @@ export class RevoluteJoint extends JointPart {
       if (this.motorUpperLimit == Number.MAX_VALUE) jd.upperAngle = Number.MAX_VALUE;
       else jd.upperAngle = this.motorUpperLimit * Math.PI / 180.0;
       if (this.part1 instanceof Circle && !(this.part2 instanceof Circle)) {
-        jd.Initialize(this.part2.GetBody(), this.part1.GetBody(), new b2Vec2(this.anchorX, this.anchorY));
+        jd.Initialize(this.part2.GetBody()!, this.part1.GetBody()!, new b2Vec2(this.anchorX, this.anchorY));
       } else if (this.part2 instanceof Circle && !(this.part1 instanceof Circle)) {
-        jd.Initialize(this.part1.GetBody(), this.part2.GetBody(), new b2Vec2(this.anchorX, this.anchorY));
+        jd.Initialize(this.part1.GetBody()!, this.part2.GetBody()!, new b2Vec2(this.anchorX, this.anchorY));
       } else if (this.part1.HeavierThan(this.part2)) {
-        jd.Initialize(this.part1.GetBody(), this.part2.GetBody(), new b2Vec2(this.anchorX, this.anchorY));
+        jd.Initialize(this.part1.GetBody()!, this.part2.GetBody()!, new b2Vec2(this.anchorX, this.anchorY));
       } else {
-        jd.Initialize(this.part2.GetBody(), this.part1.GetBody(), new b2Vec2(this.anchorX, this.anchorY));
+        jd.Initialize(this.part2.GetBody()!, this.part1.GetBody()!, new b2Vec2(this.anchorX, this.anchorY));
       }
       this.m_joint = world.CreateJoint(jd);
       this.targetJointAngle = 0;
@@ -111,12 +111,12 @@ export class RevoluteJoint extends JointPart {
     }
 }
 
-  public CheckForBreakage(world): void {
+  public CheckForBreakage(world: b2World): void {
     if (this.m_joint) {
-      var joint = (this.m_joint);
+      var joint = (this.m_joint) as b2RevoluteJoint;
 
       // Check joint constraints to see if the joint should break
-      var dist:Number = Util.GetDist(joint.GetAnchor1().x, joint.GetAnchor1().y, joint.GetAnchor2().x, joint.GetAnchor2().y);
+      var dist:number = Util.GetDist(joint.GetAnchor1().x, joint.GetAnchor1().y, joint.GetAnchor2().x, joint.GetAnchor2().y);
       if (dist > 3.0) {
         world.DestroyJoint(this.m_joint);
         this.m_joint = null;
@@ -124,9 +124,9 @@ export class RevoluteJoint extends JointPart {
     }
   }
 
-  public Update(world): void {
+  public Update(world: b2World): void {
     if (this.m_joint && this.enableMotor) {
-      var joint = (this.m_joint);
+      var joint = (this.m_joint) as b2RevoluteJoint;
       if (this.isKeyDown1 || this.isKeyDown2) {
         joint.EnableMotor(true);
 
@@ -136,8 +136,8 @@ export class RevoluteJoint extends JointPart {
         //CE FIX
         joint.m_maxMotorTorque = this.motorStrength * 30;
 
-        this.part1.GetBody().WakeUp();
-        this.part2.GetBody().WakeUp();
+        this.part1.GetBody()!.WakeUp();
+        this.part2.GetBody()!.WakeUp();
       }
       if (this.isKeyDown1 || (this.autoCW && !this.isKeyDown2)) {
 

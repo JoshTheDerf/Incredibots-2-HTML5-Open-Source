@@ -5733,33 +5733,6 @@ export class ControllerGame extends Controller {
     }
   }
 
-  public finishSaving(): void {
-    if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_SAVE_ROBOT) return;
-    var robotID: string = Database.FinishSavingRobot(e);
-    if (robotID != "") {
-      ControllerGameGlobals.curRobotID = robotID;
-      ControllerGameGlobals.ratedCurRobot = true;
-      ControllerGameGlobals.curRobotPublic = ControllerGameGlobals.potentialRobotPublic;
-      ControllerGameGlobals.curRobotFeatured = ControllerGameGlobals.potentialRobotFeatured;
-      this.m_progressDialog.SetMessage("Save successful!");
-      this.m_progressDialog.HideInXSeconds(1);
-      this.m_chooserWindow.visible = false;
-      this.removeChild(this.m_chooserWindow);
-      this.m_chooserWindow = null;
-      this.m_fader.visible = false;
-    }
-  }
-
-  public finishGettingSaveRobotData(): void {
-    if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_ROBOT_DATA) return;
-    if (Database.FinishGettingRobotData()) {
-      this.m_progressDialog.visible = false;
-      if (this.m_chooserWindow) this.removeChild(this.m_chooserWindow);
-      this.m_chooserWindow = new SaveLoadWindow(this, SaveLoadWindow.SAVE_ROBOT_TYPE);
-      this.addChild(this.m_chooserWindow);
-    }
-  }
-
   public finishGettingLoadRobotData(): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_ROBOT_DATA) return;
     if (Database.FinishGettingRobotData()) {
@@ -6277,17 +6250,6 @@ export class ControllerGame extends Controller {
     }
   }
 
-  public finishGettingSaveReplayData(): void {
-    if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_REPLAY_DATA) return;
-    if (Database.FinishGettingReplayData()) {
-      this.m_progressDialog.visible = false;
-      if (this.m_chooserWindow) this.removeChild(this.m_chooserWindow);
-      this.m_chooserWindow = new SaveLoadWindow(this, SaveLoadWindow.SAVE_REPLAY_TYPE);
-      this.addChild(this.m_chooserWindow);
-      this.m_fader.visible = true;
-    }
-  }
-
   public finishGettingLoadReplayData(): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_REPLAY_DATA) return;
     if (Database.FinishGettingReplayData()) {
@@ -6415,17 +6377,6 @@ export class ControllerGame extends Controller {
       ControllerGameGlobals.initX = challenge.cameraX;
       ControllerGameGlobals.initY = challenge.cameraY;
       ControllerGameGlobals.initZoom = challenge.zoomLevel;
-    }
-  }
-
-  public finishGettingSaveChallengeData(): void {
-    if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_CHALLENGE_DATA) return;
-    if (Database.FinishGettingChallengeData()) {
-      this.m_progressDialog.visible = false;
-      if (this.m_chooserWindow) this.removeChild(this.m_chooserWindow);
-      this.m_chooserWindow = new SaveLoadWindow(this, SaveLoadWindow.SAVE_CHALLENGE_TYPE);
-      this.addChild(this.m_chooserWindow);
-      this.m_fader.visible = true;
     }
   }
 

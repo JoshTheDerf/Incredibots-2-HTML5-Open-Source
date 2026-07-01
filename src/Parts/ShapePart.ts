@@ -1,3 +1,4 @@
+import { b2Body, b2Shape, b2World } from "../Box2D";
 import { ControllerGameGlobals, FixedJoint, IllegalOperationError, JointPart, Part, Thrusters, Util } from "../imports";
 
 export class ShapePart extends Part {
@@ -17,9 +18,9 @@ export class ShapePart extends Part {
   public outline: boolean;
   public terrain: boolean;
   public undragable: boolean;
-  protected m_body = null;
-  protected m_shape = null;
-  protected m_fixture = null;
+  protected m_body: b2Body | null = null;
+  protected m_shape: b2Shape | null = null;
+  protected m_fixture: any = null;
   protected m_joints: Array<any>;
   protected m_thrusters: Array<any>;
 
@@ -59,7 +60,7 @@ export class ShapePart extends Part {
   }
 
   public GetUserData(): any {
-    return this.m_body.GetUserData() || {};
+    return this.m_body!.GetUserData() || {};
   }
 
   public AddJoint(j: JointPart): void {
@@ -87,7 +88,7 @@ export class ShapePart extends Part {
   }
 
   public HeavierThan(other: ShapePart): boolean {
-    return this.m_body.GetMass() > other.GetBody().GetMass();
+    return this.m_body!.GetMass() > other.GetBody()!.GetMass();
   }
 
   public GetMass(): number {
@@ -99,7 +100,7 @@ export class ShapePart extends Part {
     throw new IllegalOperationError("abstract ShapePart.GetArea() called");
   }
 
-  public UnInit(world): void {
+  public UnInit(world: b2World): void {
     if (!this.isInitted) return;
     super.UnInit(world);
     if (this.m_body) {
@@ -112,7 +113,7 @@ export class ShapePart extends Part {
     }
   }
 
-  public Update(world): void {
+  public Update(world: b2World): void {
     // do nothing
   }
 
@@ -140,7 +141,7 @@ export class ShapePart extends Part {
     return this.m_thrusters.filter(() => this.IsEnabled());
   }
 
-  public WillBeStatic(shapeList: Array<any> = null): boolean {
+  public WillBeStatic(shapeList: Array<any> | null = null): boolean {
     if (this.isStatic) return true;
     if (shapeList == null) shapeList = new Array();
     shapeList.push(this);
@@ -153,7 +154,7 @@ export class ShapePart extends Part {
     return false;
   }
 
-  public GetAttachedParts(partList: Array<any> = null): Array<any> {
+  public GetAttachedParts(partList: Array<any> | null = null): Array<any> {
     if (partList == null) partList = new Array();
     partList.push(this);
 

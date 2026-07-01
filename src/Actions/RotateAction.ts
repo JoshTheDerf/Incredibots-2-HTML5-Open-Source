@@ -19,30 +19,30 @@ export class RotateAction extends Action
 	public UndoAction():void {
 		for (var i:number = 0; i < this.rotatedParts.length; i++) {
 			if (this.rotatedParts[i] instanceof ShapePart || this.rotatedParts[i] instanceof Thrusters) {
-				this.rotatedParts[i].rotateAngle = Math.atan2(this.rotatedParts[i].centerY - (this.partAffected as Object).centerY, this.rotatedParts[i].centerX - (this.partAffected as Object).centerX);
+				this.rotatedParts[i].rotateAngle = Math.atan2(this.rotatedParts[i].centerY - (this.partAffected as any).centerY, this.rotatedParts[i].centerX - (this.partAffected as any).centerX);
 				this.rotatedParts[i].rotateOrientation = this.rotatedParts[i].angle;
 			} else {
-				this.rotatedParts[i].rotateAngle = Math.atan2(this.rotatedParts[i].anchorY - (this.partAffected as Object).centerY, this.rotatedParts[i].anchorX - (this.partAffected as Object).centerX);
+				this.rotatedParts[i].rotateAngle = Math.atan2(this.rotatedParts[i].anchorY - (this.partAffected as any).centerY, this.rotatedParts[i].anchorX - (this.partAffected as any).centerX);
 				if (this.rotatedParts[i] instanceof PrismaticJoint) {
 					this.rotatedParts[i].rotateOrientation = Util.GetAngle(this.rotatedParts[i].axis);
 				}
 			}
-			this.rotatedParts[i].RotateAround((this.partAffected as Object).centerX, (this.partAffected as Object).centerY, -this.angle);
+			this.rotatedParts[i].RotateAround((this.partAffected as any).centerX, (this.partAffected as any).centerY, -this.angle);
 		}
 	}
 
 	public RedoAction():void {
 		for (var i:number = 0; i < this.rotatedParts.length; i++) {
 			if (this.rotatedParts[i] instanceof ShapePart || this.rotatedParts[i] instanceof Thrusters) {
-				this.rotatedParts[i].rotateAngle = Math.atan2(this.rotatedParts[i].centerY - (this.partAffected as Object).centerY, this.rotatedParts[i].centerX - (this.partAffected as Object).centerX);
+				this.rotatedParts[i].rotateAngle = Math.atan2(this.rotatedParts[i].centerY - (this.partAffected as any).centerY, this.rotatedParts[i].centerX - (this.partAffected as any).centerX);
 				this.rotatedParts[i].rotateOrientation = this.rotatedParts[i].angle;
 			} else {
-				this.rotatedParts[i].rotateAngle = Math.atan2(this.rotatedParts[i].anchorY - (this.partAffected as Object).centerY, this.rotatedParts[i].anchorX - (this.partAffected as Object).centerX);
+				this.rotatedParts[i].rotateAngle = Math.atan2(this.rotatedParts[i].anchorY - (this.partAffected as any).centerY, this.rotatedParts[i].anchorX - (this.partAffected as any).centerX);
 				if (this.rotatedParts[i] instanceof PrismaticJoint) {
 					this.rotatedParts[i].rotateOrientation = Util.GetAngle(this.rotatedParts[i].axis);
 				}
 			}
-			this.rotatedParts[i].RotateAround((this.partAffected as Object).centerX, (this.partAffected as Object).centerY, this.angle);
+			this.rotatedParts[i].RotateAround((this.partAffected as any).centerX, (this.partAffected as any).centerY, this.angle);
 		}
 	}
 }

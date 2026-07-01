@@ -19,11 +19,11 @@ export class TextPart extends Part {
   public blue: number;
   public size: number;
 
-  private corner: number;
-  public initX: number;
-  public initY: number;
-  public initW: number;
-  public initH: number;
+  private corner!: number;
+  public initX!: number;
+  public initY!: number;
+  public initW!: number;
+  public initH!: number;
   public m_textField: Text;
   private m_controller: ControllerGame;
 
@@ -83,7 +83,7 @@ export class TextPart extends Part {
 
   public Update(world: b2World): void {}
 
-  public GetAttachedParts(partList: Array<any> = null): Array<any> {
+  public GetAttachedParts(partList: Array<any> | null = null): Array<any> {
     if (partList == null) partList = new Array();
     partList.push(this);
     return partList;
@@ -194,7 +194,7 @@ export class TextPart extends Part {
     return this.x + this.w >= boxX && this.x < boxX + boxW && this.y + this.h >= boxY && this.y < boxY + boxH;
   }
 
-  public Init(world: b2World, body: b2Body = null): void {
+  public Init(world: b2World, body: b2Body | null = null): void {
     super.Init(world);
     this.displayKeyPressed = false;
   }

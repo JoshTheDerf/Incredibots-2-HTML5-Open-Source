@@ -1,3 +1,4 @@
+import { b2Body, b2Vec2, b2World } from "../Box2D";
 import { ControllerGameGlobals, Part, ShapePart, Util } from "../imports";
 
 export class Thrusters extends Part {
@@ -12,7 +13,7 @@ export class Thrusters extends Part {
   public isBalloon: boolean = false;
   public shapeIndex: number = -1;
   private isKeyDown: boolean = false;
-  private relativeThrusterPos;
+  private relativeThrusterPos!: b2Vec2;
 
   constructor(p1: ShapePart, x: number, y: number) {
     super();
@@ -44,21 +45,21 @@ export class Thrusters extends Part {
     return Util.GetDist(this.centerX, this.centerY, xVal, yVal) < (0.25 * 30) / scale;
   }
 
-  public Init(world, body = null): void {
+  public Init(world: b2World, body: b2Body | null = null): void {
     if (this.isInitted || !this.shape.isInitted) return;
     super.Init(world);
     this.isKeyDown = false;
     this.relativeThrusterPos = Util.Vector(this.centerX, this.centerY);
-    this.relativeThrusterPos.Subtract(this.shape.GetBody().GetPosition());
+    this.relativeThrusterPos.Subtract(this.shape.GetBody()!.GetPosition());
   }
 
   public KeyInput(key: number, up: boolean, replay: boolean): void {
     if (key == this.thrustKey) this.isKeyDown = !up;
   }
 
-  public Update(world): void {
+  public Update(world: b2World): void {
     if (this.isInitted && (this.isKeyDown || this.autoOn)) {
-      var forceAngle: number = this.angle + this.shape.GetBody().GetAngle();
+      var forceAngle: number = this.angle + this.shape.GetBody()!.GetAngle();
       if (this.isBalloon) forceAngle = -Math.PI / 2;
 
       //CE PROBLEM
@@ -68,8 +69,8 @@ export class Thrusters extends Part {
       var forceStrength: number = 10 + this.strength * this.strength * 10;
 
       var forceVector = Util.Vector(Math.cos(forceAngle) * forceStrength, Math.sin(forceAngle) * forceStrength);
-      var positionVector = this.shape.GetBody().GetWorldPoint(this.relativeThrusterPos);
-      this.shape.GetBody().ApplyForce(forceVector, positionVector);
+      var positionVector = this.shape.GetBody()!.GetWorldPoint(this.relativeThrusterPos);
+      this.shape.GetBody()!.ApplyForce(forceVector, positionVector);
     }
   }
 
@@ -85,7 +86,7 @@ export class Thrusters extends Part {
     this.angle = curAngle + this.rotateOrientation;
   }
 
-  public GetAttachedParts(partList: Array<any> = null): Array<any> {
+  public GetAttachedParts(partList: Array<any> | null = null): Array<any> {
     if (partList == null) partList = new Array();
     partList.push(this);
 
