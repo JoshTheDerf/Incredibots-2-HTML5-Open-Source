@@ -13,6 +13,8 @@
 // preserved because the panels are rendered bare in the modal `#content` slot,
 // not editing the panel internals).
 import { ref } from "vue";
+import { useGameStore } from "./gameStore";
+import MainMenu from "./components/MainMenu.vue";
 import MenuBar from "./components/MenuBar.vue";
 import type { PanelKey } from "./components/MenuBar.vue";
 import ToolPalette from "./components/ToolPalette.vue";
@@ -25,6 +27,11 @@ import SandboxSettingsPanel from "./components/panels/SandboxSettingsPanel.vue";
 import ConditionsPanel from "./components/panels/ConditionsPanel.vue";
 import RestrictionsPanel from "./components/panels/RestrictionsPanel.vue";
 import ColorPickerPanel from "./components/panels/ColorPickerPanel.vue";
+
+// Top-level screen switch. `appMode` is a UI-only ref in gameStore (NOT part of
+// GameCore) — 'menu' shows the ported MainMenu, 'editor' shows the editor
+// chrome below. Boots to 'menu', matching the original ControllerMainMenu flow.
+const game = useGameStore();
 
 // Exactly one panel is open at a time; `null` means all modals closed. The
 // MenuBar emits which panel to open.
@@ -41,7 +48,9 @@ function closePanel(): void {
 
 <template>
 	<UApp>
-		<div class="editor-shell">
+		<MainMenu v-if="game.appMode === 'menu'" />
+
+		<div v-else class="editor-shell">
 			<MenuBar @open="openPanel" />
 			<ToolPalette />
 			<div class="workspace">

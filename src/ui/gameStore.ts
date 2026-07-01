@@ -6,7 +6,7 @@
 // Commands through `dispatch`; they never mutate state directly. See
 // docs/CONTRACT.md.
 
-import { computed, shallowRef } from "vue";
+import { computed, ref, shallowRef } from "vue";
 import { defineStore } from "pinia";
 import { GameCore } from "../core/GameCore";
 import type { Command, EditState, SimState, CameraState } from "../core";
@@ -52,5 +52,41 @@ export const useGameStore = defineStore("game", () => {
 		return core.importRobot(str);
 	}
 
-	return { state, sim, camera, edit, parts, dispatch, exportRobot, importRobot };
+	// --- UI-only application mode (menu vs editor) ---------------------------
+	// This is deliberately NOT part of GameCore/GameState: the headless core
+	// knows only about robots/sim/edit, not about which screen the shell shows.
+	// The original app had a ControllerMainMenu that swapped in the editor
+	// controller; here that top-level screen switch lives purely in the Vue
+	// layer. Defaults to the main menu (matches the original boot flow).
+	type AppMode = "menu" | "editor";
+	const appMode = ref<AppMode>("menu");
+
+	/**
+	 * Enter the editor. When `fresh` is true (Build a Robot / Sandbox from the
+	 * menu) we also start a clean robot via the real `newRobot` command — the
+	 * safe dispatch wrapper warns instead of crashing if it isn't migrated yet.
+	 */
+	function goToEditor(fresh = false): void {
+		if (fresh) dispatch({ type: "newRobot" });
+		appMode.value = "editor";
+	}
+
+	/** Return to the main menu screen. */
+	function goToMenu(): void {
+		appMode.value = "menu";
+	}
+
+	return {
+		state,
+		sim,
+		camera,
+		edit,
+		parts,
+		dispatch,
+		exportRobot,
+		importRobot,
+		appMode,
+		goToEditor,
+		goToMenu,
+	};
 });

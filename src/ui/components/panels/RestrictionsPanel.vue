@@ -96,9 +96,6 @@ function clampLimit(text: string): string {
 	return num.toString();
 }
 
-function onLimitBlur(target: { value: string }): void {
-	target.value = clampLimit(target.value);
-}
 
 function close(): void {
 	emit("close");
@@ -153,7 +150,7 @@ function okay(): void {
 					class="limit-input"
 					:disabled="minDensityNoLimit"
 					maxlength="4"
-					@blur="onLimitBlur(minDensity)"
+					@blur="minDensity = clampLimit(minDensity)"
 				/>
 				<UCheckbox v-model="minDensityNoLimit" label="No Limit" />
 			</div>
@@ -165,7 +162,7 @@ function okay(): void {
 					class="limit-input"
 					:disabled="maxRJStrengthNoLimit"
 					maxlength="4"
-					@blur="onLimitBlur(maxRJStrength)"
+					@blur="maxRJStrength = clampLimit(maxRJStrength)"
 				/>
 				<UCheckbox v-model="maxRJStrengthNoLimit" label="No Limit" />
 			</div>
@@ -178,7 +175,7 @@ function okay(): void {
 					class="limit-input"
 					:disabled="maxDensityNoLimit"
 					maxlength="4"
-					@blur="onLimitBlur(maxDensity)"
+					@blur="maxDensity = clampLimit(maxDensity)"
 				/>
 				<UCheckbox v-model="maxDensityNoLimit" label="No Limit" />
 			</div>
@@ -190,7 +187,7 @@ function okay(): void {
 					class="limit-input"
 					:disabled="maxRJSpeedNoLimit"
 					maxlength="4"
-					@blur="onLimitBlur(maxRJSpeed)"
+					@blur="maxRJSpeed = clampLimit(maxRJSpeed)"
 				/>
 				<UCheckbox v-model="maxRJSpeedNoLimit" label="No Limit" />
 			</div>
@@ -203,7 +200,7 @@ function okay(): void {
 					class="limit-input"
 					:disabled="maxSJStrengthNoLimit"
 					maxlength="4"
-					@blur="onLimitBlur(maxSJStrength)"
+					@blur="maxSJStrength = clampLimit(maxSJStrength)"
 				/>
 				<UCheckbox v-model="maxSJStrengthNoLimit" label="No Limit" />
 			</div>
@@ -215,7 +212,7 @@ function okay(): void {
 					class="limit-input"
 					:disabled="maxThrusterNoLimit"
 					maxlength="4"
-					@blur="onLimitBlur(maxThruster)"
+					@blur="maxThruster = clampLimit(maxThruster)"
 				/>
 				<UCheckbox v-model="maxThrusterNoLimit" label="No Limit" />
 			</div>
@@ -228,7 +225,7 @@ function okay(): void {
 					class="limit-input"
 					:disabled="maxSJSpeedNoLimit"
 					maxlength="4"
-					@blur="onLimitBlur(maxSJSpeed)"
+					@blur="maxSJSpeed = clampLimit(maxSJSpeed)"
 				/>
 				<UCheckbox v-model="maxSJSpeedNoLimit" label="No Limit" />
 			</div>

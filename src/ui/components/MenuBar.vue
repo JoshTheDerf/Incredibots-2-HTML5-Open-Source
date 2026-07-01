@@ -38,6 +38,10 @@ const fileMenu: DropdownMenuItem[][] = [
 		{ label: "Import...", icon: "i-lucide-clipboard-paste", onSelect: () => open("import") },
 		{ label: "Export...", icon: "i-lucide-share", onSelect: () => open("export") },
 	],
+	[
+		// UI-layer navigation back to the main menu screen (gameStore.appMode).
+		{ label: "Main Menu", icon: "i-lucide-home", onSelect: () => game.goToMenu() },
+	],
 ];
 
 const editMenu: DropdownMenuItem[][] = [
