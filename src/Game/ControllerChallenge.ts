@@ -71,16 +71,8 @@ export class ControllerChallenge extends ControllerSandbox {
       for (var i: number = 0; i < ControllerGameGlobals.challenge.allParts.length; i++) {
         this.allParts.push(ControllerGameGlobals.challenge.allParts[i]);
         ControllerGameGlobals.challenge.allParts[i].isEditable = true;
-        if (ControllerGameGlobals.challenge.allParts[i] instanceof TextPart) {
-          if (ControllerGameGlobals.challenge.allParts[i].inFront) {
-            this.addChildAt(
-              ControllerGameGlobals.challenge.allParts[i].m_textField,
-              this.getChildIndex(this.m_canvas) + 1
-            );
-          } else {
-            this.addChildAt(ControllerGameGlobals.challenge.allParts[i].m_textField, this.getChildIndex(this.m_canvas));
-          }
-        }
+        // TextPart Text objects are created/attached lazily by the renderer
+        // (Draw) per-frame, straddling the canvas by each part's `inFront` flag.
       }
     } else {
       this.m_fader.visible = true;

@@ -1,6 +1,4 @@
 import { b2Body, b2World } from "../Box2D";
-import { Text, TextStyle } from "pixi.js";
-import { ControllerGame } from "../Game/ControllerGame"
 import { Part } from "./Part"
 
 export class TextPart extends Part {
@@ -25,9 +23,6 @@ export class TextPart extends Part {
   public initY!: number;
   public initW!: number;
   public initH!: number;
-  public m_textField: Text;
-  private m_controller: ControllerGame;
-
   private is_added: boolean = false;
 
   private _text: string;
@@ -38,11 +33,14 @@ export class TextPart extends Part {
 
   set text(value: string) {
     this._text = value
-    this.m_textField.text = this._text
   }
 
+  // Note: `cont` is retained for signature compatibility with existing call
+  // sites (and MakeCopy), but TextPart is part of the headless game core and
+  // must stay Pixi-free. The Pixi `Text` display object that used to live here
+  // is now created/owned/destroyed by the renderer (see src/Game/Draw.ts).
   constructor(
-    cont: ControllerGame,
+    cont: any,
     nx: number,
     ny: number,
     nw: number,
@@ -51,7 +49,6 @@ export class TextPart extends Part {
     front: boolean = true
   ) {
     super();
-    this.m_controller = cont;
     this.x = nx;
     this.y = ny;
     this.w = nw;
@@ -62,13 +59,8 @@ export class TextPart extends Part {
     this.blue = 0;
     this.size = 14;
 
-    this.m_textField = new Text(this._text);
-    this.m_textField.x = nx;
-    this.m_textField.y = ny;
-    this.m_textField.zIndex = 0;
     this.type = "TextPart";
     this.inFront = front
-    this.m_controller.addChild(this.m_textField);
   }
 
   public Move(xVal: number, yVal: number): void {
@@ -91,7 +83,7 @@ export class TextPart extends Part {
   }
 
   public MakeCopy(): TextPart {
-    var tPart: TextPart = new TextPart(this.m_controller, this.x, this.y, this.w, this.h, this.text);
+    var tPart: TextPart = new TextPart(null, this.x, this.y, this.w, this.h, this.text);
     tPart.inFront = this.inFront;
     tPart.scaleWithZoom = this.scaleWithZoom;
     tPart.alwaysVisible = this.alwaysVisible;

@@ -4370,8 +4370,7 @@ export class ControllerGame extends Controller {
     } else if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof TextPart) {
       if (!this.selectedParts[0].inFront) {
         this.selectedParts[0].inFront = true;
-        this.removeChild(this.selectedParts[0].m_textField);
-        this.addChildAt(this.selectedParts[0].m_textField, this.getChildIndex(this.m_canvas) + 1);
+        this.draw.setTextInFront(this.selectedParts[0], true);
         this.AddAction(new MoveZAction(this.selectedParts[0], MoveZAction.FRONT_TYPE));
       }
     }
@@ -4404,8 +4403,7 @@ export class ControllerGame extends Controller {
     } else if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof TextPart) {
       if (this.selectedParts[0].inFront) {
         this.selectedParts[0].inFront = false;
-        this.removeChild(this.selectedParts[0].m_textField);
-        this.addChildAt(this.selectedParts[0].m_textField, this.getChildIndex(this.m_canvas));
+        this.draw.setTextInFront(this.selectedParts[0], false);
         this.AddAction(new MoveZAction(this.selectedParts[0], MoveZAction.BACK_TYPE));
       }
     }
@@ -6618,7 +6616,7 @@ export class ControllerGame extends Controller {
         if (jointFound) this.allParts.pop();
       } while (jointFound);
     } else if (part instanceof TextPart) {
-      (part as TextPart).m_textField.visible = false;
+      this.draw.hideText(part as TextPart);
     }
     if (addAction) this.AddAction(new DeleteAction(part, affectedJoints));
     this.CheckIfPartsFit();

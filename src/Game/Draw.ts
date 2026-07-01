@@ -6,7 +6,7 @@ import {
   b2Shape,
   b2Vec2,
 } from "../Box2D";
-import { TextStyle } from "pixi.js";
+import { Container, Text, TextStyle } from "pixi.js";
 import { Challenge } from "./Challenge"
 import { ControllerGameGlobals } from "./Globals/ControllerGameGlobals"
 import { b2DebugDraw } from "./Graphics/b2DebugDraw"
@@ -34,6 +34,43 @@ export class Draw extends b2DebugDraw {
   private static s_staticColor = new b2Color(0.4, 0.9, 0.4);
   private static s_staticEditableColor = new b2Color(0.6, 0.8, 0.6);
   private m_world = null;
+
+  // Renderer-side ownership of the Pixi Text display objects for TextParts.
+  // The headless game core (TextPart) holds only plain data; the live Pixi
+  // Text objects live here and are created/updated/destroyed per-frame.
+  private m_textFields: Map<TextPart, Text> = new Map();
+  // Two containers hold the text: one drawn behind the canvas (m_sprite),
+  // one in front. This preserves the original z-order semantics, which placed
+  // each TextPart's Text just below or just above m_canvas based on `inFront`.
+  private m_textBehind: Container = new Container();
+  private m_textFront: Container = new Container();
+  private m_textContainersAttached: boolean = false;
+
+  // Ensure the two text containers are attached to the display list, straddling
+  // the canvas (m_sprite): behind at the canvas index, front just above it.
+  private EnsureTextContainers(): void {
+    var canvas: any = this.m_sprite;
+    if (!canvas || !canvas.parent) return;
+    var parent: any = canvas.parent;
+    if (!this.m_textContainersAttached || this.m_textBehind.parent !== parent) {
+      var canvasIndex: number = parent.getChildIndex(canvas);
+      parent.addChildAt(this.m_textBehind, canvasIndex);
+      // Re-fetch index in case insertion shifted it, then place front above canvas.
+      parent.addChildAt(this.m_textFront, parent.getChildIndex(canvas) + 1);
+      this.m_textContainersAttached = true;
+    }
+  }
+
+  // Returns (creating if needed) the Text for a given TextPart.
+  private GetTextField(part: TextPart): Text {
+    var field = this.m_textFields.get(part);
+    if (!field) {
+      field = new Text(part.text);
+      field.zIndex = 0;
+      this.m_textFields.set(part, field);
+    }
+    return field;
+  }
 
   public DrawWorld(
     allParts: Array<Part>,
@@ -520,21 +557,33 @@ export class Draw extends b2DebugDraw {
       }
     }
 
+    this.EnsureTextContainers();
+    // Track which TextParts are present this frame so we can reap the Pixi Text
+    // objects for any that have been removed from the world.
+    var presentTextParts: Set<TextPart> = new Set();
     for (i = 0; i < allParts.length; i++) {
       if (allParts[i] instanceof TextPart) {
-        allParts[i].m_textField.visible = notStarted || allParts[i].alwaysVisible || allParts[i].displayKeyPressed;
-        allParts[i].m_textField.x = allParts[i].x * this.m_drawScale - this.m_drawXOff;
-        allParts[i].m_textField.y = allParts[i].y * this.m_drawScale - this.m_drawYOff;
-        // allParts[i].m_textField.width = allParts[i].w * this.m_drawScale;
-        // allParts[i].m_textField.height = allParts[i].h * this.m_drawScale;
+        var part: TextPart = allParts[i] as TextPart;
+        presentTextParts.add(part);
+        var textField: Text = this.GetTextField(part);
+        // Keep the Text's parent container in sync with the part's inFront flag.
+        var desiredContainer: Container = part.inFront ? this.m_textFront : this.m_textBehind;
+        if (textField.parent !== desiredContainer) {
+          if (textField.parent) textField.parent.removeChild(textField);
+          desiredContainer.addChild(textField);
+        }
+        if (textField.text !== part.text) textField.text = part.text;
+        textField.visible = notStarted || part.alwaysVisible || part.displayKeyPressed;
+        textField.x = part.x * this.m_drawScale - this.m_drawXOff;
+        textField.y = part.y * this.m_drawScale - this.m_drawYOff;
         var format: TextStyle = new TextStyle();
-        format.fontSize = allParts[i].scaleWithZoom ? (allParts[i].size * this.m_drawScale) / 30 : allParts[i].size;
-        format.fill = (allParts[i].red << 16) | (allParts[i].green << 8) | allParts[i].blue;
+        format.fontSize = part.scaleWithZoom ? (part.size * this.m_drawScale) / 30 : part.size;
+        format.fill = (part.red << 16) | (part.green << 8) | part.blue;
         format.fontFamily = Main.GLOBAL_FONT;
         format.breakWords = true
         format.wordWrap = true
-        format.wordWrapWidth = allParts[i].w * this.m_drawScale
-        allParts[i].m_textField.style = format;
+        format.wordWrapWidth = part.w * this.m_drawScale
+        textField.style = format;
         if (notStarted) {
           var selected: boolean = Util.ObjectInArray(allParts[i], selectedParts);
           var color = selected ? new b2Color(1, 1, 1) : new b2Color(0.1, 0.1, 0.1);
@@ -555,6 +604,36 @@ export class Draw extends b2DebugDraw {
         }
       }
     }
+
+    // Reap Pixi Text objects for TextParts no longer present in the world.
+    this.m_textFields.forEach((field, part) => {
+      if (!presentTextParts.has(part)) {
+        if (field.parent) field.parent.removeChild(field);
+        field.destroy();
+        this.m_textFields.delete(part);
+      }
+    });
+  }
+
+  // Renderer-side API for z-order changes previously done by mutating the
+  // display list directly. Draw's per-frame sync already honors `part.inFront`,
+  // so callers only need to flip the flag; this keeps the container assignment
+  // immediate rather than waiting for the next frame.
+  public setTextInFront(part: TextPart, inFront: boolean): void {
+    var field = this.m_textFields.get(part);
+    if (!field) return;
+    var desiredContainer: Container = inFront ? this.m_textFront : this.m_textBehind;
+    if (field.parent !== desiredContainer) {
+      if (field.parent) field.parent.removeChild(field);
+      desiredContainer.addChild(field);
+    }
+  }
+
+  // Hide a TextPart's Text immediately (used when a part is deleted before the
+  // next frame reaps it).
+  public hideText(part: TextPart): void {
+    var field = this.m_textFields.get(part);
+    if (field) field.visible = false;
   }
 
   public DrawJoint(joint): void {

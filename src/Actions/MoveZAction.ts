@@ -22,12 +22,10 @@ export class MoveZAction extends Action
 		if (this.partAffected instanceof TextPart) {
 			if (this.type == MoveZAction.FRONT_TYPE) {
 				(this.partAffected as TextPart).inFront = false;
-				MoveZAction.m_controller.removeChild((this.partAffected as TextPart).m_textField);
-				MoveZAction.m_controller.addChildAt((this.partAffected as TextPart).m_textField, MoveZAction.m_controller.getChildIndex(MoveZAction.m_controller.m_canvas));
+				MoveZAction.m_controller.draw.setTextInFront(this.partAffected as TextPart, false);
 			} else {
 				(this.partAffected as TextPart).inFront = true;
-				MoveZAction.m_controller.removeChild((this.partAffected as TextPart).m_textField);
-				MoveZAction.m_controller.addChildAt((this.partAffected as TextPart).m_textField, MoveZAction.m_controller.getChildIndex(MoveZAction.m_controller.m_canvas) + 1);
+				MoveZAction.m_controller.draw.setTextInFront(this.partAffected as TextPart, true);
 			}
 		} else {
 			MoveZAction.m_controller.allParts = Util.RemoveFromArray(this.partAffected, MoveZAction.m_controller.allParts);
@@ -39,12 +37,10 @@ export class MoveZAction extends Action
 		if (this.partAffected instanceof TextPart) {
 			if (this.type == MoveZAction.FRONT_TYPE) {
 				(this.partAffected as TextPart).inFront = true;
-				MoveZAction.m_controller.removeChild((this.partAffected as TextPart).m_textField);
-				MoveZAction.m_controller.addChildAt((this.partAffected as TextPart).m_textField, MoveZAction.m_controller.getChildIndex(MoveZAction.m_controller.m_canvas) + 1);
+				MoveZAction.m_controller.draw.setTextInFront(this.partAffected as TextPart, true);
 			} else {
 				(this.partAffected as TextPart).inFront = false;
-				MoveZAction.m_controller.removeChild((this.partAffected as TextPart).m_textField);
-				MoveZAction.m_controller.addChildAt((this.partAffected as TextPart).m_textField, MoveZAction.m_controller.getChildIndex(MoveZAction.m_controller.m_canvas));
+				MoveZAction.m_controller.draw.setTextInFront(this.partAffected as TextPart, false);
 			}
 		} else {
 			if (this.type == MoveZAction.FRONT_TYPE) {

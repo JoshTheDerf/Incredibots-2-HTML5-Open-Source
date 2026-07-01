@@ -601,13 +601,9 @@ export class ControllerSandbox extends ControllerGame {
     for (var i: number = 0; i < this.groundParts.length; i++) {
       this.allParts = Util.RemoveFromArray(this.groundParts[i], this.allParts);
     }
-    for (i = 0; i < this.allParts.length; i++) {
-      if (this.allParts[i] instanceof Text) {
-        try {
-          this.removeChild(this.allParts[i].m_textField);
-        } catch (arg: any) {}
-      }
-    }
+    // TextPart Pixi objects are now owned by the renderer (Draw), which reaps
+    // any Text whose part is no longer in allParts on its next frame. No manual
+    // display-list removal is needed here.
     this.groundParts = new Array();
     this.removeChild(this.sGround);
     this.sSky.Delete();
@@ -704,15 +700,8 @@ export class ControllerSandbox extends ControllerGame {
     this.addChild(this.m_sidePanel);
     this.addChild(this.m_guiMenu);
     this.addChild(this.m_fader);
-    for (i = 0; i < this.allParts.length; i++) {
-      if (this.allParts[i] instanceof TextPart) {
-        if (this.allParts[i].inFront) {
-          this.addChildAt(this.allParts[i].m_textField, this.getChildIndex(this.m_canvas) + 1);
-        } else {
-          this.addChildAt(this.allParts[i].m_textField, this.getChildIndex(this.m_canvas));
-        }
-      }
-    }
+    // TextPart Text objects are created/attached lazily by the renderer (Draw)
+    // per-frame, straddling the canvas according to each part's `inFront` flag.
     this.BuildBuildArea();
     this.redrawRobot = true;
     this.hasZoomed = true;
