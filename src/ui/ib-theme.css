@@ -112,3 +112,29 @@ body,
 	background-position: center;
 	cursor: pointer;
 }
+
+/* ─── "Needs wiring" flag ──────────────────────────────────────────────
+   Marks UI that is visually ported but NOT yet connected to a GameCore
+   command / real data. Used via the IbTodo.vue badge and/or the .ib-todo
+   class on a control. Deliberately loud so unwired UI is obvious at a glance. */
+.ib-todo {
+	position: relative;
+	outline: 2px dashed var(--ib-peach);
+	outline-offset: 1px;
+}
+.ib-todo-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	font-family: Arial, sans-serif;
+	font-size: 9px;
+	font-weight: bold;
+	line-height: 1;
+	color: #3a2b1a;
+	background: var(--ib-peach);
+	border: 1px solid #c8873f;
+	border-radius: 3px;
+	padding: 2px 4px;
+	white-space: nowrap;
+	vertical-align: middle;
+}
