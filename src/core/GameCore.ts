@@ -51,6 +51,20 @@ interface EditTransform {
 	angle: number;
 }
 
+/**
+ * A point-in-time snapshot of the editable state for the undo/redo stacks:
+ * a deep-cloned `parts` graph plus the edit-selection fields. The world/sim are
+ * intentionally excluded — history only spans the editing phase.
+ */
+interface HistorySnapshot {
+	parts: Part[];
+	selection: number[];
+	tool: string;
+}
+
+/** Max number of undo steps retained (older snapshots are dropped). */
+const HISTORY_CAP = 100;
+
 // Default sizes for click-to-create shapes. The original ControllerGame derives
 // each shape's dimensions from a click-drag gesture (ControllerGame.ts:2209 for
 // the circle, :2233 for the rect, :2367 for the triangle); the headless
@@ -80,6 +94,9 @@ export class GameCore {
 	private nextId = 0;
 	/** Per-part pre-play edit transforms, captured on play, restored on reset. */
 	private editSnapshots: EditTransform[] = [];
+	/** Undo / redo stacks of editable-state snapshots (see HistorySnapshot). */
+	private undoStack: HistorySnapshot[] = [];
+	private redoStack: HistorySnapshot[] = [];
 
 	constructor(initial: GameState = createInitialState()) {
 		this.state = initial;
@@ -119,6 +136,130 @@ export class GameCore {
 	/** Look up a live Part by its stable id. */
 	private findPart(id: number): Part | undefined {
 		return this.state.parts.find((p) => p.id === id);
+	}
+
+	// --- Undo / redo history -----------------------------------------------
+	//
+	// Snapshot-based history: before any mutating command we deep-clone the
+	// editable state (parts graph + selection/tool) onto the undo stack and clear
+	// the redo stack. undo/redo swap the current state with the top of the
+	// respective stack. This is simpler and more robust than per-command inverse
+	// Actions (the legacy src/Actions/* approach), which depend on a static
+	// ControllerGame the headless core doesn't have.
+
+	/**
+	 * Deep-clone a parts array into independent instances, preserving each
+	 * Part's `id` (MakeCopy() mints fresh objects and does NOT copy id, so we
+	 * reassign it) and re-linking joints/thrusters to the CLONED parent shapes.
+	 * Parent shapes are resolved by id, so shape order is irrelevant.
+	 */
+	private cloneParts(parts: Part[]): Part[] {
+		// Clone shapes/text first and index the clones by original id so joints
+		// and thrusters can re-attach to the cloned shapes (they hold parent
+		// references by object identity, not id).
+		const cloneById = new Map<number, Part>();
+		const shapeCloneById = new Map<number, ShapePart>();
+		const result: Part[] = [];
+
+		for (const p of parts) {
+			if (p instanceof ShapePart) {
+				const copy = p.MakeCopy();
+				copy.id = p.id;
+				cloneById.set(p.id, copy);
+				shapeCloneById.set(p.id, copy);
+				result.push(copy);
+			} else if (p instanceof TextPart) {
+				const copy = p.MakeCopy();
+				copy.id = p.id;
+				cloneById.set(p.id, copy);
+				result.push(copy);
+			}
+		}
+
+		// Now clone joints and thrusters, wiring them to the cloned shapes.
+		for (const p of parts) {
+			if (p instanceof JointPart) {
+				const c1 = shapeCloneById.get(p.part1.id);
+				const c2 = shapeCloneById.get(p.part2.id);
+				if (!c1 || !c2) continue; // dangling joint — drop it defensively
+				const copy = p.MakeCopy(c1, c2);
+				copy.id = p.id;
+				cloneById.set(p.id, copy);
+				result.push(copy);
+			} else if (p instanceof Thrusters) {
+				const parent = shapeCloneById.get(p.shape.id);
+				if (!parent) continue;
+				const copy = p.MakeCopy(parent);
+				copy.id = p.id;
+				cloneById.set(p.id, copy);
+				result.push(copy);
+			}
+		}
+
+		// Preserve the original ordering (renderer / hit-testing depend on it).
+		return parts.map((p) => cloneById.get(p.id)).filter((p): p is Part => p !== undefined);
+	}
+
+	/** Capture the current editable state as a history snapshot. */
+	private captureSnapshot(): HistorySnapshot {
+		return {
+			parts: this.cloneParts(this.state.parts),
+			selection: [...this.state.edit.selection],
+			tool: this.state.edit.tool,
+		};
+	}
+
+	/**
+	 * Push the current editable state onto the undo stack and clear the redo
+	 * stack. Called before applying any mutating command. Also refreshes the
+	 * canUndo/canRedo flags (done via the state rebuild in the calling handler).
+	 */
+	private pushHistory(): void {
+		this.undoStack.push(this.captureSnapshot());
+		if (this.undoStack.length > HISTORY_CAP) this.undoStack.shift();
+		this.redoStack = [];
+	}
+
+	/**
+	 * Restore a history snapshot's parts/selection into a fresh state object,
+	 * dropping any selection ids that no longer exist and recomputing
+	 * selectedPart + canUndo/canRedo. Immutable per the existing handlers.
+	 */
+	private restoreSnapshot(snap: HistorySnapshot): void {
+		const live = new Set(snap.parts.map((p) => p.id));
+		const selection = snap.selection.filter((id) => live.has(id));
+		this.state = {
+			...this.state,
+			parts: snap.parts,
+			edit: {
+				...this.state.edit,
+				tool: snap.tool,
+				selection,
+				selectedPart: null,
+				canUndo: this.undoStack.length > 0,
+				canRedo: this.redoStack.length > 0,
+			},
+		};
+		// deriveSelectedPart reads this.state.parts, so compute after the swap.
+		this.state = {
+			...this.state,
+			edit: { ...this.state.edit, selectedPart: this.deriveSelectedPart(selection) },
+		};
+		this.markChanged();
+	}
+
+	private handleUndo(): void {
+		const snap = this.undoStack.pop();
+		if (!snap) return;
+		this.redoStack.push(this.captureSnapshot());
+		this.restoreSnapshot(snap);
+	}
+
+	private handleRedo(): void {
+		const snap = this.redoStack.pop();
+		if (!snap) return;
+		this.undoStack.push(this.captureSnapshot());
+		this.restoreSnapshot(snap);
 	}
 
 	/**
@@ -562,7 +703,79 @@ export class GameCore {
 		this.markChanged();
 	}
 
+	/**
+	 * Whether a command mutates the parts graph and should therefore push an
+	 * undo snapshot before it applies. Excludes selection (select/clearSelection),
+	 * tool changes (setTool), sim controls (play/pause/reset/step), undo/redo
+	 * itself, and persistence (handled separately). Covers the create /
+	 * delete / move / rotate / resize / setColour / setXxx family.
+	 */
+	private isMutating(command: Command): boolean {
+		switch (command.type) {
+			case "createShape":
+			case "createText":
+			case "createThrusters":
+			case "createCannon":
+			case "createJoint":
+			case "deleteParts":
+			case "moveParts":
+			case "rotateParts":
+			case "resizeParts":
+			case "setColour":
+			case "setDensity":
+			case "setCollide":
+			case "setCameraFocus":
+			case "setFixate":
+			case "setOutline":
+			case "setOutlineBehind":
+			case "setUndragable":
+			case "setJointMotor":
+			case "setJointStrength":
+			case "setJointSpeed":
+			case "setJointLimits":
+			case "setJointControlKey":
+			case "setJointAutoOn":
+			case "setJointStiff":
+			case "setJointInitialLength":
+			case "setThrusterStrength":
+			case "setThrusterKey":
+			case "setThrusterAutoOn":
+			case "setCannonStrength":
+			case "setCannonFireKey":
+			case "setTextContent":
+			case "setTextSize":
+			case "setTextDisplayKey":
+			case "setTextAlwaysVisible":
+			case "setTextScaleWithZoom":
+				return true;
+			default:
+				return false;
+		}
+	}
+
+	/** Current canUndo/canRedo derived from stack depth. */
+	private undoRedoFlags(): { canUndo: boolean; canRedo: boolean } {
+		return { canUndo: this.undoStack.length > 0, canRedo: this.redoStack.length > 0 };
+	}
+
 	private apply(command: Command): void {
+		// Snapshot the pre-mutation editable state for undo before any mutating
+		// command runs (editing phase only). The handler that follows rebuilds
+		// `edit`, so we fold the refreshed canUndo/canRedo flags in afterwards.
+		const mutating = this.state.sim.phase === "editing" && this.isMutating(command);
+		if (mutating) this.pushHistory();
+
+		this.applyCommand(command);
+
+		// A mutating command's handler rebuilds `edit` without the undo/redo
+		// flags; reflect the new stack depths so the UI can enable the buttons.
+		// (undo/redo set their own flags via restoreSnapshot.)
+		if (mutating) {
+			this.state = { ...this.state, edit: { ...this.state.edit, ...this.undoRedoFlags() } };
+		}
+	}
+
+	private applyCommand(command: Command): void {
 		// ControllerGame disallows editing during simulation (the side panel is
 		// hidden and curAction cleared on play, :2728-2730). Ignore editing
 		// mutations while running/paused; sim controls (play/pause/reset/step) and
@@ -1065,7 +1278,11 @@ export class GameCore {
 				return;
 			}
 			case "undo":
+				this.handleUndo();
+				return;
 			case "redo":
+				this.handleRedo();
+				return;
 			case "loadRobot":
 			case "newRobot":
 				throw new Error(`GameCore: command "${command.type}" not yet migrated from ControllerGame`);
