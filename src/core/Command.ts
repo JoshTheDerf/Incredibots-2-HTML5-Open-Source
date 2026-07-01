@@ -44,6 +44,42 @@ export type Command =
 	| { type: "rotateParts"; partIds: number[]; angle: number }
 	| { type: "resizeParts"; partIds: number[]; scaleFactor: number }
 	| { type: "setColour"; partIds: number[]; r: number; g: number; b: number; opacity: number }
+	// --- per-property part edits (ported from ControllerGame + src/Actions/*) ---
+	// Shape (ShapePart: Circle/Rectangle/Triangle/Cannon). Values are absolute
+	// (the legacy sliders set the field directly; the Action only recorded a
+	// delta for undo — see ControllerGame.densitySlider/strengthSlider).
+	| { type: "setDensity"; partIds: number[]; value: number }
+	| { type: "setCollide"; partIds: number[]; value: boolean }
+	| { type: "setCameraFocus"; partIds: number[]; value: boolean }
+	| { type: "setFixate"; partIds: number[]; value: boolean }
+	| { type: "setOutline"; partIds: number[]; value: boolean }
+	| { type: "setOutlineBehind"; partIds: number[]; value: boolean }
+	| { type: "setUndragable"; partIds: number[]; value: boolean }
+	// Joint (RevoluteJoint / PrismaticJoint). `which` selects which of the two
+	// control keys / auto flags a joint carries (cw/ccw for revolute, up/down &
+	// oscillate for prismatic). Limits are in DEGREES; use null for "None"
+	// (stored as ∓Number.MAX_VALUE on the part — see minLimitText/maxLimitText).
+	| { type: "setJointMotor"; partIds: number[]; value: boolean }
+	| { type: "setJointStrength"; partIds: number[]; value: number }
+	| { type: "setJointSpeed"; partIds: number[]; value: number }
+	| { type: "setJointLimits"; partIds: number[]; lower: number | null; upper: number | null }
+	| { type: "setJointControlKey"; partIds: number[]; which: "cw" | "ccw" | "up" | "down"; key: number }
+	| { type: "setJointAutoOn"; partIds: number[]; which: "cw" | "ccw" | "oscillate"; value: boolean }
+	| { type: "setJointStiff"; partIds: number[]; value: boolean }
+	| { type: "setJointInitialLength"; partIds: number[]; value: number }
+	// Thruster
+	| { type: "setThrusterStrength"; partIds: number[]; value: number }
+	| { type: "setThrusterKey"; partIds: number[]; key: number }
+	| { type: "setThrusterAutoOn"; partIds: number[]; value: boolean }
+	// Cannon
+	| { type: "setCannonStrength"; partIds: number[]; value: number }
+	| { type: "setCannonFireKey"; partIds: number[]; key: number }
+	// Text
+	| { type: "setTextContent"; partIds: number[]; text: string }
+	| { type: "setTextSize"; partIds: number[]; value: number }
+	| { type: "setTextDisplayKey"; partIds: number[]; key: number }
+	| { type: "setTextAlwaysVisible"; partIds: number[]; value: boolean }
+	| { type: "setTextScaleWithZoom"; partIds: number[]; value: boolean }
 	// --- selection (view state, but routed through the core so it stays authoritative) ---
 	| { type: "select"; partIds: number[]; additive?: boolean }
 	| { type: "clearSelection" }

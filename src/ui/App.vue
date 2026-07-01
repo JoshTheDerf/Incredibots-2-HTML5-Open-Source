@@ -8,7 +8,7 @@
 import MenuBar from "./components/MenuBar.vue";
 import ToolPalette from "./components/ToolPalette.vue";
 import StagePlaceholder from "./components/StagePlaceholder.vue";
-import PartInspector from "./components/PartInspector.vue";
+import PartInspectorFull from "./components/panels/PartInspectorFull.vue";
 import StatusBar from "./components/StatusBar.vue";
 </script>
 
@@ -19,7 +19,7 @@ import StatusBar from "./components/StatusBar.vue";
 			<ToolPalette />
 			<div class="workspace">
 				<StagePlaceholder />
-				<PartInspector />
+				<PartInspectorFull />
 			</div>
 			<StatusBar />
 		</div>

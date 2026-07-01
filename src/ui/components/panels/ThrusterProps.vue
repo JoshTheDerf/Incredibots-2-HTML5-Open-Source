@@ -1,14 +1,31 @@
 <script setup lang="ts">
-// Visual port of PartEditWindow.ts ShowThrustersPanel (m_thrustersEditPanel).
-//
-// Entirely flagged: no thruster commands exist in GameCore yet.
-// Needs: setThrusterStrength, setThrusterKey, setThrusterAutoOn.
-import { ref } from "vue";
-import IbTodo from "../IbTodo.vue";
+// Port of PartEditWindow.ts ShowThrustersPanel (m_thrustersEditPanel). Fully
+// wired: reads edit.selectedPart, dispatches setThrusterStrength /
+// setThrusterKey / setThrusterAutoOn (ported from ChangeSliderAction STRENGTH,
+// ControlKeyAction THRUSTERS_TYPE, JointCheckboxAction AUTO_ON_TYPE).
+import { computed } from "vue";
+import { useGameStore } from "../../gameStore";
+import { keyToLabel, labelToKey } from "../../keyLabels";
 
-const strength = ref(15); // m_thrustSlider / m_thrustArea
-const thrustKey = ref("W"); // m_thrustKeyArea
-const autoOn = ref(false); // m_autoBox3
+const game = useGameStore();
+const sel = computed(() => game.edit.selectedPart);
+const ids = computed(() => game.edit.selection);
+
+const strength = computed({
+	get: () => sel.value?.strength ?? 15,
+	set: (v: number) => game.dispatch({ type: "setThrusterStrength", partIds: ids.value, value: Number(v) }),
+});
+const thrustKey = computed({
+	get: () => keyToLabel(sel.value?.thrustKey),
+	set: (v: string) => {
+		const key = labelToKey(v);
+		if (key != null) game.dispatch({ type: "setThrusterKey", partIds: ids.value, key });
+	},
+});
+const autoOn = computed({
+	get: () => sel.value?.autoOn ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setThrusterAutoOn", partIds: ids.value, value: v }),
+});
 </script>
 
 <template>
@@ -16,19 +33,16 @@ const autoOn = ref(false); // m_autoBox3
 		<UFormField label="Thruster Strength" class="field">
 			<div class="slider-row">
 				<USlider v-model="strength" :min="1" :max="30" :step="1" size="sm" class="slider" />
-				<UInput v-model="strength" type="number" size="xs" class="num-input" />
+				<UInput v-model.number="strength" type="number" size="xs" class="num-input" />
 			</div>
-			<IbTodo label="setThrusterStrength" />
 		</UFormField>
 
 		<UFormField label="Activate key" class="field">
 			<UInput v-model="thrustKey" size="xs" class="key-input" />
-			<IbTodo label="setThrusterKey" />
 		</UFormField>
 
 		<div class="checkboxes">
 			<UCheckbox v-model="autoOn" label="Auto-On" />
-			<IbTodo label="setThrusterAutoOn" />
 		</div>
 	</div>
 </template>

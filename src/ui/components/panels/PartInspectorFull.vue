@@ -9,10 +9,9 @@
 // `readSelectedPart`/`selectedPartSnapshot` selector lands in GameCore, the
 // sub-panel shown here is driven by a local dev toggle instead of real
 // selection data.
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
-import IbTodo from "../IbTodo.vue";
 import { frameTextures } from "../../assets";
 import ShapeProps from "./ShapeProps.vue";
 import JointProps from "./JointProps.vue";
@@ -27,18 +26,30 @@ const game = useGameStore();
 const hasSelection = computed(() => game.edit.selection.length > 0);
 const selectionCount = computed(() => game.edit.selection.length);
 
-// Dev-only switch standing in for real selected-part-type detection.
-// See PartEditWindow.ts ShowObjectPanel/ShowJointPanel/ShowThrustersPanel/
-// ShowCannonPanel/ShowTextPanel for the branch this mirrors.
-type PanelKind = "shape" | "joint" | "thruster" | "cannon" | "text";
-const devPanel = ref<PanelKind>("shape");
-const panelOptions: { label: string; value: PanelKind }[] = [
-	{ label: "Shape (Circle/Rect/Triangle)", value: "shape" },
-	{ label: "Joint (Revolute/Prismatic)", value: "joint" },
-	{ label: "Thrusters", value: "thruster" },
-	{ label: "Cannon", value: "cannon" },
-	{ label: "Text", value: "text" },
-];
+// Pick the sub-panel from the selected part's kind, mirroring PartEditWindow.ts
+// ShowObjectPanel / ShowJointPanel / ShowThrustersPanel / ShowCannonPanel /
+// ShowTextPanel. `kind` is the live Part's `type` string.
+type PanelKind = "shape" | "joint" | "thruster" | "cannon" | "text" | null;
+const panelKind = computed<PanelKind>(() => {
+	const k = game.edit.selectedPart?.kind;
+	switch (k) {
+		case "Circle":
+		case "Rectangle":
+		case "Triangle":
+			return "shape";
+		case "Cannon":
+			return "cannon";
+		case "RevoluteJoint":
+		case "PrismaticJoint":
+			return "joint";
+		case "Thrusters":
+			return "thruster";
+		case "TextPart":
+			return "text";
+		default:
+			return k ? "shape" : null;
+	}
+});
 
 function deleteSelected(): void {
 	if (!hasSelection.value) return;
@@ -58,23 +69,17 @@ function clearSelection(): void {
 				<span class="badge">{{ selectionCount }} selected</span>
 			</div>
 
-			<div class="dev-toggle">
-				<label class="dev-toggle-label">Dev panel switch</label>
-				<USelect v-model="devPanel" :items="panelOptions" size="xs" class="dev-select" />
-				<IbTodo label="needs selected-part data" />
-			</div>
-
 			<div class="inspector-body">
 				<template v-if="!hasSelection">
 					<p class="empty-state">Select a part on the stage to edit its properties.</p>
 				</template>
 
 				<template v-else>
-					<ShapeProps v-if="devPanel === 'shape'" />
-					<JointProps v-else-if="devPanel === 'joint'" />
-					<ThrusterProps v-else-if="devPanel === 'thruster'" />
-					<CannonProps v-else-if="devPanel === 'cannon'" />
-					<TextProps v-else-if="devPanel === 'text'" />
+					<ShapeProps v-if="panelKind === 'shape'" />
+					<JointProps v-else-if="panelKind === 'joint'" />
+					<ThrusterProps v-else-if="panelKind === 'thruster'" />
+					<CannonProps v-else-if="panelKind === 'cannon'" />
+					<TextProps v-else-if="panelKind === 'text'" />
 
 					<div class="actions">
 						<IbButton family="orange" label="Delete" class="action-btn" @click="deleteSelected" />
@@ -129,31 +134,6 @@ function clearSelection(): void {
 	background: var(--ib-purple);
 	border-radius: 999px;
 	padding: 2px 8px;
-}
-
-.dev-toggle {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	align-items: flex-start;
-	margin: 0 6px 8px;
-	padding: 6px;
-	border: 1px dashed var(--ib-peach);
-	border-radius: 4px;
-	background: rgba(254, 181, 132, 0.12);
-	flex-shrink: 0;
-}
-
-.dev-toggle-label {
-	font-size: 9px;
-	font-weight: bold;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-	color: var(--ib-muted);
-}
-
-.dev-select {
-	width: 100%;
 }
 
 .inspector-body {

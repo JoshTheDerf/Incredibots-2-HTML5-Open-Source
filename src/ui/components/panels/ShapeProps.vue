@@ -1,75 +1,102 @@
 <script setup lang="ts">
-// Visual port of PartEditWindow.ts ShowObjectPanel (m_objectEditPanel) —
-// the property editor shown for ShapePart instances (Circle/Rect/Triangle).
-//
-// Live-wired: colour Apply -> setColour(edit.selection).
-// Flagged (no GameCore command yet): density, collide, camera-focus, fixate,
-// outline, outline-behind (terrain), undragable. These need setDensity,
-// setCollide, setCameraFocus, setFixate, setOutline, setTerrain,
-// setUndragable commands respectively.
-import { ref, computed } from "vue";
+// Port of PartEditWindow.ts ShowObjectPanel (m_objectEditPanel) — the property
+// editor for ShapePart instances (Circle/Rect/Triangle). Now fully wired to
+// GameCore: reads from edit.selectedPart, writes via the per-property commands
+// (setDensity/setCollide/setCameraFocus/setFixate/setOutline/setOutlineBehind/
+// setUndragable) ported from ControllerGame + src/Actions/*.
+import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
-import IbTodo from "../IbTodo.vue";
 
 const game = useGameStore();
 
-// Header mirrors m_shapeHeader.text ("Circle" | "Rectangle" | "Triangle").
-// No shape-type read model in GameCore yet, so this is a local dev toggle.
-type ShapeKind = "Circle" | "Rectangle" | "Triangle";
-const shapeKind = ref<ShapeKind>("Circle");
-const shapeKindOptions: ShapeKind[] = ["Circle", "Rectangle", "Triangle"];
+const sel = computed(() => game.edit.selectedPart);
+const ids = computed(() => game.edit.selection);
 
-// -- Density (m_densitySlider / m_densityArea) --
-const density = ref(15);
+// Header mirrors m_shapeHeader.text; derived from the live part kind.
+const shapeLabel = computed(() => {
+	switch (sel.value?.kind) {
+		case "Circle":
+			return "Circle";
+		case "Rectangle":
+			return "Rectangle";
+		case "Triangle":
+			return "Triangle";
+		default:
+			return sel.value?.kind ?? "Shape";
+	}
+});
 
-// -- Colour (ColourChangeWindow: RGBA + opacity slider) --
-const colourHex = ref("#4a7dfc");
-const opacity = ref(100);
+// Density (m_densitySlider / m_densityArea) — 1..30, ControllerGame.densitySlider.
+const density = computed({
+	get: () => sel.value?.density ?? 15,
+	set: (v: number) => game.dispatch({ type: "setDensity", partIds: ids.value, value: Number(v) }),
+});
 
-// -- Checkboxes --
-const collides = ref(true);
-const cameraFocus = ref(false);
-const fixate = ref(false);
-const outline = ref(false);
-const outlineBehind = ref(false); // "terrain" in source
-const undragable = ref(false);
+// Checkboxes (ShapeCheckboxAction / CameraAction).
+const collides = computed({
+	get: () => sel.value?.collide ?? true,
+	set: (v: boolean) => game.dispatch({ type: "setCollide", partIds: ids.value, value: v }),
+});
+const cameraFocus = computed({
+	get: () => sel.value?.cameraFocus ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setCameraFocus", partIds: ids.value, value: v }),
+});
+const fixate = computed({
+	get: () => sel.value?.fixate ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setFixate", partIds: ids.value, value: v }),
+});
+const outline = computed({
+	get: () => sel.value?.outline ?? true,
+	set: (v: boolean) => game.dispatch({ type: "setOutline", partIds: ids.value, value: v }),
+});
+const outlineBehind = computed({
+	get: () => sel.value?.outlineBehind ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setOutlineBehind", partIds: ids.value, value: v }),
+});
+const undragable = computed({
+	get: () => sel.value?.undragable ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setUndragable", partIds: ids.value, value: v }),
+});
+
+// Colour (ColourChangeWindow: RGBA + opacity). Reads the part's current colour;
+// applied on click via the already-wired setColour command.
+const colourHex = computed(() =>
+	"#" + [sel.value?.red ?? 0, sel.value?.green ?? 0, sel.value?.blue ?? 0].map((c) => Math.round(c).toString(16).padStart(2, "0")).join(""),
+);
+const localColour = ref(colourHex.value);
+const opacity = ref(Math.round((sel.value?.opacity ?? 1) * 100));
+watch(sel, () => {
+	localColour.value = colourHex.value;
+	opacity.value = Math.round((sel.value?.opacity ?? 1) * 100);
+});
 
 function applyColour(): void {
-	if (game.edit.selection.length === 0) return;
-	const hex = colourHex.value.replace("#", "");
+	if (ids.value.length === 0) return;
+	const hex = localColour.value.replace("#", "");
 	const r = parseInt(hex.slice(0, 2), 16);
 	const g = parseInt(hex.slice(2, 4), 16);
 	const b = parseInt(hex.slice(4, 6), 16);
-	game.dispatch({
-		type: "setColour",
-		partIds: game.edit.selection,
-		r,
-		g,
-		b,
-		opacity: opacity.value / 100,
-	});
+	game.dispatch({ type: "setColour", partIds: ids.value, r, g, b, opacity: opacity.value / 100 });
 }
 </script>
 
 <template>
 	<div class="shape-props">
 		<div class="header-row">
-			<USelect v-model="shapeKind" :items="shapeKindOptions" size="xs" class="shape-select" />
-			<IbTodo label="needs selected-part data" />
+			<span class="shape-label">{{ shapeLabel }}</span>
 		</div>
 
 		<UFormField label="Density" class="field">
 			<div class="slider-row">
 				<USlider v-model="density" :min="1" :max="30" :step="1" size="sm" class="slider" />
-				<UInput v-model="density" type="number" size="xs" class="num-input" />
+				<UInput v-model.number="density" type="number" size="xs" class="num-input" />
 			</div>
-			<IbTodo label="setDensity not wired" />
 		</UFormField>
 
 		<UFormField label="Color" class="field">
 			<div class="colour-row">
-				<input v-model="colourHex" type="color" class="colour-swatch" />
+				<input v-model="localColour" type="color" class="colour-swatch" />
 				<UFormField label="Opacity" class="opacity-field">
 					<USlider v-model="opacity" :min="0" :max="100" :step="1" size="sm" />
 				</UFormField>
@@ -79,27 +106,21 @@ function applyColour(): void {
 
 		<div class="checkboxes">
 			<UCheckbox v-model="collides" label="Collides" />
-			<IbTodo label="setCollide" />
 		</div>
 		<div class="checkboxes">
 			<UCheckbox v-model="cameraFocus" label="Camera Focus" />
-			<IbTodo label="setCameraFocus" />
 		</div>
 		<div class="checkboxes">
 			<UCheckbox v-model="fixate" label="Fixate" />
-			<IbTodo label="setFixate" />
 		</div>
 		<div class="checkboxes">
 			<UCheckbox v-model="outline" label="Show Outlines" />
-			<IbTodo label="setOutline" />
 		</div>
 		<div class="checkboxes">
 			<UCheckbox v-model="outlineBehind" label="Outlines Behind" />
-			<IbTodo label="setTerrain" />
 		</div>
 		<div class="checkboxes">
 			<UCheckbox v-model="undragable" label="Undraggable" />
-			<IbTodo label="setUndragable" />
 		</div>
 	</div>
 </template>
@@ -118,8 +139,10 @@ function applyColour(): void {
 	gap: 6px;
 }
 
-.shape-select {
-	flex: 1;
+.shape-label {
+	font-size: 13px;
+	font-weight: bold;
+	color: var(--ib-purple);
 }
 
 .field {

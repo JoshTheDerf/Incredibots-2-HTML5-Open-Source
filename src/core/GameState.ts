@@ -31,6 +31,57 @@ export type PartSnapshot = {
 	angle?: number;
 	text?: string;
 	size?: number;
+
+	// --- per-property edit fields (read back from the live Part) ---
+	// Shape (ShapePart: Circle/Rectangle/Triangle/Cannon)
+	density?: number;
+	collide?: boolean;
+	cameraFocus?: boolean;
+	/** "Fixate": maps to Part.isStatic. */
+	fixate?: boolean;
+	outline?: boolean;
+	/** "Outlines Behind": maps to ShapePart.terrain. */
+	outlineBehind?: boolean;
+	undragable?: boolean;
+
+	// Joint (RevoluteJoint / PrismaticJoint)
+	/** enableMotor (revolute) / enablePiston (prismatic). */
+	motorOn?: boolean;
+	/** motorStrength / pistonStrength. */
+	strength?: number;
+	/** motorSpeed / pistonSpeed. */
+	speed?: number;
+	/** RevoluteJoint limits in DEGREES; null == "None" (∓Number.MAX_VALUE). */
+	lowerLimit?: number | null;
+	upperLimit?: number | null;
+	/** Control key codes: cw/ccw for revolute, up/down for prismatic. */
+	keyCW?: number;
+	keyCCW?: number;
+	keyUp?: number;
+	keyDown?: number;
+	/** Auto-on flags: autoCW/autoCCW (revolute), autoOscillate (prismatic). */
+	autoCW?: boolean;
+	autoCCW?: boolean;
+	autoOscillate?: boolean;
+	/** isStiff — the UI shows the inverse ("Floppy Joint" = !isStiff). */
+	stiff?: boolean;
+	/** PrismaticJoint.initLength. */
+	initialLength?: number;
+
+	// Thruster
+	/** Thrusters.thrustKey code. */
+	thrustKey?: number;
+	/** Thrusters.autoOn / Cannon has none. */
+	autoOn?: boolean;
+
+	// Cannon
+	/** Cannon.fireKey code. */
+	fireKey?: number;
+
+	// Text
+	displayKey?: number;
+	alwaysVisible?: boolean;
+	scaleWithZoom?: boolean;
 };
 
 export interface CameraState {

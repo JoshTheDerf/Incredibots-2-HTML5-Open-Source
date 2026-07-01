@@ -1,53 +1,75 @@
 <script setup lang="ts">
-// Visual port of PartEditWindow.ts ShowCannonPanel (m_cannonPanel) — a
-// ShapePart-like set of physical properties (density/collide/fixate/
-// outline/undragable/colour) plus cannon-specific strength and fire key.
-//
-// Live-wired: colour Apply -> setColour(edit.selection).
-// Flagged: density, collide, fixate, outline, outline-behind, undragable
-// (same missing commands as ShapeProps.vue), plus cannon-only
-// setCannonStrength and setCannonFireKey.
-import { ref } from "vue";
+// Port of PartEditWindow.ts ShowCannonPanel (m_cannonPanel) — Cannon is a
+// ShapePart, so it reuses the shape physical props (density/collide/fixate/
+// outline/outline-behind/undragable/colour) plus cannon-only strength & fire
+// key. Fully wired to GameCore.
+import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
-import IbTodo from "../IbTodo.vue";
+import { keyToLabel, labelToKey } from "../../keyLabels";
 
 const game = useGameStore();
+const sel = computed(() => game.edit.selectedPart);
+const ids = computed(() => game.edit.selection);
 
-// -- Density (m_densitySlider7 / m_densityArea7) --
-const density = ref(15);
+const density = computed({
+	get: () => sel.value?.density ?? 15,
+	set: (v: number) => game.dispatch({ type: "setDensity", partIds: ids.value, value: Number(v) }),
+});
+const collides = computed({
+	get: () => sel.value?.collide ?? true,
+	set: (v: boolean) => game.dispatch({ type: "setCollide", partIds: ids.value, value: v }),
+});
+const fixate = computed({
+	get: () => sel.value?.fixate ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setFixate", partIds: ids.value, value: v }),
+});
+const outline = computed({
+	get: () => sel.value?.outline ?? true,
+	set: (v: boolean) => game.dispatch({ type: "setOutline", partIds: ids.value, value: v }),
+});
+const outlineBehind = computed({
+	get: () => sel.value?.outlineBehind ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setOutlineBehind", partIds: ids.value, value: v }),
+});
+const undragable = computed({
+	get: () => sel.value?.undragable ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setUndragable", partIds: ids.value, value: v }),
+});
 
-// -- Checkboxes --
-const collides = ref(true);
-const fixate = ref(false);
-const outline = ref(false);
-const outlineBehind = ref(false);
-const undragable = ref(false);
+// Cannon strength (m_strengthSlider7) & fire key (m_fireKeyArea).
+const cannonStrength = computed({
+	get: () => sel.value?.strength ?? 15,
+	set: (v: number) => game.dispatch({ type: "setCannonStrength", partIds: ids.value, value: Number(v) }),
+});
+const fireKey = computed({
+	get: () => keyToLabel(sel.value?.fireKey),
+	set: (v: string) => {
+		const key = labelToKey(v);
+		if (key != null) game.dispatch({ type: "setCannonFireKey", partIds: ids.value, key });
+	},
+});
 
-// -- Colour --
-const colourHex = ref("#4a7dfc");
+const localColour = ref("#4a7dfc");
 const opacity = ref(100);
-
-// -- Cannon strength (m_strengthSlider7 / m_strengthArea7) --
-const cannonStrength = ref(15);
-
-// -- Fire key (m_fireKeyArea) --
-const fireKey = ref("Space");
-
+watch(
+	sel,
+	() => {
+		localColour.value =
+			"#" + [sel.value?.red ?? 0, sel.value?.green ?? 0, sel.value?.blue ?? 0]
+				.map((c) => Math.round(c).toString(16).padStart(2, "0"))
+				.join("");
+		opacity.value = Math.round((sel.value?.opacity ?? 1) * 100);
+	},
+	{ immediate: true },
+);
 function applyColour(): void {
-	if (game.edit.selection.length === 0) return;
-	const hex = colourHex.value.replace("#", "");
+	if (ids.value.length === 0) return;
+	const hex = localColour.value.replace("#", "");
 	const r = parseInt(hex.slice(0, 2), 16);
 	const g = parseInt(hex.slice(2, 4), 16);
 	const b = parseInt(hex.slice(4, 6), 16);
-	game.dispatch({
-		type: "setColour",
-		partIds: game.edit.selection,
-		r,
-		g,
-		b,
-		opacity: opacity.value / 100,
-	});
+	game.dispatch({ type: "setColour", partIds: ids.value, r, g, b, opacity: opacity.value / 100 });
 }
 </script>
 
@@ -56,23 +78,20 @@ function applyColour(): void {
 		<UFormField label="Density" class="field">
 			<div class="slider-row">
 				<USlider v-model="density" :min="1" :max="30" :step="1" size="sm" class="slider" />
-				<UInput v-model="density" type="number" size="xs" class="num-input" />
+				<UInput v-model.number="density" type="number" size="xs" class="num-input" />
 			</div>
-			<IbTodo label="setDensity" />
 		</UFormField>
 
 		<div class="checkboxes">
 			<UCheckbox v-model="collides" label="Collides" />
-			<IbTodo label="setCollide" />
 		</div>
 		<div class="checkboxes">
 			<UCheckbox v-model="fixate" label="Fixate" />
-			<IbTodo label="setFixate" />
 		</div>
 
 		<UFormField label="Color" class="field">
 			<div class="colour-row">
-				<input v-model="colourHex" type="color" class="colour-swatch" />
+				<input v-model="localColour" type="color" class="colour-swatch" />
 				<UFormField label="Opacity" class="opacity-field">
 					<USlider v-model="opacity" :min="0" :max="100" :step="1" size="sm" />
 				</UFormField>
@@ -82,28 +101,23 @@ function applyColour(): void {
 
 		<div class="checkboxes">
 			<UCheckbox v-model="outline" label="Show Outlines" />
-			<IbTodo label="setOutline" />
 		</div>
 		<div class="checkboxes">
 			<UCheckbox v-model="outlineBehind" label="Outlines Behind" />
-			<IbTodo label="setTerrain" />
 		</div>
 		<div class="checkboxes">
 			<UCheckbox v-model="undragable" label="Undraggable" />
-			<IbTodo label="setUndragable" />
 		</div>
 
 		<UFormField label="Cannon Strength" class="field">
 			<div class="slider-row">
 				<USlider v-model="cannonStrength" :min="1" :max="30" :step="1" size="sm" class="slider" />
-				<UInput v-model="cannonStrength" type="number" size="xs" class="num-input" />
+				<UInput v-model.number="cannonStrength" type="number" size="xs" class="num-input" />
 			</div>
-			<IbTodo label="setCannonStrength" />
 		</UFormField>
 
 		<UFormField label="Fire key" class="field">
 			<UInput v-model="fireKey" size="xs" class="key-input" />
-			<IbTodo label="setCannonFireKey" />
 		</UFormField>
 	</div>
 </template>

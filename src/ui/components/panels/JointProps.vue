@@ -1,141 +1,212 @@
 <script setup lang="ts">
-// Visual port of PartEditWindow.ts ShowJointPanel (m_jointEditPanel) —
-// covers both RevoluteJoint ("Rotating Joint") and PrismaticJoint
-// ("Sliding Joint") property editors, toggled by joint kind since both
-// share most of the same layout in the original (strength/speed sliders,
-// control keys, motor/piston enable, limits for revolute only).
-//
-// Entirely flagged: no joint-property commands exist in GameCore yet.
-// Needs: setJointMotor(enabled), setJointStrength, setJointSpeed,
-// setJointLimits(lower, upper), setJointControlKey(cw/ccw or up/down),
-// setJointAutoOn(cw/ccw or oscillate), setJointStiff (Floppy Joint),
-// setJointInitialLength (prismatic only), setOutline, setCollide.
-import { ref, computed } from "vue";
+// Port of PartEditWindow.ts ShowJointPanel (m_jointEditPanel) — covers both
+// RevoluteJoint ("Rotating Joint") and PrismaticJoint ("Sliding Joint").
+// Fully wired to GameCore: reads edit.selectedPart, dispatches the joint
+// commands ported from JointCheckboxAction / ChangeSliderAction /
+// ControlKeyAction / LimitChangeAction.
+import { computed, ref, watch } from "vue";
+import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
-import IbTodo from "../IbTodo.vue";
+import { keyToLabel, labelToKey } from "../../keyLabels";
 
-type JointKind = "revolute" | "prismatic";
-const jointKind = ref<JointKind>("revolute");
-const jointKindOptions: { label: string; value: JointKind }[] = [
-	{ label: "Revolute (Rotating Joint)", value: "revolute" },
-	{ label: "Prismatic (Sliding Joint)", value: "prismatic" },
-];
+const game = useGameStore();
+const sel = computed(() => game.edit.selectedPart);
+const ids = computed(() => game.edit.selection);
 
-const isRevolute = computed(() => jointKind.value === "revolute");
+const isRevolute = computed(() => sel.value?.kind === "RevoluteJoint");
+const jointLabel = computed(() => (isRevolute.value ? "Rotating Joint" : "Sliding Joint"));
 
-// -- Shared motor/piston controls --
-const motorEnabled = ref(false); // m_enableMotorBox
-const floppyJoint = ref(true); // m_rigidJointBox ("Floppy Joint" = !isStiff)
-const strength = ref(15); // m_strengthSlider / m_strengthArea
-const speed = ref(15); // m_speedSlider / m_speedArea
+// -- Motor / piston enable (JointCheckboxAction ENABLE_TYPE) --
+const motorEnabled = computed({
+	get: () => sel.value?.motorOn ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setJointMotor", partIds: ids.value, value: v }),
+});
+// -- Floppy Joint == !isStiff (JointCheckboxAction RIGID_TYPE) --
+const floppyJoint = computed({
+	get: () => !(sel.value?.stiff ?? false),
+	set: (v: boolean) => game.dispatch({ type: "setJointStiff", partIds: ids.value, value: !v }),
+});
+const strength = computed({
+	get: () => sel.value?.strength ?? 15,
+	set: (v: number) => game.dispatch({ type: "setJointStrength", partIds: ids.value, value: Number(v) }),
+});
+const speed = computed({
+	get: () => sel.value?.speed ?? 15,
+	set: (v: number) => game.dispatch({ type: "setJointSpeed", partIds: ids.value, value: Number(v) }),
+});
 
-// -- Revolute-only: rotation limits + CW/CCW --
-const lowerLimit = ref<string>("None"); // m_minDispArea
-const upperLimit = ref<string>("None"); // m_maxDispArea
-const autoOnCW = ref(false); // m_autoBox1 (revolute)
-const autoOnCCW = ref(false); // m_autoBox2 (revolute)
-const rotateCWKey = ref("W");
-const rotateCCWKey = ref("S");
+// -- Revolute: CW/CCW keys, limits, auto-on --
+const rotateCWKey = computed({
+	get: () => keyToLabel(sel.value?.keyCW),
+	set: (v: string) => setKey("cw", v),
+});
+const rotateCCWKey = computed({
+	get: () => keyToLabel(sel.value?.keyCCW),
+	set: (v: string) => setKey("ccw", v),
+});
+const autoOnCW = computed({
+	get: () => sel.value?.autoCW ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setJointAutoOn", partIds: ids.value, which: "cw", value: v }),
+});
+const autoOnCCW = computed({
+	get: () => sel.value?.autoCCW ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setJointAutoOn", partIds: ids.value, which: "ccw", value: v }),
+});
 
-// -- Prismatic-only: initial length + expand/contract --
-const initialLength = ref(50);
-const autoOscillate = ref(false); // m_autoBox1 (prismatic, relabeled)
-const expandKey = ref("W");
-const contractKey = ref("S");
-const outline = ref(false); // m_outlineBox2 (prismatic only)
-const collides = ref(true); // m_collisionBox3 (prismatic only)
+// Limits are edited as text ("None" or a degree number), matching min/maxLimitText.
+const lowerLimit = ref("None");
+const upperLimit = ref("None");
+watch(
+	sel,
+	() => {
+		lowerLimit.value = sel.value?.lowerLimit == null ? "None" : String(sel.value.lowerLimit);
+		upperLimit.value = sel.value?.upperLimit == null ? "None" : String(sel.value.upperLimit);
+	},
+	{ immediate: true },
+);
+function commitLimits(): void {
+	const parse = (s: string): number | null => {
+		const n = Number(s.trim());
+		return s.trim() === "" || isNaN(n) ? null : n;
+	};
+	game.dispatch({
+		type: "setJointLimits",
+		partIds: ids.value,
+		lower: parse(lowerLimit.value),
+		upper: parse(upperLimit.value),
+	});
+}
+
+// -- Prismatic: expand/contract keys, initial length, oscillate --
+const expandKey = computed({
+	get: () => keyToLabel(sel.value?.keyUp),
+	set: (v: string) => setKey("up", v),
+});
+const contractKey = computed({
+	get: () => keyToLabel(sel.value?.keyDown),
+	set: (v: string) => setKey("down", v),
+});
+const initialLength = computed({
+	get: () => sel.value?.initialLength ?? 0,
+	set: (v: number) => game.dispatch({ type: "setJointInitialLength", partIds: ids.value, value: Number(v) }),
+});
+const autoOscillate = computed({
+	get: () => sel.value?.autoOscillate ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setJointAutoOn", partIds: ids.value, which: "oscillate", value: v }),
+});
+const outline = computed({
+	get: () => sel.value?.outline ?? true,
+	set: (v: boolean) => game.dispatch({ type: "setOutline", partIds: ids.value, value: v }),
+});
+const collides = computed({
+	get: () => sel.value?.collide ?? true,
+	set: (v: boolean) => game.dispatch({ type: "setCollide", partIds: ids.value, value: v }),
+});
+
+function setKey(which: "cw" | "ccw" | "up" | "down", label: string): void {
+	const key = labelToKey(label);
+	if (key != null) game.dispatch({ type: "setJointControlKey", partIds: ids.value, which, key });
+}
 
 const strengthLabel = computed(() => (isRevolute.value ? "Motor Strength" : "Piston Strength"));
 const speedLabel = computed(() => (isRevolute.value ? "Motor Speed" : "Piston Speed"));
+
+// Prismatic colour (it carries its own colour, like a ShapePart).
+const localColour = ref("#4a7dfc");
+const opacity = ref(100);
+watch(
+	sel,
+	() => {
+		localColour.value =
+			"#" + [sel.value?.red ?? 0, sel.value?.green ?? 0, sel.value?.blue ?? 0]
+				.map((c) => Math.round(c).toString(16).padStart(2, "0"))
+				.join("");
+		opacity.value = Math.round((sel.value?.opacity ?? 1) * 100);
+	},
+	{ immediate: true },
+);
+function applyColour(): void {
+	if (ids.value.length === 0) return;
+	const hex = localColour.value.replace("#", "");
+	const r = parseInt(hex.slice(0, 2), 16);
+	const g = parseInt(hex.slice(2, 4), 16);
+	const b = parseInt(hex.slice(4, 6), 16);
+	game.dispatch({ type: "setColour", partIds: ids.value, r, g, b, opacity: opacity.value / 100 });
+}
 </script>
 
 <template>
 	<div class="joint-props">
 		<div class="header-row">
-			<USelect v-model="jointKind" :items="jointKindOptions" size="xs" class="kind-select" />
-			<IbTodo label="needs selected-part data" />
+			<span class="kind-label">{{ jointLabel }}</span>
 		</div>
 
 		<div class="checkboxes">
 			<UCheckbox v-model="motorEnabled" :label="isRevolute ? 'Enable Motor' : 'Enable Piston'" />
-			<IbTodo label="setJointMotor" />
 		</div>
 
 		<UFormField :label="strengthLabel" class="field">
 			<div class="slider-row">
 				<USlider v-model="strength" :min="1" :max="30" :step="1" size="sm" :disabled="!motorEnabled" class="slider" />
-				<UInput v-model="strength" type="number" size="xs" :disabled="!motorEnabled" class="num-input" />
+				<UInput v-model.number="strength" type="number" size="xs" :disabled="!motorEnabled" class="num-input" />
 			</div>
-			<IbTodo label="setJointStrength" />
 		</UFormField>
 
 		<UFormField :label="speedLabel" class="field">
 			<div class="slider-row">
 				<USlider v-model="speed" :min="1" :max="30" :step="1" size="sm" :disabled="!motorEnabled" class="slider" />
-				<UInput v-model="speed" type="number" size="xs" :disabled="!motorEnabled" class="num-input" />
+				<UInput v-model.number="speed" type="number" size="xs" :disabled="!motorEnabled" class="num-input" />
 			</div>
-			<IbTodo label="setJointSpeed" />
 		</UFormField>
 
 		<template v-if="isRevolute">
 			<UFormField label="Rotate CW key" class="field">
 				<UInput v-model="rotateCWKey" size="xs" :disabled="!motorEnabled" class="key-input" />
-				<IbTodo label="setJointControlKey" />
 			</UFormField>
 			<UFormField label="Rotate CCW key" class="field">
 				<UInput v-model="rotateCCWKey" size="xs" :disabled="!motorEnabled" class="key-input" />
-				<IbTodo label="setJointControlKey" />
 			</UFormField>
 			<UFormField label="Lower Limit (degrees)" class="field">
-				<UInput v-model="lowerLimit" size="xs" class="key-input" />
-				<IbTodo label="setJointLimits" />
+				<UInput v-model="lowerLimit" size="xs" class="key-input" @blur="commitLimits" @keyup.enter="commitLimits" />
 			</UFormField>
 			<UFormField label="Upper Limit (degrees)" class="field">
-				<UInput v-model="upperLimit" size="xs" class="key-input" />
-				<IbTodo label="setJointLimits" />
+				<UInput v-model="upperLimit" size="xs" class="key-input" @blur="commitLimits" @keyup.enter="commitLimits" />
 			</UFormField>
 			<div class="checkboxes">
 				<UCheckbox v-model="autoOnCW" label="Auto-On CW" :disabled="!motorEnabled" />
-				<IbTodo label="setJointAutoOn" />
 			</div>
 			<div class="checkboxes">
 				<UCheckbox v-model="autoOnCCW" label="Auto-On CCW" :disabled="!motorEnabled" />
-				<IbTodo label="setJointAutoOn" />
 			</div>
 		</template>
 
 		<template v-else>
 			<UFormField label="Expand key" class="field">
 				<UInput v-model="expandKey" size="xs" :disabled="!motorEnabled" class="key-input" />
-				<IbTodo label="setJointControlKey" />
 			</UFormField>
 			<UFormField label="Contract key" class="field">
 				<UInput v-model="contractKey" size="xs" :disabled="!motorEnabled" class="key-input" />
-				<IbTodo label="setJointControlKey" />
 			</UFormField>
 			<UFormField label="Initial Length" class="field">
-				<UInput v-model="initialLength" type="number" size="xs" class="key-input" />
-				<IbTodo label="setJointInitialLength" />
+				<UInput v-model.number="initialLength" type="number" size="xs" class="key-input" />
 			</UFormField>
 			<div class="checkboxes">
 				<UCheckbox v-model="autoOscillate" label="Auto Oscillate" :disabled="!motorEnabled" />
-				<IbTodo label="setJointAutoOn" />
 			</div>
 			<div class="checkboxes">
 				<UCheckbox v-model="outline" label="Show Outlines" />
-				<IbTodo label="setOutline" />
 			</div>
 			<div class="checkboxes">
 				<UCheckbox v-model="collides" label="Collides" />
-				<IbTodo label="setCollide" />
 			</div>
-			<IbButton family="blue" label="Change Color" class="colour-apply" />
-			<IbTodo label="setColour supports partIds but joint colour path unverified" />
+			<div class="colour-block">
+				<input v-model="localColour" type="color" class="colour-swatch" />
+				<IbButton family="blue" label="Change Color" class="colour-apply" @click="applyColour" />
+			</div>
 		</template>
 
 		<div class="checkboxes">
 			<UCheckbox v-model="floppyJoint" label="Floppy Joint" :disabled="!motorEnabled" />
-			<IbTodo label="setJointStiff" />
 		</div>
 	</div>
 </template>
@@ -154,8 +225,10 @@ const speedLabel = computed(() => (isRevolute.value ? "Motor Speed" : "Piston Sp
 	gap: 6px;
 }
 
-.kind-select {
-	flex: 1;
+.kind-label {
+	font-size: 13px;
+	font-weight: bold;
+	color: var(--ib-purple);
 }
 
 .field {
@@ -183,6 +256,23 @@ const speedLabel = computed(() => (isRevolute.value ? "Motor Speed" : "Piston Sp
 	display: flex;
 	align-items: center;
 	gap: 8px;
+}
+
+.colour-block {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.colour-swatch {
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: 1px solid var(--ib-purple);
+	border-radius: 6px;
+	background: none;
+	cursor: pointer;
+	flex-shrink: 0;
 }
 
 .colour-apply {

@@ -11,11 +11,16 @@
 
 import { b2AABB, b2Vec2, b2World } from "../Box2D";
 import { ContactFilter } from "../Game/ContactFilter";
+import { Cannon } from "../Parts/Cannon";
 import { Circle } from "../Parts/Circle";
 import type { Part } from "../Parts/Part";
+import { PrismaticJoint } from "../Parts/PrismaticJoint";
+import { MAX_DENSITY, MIN_DENSITY } from "../Parts/partDefaults";
 import { Rectangle } from "../Parts/Rectangle";
+import { RevoluteJoint } from "../Parts/RevoluteJoint";
 import { ShapePart } from "../Parts/ShapePart";
 import { TextPart } from "../Parts/TextPart";
+import { Thrusters } from "../Parts/Thrusters";
 import { Triangle } from "../Parts/Triangle";
 import type { Command } from "./Command";
 import { GameState, PartSnapshot, createInitialState } from "./GameState";
@@ -53,6 +58,11 @@ const DEFAULT_RECT_SIZE = 2.0;
 const DEFAULT_TRIANGLE_SIDE = 2.0;
 const DEFAULT_TEXT_W = 4.0;
 const DEFAULT_TEXT_H = 2.0;
+
+// Strength/speed sliders (joints, thrusters, cannon) share a 1..30 range, driven
+// by MAX_RJ_STRENGTH / MAX_SJ_STRENGTH / MAX_THRUSTER_STRENGTH — all 30 (see
+// partDefaults). Kept as a single constant since they're identical.
+const MAX_JOINT_VALUE = 30;
 
 export type Unsubscribe = () => void;
 export type StateListener = (state: Readonly<GameState>) => void;
@@ -115,37 +125,14 @@ export class GameCore {
 	 */
 	private snapshotOf(part: Part): PartSnapshot {
 		const kind = part.type;
-		if (part instanceof Circle) {
-			return {
-				id: part.id,
-				kind,
-				x: part.centerX,
-				y: part.centerY,
-				red: part.red,
-				green: part.green,
-				blue: part.blue,
-				opacity: part.opacity / 255,
-				radius: part.radius,
-				angle: part.angle,
-			};
-		}
-		if (part instanceof Rectangle) {
-			return {
-				id: part.id,
-				kind,
-				x: part.centerX,
-				y: part.centerY,
-				red: part.red,
-				green: part.green,
-				blue: part.blue,
-				opacity: part.opacity / 255,
-				w: part.w,
-				h: part.h,
-				angle: part.angle,
-			};
-		}
-		if (part instanceof Triangle) {
-			return {
+
+		// --- ShapePart family (Circle/Rectangle/Triangle/Cannon) ---
+		// The common physical properties come from ShapePart; geometry and the
+		// cannon-only strength/fireKey are layered on per concrete type. Fields
+		// mirror the src/Actions/* handlers (ShapeCheckboxAction, CameraAction,
+		// ChangeSliderAction density, ColourChangeAction).
+		if (part instanceof ShapePart) {
+			const snap: PartSnapshot = {
 				id: part.id,
 				kind,
 				x: part.centerX,
@@ -155,8 +142,94 @@ export class GameCore {
 				blue: part.blue,
 				opacity: part.opacity / 255,
 				angle: part.angle,
+				density: part.density,
+				collide: part.collide,
+				cameraFocus: part.isCameraFocus,
+				fixate: part.isStatic, // "Fixate" == Part.isStatic
+				outline: part.outline,
+				outlineBehind: part.terrain, // "Outlines Behind" == terrain
+				undragable: part.undragable,
+			};
+			if (part instanceof Circle) snap.radius = part.radius;
+			if (part instanceof Rectangle) {
+				snap.w = part.w;
+				snap.h = part.h;
+			}
+			if (part instanceof Cannon) {
+				snap.w = part.w;
+				snap.strength = part.strength;
+				snap.fireKey = part.fireKey;
+			}
+			return snap;
+		}
+
+		// --- RevoluteJoint ("Rotating Joint") ---
+		if (part instanceof RevoluteJoint) {
+			return {
+				id: part.id,
+				kind,
+				x: part.anchorX,
+				y: part.anchorY,
+				red: 0,
+				green: 0,
+				blue: 0,
+				opacity: 1,
+				motorOn: part.enableMotor,
+				strength: part.motorStrength,
+				speed: part.motorSpeed,
+				// Limits stored in degrees; the ∓MAX_VALUE sentinel means "None".
+				lowerLimit: part.motorLowerLimit === -Number.MAX_VALUE ? null : part.motorLowerLimit,
+				upperLimit: part.motorUpperLimit === Number.MAX_VALUE ? null : part.motorUpperLimit,
+				keyCW: part.motorCWKey,
+				keyCCW: part.motorCCWKey,
+				autoCW: part.autoCW,
+				autoCCW: part.autoCCW,
+				stiff: part.isStiff,
 			};
 		}
+
+		// --- PrismaticJoint ("Sliding Joint") — carries its own colour/collide/outline ---
+		if (part instanceof PrismaticJoint) {
+			return {
+				id: part.id,
+				kind,
+				x: part.anchorX,
+				y: part.anchorY,
+				red: part.red,
+				green: part.green,
+				blue: part.blue,
+				opacity: part.opacity / 255,
+				motorOn: part.enablePiston,
+				strength: part.pistonStrength,
+				speed: part.pistonSpeed,
+				keyUp: part.pistonUpKey,
+				keyDown: part.pistonDownKey,
+				autoOscillate: part.autoOscillate,
+				stiff: part.isStiff,
+				initialLength: part.initLength,
+				collide: part.collide,
+				outline: part.outline,
+			};
+		}
+
+		// --- Thrusters ---
+		if (part instanceof Thrusters) {
+			return {
+				id: part.id,
+				kind,
+				x: part.centerX,
+				y: part.centerY,
+				red: 0,
+				green: 0,
+				blue: 0,
+				opacity: 1,
+				strength: part.strength,
+				thrustKey: part.thrustKey,
+				autoOn: part.autoOn,
+			};
+		}
+
+		// --- TextPart (no opacity field on the part) ---
 		if (part instanceof TextPart) {
 			return {
 				id: part.id,
@@ -171,22 +244,12 @@ export class GameCore {
 				h: part.h,
 				text: part.text,
 				size: part.size,
+				displayKey: part.displayKey,
+				alwaysVisible: part.alwaysVisible,
+				scaleWithZoom: part.scaleWithZoom,
 			};
 		}
-		// Any other ShapePart (e.g. Cannon) — expose the common ShapePart fields.
-		if (part instanceof ShapePart) {
-			return {
-				id: part.id,
-				kind,
-				x: part.centerX,
-				y: part.centerY,
-				red: part.red,
-				green: part.green,
-				blue: part.blue,
-				opacity: part.opacity / 255,
-				angle: part.angle,
-			};
-		}
+
 		return { id: part.id, kind, x: 0, y: 0, red: 0, green: 0, blue: 0, opacity: 1 };
 	}
 
@@ -202,6 +265,27 @@ export class GameCore {
 		if (selection.length === 0) return null;
 		const first = this.findPart(selection[0]);
 		return first ? this.snapshotOf(first) : null;
+	}
+
+	/**
+	 * Apply `mutate` to every part in `partIds` (a part may skip itself if the
+	 * mutation doesn't apply to its type), then publish a new state with a fresh
+	 * parts array and a recomputed selectedPart snapshot. Mirrors the legacy
+	 * per-property handlers in ControllerGame (each sets the field on the live
+	 * Part; see densitySlider/strengthSlider/*Checkbox), minus the undo-stack
+	 * bookkeeping that lands with the undo/redo migration.
+	 */
+	private editParts(partIds: number[], mutate: (p: Part) => void): void {
+		const target = new Set(partIds);
+		for (const p of this.state.parts) {
+			if (target.has(p.id)) mutate(p);
+		}
+		this.state = {
+			...this.state,
+			parts: [...this.state.parts],
+			edit: { ...this.state.edit, selectedPart: this.deriveSelectedPart(this.state.edit.selection) },
+		};
+		this.markChanged();
 	}
 
 	// --- Physics simulation -------------------------------------------------
@@ -332,6 +416,31 @@ export class GameCore {
 				case "resizeParts":
 				case "setColour":
 				case "setTool":
+				case "setDensity":
+				case "setCollide":
+				case "setCameraFocus":
+				case "setFixate":
+				case "setOutline":
+				case "setOutlineBehind":
+				case "setUndragable":
+				case "setJointMotor":
+				case "setJointStrength":
+				case "setJointSpeed":
+				case "setJointLimits":
+				case "setJointControlKey":
+				case "setJointAutoOn":
+				case "setJointStiff":
+				case "setJointInitialLength":
+				case "setThrusterStrength":
+				case "setThrusterKey":
+				case "setThrusterAutoOn":
+				case "setCannonStrength":
+				case "setCannonFireKey":
+				case "setTextContent":
+				case "setTextSize":
+				case "setTextDisplayKey":
+				case "setTextAlwaysVisible":
+				case "setTextScaleWithZoom":
 				case "undo":
 				case "redo":
 				case "loadRobot":
@@ -484,6 +593,207 @@ export class GameCore {
 				this.markChanged();
 				return;
 			}
+			// --- Shape properties (ShapePart family) ---
+			// Density: absolute value clamped to [MIN_DENSITY, MAX_DENSITY]
+			// (ControllerGame.densitySlider :4078; clamp :4095-4096).
+			case "setDensity": {
+				const v = Math.max(MIN_DENSITY, Math.min(MAX_DENSITY, command.value));
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof ShapePart) p.density = v;
+				});
+				return;
+			}
+			// Collide lives on ShapePart AND PrismaticJoint (ShapeCheckboxAction COLLIDE_TYPE).
+			case "setCollide":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof ShapePart) p.collide = command.value;
+					else if (p instanceof PrismaticJoint) p.collide = command.value;
+				});
+				return;
+			// Camera focus (CameraAction). Setting one part's focus clears any other
+			// part currently focused, matching CameraAction's oldCameraPart handling.
+			case "setCameraFocus":
+				this.editParts(command.partIds, (p) => {
+					if (!(p instanceof ShapePart)) return;
+					if (command.value) {
+						for (const other of this.state.parts) {
+							if (other instanceof ShapePart && other !== p) other.isCameraFocus = false;
+						}
+					}
+					p.isCameraFocus = command.value;
+				});
+				return;
+			// Fixate == Part.isStatic (ShapeCheckboxAction FIXATE_TYPE).
+			case "setFixate":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof ShapePart) p.isStatic = command.value;
+				});
+				return;
+			// Outline lives on ShapePart AND PrismaticJoint (ShapeCheckboxAction OUTLINE_TYPE).
+			case "setOutline":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof ShapePart) p.outline = command.value;
+					else if (p instanceof PrismaticJoint) p.outline = command.value;
+				});
+				return;
+			// "Outlines Behind" == ShapePart.terrain (ShapeCheckboxAction TERRAIN_TYPE).
+			case "setOutlineBehind":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof ShapePart) p.terrain = command.value;
+				});
+				return;
+			case "setUndragable":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof ShapePart) p.undragable = command.value;
+				});
+				return;
+
+			// --- Joint properties (RevoluteJoint / PrismaticJoint) ---
+			// Motor enable: enableMotor (revolute) / enablePiston (prismatic)
+			// (JointCheckboxAction ENABLE_TYPE).
+			case "setJointMotor":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof RevoluteJoint) p.enableMotor = command.value;
+					else if (p instanceof PrismaticJoint) p.enablePiston = command.value;
+				});
+				return;
+			// Strength: motorStrength / pistonStrength (ChangeSliderAction STRENGTH_TYPE;
+			// slider range 1..30 — MAX_RJ_STRENGTH / MAX_SJ_STRENGTH).
+			case "setJointStrength": {
+				const v = Math.max(1, Math.min(MAX_JOINT_VALUE, command.value));
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof RevoluteJoint) p.motorStrength = v;
+					else if (p instanceof PrismaticJoint) p.pistonStrength = v;
+				});
+				return;
+			}
+			// Speed: motorSpeed / pistonSpeed (ChangeSliderAction SPEED_TYPE).
+			case "setJointSpeed": {
+				const v = Math.max(1, Math.min(MAX_JOINT_VALUE, command.value));
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof RevoluteJoint) p.motorSpeed = v;
+					else if (p instanceof PrismaticJoint) p.pistonSpeed = v;
+				});
+				return;
+			}
+			// Revolute limits, in degrees (LimitChangeAction; clamp rules from
+			// ControllerGame.minLimitText :4589 / maxLimitText :4610): null == "None"
+			// (∓MAX_VALUE); a lower limit must be ≤0, an upper limit must be ≥0.
+			case "setJointLimits": {
+				const lower = command.lower === null ? -Number.MAX_VALUE : Math.min(0, command.lower);
+				const upper = command.upper === null ? Number.MAX_VALUE : Math.max(0, command.upper);
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof RevoluteJoint) {
+						p.motorLowerLimit = lower;
+						p.motorUpperLimit = upper;
+					}
+				});
+				return;
+			}
+			// Control keys (ControlKeyAction): cw/ccw -> revolute motorCW/CCWKey;
+			// up/down -> prismatic pistonUp/DownKey.
+			case "setJointControlKey":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof RevoluteJoint) {
+						if (command.which === "cw") p.motorCWKey = command.key;
+						else if (command.which === "ccw") p.motorCCWKey = command.key;
+					} else if (p instanceof PrismaticJoint) {
+						if (command.which === "up") p.pistonUpKey = command.key;
+						else if (command.which === "down") p.pistonDownKey = command.key;
+					}
+				});
+				return;
+			// Auto-on flags (JointCheckboxAction AUTO_*): cw/ccw are mutually
+			// exclusive on a revolute (setting one on clears the other, matching the
+			// sideEffect path); oscillate is the prismatic flag.
+			case "setJointAutoOn":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof RevoluteJoint) {
+						if (command.which === "cw") {
+							p.autoCW = command.value;
+							if (command.value) p.autoCCW = false;
+						} else if (command.which === "ccw") {
+							p.autoCCW = command.value;
+							if (command.value) p.autoCW = false;
+						}
+					} else if (p instanceof PrismaticJoint && command.which === "oscillate") {
+						p.autoOscillate = command.value;
+					}
+				});
+				return;
+			// isStiff (JointCheckboxAction RIGID_TYPE) — the UI shows "Floppy Joint"
+			// (= !isStiff); the command already carries the resolved isStiff value.
+			case "setJointStiff":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof RevoluteJoint || p instanceof PrismaticJoint) p.isStiff = command.value;
+				});
+				return;
+			case "setJointInitialLength":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof PrismaticJoint) p.initLength = Math.max(0, command.value);
+				});
+				return;
+
+			// --- Thruster ---
+			case "setThrusterStrength": {
+				const v = Math.max(1, Math.min(MAX_JOINT_VALUE, command.value));
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof Thrusters) p.strength = v;
+				});
+				return;
+			}
+			case "setThrusterKey":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof Thrusters) p.thrustKey = command.key;
+				});
+				return;
+			case "setThrusterAutoOn":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof Thrusters) p.autoOn = command.value;
+				});
+				return;
+
+			// --- Cannon ---
+			case "setCannonStrength": {
+				const v = Math.max(1, Math.min(MAX_JOINT_VALUE, command.value));
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof Cannon) p.strength = v;
+				});
+				return;
+			}
+			case "setCannonFireKey":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof Cannon) p.fireKey = command.key;
+				});
+				return;
+
+			// --- Text (EnterTextAction / TextSizeChangeAction / TextCheckboxAction / ControlKeyAction TEXT_TYPE) ---
+			case "setTextContent":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof TextPart) p.text = command.text;
+				});
+				return;
+			case "setTextSize":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof TextPart) p.size = Math.max(1, command.value);
+				});
+				return;
+			case "setTextDisplayKey":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof TextPart) p.displayKey = command.key;
+				});
+				return;
+			case "setTextAlwaysVisible":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof TextPart) p.alwaysVisible = command.value;
+				});
+				return;
+			case "setTextScaleWithZoom":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof TextPart) p.scaleWithZoom = command.value;
+				});
+				return;
+
 			case "play":
 				this.handlePlay();
 				return;

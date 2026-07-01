@@ -1,77 +1,91 @@
 <script setup lang="ts">
-// Visual port of PartEditWindow.ts ShowTextPanel (m_textEditPanel) — the
-// TextPart property editor: text content, size, colour, display key,
-// always-visible, and scale-with-zoom ("in front" behaviour follows from
-// Move to Front/Back, shared with the base part actions).
-//
-// Live-wired: colour Apply -> setColour(edit.selection).
-// Flagged: text content, size, display key, always-visible, scale-with-zoom
-// all need commands: setTextContent, setTextSize, setTextDisplayKey,
-// setTextAlwaysVisible, setTextScaleWithZoom.
-import { ref } from "vue";
+// Port of PartEditWindow.ts ShowTextPanel (m_textEditPanel) — TextPart editor.
+// Fully wired to GameCore: reads edit.selectedPart, dispatches setTextContent /
+// setTextSize / setTextDisplayKey / setTextAlwaysVisible / setTextScaleWithZoom
+// (ported from EnterTextAction / TextSizeChangeAction / TextCheckboxAction /
+// ControlKeyAction TEXT_TYPE) plus the shared setColour.
+import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
-import IbTodo from "../IbTodo.vue";
+import { keyToLabel, labelToKey } from "../../keyLabels";
 
 const game = useGameStore();
+const sel = computed(() => game.edit.selectedPart);
+const ids = computed(() => game.edit.selection);
 
-const text = ref(""); // m_textArea
-const size = ref(12); // m_sizeArea
-const colourHex = ref("#242930");
-const opacity = ref(100);
-const displayKey = ref("T"); // m_textKeyArea
-const alwaysVisible = ref(false); // m_alwaysVisibleBox
-const scaleWithZoom = ref(true); // m_scaleWithZoomBox
+// Text content is committed on blur so we don't dispatch on every keystroke.
+const text = ref("");
+watch(sel, () => (text.value = sel.value?.text ?? ""), { immediate: true });
+function commitText(): void {
+	game.dispatch({ type: "setTextContent", partIds: ids.value, text: text.value });
+}
 
+const size = computed({
+	get: () => sel.value?.size ?? 14,
+	set: (v: number) => game.dispatch({ type: "setTextSize", partIds: ids.value, value: Number(v) }),
+});
+const displayKey = computed({
+	get: () => keyToLabel(sel.value?.displayKey),
+	set: (v: string) => {
+		const key = labelToKey(v);
+		if (key != null) game.dispatch({ type: "setTextDisplayKey", partIds: ids.value, key });
+	},
+});
+const alwaysVisible = computed({
+	get: () => sel.value?.alwaysVisible ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setTextAlwaysVisible", partIds: ids.value, value: v }),
+});
+const scaleWithZoom = computed({
+	get: () => sel.value?.scaleWithZoom ?? true,
+	set: (v: boolean) => game.dispatch({ type: "setTextScaleWithZoom", partIds: ids.value, value: v }),
+});
+
+const localColour = ref("#242930");
+watch(
+	sel,
+	() => {
+		localColour.value =
+			"#" + [sel.value?.red ?? 0, sel.value?.green ?? 0, sel.value?.blue ?? 0]
+				.map((c) => Math.round(c).toString(16).padStart(2, "0"))
+				.join("");
+	},
+	{ immediate: true },
+);
 function applyColour(): void {
-	if (game.edit.selection.length === 0) return;
-	const hex = colourHex.value.replace("#", "");
+	if (ids.value.length === 0) return;
+	const hex = localColour.value.replace("#", "");
 	const r = parseInt(hex.slice(0, 2), 16);
 	const g = parseInt(hex.slice(2, 4), 16);
 	const b = parseInt(hex.slice(4, 6), 16);
-	game.dispatch({
-		type: "setColour",
-		partIds: game.edit.selection,
-		r,
-		g,
-		b,
-		opacity: opacity.value / 100,
-	});
+	// TextPart has no opacity field; setColour ignores opacity for text.
+	game.dispatch({ type: "setColour", partIds: ids.value, r, g, b, opacity: 1 });
 }
 </script>
 
 <template>
 	<div class="text-props">
 		<UFormField label="Text" class="field">
-			<UTextarea v-model="text" :rows="3" size="xs" class="text-area" />
-			<IbTodo label="setTextContent" />
+			<UTextarea v-model="text" :rows="3" size="xs" class="text-area" @blur="commitText" />
 		</UFormField>
 
 		<UFormField label="Text Size" class="field">
-			<UInput v-model="size" type="number" size="xs" class="num-input" />
-			<IbTodo label="setTextSize" />
+			<UInput v-model.number="size" type="number" size="xs" class="num-input" />
 		</UFormField>
 
 		<div class="checkboxes">
 			<UCheckbox v-model="scaleWithZoom" label="Scale with Zoom" />
-			<IbTodo label="setTextScaleWithZoom" />
 		</div>
 		<div class="checkboxes">
 			<UCheckbox v-model="alwaysVisible" label="Always Display" />
-			<IbTodo label="setTextAlwaysVisible" />
 		</div>
 
 		<UFormField label="Display Text Key" class="field">
 			<UInput v-model="displayKey" size="xs" :disabled="alwaysVisible" class="key-input" />
-			<IbTodo label="setTextDisplayKey" />
 		</UFormField>
 
 		<UFormField label="Color" class="field">
 			<div class="colour-row">
-				<input v-model="colourHex" type="color" class="colour-swatch" />
-				<UFormField label="Opacity" class="opacity-field">
-					<USlider v-model="opacity" :min="0" :max="100" :step="1" size="sm" />
-				</UFormField>
+				<input v-model="localColour" type="color" class="colour-swatch" />
 			</div>
 			<IbButton family="blue" label="Change Color" class="colour-apply" @click="applyColour" />
 		</UFormField>
@@ -122,10 +136,6 @@ function applyColour(): void {
 	background: none;
 	cursor: pointer;
 	flex-shrink: 0;
-}
-
-.opacity-field {
-	flex: 1;
 }
 
 .colour-apply {
