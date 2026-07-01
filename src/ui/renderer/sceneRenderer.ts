@@ -58,3 +58,34 @@ export function hitTestPart(parts: readonly Part[], worldX: number, worldY: numb
 	}
 	return null;
 }
+
+/**
+ * Collect every part intersecting a world-space marquee box. Mirrors
+ * ControllerGame.MouseDrag box-select (ControllerGame.ts:2407) which calls
+ * `Part.IntersectsBox(minX, minY, width, height)` on each part. The box is
+ * given by two opposite world-space corners (any order). Parts whose type
+ * lacks a working IntersectsBox (abstract/joint) are skipped, falling back to
+ * a centre-in-box test when possible.
+ */
+export function partsInBox(parts: readonly Part[], ax: number, ay: number, bx: number, by: number): Part[] {
+	const minX = Math.min(ax, bx);
+	const minY = Math.min(ay, by);
+	const w = Math.abs(ax - bx);
+	const h = Math.abs(ay - by);
+	const hits: Part[] = [];
+	for (const part of parts) {
+		try {
+			if (part.IntersectsBox(minX, minY, w, h)) hits.push(part);
+		} catch {
+			// Fall back to a centre-in-box test for part types without IntersectsBox.
+			const cx = (part as unknown as { centerX?: number; x?: number }).centerX ??
+				(part as unknown as { x?: number }).x;
+			const cy = (part as unknown as { centerY?: number; y?: number }).centerY ??
+				(part as unknown as { y?: number }).y;
+			if (cx != null && cy != null && cx >= minX && cx <= minX + w && cy >= minY && cy <= minY + h) {
+				hits.push(part);
+			}
+		}
+	}
+	return hits;
+}
