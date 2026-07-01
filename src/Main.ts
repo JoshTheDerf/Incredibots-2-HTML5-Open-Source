@@ -1,28 +1,9 @@
 // permanent mochi ID for version 0.02: 1913f89f65e17063
 
 import { Application, Container } from "pixi.js";
-import { ControllerClimb } from "./Game/Challenges/ControllerClimb"
-import { ControllerMonkeyBars } from "./Game/Challenges/ControllerMonkeyBars"
-import { ControllerRace } from "./Game/Challenges/ControllerRace"
-import { ControllerSpaceship } from "./Game/Challenges/ControllerSpaceship"
-import { Controller } from "./Game/Controller"
-import { ControllerChallenge } from "./Game/ControllerChallenge"
-import { ControllerGame } from "./Game/ControllerGame"
-import { ControllerMainMenu } from "./Game/ControllerMainMenu"
-import { ControllerSandbox } from "./Game/ControllerSandbox"
+import type { Controller } from "./Game/Controller"
 import { ControllerGameGlobals } from "./Game/Globals/ControllerGameGlobals"
 import { Resource } from "./Game/Graphics/Resource"
-import { SandboxSettings } from "./Game/SandboxSettings"
-import { ControllerCar } from "./Game/Tutorials/ControllerCar"
-import { ControllerCatapult } from "./Game/Tutorials/ControllerCatapult"
-import { ControllerChallengeEditor } from "./Game/Tutorials/ControllerChallengeEditor"
-import { ControllerDumpbot } from "./Game/Tutorials/ControllerDumpbot"
-import { ControllerHomeMovies } from "./Game/Tutorials/ControllerHomeMovies"
-import { ControllerJumpbot } from "./Game/Tutorials/ControllerJumpbot"
-import { ControllerNewFeatures } from "./Game/Tutorials/ControllerNewFeatures"
-import { ControllerRubeGoldberg } from "./Game/Tutorials/ControllerRubeGoldberg"
-import { ControllerShapes } from "./Game/Tutorials/ControllerShapes"
-import { ControllerTank } from "./Game/Tutorials/ControllerTank"
 import { ByteArray } from "./General/ByteArray"
 import { FpsCounter } from "./General/FpsCounter"
 import { Input } from "./General/Input"
@@ -35,6 +16,9 @@ export class Main {
 	//======================
 	public static m_fpsCounter:FpsCounter = new FpsCounter();
 	public static m_curController:Controller;
+	// Controller factory hook, wired up by src/index.ts to createController().
+	// Kept out of Main's import graph to avoid module-load-order (TDZ) cycles.
+	public static instantiate: (type: number, main: Main) => Controller;
 	public static changeControllers:boolean = false;
 	public static nextControllerType:number = -1;
 	public static firstFrame:boolean = true;
@@ -62,7 +46,7 @@ export class Main {
 
 	public static GLOBAL_FONT:string = "Arial";
 
-	private preloadedBots = {
+	public preloadedBots = {
 		cRace: null,
 		cSpaceship: null
 	}
@@ -141,8 +125,7 @@ export class Main {
 			}
 
 			if (Main.loadReplayMode && !Main.premiumMode) {
-				ControllerSandbox.settings = new SandboxSettings(15.0, 0, 0, 0, 0);
-				Main.m_curController = new ControllerSandbox();
+				Main.m_curController = Main.instantiate(-5, this);
 				Main.m_curController.LoadReplayNow(replayID);
 				ControllerGameGlobals.potentialReplayID = replayID;
 				ControllerGameGlobals.potentialReplayPublic = true;
@@ -150,23 +133,21 @@ export class Main {
 				Main.theRoot.addChild(Main.m_curController);
 				Main.nextControllerType = 0;
 			} else if (Main.loadRobotMode && !Main.premiumMode) {
-				ControllerSandbox.settings = new SandboxSettings(15.0, 0, 0, 0, 0);
-				Main.m_curController = new ControllerSandbox();
+				Main.m_curController = Main.instantiate(-5, this);
 				Main.m_curController.LoadRobotNow(robotID);
 				ControllerGameGlobals.potentialRobotID = robotID;
 				ControllerGameGlobals.potentialRobotPublic = true;
 				Main.theRoot.addChild(Main.m_curController);
 				Main.nextControllerType = 0;
 			} else if (Main.loadChallengeMode && !Main.premiumMode) {
-				ControllerSandbox.settings = new SandboxSettings(15.0, 0, 0, 0, 0);
-				Main.m_curController = new ControllerSandbox();
+				Main.m_curController = Main.instantiate(-5, this);
 				Main.m_curController.LoadChallengeNow(challengeID);
 				ControllerGameGlobals.potentialChallengeID = challengeID;
 				ControllerGameGlobals.potentialChallengePublic = true;
 				Main.theRoot.addChild(Main.m_curController);
 				Main.nextControllerType = 0;
 			} else {
-				Main.m_curController = new ControllerMainMenu();
+				Main.m_curController = Main.instantiate(-4, this);
 				Main.theRoot.addChild(Main.m_curController);
 			}
 
@@ -185,41 +166,7 @@ export class Main {
 		// Reset
 		if (Main.changeControllers) {
 			Main.theRoot.removeChild(Main.m_curController);
-			if (Main.nextControllerType == -1) {
-				Main.m_curController = new ControllerMainMenu(true);
-			} else if (Main.nextControllerType == 10) {
-				Main.m_curController = new ControllerTank();
-			} else if (Main.nextControllerType == 11) {
-				Main.m_curController = new ControllerShapes();
-			} else if (Main.nextControllerType == 12) {
-				Main.m_curController = new ControllerCar();
-			} else if (Main.nextControllerType == 13) {
-				Main.m_curController = new ControllerJumpbot();
-			} else if (Main.nextControllerType == 14) {
-				Main.m_curController = new ControllerDumpbot();
-			} else if (Main.nextControllerType == 15) {
-				Main.m_curController = new ControllerCatapult();
-			} else if (Main.nextControllerType == 16) {
-				Main.m_curController = new ControllerHomeMovies();
-			} else if (Main.nextControllerType == 17) {
-				Main.m_curController = new ControllerRubeGoldberg();
-			} else if (Main.nextControllerType == 18) {
-				Main.m_curController = new ControllerNewFeatures();
-			} else if (Main.nextControllerType == 19) {
-				Main.m_curController = new ControllerChallengeEditor();
-			} else if (Main.nextControllerType == 1) {
-				Main.m_curController = new ControllerChallenge();
-			} else if (Main.nextControllerType == 2) {
-				Main.m_curController = new ControllerMonkeyBars();
-			} else if (Main.nextControllerType == 3) {
-				Main.m_curController = new ControllerClimb();
-			} else if (Main.nextControllerType == 4) {
-				Main.m_curController = new ControllerRace(this.preloadedBots.cRace);
-			} else if (Main.nextControllerType == 5) {
-				Main.m_curController = new ControllerSpaceship(this.preloadedBots.cSpaceship);
-			} else {
-				Main.m_curController = new ControllerSandbox();
-			}
+			Main.m_curController = Main.instantiate(Main.nextControllerType, this);
 			Main.theRoot.addChild(Main.m_curController);
 
 			Main.changeControllers = false;
