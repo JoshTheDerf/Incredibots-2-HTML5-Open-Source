@@ -5,15 +5,13 @@
 // (orange) button that does textInput.select() + document.execCommand("copy"),
 // and an "OK" (purple) close button.
 //
-// This is a LIVE feature in the original — the export string is produced
-// elsewhere (Database export) and passed into the window's constructor.
-// GameCore has no equivalent command yet (no "exportRobot"/"exportReplay"/
-// "exportChallenge"), so here the text area is seeded with placeholder text
-// and the Copy action is flagged with <IbTodo/>.
-import { ref } from "vue";
+// This is a LIVE feature — on open we ask GameCore (via the store) to encode
+// the current robot to the legacy-compatible export string and show it; the
+// "Copy to Clipboard" button copies it.
+import { ref, onMounted } from "vue";
 import IbButton from "../IbButton.vue";
-import IbTodo from "../IbTodo.vue";
 import { frameTextures } from "../../assets";
+import { useGameStore } from "../../gameStore";
 
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
 
@@ -24,15 +22,34 @@ const props = withDefaults(defineProps<{ exportStr?: string; robotStr?: string }
 
 const emit = defineEmits<{ close: [] }>();
 
+const game = useGameStore();
 const linkText = ref(props.exportStr);
 const textareaRef = ref<{ textareaRef?: HTMLTextAreaElement } | null>(null);
 
+onMounted(async () => {
+	try {
+		linkText.value = await game.exportRobot();
+	} catch (err) {
+		linkText.value = "";
+		console.warn("[ExportPanel] exportRobot failed:", err);
+	}
+});
+
 function copyButtonPressed(): void {
-	// TODO(GameCore): needs exportRobot / exportReplay / exportChallenge
-	// commands to produce a real encoded string (mirrors Database export +
-	// GuiTextArea select() + document.execCommand("copy") in the original).
+	// Select the text area and copy. Prefer the async clipboard API, falling
+	// back to the legacy execCommand("copy") path.
 	const el = (textareaRef.value as unknown as { $el?: HTMLElement })?.$el?.querySelector("textarea");
 	el?.select();
+	if (navigator.clipboard?.writeText) {
+		navigator.clipboard.writeText(linkText.value).catch(() => {
+			try {
+				document.execCommand("copy");
+			} catch {
+				/* best-effort */
+			}
+		});
+		return;
+	}
 	try {
 		document.execCommand("copy");
 	} catch {
@@ -60,13 +77,12 @@ function ok(): void {
 			soon this will be the only way to access them!
 		</p>
 
-		<div class="link-area-wrap ib-todo">
+		<div class="link-area-wrap">
 			<UTextarea ref="textareaRef" v-model="linkText" class="link-area" :rows="9" readonly />
-			<IbTodo label="export string not wired" />
 		</div>
 
 		<div class="actions">
-			<IbButton family="orange" label="Copy to Clipboard" class="action-btn copy-btn ib-todo" @click="copyButtonPressed" />
+			<IbButton family="orange" label="Copy to Clipboard" class="action-btn copy-btn" @click="copyButtonPressed" />
 			<IbButton family="purple" label="OK" class="action-btn ok-btn" @click="ok" />
 		</div>
 	</div>

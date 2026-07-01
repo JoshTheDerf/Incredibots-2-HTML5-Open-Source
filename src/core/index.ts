@@ -6,6 +6,8 @@
 
 export { GameCore } from "./GameCore";
 export type { Unsubscribe, StateListener } from "./GameCore";
+export { encodeRobot, decodeRobot } from "./robotSerialization";
+export type { DecodedRobot } from "./robotSerialization";
 export type {
 	GameState,
 	SimState,

@@ -3,16 +3,14 @@
 // Original: a message describing what to paste, a big text area for the
 // encoded string, then "Import" (orange) / "Cancel" (purple) buttons.
 //
-// This is a LIVE feature in the original — Database.ImportRobot/ImportReplay/
-// ImportChallenge decode the pasted string and hand it to
-// Controller.processLoadedRobot/Replay/Challenge. GameCore has no equivalent
-// commands yet (no "importRobot"/"importReplay"/"importChallenge"), so the
-// Import action here is flagged with <IbTodo/> and only manipulates local
-// component state.
+// This is a LIVE feature — for robots, the pasted string is decoded by
+// GameCore (via the store) which replaces the current parts with the imported
+// robot (undoable). Replay/challenge import isn't modelled in the new core yet,
+// so only "robot" is wired.
 import { ref, computed } from "vue";
 import IbButton from "../IbButton.vue";
-import IbTodo from "../IbTodo.vue";
 import { frameTextures } from "../../assets";
+import { useGameStore } from "../../gameStore";
 
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
 
@@ -24,7 +22,10 @@ const props = withDefaults(defineProps<{ importType?: ImportType }>(), {
 
 const emit = defineEmits<{ close: [] }>();
 
+const game = useGameStore();
 const linkText = ref("");
+const errorMsg = ref("");
+const importing = ref(false);
 
 const typeLabel = computed(() =>
 	props.importType === "robot" ? "robot" : props.importType === "replay" ? "replay" : "challenge",
@@ -35,12 +36,24 @@ const message = computed(
 		`Copy and paste the text you got from exporting\nyour ${typeLabel.value} in the box below, then press "Import."`,
 );
 
-function doImport(): void {
-	if (linkText.value.length === 0) return;
-	// TODO(GameCore): needs importRobot / importReplay / importChallenge
-	// commands (mirrors Database.ImportRobot/ImportReplay/ImportChallenge +
-	// Controller.processLoadedRobot/Replay/Challenge in the original).
-	emit("close");
+async function doImport(): Promise<void> {
+	if (linkText.value.trim().length === 0 || importing.value) return;
+	errorMsg.value = "";
+	if (props.importType !== "robot") {
+		errorMsg.value = "Only robot import is supported.";
+		return;
+	}
+	importing.value = true;
+	try {
+		await game.importRobot(linkText.value.trim());
+		emit("close");
+	} catch (err) {
+		// Decode failures (bad/corrupt string) surface here instead of crashing.
+		console.warn("[ImportPanel] importRobot failed:", err);
+		errorMsg.value = "Could not import that robot — the text may be invalid or corrupt.";
+	} finally {
+		importing.value = false;
+	}
 }
 
 function cancel(): void {
@@ -52,13 +65,14 @@ function cancel(): void {
 	<div class="import-window ib-panel" :style="panelStyle">
 		<p class="message">{{ message }}</p>
 
-		<div class="link-area-wrap ib-todo">
+		<div class="link-area-wrap">
 			<UTextarea v-model="linkText" class="link-area" :rows="12" placeholder="Paste encoded string here..." />
-			<IbTodo label="decode not wired" />
 		</div>
 
+		<p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
+
 		<div class="actions">
-			<IbButton family="orange" label="Import" class="action-btn ib-todo" @click="doImport" />
+			<IbButton family="orange" label="Import" class="action-btn" @click="doImport" />
 			<IbButton family="purple" label="Cancel" class="action-btn" @click="cancel" />
 		</div>
 	</div>
@@ -103,6 +117,15 @@ function cancel(): void {
 	position: absolute;
 	top: -8px;
 	right: -4px;
+}
+
+.error-msg {
+	margin: 0 0 10px;
+	font-size: 11px;
+	line-height: 1.3;
+	text-align: center;
+	color: #a11;
+	max-width: 265px;
 }
 
 .actions {

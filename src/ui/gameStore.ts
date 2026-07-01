@@ -41,5 +41,16 @@ export const useGameStore = defineStore("game", () => {
 		}
 	}
 
-	return { state, sim, camera, edit, parts, dispatch };
+	// Robot import/export passthroughs. Export returns the encoded string
+	// (not a dispatched Command — dispatch returns void); import replaces the
+	// parts graph and is undoable. Both are async (ByteArray compression is).
+	function exportRobot(): Promise<string> {
+		return core.exportRobot();
+	}
+
+	function importRobot(str: string): Promise<void> {
+		return core.importRobot(str);
+	}
+
+	return { state, sim, camera, edit, parts, dispatch, exportRobot, importRobot };
 });

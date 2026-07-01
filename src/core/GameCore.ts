@@ -27,6 +27,7 @@ import { Thrusters } from "../Parts/Thrusters";
 import { Triangle } from "../Parts/Triangle";
 import type { Command } from "./Command";
 import { GameState, PartSnapshot, createInitialState } from "./GameState";
+import { decodeRobot, encodeRobot } from "./robotSerialization";
 
 // --- Physics simulation constants, mirrored from the legacy ControllerGame ---
 //
@@ -131,6 +132,57 @@ export class GameCore {
 	/** Handlers call this after mutating `this.state` to schedule a notify. */
 	private markChanged(): void {
 		this.dirty = true;
+	}
+
+	// --- Robot import / export ---------------------------------------------
+	//
+	// The copy/paste "encoded robot string" feature. Export is a pure read
+	// (returns the string; not a mutation, so it's a method, not a Command),
+	// while import replaces the parts graph and is undoable. Both use the
+	// node-clean robotSerialization module (byte-compatible with the legacy
+	// game's Database.ExportRobot / ImportRobot).
+
+	/**
+	 * Encode the current parts to a legacy-compatible robot export string.
+	 * async because ByteArray.compress() is async. Ignores selection/sim state.
+	 */
+	async exportRobot(): Promise<string> {
+		return encodeRobot(this.state.parts);
+	}
+
+	/**
+	 * Decode a robot export string and REPLACE the current parts with it: assign
+	 * fresh ids, clear selection, and push an undo snapshot so the import is
+	 * undoable. No-op during simulation (editing-phase only, like other
+	 * mutations). Throws if the string can't be decoded — callers should catch.
+	 */
+	async importRobot(robotStr: string): Promise<void> {
+		if (this.state.sim.phase !== "editing") return;
+		const decoded = await decodeRobot(robotStr);
+		for (const p of decoded.parts) p.id = ++this.nextId;
+
+		this.notifyDepth++;
+		try {
+			this.pushHistory();
+			this.state = {
+				...this.state,
+				parts: decoded.parts,
+				edit: {
+					...this.state.edit,
+					selection: [],
+					selectedPart: null,
+					...this.undoRedoFlags(),
+				},
+			};
+			this.markChanged();
+		} finally {
+			this.notifyDepth--;
+			if (this.notifyDepth === 0 && this.dirty) {
+				this.dirty = false;
+				const snapshot = this.state;
+				for (const l of this.listeners) l(snapshot);
+			}
+		}
 	}
 
 	/** Look up a live Part by its stable id. */
