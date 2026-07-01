@@ -1,0 +1,113 @@
+/* Original Pixi UI look — shared palette tokens + nine-patch glossy pill
+   buttons. Global (imported from main.css) so every component shares one
+   button implementation. Textures are supplied per-element as CSS custom
+   properties (see assets.ts / ibBtnVars) — this file only references them via
+   var() so Vite resolves the actual URLs. */
+
+/* The editor shell fills the viewport; ensure its host chain has full height
+   and no default body margin so the fluid center stage can flex correctly. */
+html,
+body,
+#ui-root {
+	height: 100%;
+	margin: 0;
+}
+
+:root {
+	--ib-dark: #242930; /* dominant dark chrome */
+	--ib-cream: #fdf9ea; /* parchment panel fill */
+	--ib-purple: #43366f; /* deep purple accent / headers */
+	--ib-purple-light: #a08ed2;
+	--ib-purple-lighter: #b7aae3;
+	--ib-peach: #feb584;
+	--ib-muted: #4c3d57;
+	--ib-label: #573d40; /* button label text */
+	--ib-page-bg: #686d77;
+	--ib-play-bg: #9ea2c2;
+}
+
+/* Original PIXI window frame as a true nine-patch. The generated tile
+   (from box248_{top,mid,bot}) slices `15 12 24 12 fill`, so the beveled
+   rounded-corner frame AND its interior fill stretch to any panel size. The
+   texture URL is supplied per-element via `--ib-panel-src` (see assets.ts)
+   so Vite resolves it. */
+.ib-panel {
+	border-style: solid;
+	border-width: 15px 12px 24px 12px;
+	border-image-source: var(--ib-panel-src);
+	border-image-slice: 15 12 24 12 fill;
+	border-image-width: 15px 12px 24px 12px;
+	border-image-repeat: stretch;
+	background: transparent;
+	box-sizing: border-box;
+}
+
+/* Glossy pill button — real texture via horizontal 3-slice border-image.
+   18px end-caps stretch cleanly to any width; the 0px vertical border keeps
+   the 35px texture height intact. */
+.ib-btn {
+	height: 35px;
+	color: var(--ib-label);
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: 11px;
+	font-weight: bold;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	line-height: 1.05;
+	padding: 0 14px;
+	box-sizing: border-box;
+	cursor: pointer;
+	background: transparent;
+	border-style: solid;
+	border-width: 0 18px;
+	border-image-slice: 0 18 fill;
+	border-image-repeat: stretch;
+	border-image-width: 0 18px;
+	border-image-source: var(--ib-btn-base);
+	-webkit-user-select: none;
+	user-select: none;
+	transition: none;
+}
+
+.ib-btn:hover {
+	border-image-source: var(--ib-btn-roll);
+}
+
+.ib-btn:active,
+.ib-btn.is-pressed {
+	border-image-source: var(--ib-btn-click);
+}
+
+.ib-btn:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.ib-btn:focus-visible {
+	outline: 2px solid var(--ib-purple-light);
+	outline-offset: 1px;
+}
+
+/* The Play control uses its own 86x43 texture with fatter end-caps. */
+.ib-btn--play {
+	height: 43px;
+	border-width: 0 20px;
+	border-image-slice: 0 20 fill;
+	border-image-width: 0 20px;
+	font-size: 13px;
+	padding: 0 10px;
+}
+
+/* Small fixed-size icon button (X close, arrows) — native texture, no stretch. */
+.ib-icon-btn {
+	width: 35px;
+	height: 35px;
+	border: 0;
+	padding: 0;
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: center;
+	cursor: pointer;
+}

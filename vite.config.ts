@@ -1,5 +1,7 @@
 import { defineConfig } from 'vite';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
+import vue from '@vitejs/plugin-vue';
+import ui from '@nuxt/ui/vite';
 
 // The game was ported from ActionScript; ByteArray.ts relies on Node's `zlib`
 // and `Buffer` (via iconv-lite). Parcel used to polyfill these automatically;
@@ -14,6 +16,11 @@ export default defineConfig({
             include: ['zlib', 'buffer', 'util', 'stream'],
             globals: { Buffer: true, process: true },
         }),
+        // Vue + Nuxt UI shell (src/ui/*) binds to the headless core; the
+        // legacy Pixi game entry (src/index.ts) does not use this plugin.
+        vue(),
+        // `router: false` is required — this app has no vue-router.
+        ui({ router: false }),
     ],
     // `.dat` robot/replay files are imported for their URL, like the images.
     assetsInclude: ['**/*.dat'],

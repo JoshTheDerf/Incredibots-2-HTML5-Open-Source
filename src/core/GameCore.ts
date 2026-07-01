@@ -61,11 +61,31 @@ export class GameCore {
 		switch (command.type) {
 			// Handlers are migrated from ControllerGame one command at a time.
 			// Each should mutate this.state and call this.markChanged().
+			case "setTool":
+				this.state = { ...this.state, edit: { ...this.state.edit, tool: command.tool } };
+				this.markChanged();
+				return;
+			case "clearSelection":
+				this.state = { ...this.state, edit: { ...this.state.edit, selection: [] } };
+				this.markChanged();
+				return;
+			case "select": {
+				let selection: number[];
+				if (command.additive) {
+					const merged = new Set(this.state.edit.selection);
+					for (const id of command.partIds) merged.add(id);
+					selection = [...merged];
+				} else {
+					selection = [...command.partIds];
+				}
+				this.state = { ...this.state, edit: { ...this.state.edit, selection } };
+				this.markChanged();
+				return;
+			}
 			case "play":
 			case "pause":
 			case "reset":
 			case "step":
-			case "setTool":
 			case "createShape":
 			case "createText":
 			case "deleteParts":
@@ -73,8 +93,6 @@ export class GameCore {
 			case "rotateParts":
 			case "resizeParts":
 			case "setColour":
-			case "select":
-			case "clearSelection":
 			case "undo":
 			case "redo":
 			case "loadRobot":

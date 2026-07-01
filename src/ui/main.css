@@ -1,0 +1,12 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+@import "./ib-theme.css";
+
+/* Nuxt UI theme tokens mapped to the original Pixi palette so any remaining
+   UButton/UCard/USlider blend into the cream/purple chrome. */
+:root {
+	--ui-primary: #a08ed2;
+	--ui-secondary: #43366f;
+	--ui-radius: 0.375rem;
+}
+

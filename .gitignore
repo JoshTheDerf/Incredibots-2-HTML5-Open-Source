@@ -202,3 +202,7 @@ dist/
 
 # Internal symlink for testing production build locally.
 /Incredibots-2-HTML5-Open-Source
+
+# Nuxt UI (Vite plugin) auto-generated type declarations.
+/auto-imports.d.ts
+/components.d.ts
