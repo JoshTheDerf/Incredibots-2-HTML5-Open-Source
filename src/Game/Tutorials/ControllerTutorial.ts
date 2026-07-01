@@ -288,88 +288,68 @@ export class ControllerTutorial extends ControllerGame
 
 		// bg layer 3
 		// outlines
-		this.sGround2.beginFill(0x007360);
-		this.sGround3.beginFill(0x007360);
-		this.sGround3.drawCircle(8261, 2170, 258);
-		this.sGround2.drawCircle(6148, 2133, 258);
-		this.sGround3.drawCircle(9235, 2334, 337);
-		this.sGround3.drawCircle(7306, 2182, 384);
-		this.sGround2.endFill();
-		this.sGround3.endFill();
+		this.sGround3.circle(8261, 2170, 258);
+		this.sGround2.circle(6148, 2133, 258);
+		this.sGround3.circle(9235, 2334, 337);
+		this.sGround3.circle(7306, 2182, 384);
+		this.sGround2.fill({ color: 0x007360 });
+		this.sGround3.fill({ color: 0x007360 });
 
 		// body
-		this.sGround2.beginFill(0x34A97F);
-		this.sGround3.beginFill(0x34A97F);
-		this.sGround3.drawCircle(8261, 2170, 252);
-		this.sGround2.drawCircle(6148, 2133, 252);
-		this.sGround3.drawCircle(9235, 2334, 331);
-		this.sGround3.drawCircle(7306, 2182, 378);
-		this.sGround2.endFill();
-		this.sGround3.endFill();
+		this.sGround3.circle(8261, 2170, 252);
+		this.sGround2.circle(6148, 2133, 252);
+		this.sGround3.circle(9235, 2334, 331);
+		this.sGround3.circle(7306, 2182, 378);
+		this.sGround2.fill({ color: 0x34A97F });
+		this.sGround3.fill({ color: 0x34A97F });
 
 		// bg layer 2
 		// outlines
-		this.sGround1.beginFill(0x007A47);
-		this.sGround3.beginFill(0x007A47);
-		this.sGround3.drawCircle(9165, 2259, 150);
-		this.sGround1.drawCircle(1200, 1707, 150);
-		this.sGround3.drawCircle(6844, 2126, 207);
-		this.sGround1.endFill();
-		this.sGround3.endFill();
-		this.sGround3.beginFill(0x007A47);
-		this.sGround3.drawCircle(6600, 1993, 126);
-		this.sGround3.drawCircle(8931, 2180, 207);
-		this.sGround3.endFill();
+		this.sGround3.circle(9165, 2259, 150);
+		this.sGround1.circle(1200, 1707, 150);
+		this.sGround3.circle(6844, 2126, 207);
+		this.sGround1.fill({ color: 0x007A47 });
+		this.sGround3.fill({ color: 0x007A47 });
+		this.sGround3.circle(6600, 1993, 126);
+		this.sGround3.circle(8931, 2180, 207);
+		this.sGround3.fill({ color: 0x007A47 });
 
 		// body
-		this.sGround1.beginFill(0x36AE66);
-		this.sGround3.beginFill(0x36AE66);
-		this.sGround3.drawCircle(9165, 2259, 144);
-		this.sGround1.drawCircle(1200, 1707, 144);
-		this.sGround3.drawCircle(6844, 2126, 201);
-		this.sGround1.endFill();
-		this.sGround3.endFill();
-		this.sGround3.beginFill(0x36AE66);
-		this.sGround3.drawCircle(6600, 1993, 120);
-		this.sGround3.drawCircle(8931, 2180, 201);
-		this.sGround3.endFill();
+		this.sGround3.circle(9165, 2259, 144);
+		this.sGround1.circle(1200, 1707, 144);
+		this.sGround3.circle(6844, 2126, 201);
+		this.sGround1.fill({ color: 0x36AE66 });
+		this.sGround3.fill({ color: 0x36AE66 });
+		this.sGround3.circle(6600, 1993, 120);
+		this.sGround3.circle(8931, 2180, 201);
+		this.sGround3.fill({ color: 0x36AE66 });
 
 		// bg layer 1
 		// outlines
-		this.sGround1.beginFill(0x00862C);
-		this.sGround2.beginFill(0x00862C);
-		this.sGround3.beginFill(0x00862C);
-		this.sGround1.drawCircle(1492, 1732, 167);
-		this.sGround2.drawCircle(5923, 2146, 167);
-		this.sGround3.drawCircle(6808, 1907, 226);
-		this.sGround3.drawCircle(9580, 2158, 281);
-		this.sGround1.endFill();
-		this.sGround2.endFill();
-		this.sGround3.endFill();
-		this.sGround2.beginFill(0x00862C);
-		this.sGround3.beginFill(0x00862C);
-		this.sGround3.drawCircle(7217, 1978, 337);
-		this.sGround2.drawCircle(5549, 2088, 337);
-		this.sGround2.endFill();
-		this.sGround3.endFill();
+		this.sGround1.circle(1492, 1732, 167);
+		this.sGround2.circle(5923, 2146, 167);
+		this.sGround3.circle(6808, 1907, 226);
+		this.sGround3.circle(9580, 2158, 281);
+		this.sGround1.fill({ color: 0x00862C });
+		this.sGround2.fill({ color: 0x00862C });
+		this.sGround3.fill({ color: 0x00862C });
+		this.sGround3.circle(7217, 1978, 337);
+		this.sGround2.circle(5549, 2088, 337);
+		this.sGround2.fill({ color: 0x00862C });
+		this.sGround3.fill({ color: 0x00862C });
 
 		// body
-		this.sGround1.beginFill(0x3EBA50);
-		this.sGround2.beginFill(0x3EBA50);
-		this.sGround3.beginFill(0x3EBA50);
-		this.sGround1.drawCircle(1492, 1732, 161);
-		this.sGround2.drawCircle(5923, 2146, 161);
-		this.sGround3.drawCircle(6808, 1907, 220);
-		this.sGround3.drawCircle(9580, 2158, 275);
-		this.sGround1.endFill();
-		this.sGround2.endFill();
-		this.sGround3.endFill();
-		this.sGround2.beginFill(0x3EBA50);
-		this.sGround3.beginFill(0x3EBA50);
-		this.sGround3.drawCircle(7217, 1978, 331);
-		this.sGround2.drawCircle(5549, 2088, 331);
-		this.sGround2.endFill();
-		this.sGround3.endFill();
+		this.sGround1.circle(1492, 1732, 161);
+		this.sGround2.circle(5923, 2146, 161);
+		this.sGround3.circle(6808, 1907, 220);
+		this.sGround3.circle(9580, 2158, 275);
+		this.sGround1.fill({ color: 0x3EBA50 });
+		this.sGround2.fill({ color: 0x3EBA50 });
+		this.sGround3.fill({ color: 0x3EBA50 });
+		this.sGround3.circle(7217, 1978, 331);
+		this.sGround2.circle(5549, 2088, 331);
+		this.sGround2.fill({ color: 0x3EBA50 });
+		this.sGround3.fill({ color: 0x3EBA50 });
 
 		// main ground
 		// outlines
@@ -412,12 +392,8 @@ export class ControllerTutorial extends ControllerGame
 		this.DrawGroundOutlineCircle(8294, 1614, 378);
 
 		// shapes
-		this.sGround1.lineStyle(6, 0x2DA12E, 1);
-		this.sGround2.lineStyle(6, 0x2DA12E, 1);
-		this.sGround3.lineStyle(6, 0x2DA12E, 1);
 		var m:Matrix = new Matrix();
 		m.translate(0, 850);
-		this.sGround1.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#6BD354', '#54BA3D'], 1500), matrix: m});
 		this.sGround1.moveTo(290, 1464);
 		this.sGround1.lineTo(325, 1465);
 		this.sGround1.lineTo(337, 1459);
@@ -439,8 +415,8 @@ export class ControllerTutorial extends ControllerGame
 		this.sGround1.lineTo(709, 1690);
 		this.sGround1.lineTo(290, 1511);
 		this.sGround1.lineTo(290, 1464);
-		this.sGround1.endFill();
-		this.sGround2.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#6BD354', '#54BA3D'], 1500), matrix: m});
+		this.sGround1.fill({ texture: Gradient.getLinearGradientTexture(['#6BD354', '#54BA3D'], 1500), matrix: m});
+		this.sGround1.stroke({ width: 6, color: 0x2DA12E, alpha: 1 });
 		this.sGround2.moveTo(5370, 1658);
 		this.sGround2.lineTo(5605, 1651);
 		this.sGround2.lineTo(5801, 1658);
@@ -449,12 +425,11 @@ export class ControllerTutorial extends ControllerGame
 		this.sGround2.lineTo(6135, 1648);
 		this.sGround2.lineTo(6188, 1640);
 		this.sGround2.lineTo(6410, 1640);
-		this.sGround2.lineStyle(0, 0, 0);
 		this.sGround2.lineTo(6410, 1900);
 		this.sGround2.lineTo(5370, 1900);
 		this.sGround2.lineTo(5370, 1658);
-		this.sGround2.endFill();
-		this.sGround3.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#6BD354', '#54BA3D'], 1500), matrix: m});
+		this.sGround2.fill({ texture: Gradient.getLinearGradientTexture(['#6BD354', '#54BA3D'], 1500), matrix: m});
+		this.sGround2.stroke({ width: 6, color: 0x2DA12E, alpha: 1 });
 		this.sGround3.moveTo(6410, 1640);
 		this.sGround3.lineTo(6547, 1610);
 		this.sGround3.lineTo(7311, 1610);
@@ -473,12 +448,10 @@ export class ControllerTutorial extends ControllerGame
 		this.sGround3.lineTo(6394, 1850);
 		this.sGround3.lineTo(6410, 1850);
 		this.sGround3.lineTo(6410, 1640);
-		this.sGround3.endFill();
-		this.sGround1.lineStyle(0, 0, 0);
-		this.sGround3.lineStyle(0, 0, 0);
-		this.sGround2.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#6BD354', '#54BA3D'], 1500), matrix: m});
-		this.sGround3.drawRect(6250, 1643, 200, 327);
-		this.sGround3.endFill();
+		this.sGround3.fill({ texture: Gradient.getLinearGradientTexture(['#6BD354', '#54BA3D'], 1500), matrix: m});
+		this.sGround3.stroke({ width: 6, color: 0x2DA12E, alpha: 1 });
+		this.sGround3.rect(6250, 1643, 200, 327);
+		this.sGround3.fill({ texture: Gradient.getLinearGradientTexture(['#6BD354', '#54BA3D'], 1500), matrix: m});
 
 		// body
 		this.DrawGroundCircle(303, 1500, 26.5);
@@ -520,12 +493,8 @@ export class ControllerTutorial extends ControllerGame
 		this.DrawGroundCircle(8294, 1614, 378);
 
 		// rocky terrain
-		this.sGround1.lineStyle(6, 0x889598, 1);
-		this.sGround2.lineStyle(6, 0x889598, 1);
-		this.sGround3.lineStyle(6, 0x889598, 1);
 		m = new Matrix();
 		m.translate(0, 750)
-		this.sGround1.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#B6C6CA', '#9AA9AD'], 2050), matrix: m});
 		this.sGround1.moveTo(376, 1450);
 		this.sGround1.lineTo(396, 1414);
 		this.sGround1.lineTo(409, 1410);
@@ -571,8 +540,8 @@ export class ControllerTutorial extends ControllerGame
 		this.sGround1.lineTo(396, 1473);
 		this.sGround1.lineTo(377, 1464);
 		this.sGround1.lineTo(376, 1450);
-		this.sGround1.endFill();
-		this.sGround2.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#B6C6CA', '#9AA9AD'], 2050), matrix: m});
+		this.sGround1.fill({ texture: Gradient.getLinearGradientTexture(['#B6C6CA', '#9AA9AD'], 2050), matrix: m});
+		this.sGround1.stroke({ width: 6, color: 0x889598, alpha: 1 });
 		this.sGround2.moveTo(2503, 1544);
 		this.sGround2.lineTo(2675, 1498);
 		this.sGround2.lineTo(3050, 1522);
@@ -682,8 +651,8 @@ export class ControllerTutorial extends ControllerGame
 		this.sGround2.lineTo(2632, 1690);
 		this.sGround2.lineTo(2532, 1650);
 		this.sGround2.lineTo(2503, 1544);
-		this.sGround2.endFill();
-		this.sGround3.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#B6C6CA', '#9AA9AD'], 2050), matrix: m});
+		this.sGround2.fill({ texture: Gradient.getLinearGradientTexture(['#B6C6CA', '#9AA9AD'], 2050), matrix: m});
+		this.sGround2.stroke({ width: 6, color: 0x889598, alpha: 1 });
 		this.sGround3.moveTo(7569, 1596);
 		this.sGround3.lineTo(7596, 1537);
 		this.sGround3.lineTo(7631, 1520);
@@ -833,10 +802,8 @@ export class ControllerTutorial extends ControllerGame
 		this.sGround3.lineTo(7606, 1614);
 		this.sGround3.lineTo(7579, 1608);
 		this.sGround3.lineTo(7569, 1596);
-		this.sGround3.endFill();
-		this.sGround1.lineStyle(0, 0, 0);
-		this.sGround2.lineStyle(0, 0, 0);
-		this.sGround3.lineStyle(0, 0, 0);
+		this.sGround3.fill({ texture: Gradient.getLinearGradientTexture(['#B6C6CA', '#9AA9AD'], 2050), matrix: m});
+		this.sGround3.stroke({ width: 6, color: 0x889598, alpha: 1 });
 
 		// cave rocks
 		this.DrawCaveRock(425, 1426, 447, 1454, 434, 1476);
@@ -945,9 +912,7 @@ export class ControllerTutorial extends ControllerGame
 		this.DrawGroundOutlineCircle(2824, 1482, 104);
 
 		// shapes
-		this.sGround2.lineStyle(6, 0x2DA12E, 1);
 		m = new Matrix();
-		this.sGround2.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#6BD354', '#54BA3D']), matrix: m});
 		this.sGround2.moveTo(2467, 1460);
 		this.sGround2.lineTo(2762, 1457);
 		this.sGround2.lineTo(2879, 1456);
@@ -983,8 +948,8 @@ export class ControllerTutorial extends ControllerGame
 		this.sGround2.lineTo(2522, 1554);
 		this.sGround2.lineTo(2468, 1494);
 		this.sGround2.lineTo(2467, 1460);
-		this.sGround2.endFill();
-		this.sGround2.lineStyle(0, 0, 0);
+		this.sGround2.fill({ texture: Gradient.getLinearGradientTexture(['#6BD354', '#54BA3D']), matrix: m});
+		this.sGround2.stroke({ width: 6, color: 0x2DA12E, alpha: 1 });
 
 		// main body
 		this.DrawGroundCircle(3321, 1586, 26.5);
@@ -1057,9 +1022,8 @@ export class ControllerTutorial extends ControllerGame
 
 	public DrawGroundOutlineCircle(xPos:number, yPos:number, radius:number):void {
 		var sGround:Graphics = (xPos < 2300 ? this.sGround1 : (xPos < 6300 ? this.sGround2 : this.sGround3));
-		sGround.beginFill(0x2DA12E);
-		sGround.drawCircle(xPos + radius, yPos + radius, radius + 6);
-		sGround.endFill();
+		sGround.circle(xPos + radius, yPos + radius, radius + 6);
+		sGround.fill({ color: 0x2DA12E });
 	}
 
 	public DrawGroundCircle(xPos:number, yPos:number, radius:number):void {
@@ -1067,36 +1031,33 @@ export class ControllerTutorial extends ControllerGame
 		var m:Matrix = new Matrix();
 		m.scale(1, 1500 / 255)
     m.translate(0, 850)
-		sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#6BD354', '#54BA3D'], 255), matrix: m});
-		sGround.drawCircle(xPos + radius, yPos + radius, radius);
-		sGround.endFill();
+		sGround.circle(xPos + radius, yPos + radius, radius);
+		sGround.fill({ texture: Gradient.getLinearGradientTexture(['#6BD354', '#54BA3D'], 255), matrix: m});
 	}
 
 	public DrawCaveRock(x1:number, y1:number, x2:number, y2:number, x3:number, y3:number):void {
 		var sGround:Graphics = (x1 < 2300 ? this.sGround1 : (x1 < 6300 ? this.sGround2 : this.sGround3));
 		var m:Matrix = new Matrix();
-		sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#AAB9BD', '#95A1A5'], 1500), matrix: m});
 		sGround.moveTo(x1, y1);
 		sGround.lineTo(x2, y2);
 		sGround.lineTo(x3, y3);
 		sGround.lineTo(x1, y1);
-		sGround.endFill();
+		sGround.fill({ texture: Gradient.getLinearGradientTexture(['#AAB9BD', '#95A1A5'], 1500), matrix: m});
 	}
 
 	public DrawRock(type:number, xPos:number, yPos:number, radius:number):void {
 		var sGround:Graphics = (xPos < 2300 ? this.sGround1 : (xPos < 6200 ? this.sGround2 : this.sGround3));
-    sGround.lineStyle(6, 0x6bb05a);
     var m: Matrix = new Matrix();
     m.translate(0, yPos)
-    sGround.beginTextureFill({
+    sGround.circle(xPos + radius, yPos + radius, radius);
+    sGround.fill({
       texture: Gradient.getLinearGradientTexture(
         type == 0 ? ["#8EDB82", "#7FBF72"] : type == 1 ? ["#80D970", "#6DBE5D"] : ["#70C160", "#63AB52"],
         radius * 2
       ),
       matrix: m,
     });
-    sGround.drawCircle(xPos + radius, yPos + radius, radius);
-    sGround.endFill();
+    sGround.stroke({ width: 6, color: 0x6bb05a });
 	}
 
 	public GetMinX():number {

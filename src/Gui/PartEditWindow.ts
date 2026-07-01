@@ -52,7 +52,7 @@ export class PartEditWindow extends GuiWindow {
   private m_fixateBox: GuiCheckBox;
   private m_densityLabel: Text;
   private m_densitySlider: GuiSlider;
-  private m_densityArea: TextInput;
+  private m_densityArea: GuiTextInput;
   private m_backButton: GuiButton;
   private m_frontButton: GuiButton;
   private m_colourButton: GuiButton;
@@ -69,24 +69,24 @@ export class PartEditWindow extends GuiWindow {
   private m_alwaysVisibleBox: GuiCheckBox;
   private m_scaleWithZoomBox: GuiCheckBox;
   private m_textLabel: Text;
-  private m_textArea: TextArea;
-  private m_textKeyArea: TextInput;
+  private m_textArea: GuiTextArea;
+  private m_textKeyArea: GuiTextInput;
   private m_textKeyLabel: Text;
   private m_sizeLabel: Text;
-  private m_sizeArea: TextInput;
+  private m_sizeArea: GuiTextInput;
 
-  private m_minDispArea: TextInput;
-  private m_maxDispArea: TextInput;
+  private m_minDispArea: GuiTextInput;
+  private m_maxDispArea: GuiTextInput;
   private m_enableMotorBox: GuiCheckBox;
   private m_rigidJointBox: GuiCheckBox;
   private m_strengthLabel: Text;
   private m_speedLabel: Text;
   private m_strengthSlider: GuiSlider;
-  private m_strengthArea: TextInput;
+  private m_strengthArea: GuiTextInput;
   private m_speedSlider: GuiSlider;
-  private m_speedArea: TextInput;
-  private m_controlKeyArea1: TextInput;
-  private m_controlKeyArea2: TextInput;
+  private m_speedArea: GuiTextInput;
+  private m_controlKeyArea1: GuiTextInput;
+  private m_controlKeyArea2: GuiTextInput;
   private m_limitLabel1: Text;
   private m_limitLabel2: Text;
   private m_inputLabel1: Text;
@@ -97,13 +97,13 @@ export class PartEditWindow extends GuiWindow {
 
   private m_thrustLabel: Text;
   private m_thrustSlider: GuiSlider;
-  private m_thrustArea: TextInput;
+  private m_thrustArea: GuiTextInput;
   private m_thrustKeyLabel: Text;
-  private m_thrustKeyArea: TextInput;
+  private m_thrustKeyArea: GuiTextInput;
   private m_autoBox3: GuiCheckBox;
 
   private m_collisionBox7: GuiCheckBox;
-  private m_densityArea7: TextInput;
+  private m_densityArea7: GuiTextInput;
   private m_densitySlider7: GuiSlider;
   private m_fixateBox7: GuiCheckBox;
   private m_outlineBox7: GuiCheckBox;
@@ -111,9 +111,9 @@ export class PartEditWindow extends GuiWindow {
   private m_undragableBox7: GuiCheckBox;
   private m_strengthLabel7: Text;
   private m_strengthSlider7: GuiSlider;
-  private m_strengthArea7: TextInput;
+  private m_strengthArea7: GuiTextInput;
   private m_fireKeyLabel: Text;
-  private m_fireKeyArea: TextInput;
+  private m_fireKeyArea: GuiTextInput;
 
   constructor(contr: ControllerGame) {
     super(0, 90, 120, 500);

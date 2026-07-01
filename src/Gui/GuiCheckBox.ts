@@ -1,8 +1,8 @@
-import PIXIsound from "pixi-sound";
-import { Graphics, InteractionEvent, Sprite, Text, TextStyle, Texture } from "pixi.js";
+import type { Sound as PixiSound } from "@pixi/sound";
+import { FederatedPointerEvent, Graphics, Sprite, Text, TextStyle, Texture } from "pixi.js";
 import { Resource } from "../Game/Graphics/Resource"
 import { Main } from "../Main"
-type Sound = PIXIsound.Sound;
+type Sound = PixiSound;
 
 type CheckboxTextures = {
   upIcon: Texture;
@@ -31,17 +31,22 @@ export class GuiCheckBox extends Graphics {
   private _disabledStyle: TextStyle = new TextStyle();
   private textures: CheckboxTextures;
 
+  // NOTE: Pixi v8's Container has its own `label: string` property, which the
+  // Container constructor may assign during super() — before this subclass's
+  // fields (`_label`) are initialized. Guard against that pre-init phase so the
+  // setter/getter don't dereference an undefined `_label`.
   set label(value: string) {
+    if (!this._label) return;
     this._label.text = value;
   }
 
   get label(): string {
-    return this._label.text;
+    return this._label ? this._label.text : "";
   }
 
   set style(value: TextStyle) {
     this._style = value;
-    if (!this.disabled) this._label.style = value;
+    if (!this.disabled && this._label) this._label.style = value;
   }
 
   get style(): TextStyle {
@@ -50,7 +55,7 @@ export class GuiCheckBox extends Graphics {
 
   set disabledStyle(value: TextStyle) {
     this._disabledStyle = value;
-    if (this.disabled) this._label.style = value;
+    if (this.disabled && this._label) this._label.style = value;
   }
 
   get disabledStyle(): TextStyle {
@@ -68,7 +73,7 @@ export class GuiCheckBox extends Graphics {
 
   set disabled(value: boolean) {
     this._disabled = value;
-    this._label.style = this._disabled ? this._disabledStyle : this._style;
+    if (this._label) this._label.style = this._disabled ? this._disabledStyle : this._style;
     this.updateIcon();
   }
 
@@ -79,7 +84,7 @@ export class GuiCheckBox extends Graphics {
   constructor(x: number, y: number, w: number) {
     super();
     const h = 22;
-    this.buttonMode = true;
+    this.cursor = "pointer";
     this.interactive = true;
 
     this.x = x;
@@ -105,14 +110,13 @@ export class GuiCheckBox extends Graphics {
 
     this._icon.texture = this.selected ? this.textures.selectedUpIcon : this.textures.upIcon;
 
-    this.beginFill(0xffffff, 0.01);
-    this.drawRect(0, 0, w, h);
-    this.endFill();
+    this.rect(0, 0, w, h);
+    this.fill({ color: 0xffffff, alpha: 0.01 });
 
     this.addChild(this._icon);
     this.addChild(this._label);
 
-    this.on("click", (e: InteractionEvent) => this.mouseClick(e));
+    this.on("click", (e: FederatedPointerEvent) => this.mouseClick(e));
     this.on("mouseover", () => {
       this._mouseOver = true;
       this.updateIcon();
@@ -133,7 +137,7 @@ export class GuiCheckBox extends Graphics {
 
   private async load() {}
 
-  private mouseClick(e: InteractionEvent): void {
+  private mouseClick(e: FederatedPointerEvent): void {
     if (this.disabled) return;
     this.toggle();
     if (Main.enableSound) {
@@ -148,6 +152,7 @@ export class GuiCheckBox extends Graphics {
   }
 
   private updateIcon() {
+    if (!this._icon || !this.textures) return;
     let type = "Up";
     if (this._mouseOver) type = "Over";
     if (this._mouseDown) type = "Down";

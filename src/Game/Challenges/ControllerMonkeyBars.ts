@@ -347,9 +347,7 @@ export class ControllerMonkeyBars extends ControllerChallenge {
     this.sGround2 = new Graphics();
 
     // cave walls
-    this.sGround1.lineStyle(6, 0x889598, 1);
     var m: Matrix = new Matrix();
-    this.sGround1.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#B6C6CA", "#9AA9AD"], 1500), matrix: m });
     this.sGround1.moveTo(1101, 1364);
     this.sGround1.lineTo(1085, 1294);
     this.sGround1.lineTo(1035, 1207);
@@ -408,10 +406,9 @@ export class ControllerMonkeyBars extends ControllerChallenge {
     this.sGround1.lineTo(1571, 1389);
     this.sGround1.lineTo(1300, 1500);
     this.sGround1.lineTo(1101, 1364);
-    this.sGround1.endFill();
+    this.sGround1.fill({ texture: Gradient.getLinearGradientTexture(["#B6C6CA", "#9AA9AD"], 1500), matrix: m });
+    this.sGround1.stroke({ width: 6, color: 0x889598, alpha: 1 });
 
-    this.sGround2.lineStyle(6, 0x889598, 1);
-    this.sGround2.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#B6C6CA", "#9AA9AD"], 1500), matrix: m });
     this.sGround2.moveTo(4167, 1380);
     this.sGround2.lineTo(4293, 1324);
     this.sGround2.lineTo(4322, 1252);
@@ -465,11 +462,10 @@ export class ControllerMonkeyBars extends ControllerChallenge {
     this.sGround2.lineTo(4716, 1304);
     this.sGround2.lineTo(4400, 1500);
     this.sGround2.lineTo(4167, 1380);
-    this.sGround2.endFill();
+    this.sGround2.fill({ texture: Gradient.getLinearGradientTexture(["#B6C6CA", "#9AA9AD"], 1500), matrix: m });
+    this.sGround2.stroke({ width: 6, color: 0x889598, alpha: 1 });
 
     // cave rocks
-    this.sGround1.lineStyle(0, 0, 0);
-    this.sGround2.lineStyle(0, 0, 0);
     this.DrawCaveRock(1324, 1148, 1271, 1260, 1370, 1313);
     this.DrawCaveRock(1134, 1040, 1099, 1148, 1295, 1130);
     this.DrawCaveRock(1214, 770, 1334, 759, 1315, 869);
@@ -496,9 +492,8 @@ export class ControllerMonkeyBars extends ControllerChallenge {
 
     // main ground
     // outlines
-    this.sGround2.beginFill(0x2da12e);
-    this.sGround2.drawRect(3477, 1369, 1083, 197);
-    this.sGround2.endFill();
+    this.sGround2.rect(3477, 1369, 1083, 197);
+    this.sGround2.fill(0x2da12e);
     this.DrawGroundOutlineCircle(1029, 1353, 63);
     this.DrawGroundOutlineCircle(2201, 1377, 63);
     this.DrawGroundOutlineCircle(3393, 1368, 63);
@@ -524,12 +519,10 @@ export class ControllerMonkeyBars extends ControllerChallenge {
     // body
     m = new Matrix();
     m.translate(0, 550)
-    this.sGround1.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#6BD354", "#54BA3D"], 700), matrix: m });
-    this.sGround1.drawRect(1550, 1391, 600, 100);
-    this.sGround1.endFill();
-    this.sGround2.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#6BD354", "#54BA3D"], 700), matrix: m });
-    this.sGround2.drawRect(3483, 1375, 1071, 185);
-    this.sGround2.endFill();
+    this.sGround1.rect(1550, 1391, 600, 100);
+    this.sGround1.fill({ texture: Gradient.getLinearGradientTexture(["#6BD354", "#54BA3D"], 700), matrix: m });
+    this.sGround2.rect(3483, 1375, 1071, 185);
+    this.sGround2.fill({ texture: Gradient.getLinearGradientTexture(["#6BD354", "#54BA3D"], 700), matrix: m });
     this.DrawGroundCircle(1029, 1353, 63);
     this.DrawGroundCircle(2201, 1377, 63);
     this.DrawGroundCircle(3393, 1368, 63);
@@ -567,23 +560,20 @@ export class ControllerMonkeyBars extends ControllerChallenge {
     this.DrawRock(1, 1739, 1454, 69);
 
     // monkey bars
-    this.sGround1.lineStyle(6, 0x71848d, 1);
-    this.sGround1.beginFill(0xc4ced4);
     for (i = 0; i < 9; i++) {
-      this.sGround1.drawCircle(2257 + i * 144, 1089, 8);
+      this.sGround1.circle(2257 + i * 144, 1089, 8);
     }
-    this.sGround1.endFill();
+    this.sGround1.fill(0xc4ced4);
+    this.sGround1.stroke({ width: 6, color: 0x71848d, alpha: 1 });
 
     // start and end platforms
-    this.sGround1.lineStyle(6, 0x9d8941);
-    this.sGround1.beginFill(0xceb456);
-    this.sGround1.drawRect(1550, 1368, 683, 56);
-    this.sGround1.endFill();
+    this.sGround1.rect(1550, 1368, 683, 56);
+    this.sGround1.fill(0xceb456);
+    this.sGround1.stroke({ width: 6, color: 0x9d8941 });
 
-    this.sGround2.lineStyle(6, 0x9d8941);
-    this.sGround2.beginFill(0xceb456);
-    this.sGround2.drawRect(3510, 1368, 930, 56);
-    this.sGround2.endFill();
+    this.sGround2.rect(3510, 1368, 930, 56);
+    this.sGround2.fill(0xceb456);
+    this.sGround2.stroke({ width: 6, color: 0x9d8941 });
 
     this.sGround1.cacheAsBitmap = true;
     this.sGround2.cacheAsBitmap = true;
@@ -610,9 +600,8 @@ export class ControllerMonkeyBars extends ControllerChallenge {
 
   public DrawGroundOutlineCircle(xPos: number, yPos: number, radius: number): void {
     var sGround: Graphics = xPos < 3000 ? this.sGround1 : this.sGround2;
-    sGround.beginFill(0x2da12e);
-    sGround.drawCircle(xPos + radius, yPos + radius, radius + 6);
-    sGround.endFill();
+    sGround.circle(xPos + radius, yPos + radius, radius + 6);
+    sGround.fill(0x2da12e);
   }
 
   public DrawGroundCircle(xPos: number, yPos: number, radius: number): void {
@@ -620,36 +609,33 @@ export class ControllerMonkeyBars extends ControllerChallenge {
     var m: Matrix = new Matrix();
     m.scale(1, 700 / 255)
     m.translate(0, 550)
-    sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#6BD354", "#54BA3D"], 255), matrix: m });
-    sGround.drawCircle(xPos + radius, yPos + radius, radius);
-    sGround.endFill();
+    sGround.circle(xPos + radius, yPos + radius, radius);
+    sGround.fill({ texture: Gradient.getLinearGradientTexture(["#6BD354", "#54BA3D"], 255), matrix: m });
   }
 
   public DrawCaveRock(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): void {
     var sGround: Graphics = x1 < 3000 ? this.sGround1 : this.sGround2;
     var m: Matrix = new Matrix();
-    sGround.beginTextureFill({ texture: Gradient.getLinearGradientTexture(["#AAB9BD", "#95A1A5"], 1500), matrix: m });
     sGround.moveTo(x1, y1);
     sGround.lineTo(x2, y2);
     sGround.lineTo(x3, y3);
     sGround.lineTo(x1, y1);
-    sGround.endFill();
+    sGround.fill({ texture: Gradient.getLinearGradientTexture(["#AAB9BD", "#95A1A5"], 1500), matrix: m });
   }
 
   public DrawRock(type: number, xPos: number, yPos: number, radius: number): void {
     var sGround: Graphics = xPos < 3000 ? this.sGround1 : this.sGround2;
-    sGround.lineStyle(6, 0x6bb05a);
     var m: Matrix = new Matrix();
     m.translate(0, yPos)
-    sGround.beginTextureFill({
+    sGround.circle(xPos + radius, yPos + radius, radius);
+    sGround.fill({
       texture: Gradient.getLinearGradientTexture(
         type == 0 ? ["#8EDB82", "#7FBF72"] : type == 1 ? ["#80D970", "#6DBE5D"] : ["#70C160", "#63AB52"],
         radius * 2
       ),
       matrix: m,
     });
-    sGround.drawCircle(xPos + radius, yPos + radius, radius);
-    sGround.endFill();
+    sGround.stroke({ width: 6, color: 0x6bb05a });
   }
 
   public GetMinX(): number {

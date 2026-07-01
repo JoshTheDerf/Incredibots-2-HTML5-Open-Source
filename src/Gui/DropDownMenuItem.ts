@@ -65,9 +65,8 @@ export class DropDownMenuItem extends Graphics {
   }
 
   private highlight(): void {
-    this.beginFill(0xfeb584, 1);
-    this.lineStyle(0, 0xfeb584);
-    this.drawRect(1, 1, this.m_width - 2, 18);
+    this.rect(1, 1, this.m_width - 2, 18);
+    this.fill({ color: 0xfeb584, alpha: 1 });
     if (this.m_checkBoxBase) {
       this.m_checkBoxBase.visible = false;
       this.m_checkBoxRoll.visible = !Input.mouseDown;
@@ -76,9 +75,8 @@ export class DropDownMenuItem extends Graphics {
   }
 
   private deHighlight(): void {
-    this.beginFill(0xfdf9ea, 1);
-    this.lineStyle(0, 0xfdf9ea);
-    this.drawRect(1, 1, this.m_width - 2, 18);
+    this.rect(1, 1, this.m_width - 2, 18);
+    this.fill({ color: 0xfdf9ea, alpha: 1 });
     if (this.m_checkBoxBase) {
       this.m_checkBoxBase.visible = true;
       this.m_checkBoxRoll.visible = false;

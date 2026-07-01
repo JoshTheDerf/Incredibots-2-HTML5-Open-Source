@@ -216,14 +216,12 @@ export class ControllerGame extends Controller {
     this.m_sidePanel = new PartEditWindow(this);
 
     this.m_fader = new Graphics();
-    this.m_fader.beginFill(0, 0.2);
-    this.m_fader.lineStyle(0, 0, 0.2);
     this.m_fader.moveTo(0, 0);
     this.m_fader.lineTo(800, 0);
     this.m_fader.lineTo(800, 600);
     this.m_fader.lineTo(0, 600);
     this.m_fader.lineTo(0, 0);
-    this.m_fader.endFill();
+    this.m_fader.fill({ color: 0, alpha: 0.2 });
     this.m_fader.visible = false;
 
     this.uneditableText = new Text("");
@@ -443,27 +441,24 @@ export class ControllerGame extends Controller {
     var childIndex: number = this.sSky.lastCloudIndex + 1;
     for (i = 0; i < this.NumBuildingAreas(); i++) {
       var m_buildArea: Graphics = new Graphics();
-      m_buildArea.lineStyle(6, 0xdeb05d);
       var m: Matrix = new Matrix();
-      m_buildArea.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#ff8f17', '#ffc150']), matrix: m, alpha: 0.2 });
-      m_buildArea.drawRect(0, 0, 700, 550);
-      m_buildArea.endFill();
+      m_buildArea.rect(0, 0, 700, 550);
+      m_buildArea.fill({ texture: Gradient.getLinearGradientTexture(['#ff8f17', '#ffc150']), matrix: m, alpha: 0.2 });
+      m_buildArea.stroke({ width: 6, color: 0xdeb05d });
       this.addChildAt(m_buildArea, childIndex);
       this.m_buildAreas.push(m_buildArea);
       var m_badBuildArea: Graphics = new Graphics();
-      m_badBuildArea.lineStyle(6, 0xde6a5d);
       m = new Matrix();
-      m_badBuildArea.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#ff4d17', '#ff8f50']), matrix: m, alpha: 0.2 });
-      m_badBuildArea.drawRect(0, 0, 700, 550);
-      m_badBuildArea.endFill();
+      m_badBuildArea.rect(0, 0, 700, 550);
+      m_badBuildArea.fill({ texture: Gradient.getLinearGradientTexture(['#ff4d17', '#ff8f50']), matrix: m, alpha: 0.2 });
+      m_badBuildArea.stroke({ width: 6, color: 0xde6a5d });
       this.addChildAt(m_badBuildArea, childIndex);
       this.m_badBuildAreas.push(m_badBuildArea);
       var m_selectedBuildArea: Graphics = new Graphics();
-      m_selectedBuildArea.lineStyle(6, 0xfeca5d);
       m = new Matrix();
-      m_selectedBuildArea.beginTextureFill({ texture: Gradient.getLinearGradientTexture(['#ff4d17', '#ff8f50']), matrix: m, alpha: 0.2 })
-      m_selectedBuildArea.drawRect(0, 0, 700, 550);
-      m_selectedBuildArea.endFill();
+      m_selectedBuildArea.rect(0, 0, 700, 550);
+      m_selectedBuildArea.fill({ texture: Gradient.getLinearGradientTexture(['#ff4d17', '#ff8f50']), matrix: m, alpha: 0.2 });
+      m_selectedBuildArea.stroke({ width: 6, color: 0xfeca5d });
       this.addChildAt(m_selectedBuildArea, childIndex);
       this.m_selectedBuildAreas.push(m_selectedBuildArea);
     }

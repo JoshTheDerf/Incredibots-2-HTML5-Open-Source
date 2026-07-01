@@ -1,4 +1,4 @@
-import { Graphics, Text, TextStyle, utils } from "pixi.js";
+import { Graphics, Text, TextStyle } from "pixi.js";
 import { ControllerGame } from "../Game/ControllerGame"
 import { GuiButton } from "./GuiButton"
 import { GuiCheckBox } from "./GuiCheckBox"
@@ -122,7 +122,7 @@ export class ColourChangeWindow extends GuiWindow {
     format.fontFamily = Main.GLOBAL_FONT;
     format.fontSize = 10;
     format.fill = 0x4c3d57;
-    this.m_colourBox.label.style = format;
+    this.m_colourBox.labelText.style = format;
     this.addChild(this.m_colourBox);
     this.redrawBox();
     format = new TextStyle();
@@ -322,16 +322,13 @@ export class ColourChangeWindow extends GuiWindow {
 
   private redrawBox(): void {
     this.m_colourSelector.clear();
-    this.m_colourSelector.beginFill(
-      utils.rgb2hex([
-        parseInt(this.m_redArea.text) / 255,
-        parseInt(this.m_greenArea.text) / 255,
-        parseInt(this.m_blueArea.text) / 255,
-      ]),
-      1
-    );
-    this.m_colourSelector.lineStyle(1, 0x222222, 1.0);
-    this.m_colourSelector.drawRect(40, 128, 40, 30);
-    this.m_colourSelector.endFill();
+    // Inlined former utils.rgb2hex([r,g,b]) (0-1 floats -> 0xRRGGBB int).
+    const fillColour =
+      ((Math.round((parseInt(this.m_redArea.text) / 255) * 255) & 0xff) << 16) |
+      ((Math.round((parseInt(this.m_greenArea.text) / 255) * 255) & 0xff) << 8) |
+      (Math.round((parseInt(this.m_blueArea.text) / 255) * 255) & 0xff);
+    this.m_colourSelector.rect(40, 128, 40, 30);
+    this.m_colourSelector.fill({ color: fillColour, alpha: 1 });
+    this.m_colourSelector.stroke({ width: 1, color: 0x222222, alpha: 1.0 });
   }
 }

@@ -287,10 +287,9 @@ function drawMarquee(): void {
 	const w = Math.abs(a.x - b.x);
 	const h = Math.abs(a.y - b.y);
 	overlay.clear();
-	overlay.lineStyle(1, 0x3399ff, 0.9);
-	overlay.beginFill(0x3399ff, 0.12);
-	overlay.drawRect(x, y, w, h);
-	overlay.endFill();
+	overlay.rect(x, y, w, h);
+	overlay.fill({ color: 0x3399ff, alpha: 0.12 });
+	overlay.stroke({ width: 1, color: 0x3399ff, alpha: 0.9 });
 }
 
 function clearMarquee(): void {
@@ -341,13 +340,14 @@ function drawFrame(): void {
 	);
 }
 
-onMounted(() => {
+onMounted(async () => {
 	if (!container.value) return;
 
 	const w = container.value.clientWidth || 1;
 	const h = container.value.clientHeight || 1;
 
-	app = new Application({
+	const localApp = new Application();
+	await localApp.init({
 		width: w,
 		height: h,
 		backgroundAlpha: 0,
@@ -355,11 +355,17 @@ onMounted(() => {
 		resolution: window.devicePixelRatio || 1,
 		autoDensity: true,
 	});
+	// The component may have been torn down while init() was awaiting.
+	if (!container.value) {
+		localApp.destroy(true, { children: true });
+		return;
+	}
+	app = localApp;
 
-	container.value.appendChild(app.view as unknown as Node);
-	(app.view as HTMLCanvasElement).style.display = "block";
-	(app.view as HTMLCanvasElement).style.width = "100%";
-	(app.view as HTMLCanvasElement).style.height = "100%";
+	container.value.appendChild(app.canvas as unknown as Node);
+	(app.canvas as HTMLCanvasElement).style.display = "block";
+	(app.canvas as HTMLCanvasElement).style.width = "100%";
+	(app.canvas as HTMLCanvasElement).style.height = "100%";
 
 	// The Graphics that Draw paints into (its m_sprite). Draw's text containers
 	// attach relative to this sprite's parent, so it must live on the stage.

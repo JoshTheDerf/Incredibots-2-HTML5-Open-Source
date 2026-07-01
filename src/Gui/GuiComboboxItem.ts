@@ -1,14 +1,14 @@
-import PIXIsound from "pixi-sound";
+import type { Sound as PixiSound } from "@pixi/sound";
 import { Container, Sprite, Text, TextStyle, Texture } from "pixi.js";
 import { Resource } from "../Game/Graphics/Resource"
 import { Main } from "../Main"
-type Sound = PIXIsound.Sound;
+type Sound = PixiSound;
 
 export class GuiComboboxItem extends Container {
   public static rolloverSound: Sound = Resource.cRoll;
   public static clickSound: Sound = Resource.cClick;
 
-  public label: Text = new Text("");
+  public labelText: Text = new Text("");
   public background: Sprite = new Sprite();
 
   private upTexture: Texture;
@@ -30,7 +30,7 @@ export class GuiComboboxItem extends Container {
 
   set text(value: string) {
     this._text = value;
-    this.label.text = this._text;
+    this.labelText.text = this._text;
   }
 
   get text(): string {
@@ -43,7 +43,7 @@ export class GuiComboboxItem extends Container {
     this.height = h;
     this.x = xPos;
     this.y = yPos;
-    this.buttonMode = true;
+    this.cursor = "pointer";
     this.interactive = true;
     this.text = text;
 
@@ -62,11 +62,11 @@ export class GuiComboboxItem extends Container {
     this.background.height = h;
     this.addChild(this.background);
 
-    this.label.style = style;
-    this.label.anchor.set(0, 0.5);
-    this.label.x = 10;
-    this.label.y = h / 2;
-    this.addChild(this.label);
+    this.labelText.style = style;
+    this.labelText.anchor.set(0, 0.5);
+    this.labelText.x = 10;
+    this.labelText.y = h / 2;
+    this.addChild(this.labelText);
 
     this.on("click", (event: any) => {
       if (Main.enableSound) {

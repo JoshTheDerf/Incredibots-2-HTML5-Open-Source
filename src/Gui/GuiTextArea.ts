@@ -1,22 +1,30 @@
-import TextInput from "pixi-text-input";
-import { Container, Sprite, TextStyle, Texture, TilingSprite } from "pixi.js";
+import { Container, Sprite, Text, TextStyle, Texture } from "pixi.js";
 import { Resource } from "../Game/Graphics/Resource"
 import { Main } from "../Main"
 
+// Minimal pixi-8-native replacement for the abandoned `pixi-text-input`
+// plugin (multiline variant). Draws a skinned background + a wrapping Pixi
+// Text, with a hidden DOM <textarea> overlay capturing real entry. Preserves
+// the .text / .editable surface and "change"/"focus"/"blur" events, plus
+// focus().
 export class GuiTextArea extends Container {
   private baseSkin: Texture;
   private rollSkin: Texture;
 
-  public textInput: TextInput;
+  private background: Sprite;
+  private labelText: Text;
+  private domInput: HTMLTextAreaElement;
+  private _disabled: boolean = false;
 
   public text: string = "";
 
   get editable() {
-    return !this.textInput.disabled
+    return !this._disabled
   }
 
   set editable(value) {
-    this.textInput.disabled = !value
+    this._disabled = !value;
+    this.domInput.disabled = this._disabled;
   }
 
   constructor(xPos: number, yPos: number, w: number, h: number, format: TextStyle | null = null) {
@@ -30,54 +38,74 @@ export class GuiTextArea extends Container {
     if (!format) format = new TextStyle();
     format.fontFamily = Main.GLOBAL_FONT;
     format.fill = "#4C3D57";
+    format.wordWrap = true;
+    format.wordWrapWidth = w - 20;
 
-    const backgroundContainer = new Container();
-    const backgroundSprite = new Sprite(this.baseSkin);
-    backgroundSprite.width = w;
-    backgroundSprite.height = h;
-    backgroundContainer.addChild(backgroundSprite);
+    this.background = new Sprite(this.baseSkin);
+    this.background.width = w;
+    this.background.height = h;
+    this.addChild(this.background);
 
-    this.textInput = new TextInput({
-      input: {
-        multiline: true,
-        fontSize: `${format.fontSize}pt`,
-        color: format.fill,
-        zIndex: 1000,
-        width: `${w - 20}px`,
-        height: `${h - 20}px`,
-        padding: `10px`,
+    this.labelText = new Text({ text: "", style: format });
+    this.labelText.x = 10;
+    this.labelText.y = 10;
+    this.addChild(this.labelText);
+
+    this.domInput = document.createElement("textarea");
+    this.domInput.style.position = "absolute";
+    this.domInput.style.opacity = "0";
+    this.domInput.style.pointerEvents = "none";
+    this.domInput.style.left = "-9999px";
+    document.body.appendChild(this.domInput);
+
+    this.domInput.addEventListener("input", () => {
+      this.text = this.domInput.value;
+      this.labelText.text = this.text;
+      this.emit("change", this.text);
+    });
+    this.domInput.addEventListener("focus", () => {
+      this.background.texture = this.rollSkin;
+      this.emit("focus");
+    });
+    this.domInput.addEventListener("blur", () => {
+      this.background.texture = this.baseSkin;
+      this.emit("blur");
+    });
+
+    this.eventMode = "static";
+    this.cursor = "text";
+    this.on("pointertap", () => {
+      if (this._disabled) return;
+      this.domInput.focus();
+    });
+  }
+
+  // Backwards-compat shim for the old `pixi-text-input` `.textInput` sub-object
+  // (callers use `.textInput.text = ...` and `.textInput.select()`).
+  public get textInput(): { select: () => void; text: string } {
+    const self = this;
+    return {
+      select: () => {
+        self.domInput.focus();
+        self.domInput.select();
       },
-      box: (w: number, h: number, state: string) => {
-        const backgroundSprite = new Sprite();
-        backgroundSprite.texture = this.baseSkin;
-        backgroundSprite.width = w;
-        backgroundSprite.height = h;
-
-        if (state === "DEFAULT") backgroundSprite.texture = this.baseSkin;
-        if (state === "FOCUSED") backgroundSprite.texture = this.rollSkin;
-        if (state === "DISABLED") backgroundSprite.texture = this.baseSkin;
-
-        return backgroundSprite;
+      get text(): string {
+        return self.text;
       },
-    });
-
-    this.textInput.on("input", (text: string) => {
-      this.text = text;
-      this.emit("change", text);
-    });
-
-    this.textInput.on("focus", () => {
-      this.emit("focus")
-    });
-
-    this.textInput.on("blur", () => {
-      this.emit("blur")
-    });
-
-    this.addChild(this.textInput);
+      set text(value: string) {
+        self.text = value;
+        self.domInput.value = value;
+        self.labelText.text = value;
+      },
+    };
   }
 
   focus() {
-    this.textInput.focus()
+    this.domInput.focus()
+  }
+
+  public destroy(options?: any): void {
+    if (this.domInput && this.domInput.parentNode) this.domInput.parentNode.removeChild(this.domInput);
+    super.destroy(options);
   }
 }

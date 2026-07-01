@@ -65,7 +65,7 @@ export class Draw extends b2DebugDraw {
   private GetTextField(part: TextPart): Text {
     var field = this.m_textFields.get(part);
     if (!field) {
-      field = new Text(part.text);
+      field = new Text({ text: part.text });
       field.zIndex = 0;
       this.m_textFields.set(part, field);
     }

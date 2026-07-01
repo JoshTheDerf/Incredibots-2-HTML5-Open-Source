@@ -1,4 +1,4 @@
-import PIXIsound from "pixi-sound";
+import type { Sound as PixiSound } from "@pixi/sound";
 import { Resource } from "../Graphics/Resource"
 import { Replay } from "../Replay"
 import type { Challenge } from "../Challenge"
@@ -25,7 +25,7 @@ import {
   MAX_THRUSTER_STRENGTH,
 } from "../../Parts/partDefaults"
 
-type Sound = PIXIsound.Sound;
+type Sound = PixiSound;
 
 export class ControllerGameGlobals {
   public static INIT_PHYS_SCALE: number = 30;

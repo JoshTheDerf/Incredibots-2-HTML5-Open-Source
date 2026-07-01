@@ -1,9 +1,9 @@
-import PIXIsound from "pixi-sound";
-import { Container, filters, InteractionEvent, Sprite, Text, TextStyle, Texture } from "pixi.js";
+import type { Sound as PixiSound } from "@pixi/sound";
+import { ColorMatrixFilter, Container, FederatedPointerEvent, Sprite, Text, TextStyle, Texture } from "pixi.js";
 import { Resource } from "../Game/Graphics/Resource"
 import { Main } from "../Main"
 
-type Sound = PIXIsound.Sound;
+type Sound = PixiSound;
 
 export class GuiButton extends Container {
   public static PURPLE: number = 0;
@@ -25,7 +25,7 @@ export class GuiButton extends Container {
   public depressed: boolean = false;
   public stopPropagation: boolean = false;
 
-  public label: Text = null;
+  public labelText: Text = null;
   public background: Sprite = null;
 
   private upTexture: Texture;
@@ -37,7 +37,7 @@ export class GuiButton extends Container {
     this._disabled = value;
 
     if (this._disabled) {
-      const colorMatrix = new filters.ColorMatrixFilter();
+      const colorMatrix = new ColorMatrixFilter();
       colorMatrix.brightness(0.5, true);
       this.interactive = false;
       this.alpha = 0.7;
@@ -109,7 +109,7 @@ export class GuiButton extends Container {
     this.width = w;
     this.height = h;
     this.position.set(xPos, yPos);
-    this.buttonMode = true;
+    this.cursor = "pointer";
     this.interactive = true;
 
     this.background = new Sprite(this.upTexture);
@@ -117,19 +117,19 @@ export class GuiButton extends Container {
     this.background.height = h;
     this.addChild(this.background);
 
-    this.label = new Text(text);
-    this.label.style = style;
-    this.label.anchor.set(0.5);
-    this.label.x = w / 2;
-    this.label.y = h / 2;
-    this.addChild(this.label);
+    this.labelText = new Text(text);
+    this.labelText.style = style;
+    this.labelText.anchor.set(0.5);
+    this.labelText.x = w / 2;
+    this.labelText.y = h / 2;
+    this.addChild(this.labelText);
 
-    this.on("click", (event: InteractionEvent) => {
+    this.on("click", (event: FederatedPointerEvent) => {
       if (this.disabled) return;
       if (this.stopPropagation) event.stopPropagation()
       clickListener(event);
     })
-      .on("tap", (event: InteractionEvent) => {
+      .on("tap", (event: FederatedPointerEvent) => {
         if (this.disabled) return;
         clickListener(event);
       })
@@ -147,7 +147,6 @@ export class GuiButton extends Container {
       }
       this.sCheckbox.x = 110;
       this.sCheckbox.y = 12;
-      this.sCheckbox.smoothing = true;
       this.addChild(this.sCheckbox);
     }
   }

@@ -63,7 +63,6 @@ export class b2DebugDraw {
   /// Draw a closed polygon provided in CCW order.
   public DrawPolygon(vertices: Array<any>, vertexCount: number, color): void {
     if (this.IsPolygonOnScreen(vertices, vertexCount)) {
-      this.m_sprite.lineStyle(1, Util.b2ColorToHex(color), this.m_alpha);
       this.m_sprite.moveTo(
         vertices[0].x * this.m_drawScale - this.m_drawXOff,
         vertices[0].y * this.m_drawScale - this.m_drawYOff
@@ -78,6 +77,7 @@ export class b2DebugDraw {
         vertices[0].x * this.m_drawScale - this.m_drawXOff,
         vertices[0].y * this.m_drawScale - this.m_drawYOff
       );
+      this.m_sprite.stroke({ width: 1, color: Util.b2ColorToHex(color), alpha: this.m_alpha });
     }
   }
 
@@ -91,26 +91,9 @@ export class b2DebugDraw {
   ): void {
     if (this.IsPolygonOnScreen(vertices, vertexCount)) {
       var outlineColour = b2DebugDraw.DarkenColour(color);
-      if (drawOutlines)
-        this.m_sprite.lineStyle(
-          this.m_lineThickness * this.m_drawScale,
-          this.drawColours
-            ? Util.b2ColorToHex(isHighlighted ? b2DebugDraw.DarkenColour(outlineColour) : outlineColour)
-            : Util.b2ColorToHex(color),
-          this.m_alpha
-        );
-      else this.m_sprite.lineStyle(0, 0, 0);
       this.m_sprite.moveTo(
         vertices[0].x * this.m_drawScale - this.m_drawXOff,
         vertices[0].y * this.m_drawScale - this.m_drawYOff
-      );
-      this.m_sprite.beginFill(
-        this.drawColours
-          ? isHighlighted
-            ? Util.b2ColorToHex(b2DebugDraw.BrightenColour(color))
-            : Util.b2ColorToHex(color)
-          : Util.b2ColorToHex(color),
-        this.m_fillAlpha * (isHighlighted ? 0.8 : 1)
       );
       for (var i: number = 1; i < vertexCount; i++) {
         this.m_sprite.lineTo(
@@ -122,7 +105,22 @@ export class b2DebugDraw {
         vertices[0].x * this.m_drawScale - this.m_drawXOff,
         vertices[0].y * this.m_drawScale - this.m_drawYOff
       );
-      this.m_sprite.endFill();
+      this.m_sprite.fill({
+        color: this.drawColours
+          ? isHighlighted
+            ? Util.b2ColorToHex(b2DebugDraw.BrightenColour(color))
+            : Util.b2ColorToHex(color)
+          : Util.b2ColorToHex(color),
+        alpha: this.m_fillAlpha * (isHighlighted ? 0.8 : 1),
+      });
+      if (drawOutlines)
+        this.m_sprite.stroke({
+          width: this.m_lineThickness * this.m_drawScale,
+          color: this.drawColours
+            ? Util.b2ColorToHex(isHighlighted ? b2DebugDraw.DarkenColour(outlineColour) : outlineColour)
+            : Util.b2ColorToHex(color),
+          alpha: this.m_alpha,
+        });
     }
   }
 
@@ -135,20 +133,17 @@ export class b2DebugDraw {
   ): void {
     if (this.IsPolygonOnScreen(vertices, vertexCount)) {
       var outlineColour = b2DebugDraw.DarkenColour(color);
-      if (drawOutlines)
-        this.m_sprite.lineStyle(
-          this.m_lineThickness * this.m_drawScale,
-          this.drawColours
-            ? Util.b2ColorToHex(isHighlighted ? b2DebugDraw.DarkenColour(outlineColour) : outlineColour)
-            : Util.b2ColorToHex(color),
-          this.m_alpha
-        );
-      else this.m_sprite.lineStyle(0, 0, 0);
+      var strokeStyle = {
+        width: this.m_lineThickness * this.m_drawScale,
+        color: this.drawColours
+          ? Util.b2ColorToHex(isHighlighted ? b2DebugDraw.DarkenColour(outlineColour) : outlineColour)
+          : Util.b2ColorToHex(color),
+        alpha: this.m_alpha,
+      };
       this.m_sprite.moveTo(
         vertices[0].x * this.m_drawScale - this.m_drawXOff,
         vertices[0].y * this.m_drawScale - this.m_drawYOff
       );
-      this.m_sprite.beginFill(Util.b2ColorToHex(color), this.m_fillAlpha * (isHighlighted ? 0.8 : 1));
       this.m_sprite.lineTo(
         vertices[1].x * this.m_drawScale - this.m_drawXOff,
         vertices[1].y * this.m_drawScale - this.m_drawYOff
@@ -165,7 +160,8 @@ export class b2DebugDraw {
         vertices[0].x * this.m_drawScale - this.m_drawXOff,
         vertices[0].y * this.m_drawScale - this.m_drawYOff
       );
-      this.m_sprite.endFill();
+      this.m_sprite.fill({ color: Util.b2ColorToHex(color), alpha: this.m_fillAlpha * (isHighlighted ? 0.8 : 1) });
+      if (drawOutlines) this.m_sprite.stroke(strokeStyle);
       this.m_sprite.moveTo(
         vertices[0].x * this.m_drawScale - this.m_drawXOff,
         vertices[0].y * this.m_drawScale - this.m_drawYOff
@@ -178,18 +174,19 @@ export class b2DebugDraw {
         vertices[3].x * this.m_drawScale - this.m_drawXOff,
         vertices[3].y * this.m_drawScale - this.m_drawYOff
       );
+      if (drawOutlines) this.m_sprite.stroke(strokeStyle);
     }
   }
 
   /// Draw a circle.
   public DrawCircle(center, radius: number, color): void {
     if (this.IsCircleOnScreen(center, radius)) {
-      this.m_sprite.lineStyle(1, Util.b2ColorToHex(color), this.m_alpha);
-      this.m_sprite.drawCircle(
+      this.m_sprite.circle(
         center.x * this.m_drawScale - this.m_drawXOff,
         center.y * this.m_drawScale - this.m_drawYOff,
         radius * this.m_drawScale
       );
+      this.m_sprite.stroke({ width: 1, color: Util.b2ColorToHex(color), alpha: this.m_alpha });
     }
   }
 
@@ -205,35 +202,29 @@ export class b2DebugDraw {
   ): void {
     if (this.IsCircleOnScreen(center, radius)) {
       var outlineColour = b2DebugDraw.DarkenColour(color);
-      if (drawOutlines) {
-        this.m_sprite.lineStyle(
-          this.m_lineThickness * this.m_drawScale,
-          this.drawColours
-            ? Util.b2ColorToHex(isHighlighted ? b2DebugDraw.DarkenColour(outlineColour) : outlineColour)
-            : Util.b2ColorToHex(color),
-          this.m_alpha
-        );
-      } else {
-        this.m_sprite.lineStyle(0, 0, 0);
-      }
-      this.m_sprite.moveTo(0, 0);
-      this.m_sprite.beginFill(
-        this.drawColours
-          ? Util.b2ColorToHex(isHighlighted ? b2DebugDraw.BrightenColour(color) : color)
+      var strokeStyle = {
+        width: this.m_lineThickness * this.m_drawScale,
+        color: this.drawColours
+          ? Util.b2ColorToHex(isHighlighted ? b2DebugDraw.DarkenColour(outlineColour) : outlineColour)
           : Util.b2ColorToHex(color),
-        this.m_fillAlpha * (isHighlighted ? 0.8 : 1)
-      );
-      this.m_sprite.drawCircle(
+        alpha: this.m_alpha,
+      };
+      this.m_sprite.circle(
         center.x * this.m_drawScale - this.m_drawXOff,
         center.y * this.m_drawScale - this.m_drawYOff,
         radius * this.m_drawScale
       );
-      this.m_sprite.endFill();
+      this.m_sprite.fill({
+        color: this.drawColours
+          ? Util.b2ColorToHex(isHighlighted ? b2DebugDraw.BrightenColour(color) : color)
+          : Util.b2ColorToHex(color),
+        alpha: this.m_fillAlpha * (isHighlighted ? 0.8 : 1),
+      });
+      if (drawOutlines) this.m_sprite.stroke(strokeStyle);
       if (drawOutlines && !cannonball) {
         var numSpokes: number = 16;
         for (var i: number = 0; i < numSpokes; i++) {
           var angle: number = Math.atan2(axis.y, axis.x) + (2 * i * Math.PI) / numSpokes;
-          //m_sprite.moveTo(center.x * m_drawScale - m_drawXOff, center.y * m_drawScale - m_drawYOff);
           this.m_sprite.moveTo(
             (center.x + Math.cos(angle) * (radius * 0.9)) * this.m_drawScale - this.m_drawXOff,
             (center.y + Math.sin(angle) * (radius * 0.9)) * this.m_drawScale - this.m_drawYOff
@@ -243,21 +234,22 @@ export class b2DebugDraw {
             (center.y + Math.sin(angle) * radius) * this.m_drawScale - this.m_drawYOff
           );
         }
+        this.m_sprite.stroke(strokeStyle);
       }
     }
   }
 
   /// Draw a line segment.
   public DrawSegment(p1, p2, color): void {
-    this.m_sprite.lineStyle(1, Util.b2ColorToHex(color), this.m_alpha);
     this.m_sprite.moveTo(p1.x * this.m_drawScale - this.m_drawXOff, p1.y * this.m_drawScale - this.m_drawYOff);
     this.m_sprite.lineTo(p2.x * this.m_drawScale - this.m_drawXOff, p2.y * this.m_drawScale - this.m_drawYOff);
+    this.m_sprite.stroke({ width: 1, color: Util.b2ColorToHex(color), alpha: this.m_alpha });
   }
 
   public DrawSolidSegment(p1, p2, color): void {
-    this.m_sprite.lineStyle(this.m_lineThickness * this.m_drawScale, Util.b2ColorToHex(color), this.m_alpha);
     this.m_sprite.moveTo(p1.x * this.m_drawScale - this.m_drawXOff, p1.y * this.m_drawScale - this.m_drawYOff);
     this.m_sprite.lineTo(p2.x * this.m_drawScale - this.m_drawXOff, p2.y * this.m_drawScale - this.m_drawYOff);
+    this.m_sprite.stroke({ width: this.m_lineThickness * this.m_drawScale, color: Util.b2ColorToHex(color), alpha: this.m_alpha });
   }
 
   public IsPolygonOnScreen(vertices: Array<any>, vertexCount: number): boolean {

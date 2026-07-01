@@ -141,7 +141,7 @@ export class AdvancedSandboxWindow extends GuiWindow {
     format.fontFamily = Main.GLOBAL_FONT;
     format.fontSize = 12;
     format.fill = "#573D40";
-    this.sizeBox.label.style = format;
+    this.sizeBox.labelText.style = format;
     if (defaults) this.sizeBox.selectedIndex = defaults.size;
     this.addChild(this.sizeBox);
 
@@ -153,7 +153,7 @@ export class AdvancedSandboxWindow extends GuiWindow {
     format.fontFamily = Main.GLOBAL_FONT;
     format.fontSize = 12;
     format.fill = "#573D40";
-    this.shapeBox.label.style = format;
+    this.shapeBox.labelText.style = format;
     if (defaults) this.shapeBox.selectedIndex = defaults.terrainType;
     this.addChild(this.shapeBox);
 
@@ -169,7 +169,7 @@ export class AdvancedSandboxWindow extends GuiWindow {
     format.fontFamily = Main.GLOBAL_FONT;
     format.fontSize = 12;
     format.fill = "#573D40";
-    this.themeBox.label.style = format;
+    this.themeBox.labelText.style = format;
     if (defaults) this.themeBox.selectedIndex = defaults.terrainTheme;
     this.addChild(this.themeBox);
 
@@ -185,7 +185,7 @@ export class AdvancedSandboxWindow extends GuiWindow {
     format.fontFamily = Main.GLOBAL_FONT;
     format.fontSize = 12;
     format.fill = "#573D40";
-    this.bgBox.label.style = format;
+    this.bgBox.labelText.style = format;
     if (defaults) this.bgBox.selectedIndex = defaults.background;
     this.bgBox.on("change", () => this.bgBoxChanged());
     this.addChild(this.bgBox);

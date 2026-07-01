@@ -27,10 +27,9 @@ export class ControllerCatapult extends ControllerTutorial
 		this.draw.m_drawYOff = -220;
 
 		// start platform
-		this.sGround1.lineStyle(6, 0x9D8941);
-		this.sGround1.beginFill(0xCEB456);
-		this.sGround1.drawRect(1045, 1452, 681, 56);
-		this.sGround1.endFill();
+		this.sGround1.rect(1045, 1452, 681, 56);
+		this.sGround1.fill(0xCEB456);
+		this.sGround1.stroke({ width: 6, color: 0x9D8941 });
 
 		if (!ControllerGameGlobals.playingReplay) this.LoadParts();
 

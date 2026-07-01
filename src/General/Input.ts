@@ -65,9 +65,9 @@ export class Input {
     }
 
     // add key listeners
-    Input.renderer.view.tabIndex = -1;
-    Input.renderer.view.addEventListener("keydown", (event: any) => this.keyPress(event));
-    Input.renderer.view.addEventListener("keyup", (event: any) => this.keyRelease(event));
+    Input.renderer.canvas.tabIndex = -1;
+    Input.renderer.canvas.addEventListener("keydown", (event: any) => this.keyPress(event));
+    Input.renderer.canvas.addEventListener("keyup", (event: any) => this.keyRelease(event));
 
     // mouse listeners
     Input.m_stageMc.on("mousedown", (event: any) => this.mousePress(event));

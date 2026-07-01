@@ -1,5 +1,5 @@
-import { Application, Texture } from "pixi.js";
-import type PIXIsound from "pixi-sound";
+import { Application, Assets, Texture } from "pixi.js";
+import type { Sound as PixiSound } from "@pixi/sound";
 
 // Data
 import cRobot from "../../../resource/robot.dat";
@@ -155,30 +155,28 @@ import cCloud9 from "../../../resource/cloud_9.png";
 // play/stop/pause/resume and the volume getter/setter.
 class LazySound {
   private src: string;
-  private real: PIXIsound.Sound | null = null;
+  private real: PixiSound | null = null;
   private pendingVolume: number | null = null;
-  private loadPromise: Promise<PIXIsound.Sound> | null = null;
+  private loadPromise: Promise<PixiSound> | null = null;
 
   constructor(src: string) {
     this.src = src;
   }
 
-  // Kicks off (and caches) a dynamic import of pixi-sound. Using a dynamic
-  // `import()` rather than `require()` keeps this safe under Vite's ESM
-  // browser bundle (no `require` global exists at runtime there), while
-  // still only touching pixi-sound/document the first time a sound is
-  // actually used rather than at Resource module-init time.
-  private load(): Promise<PIXIsound.Sound> {
+  // Kicks off (and caches) a dynamic import of @pixi/sound. Using a dynamic
+  // `import()` rather than a static import keeps this safe under Vite's ESM
+  // browser bundle while still only touching @pixi/sound/document the first
+  // time a sound is actually used rather than at Resource module-init time.
+  private load(): Promise<PixiSound> {
     if (!this.loadPromise) {
-      this.loadPromise = import("pixi-sound").then((mod) => {
-        const PIXIsoundLib = ((mod as any).default ?? mod) as typeof PIXIsound;
-        const sound = PIXIsoundLib.Sound.from(this.src);
+      this.loadPromise = import("@pixi/sound").then((mod) => {
+        const s = mod.Sound.from(this.src);
         if (this.pendingVolume !== null) {
-          sound.volume = this.pendingVolume;
+          s.volume = this.pendingVolume;
           this.pendingVolume = null;
         }
-        this.real = sound;
-        return sound;
+        this.real = s;
+        return s;
       });
     }
     return this.loadPromise;
@@ -225,9 +223,14 @@ export class MouseCursor {
   hoverIcon = "url('resource/mopuse_hourglass.png'),auto";
 
   apply(application: Application) {
-    // Add custom cursor styles
-    application.renderer.plugins.interaction.cursorStyles.default = this.defaultIcon;
-    application.renderer.plugins.interaction.cursorStyles.hover = this.hoverIcon;
+    // Pixi v8 removed the interaction plugin; cursor styles now live on the
+    // renderer's events system. This class is unused (only referenced in
+    // commented-out Main.ts code) so this is a best-effort shim.
+    const events: any = (application.renderer as any).events;
+    if (events && events.cursorStyles) {
+      events.cursorStyles.default = this.defaultIcon;
+      events.cursorStyles.hover = this.hoverIcon;
+    }
   }
 }
 
@@ -393,8 +396,8 @@ export class Resource {
   static cWin = Resource.lazySound(cWin);
   static cLose = Resource.lazySound(cLose);
 
-  private static lazySound(src: string): PIXIsound.Sound {
-    return new LazySound(src) as unknown as PIXIsound.Sound;
+  private static lazySound(src: string): PixiSound {
+    return new LazySound(src) as unknown as PixiSound;
   }
 
   // Challenge resources
@@ -539,7 +542,7 @@ export class Resource {
     }
 
     for (const key in Resource.textures) {
-      promises.push(Texture.fromURL(Resource.textures[key]).then((texture) => (Resource[key] = texture)));
+      promises.push(Assets.load(Resource.textures[key]).then((texture) => (Resource[key] = texture)));
     }
 
     await Promise.all(promises);

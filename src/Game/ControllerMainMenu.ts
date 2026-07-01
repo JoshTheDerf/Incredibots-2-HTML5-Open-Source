@@ -1,4 +1,4 @@
-import { Container, DisplayObject, Graphics, Matrix, Sprite, Text, TextStyle } from "pixi.js";
+import { Container, Graphics, Matrix, Sprite, Text, TextStyle } from "pixi.js";
 import { b2AABB, b2Vec2, b2World } from "../Box2D";
 import { Challenge } from "./Challenge"
 import { ContactFilter } from "./ContactFilter"
@@ -48,7 +48,7 @@ export class ControllerMainMenu extends Controller {
 
   private sSky: Sky;
   private sGround: Graphics;
-  private sCanvas: Container;
+  private sCanvas: Graphics;
   private sLogo: BitmapAsset;
   private playButton: GuiButton;
   private gamesButton: GuiButton = null;
@@ -67,8 +67,8 @@ export class ControllerMainMenu extends Controller {
   private startHereText: BitmapAsset = null;
   private startHereArrow: BitmapAsset = null;
 
-  private windowL: DisplayObject;
-  private windowR: DisplayObject;
+  private windowL: Container;
+  private windowR: Container;
   private windowC: Sprite;
   private forumPostText: TextField;
   private forumPostButton: GuiButton;
@@ -126,12 +126,10 @@ export class ControllerMainMenu extends Controller {
       Util.HexColourString(249, 172, 101),
       Util.HexColourString(240, 70, 45),
     ]);
-    this.sGround.beginTextureFill({ texture: gradient1 });
-    this.sGround.drawRect(144, -6, 4012, 312);
-    this.sGround.endFill();
-    this.sGround.beginTextureFill({ texture: gradient2 });
-    this.sGround.drawRect(150, 0, 4000, 300);
-    this.sGround.endFill();
+    this.sGround.rect(144, -6, 4012, 312);
+    this.sGround.fill({ texture: gradient1 });
+    this.sGround.rect(150, 0, 4000, 300);
+    this.sGround.fill({ texture: gradient2 });
 
     this.addChild(this.sGround);
     this.DrawGroundCircle(0, 0, 150);
@@ -170,19 +168,16 @@ export class ControllerMainMenu extends Controller {
     this.addChild(this.versionText);
 
     this.fader = new Graphics();
-    this.fader.beginFill(0, 0.2);
-    this.fader.lineStyle(0, 0, 0.2);
     this.fader.moveTo(0, 0);
     this.fader.lineTo(800, 0);
     this.fader.lineTo(800, 600);
     this.fader.lineTo(0, 600);
     this.fader.lineTo(0, 0);
-    this.fader.endFill();
+    this.fader.fill({ color: 0, alpha: 0.2 });
     this.fader.visible = straightToLevelSelect || Main.premiumMode;
     this.addChild(this.fader);
 
     this.sLogo = new Sprite(Resource.cMainMenuLogo);
-    this.sLogo.smoothing = true;
     if (straightToLevelSelect) {
       this.sLogo.width = this.sLogo.measuredWidth * 0.6;
       this.sLogo.height = this.sLogo.measuredHeight * 0.6;
@@ -224,8 +219,8 @@ export class ControllerMainMenu extends Controller {
     this.levelSelectGui.addChild(graphics);
     let m: Matrix = new Matrix();
     m.translate(0, 105);
-    graphics.beginTextureFill({ texture: Resource.cLevelSelectBox1M, matrix: m });
-    graphics.drawRect(234, 105, 342, 135);
+    graphics.rect(234, 105, 342, 135);
+    graphics.fill({ texture: Resource.cLevelSelectBox1M, matrix: m });
     img = new Sprite(Resource.cLevelSelectBox2L);
     img.x = 315;
     img.y = 260;
@@ -236,8 +231,8 @@ export class ControllerMainMenu extends Controller {
     this.levelSelectGui.addChild(img);
     m = new Matrix();
     m.translate(0, 260);
-    graphics.beginTextureFill({ texture: Resource.cLevelSelectBox2M, matrix: m });
-    graphics.drawRect(339, 260, 133, 194);
+    graphics.rect(339, 260, 133, 194);
+    graphics.fill({ texture: Resource.cLevelSelectBox2M, matrix: m });
     img = new Sprite(Resource.cLevelSelectOtherBoxL);
     img.x = 617;
     img.y = 449;
@@ -248,8 +243,8 @@ export class ControllerMainMenu extends Controller {
     this.levelSelectGui.addChild(img);
     m = new Matrix();
     m.translate(0, 449);
-    graphics.beginTextureFill({ texture: Resource.cLevelSelectOtherBoxM, matrix: m });
-    graphics.drawRect(641, 449, 122, 144);
+    graphics.rect(641, 449, 122, 144);
+    graphics.fill({ texture: Resource.cLevelSelectOtherBoxM, matrix: m });
 
     style = new TextStyle();
     style.fontSize = 17;
@@ -388,13 +383,11 @@ export class ControllerMainMenu extends Controller {
 
     if (!LSOManager.IsAnythingDone()) {
       this.startHereArrow = new Sprite(Resource.cLevelSelectStartHereArrow);
-      this.startHereArrow.smoothing = true;
       this.startHereArrow.x = 130;
       this.startHereArrow.y = 117;
       this.levelSelectGui.addChild(this.startHereArrow);
       this.arrowX = 130;
       this.startHereText = new Sprite(Resource.cLevelSelectStartHereText);
-      this.startHereText.smoothing = true;
       this.startHereText.x = 75;
       this.startHereText.y = 145;
       this.levelSelectGui.addChild(this.startHereText);
@@ -402,14 +395,12 @@ export class ControllerMainMenu extends Controller {
     this.addChild(this.levelSelectGui);
 
     this.fader2 = new Graphics();
-    this.fader2.beginFill(0, 0.2);
-    this.fader2.lineStyle(0, 0, 0.2);
     this.fader2.moveTo(0, 0);
     this.fader2.lineTo(800, 0);
     this.fader2.lineTo(800, 600);
     this.fader2.lineTo(0, 600);
     this.fader2.lineTo(0, 0);
-    this.fader2.endFill();
+    this.fader2.fill({ color: 0, alpha: 0.2 });
     this.fader2.visible = false;
     this.addChild(this.fader2);
 
@@ -472,9 +463,8 @@ export class ControllerMainMenu extends Controller {
       Util.HexColourString(177, 102, 46),
       Util.HexColourString(171, 59, 34),
     ], radius * 2);
-    this.sGround.beginTextureFill({ texture, matrix });
-    this.sGround.drawCircle(xPos + radius, yPos + radius, radius + 6);
-    this.sGround.endFill();
+    this.sGround.circle(xPos + radius, yPos + radius, radius + 6);
+    this.sGround.fill({ texture, matrix });
   }
 
   private DrawGroundCircle(xPos: number, yPos: number, radius: number): void {
@@ -484,15 +474,13 @@ export class ControllerMainMenu extends Controller {
       Util.HexColourString(249, 172, 101),
       Util.HexColourString(240, 70, 45),
     ], radius * 2);
-    this.sGround.beginTextureFill({ texture, matrix });
-    this.sGround.drawCircle(xPos + radius, yPos + radius, radius);
-    this.sGround.endFill();
+    this.sGround.circle(xPos + radius, yPos + radius, radius);
+    this.sGround.fill({ texture, matrix });
   }
 
   private DrawRock(type: number, xPos: number, yPos: number, radius: number, outlineThickness: number = 6): void {
     const matrix = new Matrix()
     matrix.translate(0, yPos)
-    this.sGround.lineStyle(outlineThickness, 0xba643d);
     const texture = Gradient.getLinearGradientTexture(
       type == 0
         ? [Util.HexColourString(194, 130, 87), Util.HexColourString(172, 114, 77)]
@@ -501,9 +489,9 @@ export class ControllerMainMenu extends Controller {
         : [Util.HexColourString(198, 121, 69), Util.HexColourString(179, 105, 57)],
       radius * 2
     );
-    this.sGround.beginTextureFill({ texture, matrix });
-    this.sGround.drawCircle(xPos + radius, yPos + radius, radius);
-    this.sGround.endFill();
+    this.sGround.circle(xPos + radius, yPos + radius, radius);
+    this.sGround.fill({ texture, matrix });
+    this.sGround.stroke({ width: outlineThickness, color: 0xba643d });
   }
 
   private loadRobotButton(e: MouseEvent): void {

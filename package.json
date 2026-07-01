@@ -15,14 +15,12 @@
     ],
     "dependencies": {
         "@nuxt/ui": "^4.9.0",
+        "@pixi/sound": "^6.0.1",
         "@vitejs/plugin-vue": "^6.0.7",
         "iconv-lite": "^0.6.2",
         "pinia": "^3.0.4",
-        "pixi-scrollbox": "^2.3.1",
-        "pixi-sound": "^3.0.5",
-        "pixi-text-input": "^1.0.5",
-        "pixi-viewport": "^4.38.0",
-        "pixi.js": "^6.1.2",
+        "pixi-viewport": "^6.0.3",
+        "pixi.js": "^8.0.0",
         "tailwindcss": "^4.3.2",
         "vue": "^3.5.39"
     },

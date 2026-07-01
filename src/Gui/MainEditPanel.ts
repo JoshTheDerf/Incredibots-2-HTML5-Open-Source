@@ -849,79 +849,66 @@ export class MainEditPanel extends GuiWindow {
 
   public static scrollbarField(): BitmapAsset {
     var bm: BitmapAsset = new Resource.cGuiScrollbarField();
-    bm.smoothing = true;
     return bm;
   }
 
   public static scrollbarBase(): BitmapAsset {
     var bm: BitmapAsset = new Resource.cGuiScrollbarBase();
-    bm.smoothing = true;
     return bm;
   }
 
   public static scrollbarRoll(): BitmapAsset {
     var bm: BitmapAsset = new Resource.cGuiScrollbarRoll();
-    bm.smoothing = true;
     return bm;
   }
 
   public static scrollbarClick(): BitmapAsset {
     var bm: BitmapAsset = new Resource.cGuiScrollbarClick();
-    bm.smoothing = true;
     return bm;
   }
 
   public static scrollbarTallBase(): BitmapAsset {
     var bm: BitmapAsset = new Resource.cGuiScrollbarTallBase();
-    bm.smoothing = true;
     return bm;
   }
 
   public static scrollbarTallRoll(): BitmapAsset {
     var bm: BitmapAsset = new Resource.cGuiScrollbarTallRoll();
-    bm.smoothing = true;
     return bm;
   }
 
   public static scrollbarTallClick(): BitmapAsset {
     var bm: BitmapAsset = new Resource.cGuiScrollbarTallClick();
-    bm.smoothing = true;
     return bm;
   }
 
   public static scrollbarButtonUpBase(): BitmapAsset {
     var bm: BitmapAsset = new Resource.cGuiScrollbarButtonUpBase();
-    bm.smoothing = true;
     return bm;
   }
 
   public static scrollbarButtonUpRoll(): BitmapAsset {
     var bm: BitmapAsset = new Resource.cGuiScrollbarButtonUpRoll();
-    bm.smoothing = true;
     return bm;
   }
 
   public static scrollbarButtonUpClick(): BitmapAsset {
     var bm: BitmapAsset = new Resource.cGuiScrollbarButtonUpClick();
-    bm.smoothing = true;
     return bm;
   }
 
   public static scrollbarButtonDownBase(): BitmapAsset {
     var bm: BitmapAsset = new Resource.cGuiScrollbarButtonDownBase();
-    bm.smoothing = true;
     return bm;
   }
 
   public static scrollbarButtonDownRoll(): BitmapAsset {
     var bm: BitmapAsset = new Resource.cGuiScrollbarButtonDownRoll();
-    bm.smoothing = true;
     return bm;
   }
 
   public static scrollbarButtonDownClick(): BitmapAsset {
     var bm: BitmapAsset = new Resource.cGuiScrollbarButtonDownClick();
-    bm.smoothing = true;
     return bm;
   }
 }

@@ -19,9 +19,8 @@ class MenuText extends Graphics {
     this.text.y = h / 2;
     this.addChild(this.text);
 
-    this.beginFill(0xffffff, 0.01);
-    this.drawRect(x, 0, w, h);
-    this.endFill();
+    this.rect(x, 0, w, h);
+    this.fill({ color: 0xffffff, alpha: 0.01 });
   }
 
   set style(value: TextStyle) {
@@ -60,8 +59,8 @@ export class DropDownMenu extends Graphics {
     this.menuBitmap = Resource.cGuiMenuBar;
     this.menuBitmapRoll = Resource.cGuiMenuBarRoll;
 
-    this.beginTextureFill({ texture: this.menuBitmap });
-    this.drawRect(0, 0, 800, 21);
+    this.rect(0, 0, 800, 21);
+    this.fill({ texture: this.menuBitmap });
 
     const format = new TextStyle();
     format.fontFamily = Main.GLOBAL_FONT;
@@ -138,10 +137,9 @@ export class DropDownMenu extends Graphics {
     this.m_currentMenu.interactive = true;
     this.m_currentMenu.x = 0;
     this.m_currentMenu.y = 20;
-    this.m_currentMenu.beginFill(0xfdf9ea, 1);
-    this.m_currentMenu.lineStyle(1, 0x43366f);
-    this.m_currentMenu.moveTo(0, 0);
-    this.m_currentMenu.drawRect(0, 0, 155, 200);
+    this.m_currentMenu.rect(0, 0, 155, 200);
+    this.m_currentMenu.fill({ color: 0xfdf9ea, alpha: 1 });
+    this.m_currentMenu.stroke({ width: 1, color: 0x43366f });
     var item: DropDownMenuItem = new DropDownMenuItem(this, "Main Menu", 155, () => this.cont.newButton());
     item.y = 0;
     this.m_currentMenu.addChild(item);
@@ -183,10 +181,9 @@ export class DropDownMenu extends Graphics {
     this.m_currentMenu.interactive = true;
     this.m_currentMenu.x = 40;
     this.m_currentMenu.y = 20;
-    this.m_currentMenu.beginFill(0xfdf9ea, 1);
-    this.m_currentMenu.lineStyle(1, 0x43366f);
-    this.m_currentMenu.moveTo(0, 0);
-    this.m_currentMenu.drawRect(0, 0, 120, 200);
+    this.m_currentMenu.rect(0, 0, 120, 200);
+    this.m_currentMenu.fill({ color: 0xfdf9ea, alpha: 1 });
+    this.m_currentMenu.stroke({ width: 1, color: 0x43366f });
     var item: DropDownMenuItem = new DropDownMenuItem(this, "Change Settings", 120, () =>
       this.cont.sandboxSettingsButton()
     );
@@ -228,10 +225,9 @@ export class DropDownMenu extends Graphics {
     this.m_currentMenu.interactive = true;
     this.m_currentMenu.x = 80;
     this.m_currentMenu.y = 21;
-    this.m_currentMenu.beginFill(0xfdf9ea, 1);
-    this.m_currentMenu.lineStyle(1, 0x43366f);
-    this.m_currentMenu.moveTo(0, 0);
-    this.m_currentMenu.drawRect(0, 0, 140, 140);
+    this.m_currentMenu.rect(0, 0, 140, 140);
+    this.m_currentMenu.fill({ color: 0xfdf9ea, alpha: 1 });
+    this.m_currentMenu.stroke({ width: 1, color: 0x43366f });
     var item: DropDownMenuItem = new DropDownMenuItem(this, "Zoom In", 140, () => this.cont.zoomInButton());
     item.y = 0;
     this.m_currentMenu.addChild(item);
@@ -297,10 +293,9 @@ export class DropDownMenu extends Graphics {
     this.m_currentMenu.interactive = true;
     this.m_currentMenu.x = 120;
     this.m_currentMenu.y = 21;
-    this.m_currentMenu.beginFill(0xfdf9ea, 1);
-    this.m_currentMenu.lineStyle(1, 0x43366f);
-    this.m_currentMenu.moveTo(0, 0);
-    this.m_currentMenu.drawRect(0, 0, 180, 60);
+    this.m_currentMenu.rect(0, 0, 180, 60);
+    this.m_currentMenu.fill({ color: 0xfdf9ea, alpha: 1 });
+    this.m_currentMenu.stroke({ width: 1, color: 0x43366f });
     if (ControllerGameGlobals.playingReplay) {
       var item: DropDownMenuItem = new DropDownMenuItem(this, "Comment on this Replay", 180, () =>
         this.cont.commentReplayButton()
@@ -347,10 +342,9 @@ export class DropDownMenu extends Graphics {
     this.m_currentMenu.interactive = true;
     this.m_currentMenu.x = 180;
     this.m_currentMenu.y = 21;
-    this.m_currentMenu.beginFill(0xfdf9ea, 1);
-    this.m_currentMenu.lineStyle(1, 0x43366f);
-    this.m_currentMenu.moveTo(0, 0);
-    this.m_currentMenu.drawRect(0, 0, 115, 40);
+    this.m_currentMenu.rect(0, 0, 115, 40);
+    this.m_currentMenu.fill({ color: 0xfdf9ea, alpha: 1 });
+    this.m_currentMenu.stroke({ width: 1, color: 0x43366f });
     var item: DropDownMenuItem = new DropDownMenuItem(this, "Incredibots Help", 115, () => this.helpButton());
     item.y = 0;
     this.m_currentMenu.addChild(item);
@@ -366,10 +360,9 @@ export class DropDownMenu extends Graphics {
     this.m_currentMenu.interactive = true;
     this.m_currentMenu.x = 670;
     this.m_currentMenu.y = 21;
-    this.m_currentMenu.beginFill(0xfdf9ea, 1);
-    this.m_currentMenu.lineStyle(1, 0x43366f);
-    this.m_currentMenu.moveTo(0, 0);
-    this.m_currentMenu.drawRect(0, 0, 130, 40);
+    this.m_currentMenu.rect(0, 0, 130, 40);
+    this.m_currentMenu.fill({ color: 0xfdf9ea, alpha: 1 });
+    this.m_currentMenu.stroke({ width: 1, color: 0x43366f });
     var item: DropDownMenuItem = new DropDownMenuItem(this, "Credits", 130, () => this.credits());
     item.y = 0;
     this.m_currentMenu.addChild(item);
@@ -385,10 +378,9 @@ export class DropDownMenu extends Graphics {
     this.m_currentMenu.interactive = true;
     this.m_currentMenu.x = 225;
     this.m_currentMenu.y = 21;
-    this.m_currentMenu.beginFill(0xfdf9ea, 1);
-    this.m_currentMenu.lineStyle(1, 0x43366f);
-    this.m_currentMenu.moveTo(0, 0);
-    this.m_currentMenu.drawRect(0, 0, 115, this.cont.controllerType === "sandbox" ? 100 : 60);
+    this.m_currentMenu.rect(0, 0, 115, this.cont.controllerType === "sandbox" ? 100 : 60);
+    this.m_currentMenu.fill({ color: 0xfdf9ea, alpha: 1 });
+    this.m_currentMenu.stroke({ width: 1, color: 0x43366f });
     var item: DropDownMenuItem = new DropDownMenuItem(this, "Mirror Horizontal", 115, () =>
       this.mirrorHorizontalButton()
     );
@@ -438,8 +430,8 @@ export class DropDownMenu extends Graphics {
       this.noAbout(e);
       this.MakeDummyMenu();
       this.noExtras(e);
-      this.beginTextureFill({ texture: this.menuBitmapRoll });
-      this.drawRect(0, 0, 40, 21);
+      this.rect(0, 0, 40, 21);
+      this.fill({ texture: this.menuBitmapRoll });
       this.BuildFileMenu();
       this.mouseDown = true;
     }
@@ -454,8 +446,8 @@ export class DropDownMenu extends Graphics {
   private noFile(e: any): void {
     if (e.target === this || e.target === this.m_currentMenu) return;
     if (this.m_currentMenu && !this.MouseOverMenu(e.data.global.x, e.data.global.y)) {
-      this.beginTextureFill({ texture: this.menuBitmap });
-      this.drawRect(0, 0, 40, 21);
+      this.rect(0, 0, 40, 21);
+      this.fill({ texture: this.menuBitmap });
       this.removeChild(this.m_currentMenu);
       this.m_currentMenu = null;
     }
@@ -477,8 +469,8 @@ export class DropDownMenu extends Graphics {
       this.noAbout(e);
       this.MakeDummyMenu();
       this.noExtras(e);
-      this.beginTextureFill({ texture: this.menuBitmapRoll });
-      this.drawRect(40, 0, 40, 21);
+      this.rect(40, 0, 40, 21);
+      this.fill({ texture: this.menuBitmapRoll });
       this.mouseDown = true;
       this.BuildEditMenu();
     }
@@ -493,8 +485,8 @@ export class DropDownMenu extends Graphics {
   private noEdit(e: any): void {
     if (e.target === this || e.target === this.m_currentMenu) return;
     if (this.m_currentMenu && !this.MouseOverMenu(e.stageX, e.stageY)) {
-      this.beginTextureFill({ texture: this.menuBitmap });
-      this.drawRect(40, 0, 40, 21);
+      this.rect(40, 0, 40, 21);
+      this.fill({ texture: this.menuBitmap });
       this.removeChild(this.m_currentMenu);
       this.m_currentMenu = null;
     }
@@ -516,8 +508,8 @@ export class DropDownMenu extends Graphics {
       this.noAbout(e);
       this.MakeDummyMenu();
       this.noExtras(e);
-      this.beginTextureFill({ texture: this.menuBitmapRoll });
-      this.drawRect(80, 0, 40, 21);
+      this.rect(80, 0, 40, 21);
+      this.fill({ texture: this.menuBitmapRoll });
       this.mouseDown = true;
       this.BuildViewMenu();
     }
@@ -532,8 +524,8 @@ export class DropDownMenu extends Graphics {
   private noView(e: any): void {
     if (e.target === this || e.target === this.m_currentMenu) return;
     if (this.m_currentMenu && !this.MouseOverMenu(e.stageX, e.stageY)) {
-      this.beginTextureFill({ texture: this.menuBitmap });
-      this.drawRect(80, 0, 40, 21);
+      this.rect(80, 0, 40, 21);
+      this.fill({ texture: this.menuBitmap });
       this.removeChild(this.m_currentMenu);
       this.m_currentMenu = null;
     }
@@ -555,8 +547,8 @@ export class DropDownMenu extends Graphics {
       this.noAbout(e);
       this.MakeDummyMenu();
       this.noExtras(e);
-      this.beginTextureFill({ texture: this.menuBitmapRoll });
-      this.drawRect(120, 0, 60, 21);
+      this.rect(120, 0, 60, 21);
+      this.fill({ texture: this.menuBitmapRoll });
       this.mouseDown = true;
       this.BuildCommentMenu();
     }
@@ -571,8 +563,8 @@ export class DropDownMenu extends Graphics {
   private noComment(e: any): void {
     if (e.target === this || e.target === this.m_currentMenu) return;
     if (this.m_currentMenu && !this.MouseOverMenu(e.stageX, e.stageY)) {
-      this.beginTextureFill({ texture: this.menuBitmap });
-      this.drawRect(120, 0, 60, 21);
+      this.rect(120, 0, 60, 21);
+      this.fill({ texture: this.menuBitmap });
       this.removeChild(this.m_currentMenu);
       this.m_currentMenu = null;
     }
@@ -594,8 +586,8 @@ export class DropDownMenu extends Graphics {
       this.noAbout(e);
       this.MakeDummyMenu();
       this.noExtras(e);
-      this.beginTextureFill({ texture: this.menuBitmapRoll });
-      this.drawRect(180, 0, 40, 21);
+      this.rect(180, 0, 40, 21);
+      this.fill({ texture: this.menuBitmapRoll });
       this.mouseDown = true;
       this.BuildHelpMenu();
     }
@@ -610,8 +602,8 @@ export class DropDownMenu extends Graphics {
   private noHelp(e: any): void {
     if (e.target === this || e.target === this.m_currentMenu) return;
     if (this.m_currentMenu && !this.MouseOverMenu(e.stageX, e.stageY)) {
-      this.beginTextureFill({ texture: this.menuBitmap });
-      this.drawRect(180, 0, 40, 21);
+      this.rect(180, 0, 40, 21);
+      this.fill({ texture: this.menuBitmap });
       this.removeChild(this.m_currentMenu);
       this.m_currentMenu = null;
     }
@@ -633,8 +625,8 @@ export class DropDownMenu extends Graphics {
       this.noHelp(e);
       this.MakeDummyMenu();
       this.noExtras(e);
-      this.beginTextureFill({ texture: this.menuBitmapRoll });
-      this.drawRect(750, 0, 50, 21);
+      this.rect(750, 0, 50, 21);
+      this.fill({ texture: this.menuBitmapRoll });
       this.mouseDown = true;
       this.BuildAboutMenu();
     }
@@ -649,8 +641,8 @@ export class DropDownMenu extends Graphics {
   private noAbout(e: any): void {
     if (e.target === this || e.target === this.m_currentMenu) return;
     if (this.m_currentMenu && !this.MouseOverMenu(e.stageX, e.stageY)) {
-      this.beginTextureFill({ texture: this.menuBitmap });
-      this.drawRect(750, 0, 50, 21);
+      this.rect(750, 0, 50, 21);
+      this.fill({ texture: this.menuBitmap });
       this.removeChild(this.m_currentMenu);
       this.m_currentMenu = null;
     }
@@ -672,8 +664,8 @@ export class DropDownMenu extends Graphics {
       this.noHelp(e);
       this.MakeDummyMenu();
       this.noAbout(e);
-      this.beginTextureFill({ texture: this.menuBitmapRoll });
-      this.drawRect(225, 0, 50, 21);
+      this.rect(225, 0, 50, 21);
+      this.fill({ texture: this.menuBitmapRoll });
       this.mouseDown = true;
       this.BuildExtrasMenu();
     }
@@ -688,8 +680,8 @@ export class DropDownMenu extends Graphics {
   private noExtras(e: any): void {
     if (e.target === this || e.target === this.m_currentMenu) return;
     if (this.m_currentMenu && !this.MouseOverMenu(e.stageX, e.stageY)) {
-      this.beginTextureFill({ texture: this.menuBitmap });
-      this.drawRect(225, 0, 50, 21);
+      this.rect(225, 0, 50, 21);
+      this.fill({ texture: this.menuBitmap });
       this.removeChild(this.m_currentMenu);
       this.m_currentMenu = null;
     }
@@ -699,8 +691,8 @@ export class DropDownMenu extends Graphics {
     if (this.m_currentMenu) {
       this.removeChild(this.m_currentMenu);
       this.m_currentMenu = null;
-      this.beginTextureFill({ texture: this.menuBitmap });
-      this.drawRect(0, 0, 800, 21);
+      this.rect(0, 0, 800, 21);
+      this.fill({ texture: this.menuBitmap });
     }
     this.mouseDown = false;
   }

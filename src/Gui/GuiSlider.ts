@@ -36,24 +36,21 @@ export class GuiSlider extends Container {
 
     this.track = new Graphics()
     this.track.interactive = true
-    this.track.buttonMode = true
+    this.track.cursor = "pointer"
 
     this.thumb = new Graphics()
     this.thumb.interactive = true
-    this.thumb.buttonMode = true
+    this.thumb.cursor = "pointer"
     this.thumb.clear()
-    this.thumb.beginTextureFill({
-      texture: Resource.cGuiSliderThumb
-    })
-    this.thumb.drawRect(0, 0, 16, 15)
-    this.thumb.endFill()
+    this.thumb.rect(0, 0, 16, 15)
+    this.thumb.fill({ texture: Resource.cGuiSliderThumb })
 
-    this.track.on('pointerdown', evt => {
-      this.handlePositionChange(evt.data.getLocalPosition(this.track.parent))
+    this.track.on('pointerdown', (evt: any) => {
+      if (this.track.parent) this.handlePositionChange(evt.getLocalPosition(this.track.parent))
     })
 
-    this.thumb.on('pointerdown', evt => {
-      this._data = evt.data
+    this.thumb.on('pointerdown', (evt: any) => {
+      this._data = evt
       this._dragging = true
     })
 
@@ -67,9 +64,11 @@ export class GuiSlider extends Container {
       this._dragging = true
     })
 
-    this.thumb.on('pointermove', () => {
-      if (!this._dragging || !this._data) return
-      const newPosition = this._data.getLocalPosition(this.track.parent)
+    this.thumb.on('pointermove', (evt: any) => {
+      if (!this._dragging || !this.track.parent) return
+      const source = evt ?? this._data
+      if (!source) return
+      const newPosition = source.getLocalPosition(this.track.parent)
       this.handlePositionChange(newPosition)
     })
 
@@ -87,11 +86,10 @@ export class GuiSlider extends Container {
     this.thumb.interactive = enabled
     this.thumb.alpha = enabled ? 1 : 0.5
     this.track.clear()
-    this.track.beginTextureFill({
+    this.track.rect(0, 0, 80, 16)
+    this.track.fill({
       texture: enabled ? Resource.cGuiSliderGroove : Resource.cGuiSliderGrooveDisabled
     })
-    this.track.drawRect(0, 0, 80, 16)
-    this.track.endFill()
   }
 
   handlePositionChange(data) {

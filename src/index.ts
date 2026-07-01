@@ -11,7 +11,8 @@ async function main() {
 
     await Resource.load()
 
-    const renderer = new Application({
+    const renderer = new Application()
+    await renderer.init({
         antialias: true,
         width: 800,
         height: 600
@@ -21,7 +22,7 @@ async function main() {
     const gameWrapper = document.getElementById('game_wrapper')
     if (gameWrapper) {
         gameWrapper.innerHTML = ''
-        gameWrapper.appendChild(renderer.view)
+        gameWrapper.appendChild(renderer.canvas)
     }
 }
 

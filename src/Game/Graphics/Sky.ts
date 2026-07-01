@@ -27,7 +27,7 @@ export class Sky {
   private cont: Controller;
   private skyType: number;
   private numClouds: number;
-  private sky: Sprite;
+  private sky: Container;
   private sClouds: Array<any> = new Array();
   private cloudPositions: Array<any> = new Array();
   private cloudVelocities: Array<any> = new Array();
@@ -85,12 +85,11 @@ export class Sky {
       if (this.cont.IsMainMenu()) worldSize *= 1.5;
       this.numClouds = (this.cont.GetMaxX() - this.cont.GetMinX()) * 10;
       var stars = new Graphics();
-      stars.beginFill(0xaec9da);
-      stars.drawCircle(0, 0, 1);
-      stars.drawCircle(worldSize * 90, 0, 1);
-      stars.drawCircle(0, worldSize * 90, 1);
-      stars.drawCircle(worldSize * 90, worldSize * 90, 1);
-      stars.endFill();
+      stars.circle(0, 0, 1);
+      stars.circle(worldSize * 90, 0, 1);
+      stars.circle(0, worldSize * 90, 1);
+      stars.circle(worldSize * 90, worldSize * 90, 1);
+      stars.fill(0xaec9da);
       for (i = 0; i < this.numClouds; i++) {
         this.cloudPositions.push(
           Util.Vector(Util.RangedRandom(0, worldSize * 90), Util.RangedRandom(0, worldSize * 90))
@@ -99,9 +98,8 @@ export class Sky {
         this.starRadii.push(
           this.cont.IsMainMenu() ? Util.RangedRandom(3, 8) : Util.RangedRandom(2, 6)
         );
-        stars.beginFill(0xaec9da);
-        stars.drawCircle(this.cloudPositions[i].x, this.cloudPositions[i].y, this.starRadii[i]);
-        stars.endFill();
+        stars.circle(this.cloudPositions[i].x, this.cloudPositions[i].y, this.starRadii[i]);
+        stars.fill(0xaec9da);
       }
       this.cont.addChild(stars);
       this.lastCloudIndex = this.cont.getChildIndex(stars);

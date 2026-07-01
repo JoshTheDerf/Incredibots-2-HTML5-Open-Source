@@ -42,10 +42,9 @@ export class ControllerDumpbot extends ControllerTutorial
 		this.draw.m_drawYOff = -220;
 
 		// start platform
-		this.sGround3.lineStyle(6, 0x9D8941);
-		this.sGround3.beginFill(0xCEB456);
-		this.sGround3.drawRect(6598, 1610, 650, 56);
-		this.sGround3.endFill();
+		this.sGround3.rect(6598, 1610, 650, 56);
+		this.sGround3.fill(0xCEB456);
+		this.sGround3.stroke({ width: 6, color: 0x9D8941 });
 
 		this.object1 = new Rectangle(-0.5, 9, 1, 1);
 		this.object1.red = 255;

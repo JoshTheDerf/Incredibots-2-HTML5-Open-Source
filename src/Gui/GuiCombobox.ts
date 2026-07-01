@@ -1,9 +1,9 @@
-import PIXIsound from "pixi-sound";
+import type { Sound as PixiSound } from "@pixi/sound";
 import { Container, Graphics, Sprite, Text, TextStyle, Texture } from "pixi.js";
 import { Resource } from "../Game/Graphics/Resource"
 import { GuiComboboxItem } from "./GuiComboboxItem"
 import { Main } from "../Main"
-type Sound = PIXIsound.Sound;
+type Sound = PixiSound;
 
 type ComboBoxItem = {
   label: string;
@@ -17,7 +17,7 @@ export class GuiCombobox extends Container {
   public static rolloverSound: Sound = Resource.cRoll;
   public static clickSound: Sound = Resource.cClick;
 
-  public label: Text = new Text("");
+  public labelText: Text = new Text("");
   public background: Sprite = new Sprite();
   public itemsTextStyle: TextStyle | null = null;
   public itemsContainer: Container;
@@ -37,7 +37,7 @@ export class GuiCombobox extends Container {
     this.itemsWidgets.forEach((widget, index) => {
       if (index === this._selectedIndex) {
         widget.selected = true;
-        this.label.text = widget.text;
+        this.labelText.text = widget.text;
       } else {
         widget.selected = false;
       }
@@ -84,7 +84,7 @@ export class GuiCombobox extends Container {
     this.width = w;
     this.height = h;
     this.position.set(xPos, yPos);
-    this.buttonMode = true;
+    this.cursor = "pointer";
     this.interactive = true;
 
     this.background.texture = this.upTexture;
@@ -92,12 +92,12 @@ export class GuiCombobox extends Container {
     this.background.height = h;
     this.addChild(this.background);
 
-    this.label.text = "";
-    this.label.style = this.itemsTextStyle;
-    this.label.anchor.set(0, 0.5);
-    this.label.x = 10;
-    this.label.y = h / 2;
-    this.addChild(this.label);
+    this.labelText.text = "";
+    this.labelText.style = this.itemsTextStyle;
+    this.labelText.anchor.set(0, 0.5);
+    this.labelText.x = 10;
+    this.labelText.y = h / 2;
+    this.addChild(this.labelText);
 
     this.itemsContainer = new Container();
     this.itemsContainer.x = 5;
@@ -109,9 +109,8 @@ export class GuiCombobox extends Container {
 
     this.itemsContainerBackground = new Graphics();
     this.itemsContainerBackground.height = h;
-    this.itemsContainerBackground.beginFill(0x0000ff);
-    this.itemsContainerBackground.drawRect(0, 0, w - 10, h);
-    this.itemsContainerBackground.endFill();
+    this.itemsContainerBackground.rect(0, 0, w - 10, h);
+    this.itemsContainerBackground.fill({ color: 0x0000ff });
     this.itemsContainer.addChild(this.itemsContainerBackground);
 
     this.on("click", (event: any) => {
@@ -156,7 +155,7 @@ export class GuiCombobox extends Container {
   addItem(item: ComboBoxItem) {
     this.items.push(item);
 
-    this.label.text = this.items[this.selectedIndex].label;
+    this.labelText.text = this.items[this.selectedIndex].label;
 
     this.itemsContainer.removeChild(...this.itemsWidgets);
     this.itemsContainerBackground.height = this.items.length * 20;
