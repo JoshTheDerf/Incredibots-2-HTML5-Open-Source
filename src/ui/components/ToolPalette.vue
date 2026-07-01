@@ -150,7 +150,8 @@ function reset(): void {
 	font-weight: bold;
 	text-transform: uppercase;
 	letter-spacing: 0.06em;
-	color: #b7aae3;
+	/* Deep purple reads clearly on the periwinkle panel frame. */
+	color: #43366f;
 }
 
 .tool-row {

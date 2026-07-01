@@ -8,6 +8,13 @@
 import { computed, ref } from "vue";
 import { useGameStore } from "../gameStore";
 import IbButton from "./IbButton.vue";
+import { frameTextures } from "../assets";
+
+// Cream parchment window frame (nine-patch) for the inspector shell, and the
+// periwinkle frame for the inner content sections — both from the original
+// PIXI box### panel textures.
+const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
+const sectionStyle = { "--ib-panel-src": `url(${frameTextures.panelFrame})` };
 
 const game = useGameStore();
 
@@ -44,85 +51,97 @@ function clearSelection(): void {
 
 <template>
 	<aside class="inspector">
-		<div class="inspector-header">
-			<span class="title">Inspector</span>
-			<span class="badge">{{ selectionCount }} selected</span>
-		</div>
-
-		<template v-if="!hasSelection">
-			<p class="empty-state">Select a part on the stage to edit its properties.</p>
-		</template>
-
-		<template v-else>
-			<UCard variant="subtle" class="section">
-				<template #header>
-					<span class="section-title">Shape</span>
-				</template>
-
-				<div class="field">
-					<label class="field-label">Density</label>
-					<USlider v-model="density" :min="1" :max="30" :step="1" size="sm" />
-					<span class="field-value">{{ density.toFixed(0) }}</span>
-					<p class="field-todo">TODO: no per-part density Command in core yet — inert.</p>
-				</div>
-
-				<div class="field">
-					<label class="field-label" for="colour-input">Color</label>
-					<div class="colour-row">
-						<input id="colour-input" v-model="colour" type="color" class="colour-swatch" />
-						<IbButton family="blue" label="Change Color" @click="applyColour" />
-					</div>
-				</div>
-			</UCard>
-
-			<UCard variant="subtle" class="section">
-				<template #header>
-					<span class="section-title">Joint (placeholder)</span>
-				</template>
-
-				<div class="field">
-					<label class="field-label">Motor Strength</label>
-					<USlider v-model="jointStrength" :min="1" :max="30" :step="1" size="sm" />
-					<span class="field-value">{{ jointStrength.toFixed(0) }}</span>
-				</div>
-				<div class="field">
-					<label class="field-label">Motor Speed</label>
-					<USlider v-model="jointSpeed" :min="1" :max="30" :step="1" size="sm" />
-					<span class="field-value">{{ jointSpeed.toFixed(0) }}</span>
-				</div>
-				<p class="field-todo">TODO: joint params have no Command in core yet — inert.</p>
-			</UCard>
-
-			<div class="actions">
-				<IbButton family="red" label="Delete" class="action-btn" @click="deleteSelected" />
-				<IbButton family="purple" label="Clear Selection" class="action-btn" @click="clearSelection" />
+		<div class="inspector-panel ib-panel" :style="panelStyle">
+			<div class="inspector-header">
+				<span class="title">Inspector</span>
+				<span class="badge">{{ selectionCount }} selected</span>
 			</div>
-		</template>
+
+			<div class="inspector-body">
+				<template v-if="!hasSelection">
+					<p class="empty-state">Select a part on the stage to edit its properties.</p>
+				</template>
+
+				<template v-else>
+					<div class="section ib-panel" :style="sectionStyle">
+						<span class="section-title">Shape</span>
+
+						<div class="field">
+							<label class="field-label">Density</label>
+							<USlider v-model="density" :min="1" :max="30" :step="1" size="sm" />
+							<span class="field-value">{{ density.toFixed(0) }}</span>
+							<p class="field-todo">TODO: no per-part density Command in core yet — inert.</p>
+						</div>
+
+						<div class="field">
+							<label class="field-label" for="colour-input">Color</label>
+							<div class="colour-row">
+								<input id="colour-input" v-model="colour" type="color" class="colour-swatch" />
+								<IbButton family="blue" label="Change Color" @click="applyColour" />
+							</div>
+						</div>
+					</div>
+
+					<div class="section ib-panel" :style="sectionStyle">
+						<span class="section-title">Joint (placeholder)</span>
+
+						<div class="field">
+							<label class="field-label">Motor Strength</label>
+							<USlider v-model="jointStrength" :min="1" :max="30" :step="1" size="sm" />
+							<span class="field-value">{{ jointStrength.toFixed(0) }}</span>
+						</div>
+						<div class="field">
+							<label class="field-label">Motor Speed</label>
+							<USlider v-model="jointSpeed" :min="1" :max="30" :step="1" size="sm" />
+							<span class="field-value">{{ jointSpeed.toFixed(0) }}</span>
+						</div>
+						<p class="field-todo">TODO: joint params have no Command in core yet — inert.</p>
+					</div>
+
+					<div class="actions">
+						<IbButton family="red" label="Delete" class="action-btn" @click="deleteSelected" />
+						<IbButton family="purple" label="Clear Selection" class="action-btn" @click="clearSelection" />
+					</div>
+				</template>
+			</div>
+		</div>
 	</aside>
 </template>
 
 <style scoped>
 .inspector {
-	width: 268px;
+	width: 272px;
 	flex-shrink: 0;
-	/* Original PIXI window: dark chrome shell with a purple edge and a thin
-	   inner bevel highlight down the seam against the canvas. */
-	background: #242930;
-	border-left: 3px solid #43366f;
-	box-shadow: inset 1px 0 0 rgba(183, 170, 227, 0.18);
-	padding: 0;
+	padding: 10px 10px 10px 0;
+	box-sizing: border-box;
+	display: flex;
+	font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Cream parchment window (nine-patch frame from the original box### panel). */
+.inspector-panel {
+	flex: 1;
+	min-height: 0;
 	display: flex;
 	flex-direction: column;
-	overflow-y: auto;
-	font-family: Arial, Helvetica, sans-serif;
+	overflow: hidden;
 }
 
 .inspector-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 8px 12px;
-	background: #43366f;
+	padding: 4px 6px 8px;
+	flex-shrink: 0;
+}
+
+.inspector-body {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	padding: 0 2px 2px;
 }
 
 .title {
@@ -131,15 +150,15 @@ function clearSelection(): void {
 	font-weight: bold;
 	text-transform: uppercase;
 	letter-spacing: 0.06em;
-	color: #fdf9ea;
+	color: #43366f;
 }
 
 .badge {
 	font-family: Arial, Helvetica, sans-serif;
 	font-size: 10px;
 	font-weight: bold;
-	color: #43366f;
-	background: #b7aae3;
+	color: #fdf9ea;
+	background: #43366f;
 	border-radius: 999px;
 	padding: 2px 8px;
 }
@@ -147,37 +166,26 @@ function clearSelection(): void {
 .empty-state {
 	font-family: Arial, Helvetica, sans-serif;
 	font-size: 12px;
-	color: #fdf9ea;
+	color: #4c3d57;
 	line-height: 1.5;
-	padding: 14px 12px;
+	padding: 6px 8px;
 	margin: 0;
 }
 
-/* Cream parchment content sections. UCard renders its own wrapper, so force
-   the fill/border to the parchment palette via deep selectors. */
+/* Content sections use the periwinkle nine-patch window frame. */
 .section {
-	margin: 12px;
-}
-
-.section :deep(> div),
-.section:deep(.rounded-lg) {
-	background: #fdf9ea !important;
-	border: 1px solid #43366f !important;
-	border-radius: 6px !important;
-	box-shadow:
-		inset 0 1px 0 #ffffff,
-		0 1px 2px rgba(36, 41, 48, 0.4) !important;
-}
-
-.section :deep(*) {
-	color: #573d40;
+	margin: 4px 2px 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
 }
 
 .section-title {
 	font-family: Arial, Helvetica, sans-serif;
 	font-size: 12px;
 	font-weight: bold;
-	color: #43366f;
+	color: #fdf9ea;
+	margin-bottom: 4px;
 }
 
 .field {

@@ -26,17 +26,18 @@ body,
 	--ib-play-bg: #9ea2c2;
 }
 
-/* Original PIXI window frame as a true nine-patch. The generated tile
-   (from box248_{top,mid,bot}) slices `15 12 24 12 fill`, so the beveled
-   rounded-corner frame AND its interior fill stretch to any panel size. The
-   texture URL is supplied per-element via `--ib-panel-src` (see assets.ts)
-   so Vite resolves it. */
+/* Original PIXI window frame as a true nine-patch. The generated tile is the
+   box248_{top,mid,bot} strips composited AND cropped to their opaque bounds
+   (247x40), so slicing `15 8 24 8 fill` captures the ~6px rounded-corner
+   bevel on every side and stretches the flat interior + 1px seams to any
+   panel size. The texture URL is supplied per-element via `--ib-panel-src`
+   (see assets.ts) so Vite resolves it. */
 .ib-panel {
 	border-style: solid;
-	border-width: 15px 12px 24px 12px;
+	border-width: 15px 8px 24px 8px;
 	border-image-source: var(--ib-panel-src);
-	border-image-slice: 15 12 24 12 fill;
-	border-image-width: 15px 12px 24px 12px;
+	border-image-slice: 15 8 24 8 fill;
+	border-image-width: 15px 8px 24px 8px;
 	border-image-repeat: stretch;
 	background: transparent;
 	box-sizing: border-box;
