@@ -1,7 +1,10 @@
 <script setup lang="ts">
-// Top menu bar — mirrors the old Pixi DropDownMenu (File / Edit / View / Help).
-// Items are placeholders; only a couple of real, implemented actions
-// (New/Clear-ish select tool reset, etc.) are wired where the core supports it.
+// Top menu bar — mirrors the old Pixi DropDownMenu (File / Edit / View / Help /
+// Challenge). Items that map to REAL, implemented GameCore commands dispatch
+// directly (New Robot → newRobot, Undo/Redo, Delete Selected → deleteParts).
+// Items that open a ported panel emit an `open` event carrying the panel key;
+// App.vue owns the modal state and mounts the panels. Everything else stays a
+// placeholder click (no-op) until its command lands in GameCore.
 import { useGameStore } from "../gameStore";
 import { frameTextures } from "../assets";
 import type { DropdownMenuItem } from "@nuxt/ui";
@@ -10,40 +13,62 @@ const logoSrc = frameTextures.logo;
 
 const game = useGameStore();
 
+/** Panel keys App.vue knows how to open as modals. */
+export type PanelKey =
+	| "import"
+	| "export"
+	| "sandboxSettings"
+	| "conditions"
+	| "restrictions"
+	| "colour";
+
+const emit = defineEmits<{ open: [panel: PanelKey] }>();
+
+function open(panel: PanelKey): void {
+	emit("open", panel);
+}
+
 const fileMenu: DropdownMenuItem[][] = [
 	[
-		{ label: "New Robot", icon: "i-lucide-file-plus" },
-		{ label: "Load...", icon: "i-lucide-folder-open" },
-		{ label: "Save...", icon: "i-lucide-save" },
+		// Real command: newRobot (safe-warns if not yet migrated).
+		{ label: "New Robot", icon: "i-lucide-file-plus", onSelect: () => game.dispatch({ type: "newRobot" }) },
 	],
-	[{ label: "Main Menu", icon: "i-lucide-home" }],
+	[
+		// Open the ported Import / Export panels as modals.
+		{ label: "Import...", icon: "i-lucide-clipboard-paste", onSelect: () => open("import") },
+		{ label: "Export...", icon: "i-lucide-share", onSelect: () => open("export") },
+	],
 ];
 
 const editMenu: DropdownMenuItem[][] = [
 	[
+		// Real commands.
 		{ label: "Undo", icon: "i-lucide-undo-2", onSelect: () => game.dispatch({ type: "undo" }) },
 		{ label: "Redo", icon: "i-lucide-redo-2", onSelect: () => game.dispatch({ type: "redo" }) },
 	],
 	[
-		{ label: "Cut", icon: "i-lucide-scissors" },
-		{ label: "Copy", icon: "i-lucide-copy" },
-		{ label: "Paste", icon: "i-lucide-clipboard-paste" },
+		// Real command: deleteParts on the current selection.
 		{
-			label: "Delete",
+			label: "Delete Selected",
 			icon: "i-lucide-trash-2",
 			onSelect: () => game.dispatch({ type: "deleteParts", partIds: game.edit.selection }),
 		},
+		// Real command (setColour) lives inside the ColorPickerPanel modal.
+		{ label: "Colour...", icon: "i-lucide-palette", onSelect: () => open("colour") },
 	],
 ];
 
 const viewMenu: DropdownMenuItem[][] = [
 	[
-		{ label: "Zoom In", icon: "i-lucide-zoom-in" },
-		{ label: "Zoom Out", icon: "i-lucide-zoom-out" },
+		// Opens the ported Advanced Sandbox Setup panel.
+		{ label: "Sandbox Settings...", icon: "i-lucide-sliders-horizontal", onSelect: () => open("sandboxSettings") },
 	],
+];
+
+const challengeMenu: DropdownMenuItem[][] = [
 	[
-		{ label: "Show Joints", icon: "i-lucide-git-branch", type: "checkbox" as const },
-		{ label: "Show Outlines", icon: "i-lucide-square-dashed", type: "checkbox" as const },
+		{ label: "Conditions...", icon: "i-lucide-flag", onSelect: () => open("conditions") },
+		{ label: "Restrictions...", icon: "i-lucide-ban", onSelect: () => open("restrictions") },
 	],
 ];
 
@@ -68,6 +93,9 @@ const helpMenu: DropdownMenuItem[][] = [
 		</UDropdownMenu>
 		<UDropdownMenu :items="viewMenu" :content="{ align: 'start' }">
 			<UButton label="View" color="neutral" variant="ghost" size="sm" class="menu-trigger" />
+		</UDropdownMenu>
+		<UDropdownMenu :items="challengeMenu" :content="{ align: 'start' }">
+			<UButton label="Challenge" color="neutral" variant="ghost" size="sm" class="menu-trigger" />
 		</UDropdownMenu>
 		<UDropdownMenu :items="helpMenu" :content="{ align: 'start' }">
 			<UButton label="Help" color="neutral" variant="ghost" size="sm" class="menu-trigger" />
