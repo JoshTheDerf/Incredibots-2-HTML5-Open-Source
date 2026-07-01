@@ -3,6 +3,7 @@ import { ControllerGame } from "../Game/ControllerGame"
 import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
 import { Util } from "../General/Util"
 import { JointPart } from "./JointPart"
+import { DEFAULT_B, DEFAULT_G, DEFAULT_O, DEFAULT_R, MAX_SJ_SPEED, MAX_SJ_STRENGTH } from "./partDefaults"
 import { ShapePart } from "./ShapePart"
 
 export class PrismaticJoint extends JointPart {
@@ -62,20 +63,20 @@ export class PrismaticJoint extends JointPart {
     this.autoOscillate = false;
     this.pistonUpKey = 38;
     this.pistonDownKey = 40;
-    if (ControllerGameGlobals.maxSJStrength < 15.0) {
-      this.pistonStrength = ControllerGameGlobals.maxSJStrength;
+    if (MAX_SJ_STRENGTH < 15.0) {
+      this.pistonStrength = MAX_SJ_STRENGTH;
     } else {
       this.pistonStrength = 15.0;
     }
-    if (ControllerGameGlobals.maxSJSpeed < 15.0) {
-      this.pistonSpeed = ControllerGameGlobals.maxSJSpeed;
+    if (MAX_SJ_SPEED < 15.0) {
+      this.pistonSpeed = MAX_SJ_SPEED;
     } else {
       this.pistonSpeed = 15.0;
     }
-    this.red = ControllerGameGlobals.defaultR;
-    this.green = ControllerGameGlobals.defaultG;
-    this.blue = ControllerGameGlobals.defaultB;
-    this.opacity = ControllerGameGlobals.defaultO;
+    this.red = DEFAULT_R;
+    this.green = DEFAULT_G;
+    this.blue = DEFAULT_B;
+    this.opacity = DEFAULT_O;
     this.outline = true;
     this.initLength = Util.GetDist(x1, y1, x2, y2);
     this.type = "PrismaticJoint";

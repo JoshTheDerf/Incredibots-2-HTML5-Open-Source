@@ -1,7 +1,7 @@
 import { b2Body, b2Vec2, b2World } from "../Box2D";
-import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
 import { Util } from "../General/Util"
 import { Part } from "./Part"
+import { MAX_THRUSTER_STRENGTH } from "./partDefaults"
 import { ShapePart } from "./ShapePart"
 
 export class Thrusters extends Part {
@@ -24,8 +24,8 @@ export class Thrusters extends Part {
     this.centerX = x;
     this.centerY = y;
     this.type = "Thrusters";
-    if (ControllerGameGlobals.maxThrusterStrength < 15.0) {
-      this.strength = ControllerGameGlobals.maxThrusterStrength;
+    if (MAX_THRUSTER_STRENGTH < 15.0) {
+      this.strength = MAX_THRUSTER_STRENGTH;
     } else {
       this.strength = 15.0;
     }

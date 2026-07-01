@@ -1,5 +1,5 @@
 import { Application, Texture } from "pixi.js";
-import PIXIsound from "pixi-sound";
+import type PIXIsound from "pixi-sound";
 
 // Data
 import cRobot from "../../../resource/robot.dat";
@@ -149,6 +149,76 @@ import cCloud7 from "../../../resource/cloud_7.png";
 import cCloud8 from "../../../resource/cloud_8.png";
 import cCloud9 from "../../../resource/cloud_9.png";
 
+// Minimal stand-in for PIXIsound.Sound that defers loading the pixi-sound
+// package (and its underlying document/Audio usage) until playback is
+// actually requested. Only implements the surface this codebase touches:
+// play/stop/pause/resume and the volume getter/setter.
+class LazySound {
+  private src: string;
+  private real: PIXIsound.Sound | null = null;
+  private pendingVolume: number | null = null;
+  private loadPromise: Promise<PIXIsound.Sound> | null = null;
+
+  constructor(src: string) {
+    this.src = src;
+  }
+
+  // Kicks off (and caches) a dynamic import of pixi-sound. Using a dynamic
+  // `import()` rather than `require()` keeps this safe under Vite's ESM
+  // browser bundle (no `require` global exists at runtime there), while
+  // still only touching pixi-sound/document the first time a sound is
+  // actually used rather than at Resource module-init time.
+  private load(): Promise<PIXIsound.Sound> {
+    if (!this.loadPromise) {
+      this.loadPromise = import("pixi-sound").then((mod) => {
+        const PIXIsoundLib = ((mod as any).default ?? mod) as typeof PIXIsound;
+        const sound = PIXIsoundLib.Sound.from(this.src);
+        if (this.pendingVolume !== null) {
+          sound.volume = this.pendingVolume;
+          this.pendingVolume = null;
+        }
+        this.real = sound;
+        return sound;
+      });
+    }
+    return this.loadPromise;
+  }
+
+  get volume(): number {
+    return this.real ? this.real.volume : this.pendingVolume ?? 1;
+  }
+
+  set volume(value: number) {
+    if (this.real) {
+      this.real.volume = value;
+    } else {
+      this.pendingVolume = value;
+    }
+  }
+
+  play(...args: any[]): any {
+    if (this.real) return (this.real.play as any)(...args);
+    // Not loaded yet: kick off the load and play once ready. Fire-and-forget
+    // is fine here since callers never use the return value synchronously
+    // (see ControllerGame.ts / GuiButton.ts usage).
+    void this.load().then((sound) => (sound.play as any)(...args));
+    return undefined;
+  }
+
+  stop(): void {
+    // Nothing to stop if we haven't loaded/played yet.
+    if (this.real) this.real.stop();
+  }
+
+  pause(): void {
+    if (this.real) this.real.pause();
+  }
+
+  resume(): void {
+    if (this.real) this.real.resume();
+  }
+}
+
 export class MouseCursor {
   // Css style for icons
   defaultIcon = "url('resource/mouse_pointer.png'),auto";
@@ -294,21 +364,38 @@ export class Resource {
   };
 
   // Sounds
-  static cRoll = PIXIsound.Sound.from(cRoll);
-  static cClick = PIXIsound.Sound.from(cClick);
-  static cShape1 = PIXIsound.Sound.from(cShape1);
-  static cShape2 = PIXIsound.Sound.from(cShape2);
-  static cShape3 = PIXIsound.Sound.from(cShape3);
-  static cShape4 = PIXIsound.Sound.from(cShape4);
-  static cShape5 = PIXIsound.Sound.from(cShape5);
-  static cJoint1 = PIXIsound.Sound.from(cJoint1);
-  static cJoint2 = PIXIsound.Sound.from(cJoint2);
-  static cJoint3 = PIXIsound.Sound.from(cJoint3);
-  static cJoint4 = PIXIsound.Sound.from(cJoint4);
-  static cJoint5 = PIXIsound.Sound.from(cJoint5);
-  static cIntro = PIXIsound.Sound.from(cIntro);
-  static cWin = PIXIsound.Sound.from(cWin);
-  static cLose = PIXIsound.Sound.from(cLose);
+  //
+  // Historically these were `PIXIsound.Sound.from(...)` calls evaluated at
+  // static-init time, which meant simply importing this module (e.g.
+  // transitively through a headless Part) loaded the pixi-sound package and
+  // touched document/Audio as a side effect.
+  //
+  // Instead we hand out a LazySound handle immediately (synchronously, so
+  // existing `Sound`-typed static fields like `GuiButton.rolloverSound =
+  // Resource.cRoll` keep working unchanged) and only `import("pixi-sound")`
+  // + construct the real Sound the first time playback is actually used
+  // (play/stop/pause/resume/volume). Every real caller in this codebase only
+  // touches sounds from user-input handlers well after boot, never
+  // immediately at class-field-init time, so this is behavior-preserving.
+  static cRoll = Resource.lazySound(cRoll);
+  static cClick = Resource.lazySound(cClick);
+  static cShape1 = Resource.lazySound(cShape1);
+  static cShape2 = Resource.lazySound(cShape2);
+  static cShape3 = Resource.lazySound(cShape3);
+  static cShape4 = Resource.lazySound(cShape4);
+  static cShape5 = Resource.lazySound(cShape5);
+  static cJoint1 = Resource.lazySound(cJoint1);
+  static cJoint2 = Resource.lazySound(cJoint2);
+  static cJoint3 = Resource.lazySound(cJoint3);
+  static cJoint4 = Resource.lazySound(cJoint4);
+  static cJoint5 = Resource.lazySound(cJoint5);
+  static cIntro = Resource.lazySound(cIntro);
+  static cWin = Resource.lazySound(cWin);
+  static cLose = Resource.lazySound(cLose);
+
+  private static lazySound(src: string): PIXIsound.Sound {
+    return new LazySound(src) as unknown as PIXIsound.Sound;
+  }
 
   // Challenge resources
   static cSpaceship: any;

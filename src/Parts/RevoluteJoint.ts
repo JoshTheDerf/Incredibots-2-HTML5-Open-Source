@@ -1,8 +1,8 @@
 import { b2Body, b2RevoluteJoint, b2RevoluteJointDef, b2Vec2, b2World } from "../Box2D";
-import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
 import { Util } from "../General/Util"
 import { Circle } from "./Circle"
 import { JointPart } from "./JointPart"
+import { MAX_RJ_SPEED, MAX_RJ_STRENGTH } from "./partDefaults"
 import { ShapePart } from "./ShapePart"
 
 export class RevoluteJoint extends JointPart {
@@ -34,13 +34,13 @@ export class RevoluteJoint extends JointPart {
     this.autoCCW = false;
     this.motorCWKey = 39;
     this.motorCCWKey = 37;
-    if (ControllerGameGlobals.maxRJStrength < 15.0) {
-      this.motorStrength = ControllerGameGlobals.maxRJStrength;
+    if (MAX_RJ_STRENGTH < 15.0) {
+      this.motorStrength = MAX_RJ_STRENGTH;
     } else {
       this.motorStrength = 15.0;
     }
-    if (ControllerGameGlobals.maxRJSpeed < 15.0) {
-      this.motorSpeed = ControllerGameGlobals.maxRJSpeed;
+    if (MAX_RJ_SPEED < 15.0) {
+      this.motorSpeed = MAX_RJ_SPEED;
     } else {
       this.motorSpeed = 15.0;
     }

@@ -3,6 +3,19 @@ import { Resource } from "../Graphics/Resource"
 import { Replay } from "../Replay"
 import type { Challenge } from "../Challenge"
 import type { SandboxSettings } from "../SandboxSettings"
+import {
+  DEFAULT_R,
+  DEFAULT_G,
+  DEFAULT_B,
+  DEFAULT_O,
+  MIN_DENSITY,
+  MAX_DENSITY,
+  MAX_RJ_STRENGTH,
+  MAX_RJ_SPEED,
+  MAX_SJ_STRENGTH,
+  MAX_SJ_SPEED,
+  MAX_THRUSTER_STRENGTH,
+} from "../../Parts/partDefaults"
 
 type Sound = PIXIsound.Sound;
 
@@ -63,22 +76,22 @@ export class ControllerGameGlobals {
   public static prevMouseXWorld: number;
   public static prevMouseYWorld: number;
 
-  public static minDensity: number = 1;
-  public static maxDensity: number = 30;
-  public static maxRJStrength: number = 30;
-  public static maxRJSpeed: number = 30;
-  public static maxSJStrength: number = 30;
-  public static maxSJSpeed: number = 30;
-  public static maxThrusterStrength: number = 30;
+  public static minDensity: number = MIN_DENSITY;
+  public static maxDensity: number = MAX_DENSITY;
+  public static maxRJStrength: number = MAX_RJ_STRENGTH;
+  public static maxRJSpeed: number = MAX_RJ_SPEED;
+  public static maxSJStrength: number = MAX_SJ_STRENGTH;
+  public static maxSJSpeed: number = MAX_SJ_SPEED;
+  public static maxThrusterStrength: number = MAX_THRUSTER_STRENGTH;
 
   public static initX: number = Number.MAX_VALUE;
   public static initY: number = Number.MAX_VALUE;
   public static initZoom: number = Number.MAX_VALUE;
 
-  public static defaultR: number = 253;
-  public static defaultG: number = 66;
-  public static defaultB: number = 42;
-  public static defaultO: number = 255;
+  public static defaultR: number = DEFAULT_R;
+  public static defaultG: number = DEFAULT_G;
+  public static defaultB: number = DEFAULT_B;
+  public static defaultO: number = DEFAULT_O;
   public static clickedBox: boolean = false;
   public static adStarted: boolean = false;
   public static snapToCenter: boolean = true;

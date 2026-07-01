@@ -1,9 +1,9 @@
 import { b2Body, b2Shape, b2World } from "../Box2D";
-import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
 import { Util } from "../General/Util"
 import { FixedJoint } from "./FixedJoint"
 import { JointPart } from "./JointPart"
 import { IllegalOperationError, Part } from "./Part"
+import { DEFAULT_B, DEFAULT_G, DEFAULT_O, DEFAULT_R, MAX_DENSITY, MIN_DENSITY } from "./partDefaults"
 import { Thrusters } from "./Thrusters"
 
 export class ShapePart extends Part {
@@ -33,18 +33,18 @@ export class ShapePart extends Part {
     super();
     this.centerX = x;
     this.centerY = y;
-    if (ControllerGameGlobals.minDensity > 15.0) {
-      this.density = ControllerGameGlobals.minDensity;
-    } else if (ControllerGameGlobals.maxDensity < 15.0) {
-      this.density = ControllerGameGlobals.maxDensity;
+    if (MIN_DENSITY > 15.0) {
+      this.density = MIN_DENSITY;
+    } else if (MAX_DENSITY < 15.0) {
+      this.density = MAX_DENSITY;
     } else {
       this.density = 15.0;
     }
     this.angle = 0;
-    this.red = ControllerGameGlobals.defaultR;
-    this.green = ControllerGameGlobals.defaultG;
-    this.blue = ControllerGameGlobals.defaultB;
-    this.opacity = ControllerGameGlobals.defaultO;
+    this.red = DEFAULT_R;
+    this.green = DEFAULT_G;
+    this.blue = DEFAULT_B;
+    this.opacity = DEFAULT_O;
     this.outline = true;
     this.terrain = false;
     this.undragable = false;
