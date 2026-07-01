@@ -4,7 +4,7 @@
         "dev": "vite",
         "build": "vite build",
         "preview": "vite preview",
-        "typecheck": "tsc --noEmit",
+        "typecheck": "vue-tsc --noEmit",
         "check:core:imports": "scripts/check-core-purity.sh",
         "check:core:node": "node scripts/check-core-node.mjs",
         "check:core": "npm run check:core:imports && npm run check:core:node",
@@ -27,6 +27,7 @@
     "devDependencies": {
         "typescript": "^5.7.0",
         "vite": "^8.1.2",
-        "vite-plugin-node-polyfills": "^0.28.0"
+        "vite-plugin-node-polyfills": "^0.28.0",
+        "vue-tsc": "^3.3.6"
     }
 }
