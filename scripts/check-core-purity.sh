@@ -8,7 +8,7 @@
 # in Pixi or any Gui code.
 #
 # Scanned surface:
-#   - src/Box2D, src/Parts, src/Actions            (whole directories)
+#   - src/core, src/Box2D, src/Parts, src/Actions  (whole directories)
 #   - src/Game/Robot.ts, Challenge.ts, Replay.ts, Condition.ts   (core models)
 #   - src/General/ByteArray.ts                     (core model)
 #
@@ -27,6 +27,7 @@ cd "$ROOT"
 
 # Core surface to scan.
 CORE_DIRS=(
+    "src/core"
     "src/Box2D"
     "src/Parts"
     "src/Actions"

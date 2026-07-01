@@ -16,8 +16,24 @@
 * 3. This notice may not be removed or altered from any source distribution.
 */
 
-import { Graphics } from "pixi.js";
 import { b2Color, b2Vec2, b2XForm } from "..";
+
+// NOTE: This b2DebugDraw is a legacy duplicate. b2World references it only as a
+// TYPE (SetDebugDraw / m_debugDraw), and at runtime the debug-draw feature is
+// never wired up (SetDebugDraw is never called; the real renderer is `Draw`,
+// which extends src/Game/Graphics/b2DebugDraw). Its drawing method bodies below
+// therefore never execute. The drawing surface is typed structurally instead of
+// as a Pixi Graphics so the headless game core carries no Pixi dependency.
+// TODO(core-extraction): delete this duplicate and have b2World depend on a
+// small pixi-free IDebugDraw interface.
+interface IDrawSurface {
+	lineStyle(width?: number, color?: number, alpha?: number): void;
+	moveTo(x: number, y: number): void;
+	lineTo(x: number, y: number): void;
+	drawCircle(x: number, y: number, radius: number): void;
+	beginFill(color?: number, alpha?: number): void;
+	endFill(): void;
+}
 
 /// Implement and register this class with a b2World to provide debug drawing of physics
 /// entities in your game.
@@ -252,7 +268,7 @@ export class b2DebugDraw
 
 	public drawColours:boolean = true;
 	public m_drawFlags:number;
-	public m_sprite:Graphics;
+	public m_sprite!:IDrawSurface;
 	public m_drawScale:number = 1.0;
 	public m_drawXOff:number = 0.0;
 	public m_drawYOff:number = 0.0;

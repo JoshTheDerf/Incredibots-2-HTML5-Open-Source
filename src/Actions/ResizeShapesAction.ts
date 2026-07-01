@@ -1,4 +1,5 @@
-import { Circle, Rectangle } from "pixi.js";
+import { Circle } from "../Parts/Circle"
+import { Rectangle } from "../Parts/Rectangle"
 import { Cannon } from "../Parts/Cannon"
 import { JointPart } from "../Parts/JointPart"
 import { PrismaticJoint } from "../Parts/PrismaticJoint"
