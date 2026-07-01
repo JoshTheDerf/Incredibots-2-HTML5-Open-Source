@@ -1,10 +1,17 @@
 <script setup lang="ts">
-// Top menu bar — mirrors the old Pixi DropDownMenu (File / Edit / View / Help /
-// Challenge). Items that map to REAL, implemented GameCore commands dispatch
-// directly (New Robot → newRobot, Undo/Redo, Delete Selected → deleteParts).
-// Items that open a ported panel emit an `open` event carrying the panel key;
-// App.vue owns the modal state and mounts the panels. Everything else stays a
-// placeholder click (no-op) until its command lands in GameCore.
+// Top menu bar — a faithful port of the legacy Gui/DropDownMenu.ts strip.
+// The original is a thin (21px) bar at the very top of the game frame with the
+// text items File / Edit / View / Share! / Help / Extras laid out left-to-right
+// and About pinned to the far right (DropDownMenu.ts: fileText x=0, editText
+// x=40, viewText x=80, commentText/"Share!" x=120, helpText x=180, extrasText
+// x=225, aboutText x=750). We reproduce that ordering and the right-pinned
+// About here.
+//
+// Items that map to REAL, implemented GameCore commands dispatch directly
+// (New Robot → newRobot, Undo/Redo, Delete → deleteParts). Items that open a
+// ported panel emit an `open` event carrying the panel key; App.vue owns the
+// modal state and mounts the panels. Everything else stays a placeholder click
+// (no-op) — mirroring the legacy items that were browser redirects.
 import { useGameStore } from "../gameStore";
 import { frameTextures } from "../assets";
 import type { DropdownMenuItem } from "@nuxt/ui";
@@ -28,60 +35,93 @@ function open(panel: PanelKey): void {
 	emit("open", panel);
 }
 
+// File menu — legacy BuildFileMenu (Main Menu / Save / Load* / Log In / High
+// Scores / Report / Sound). We wire the items that have real commands or ported
+// panels; New Robot maps to the "New" flow.
 const fileMenu: DropdownMenuItem[][] = [
+	[{ label: "New Robot", icon: "i-lucide-file-plus", onSelect: () => game.dispatch({ type: "newRobot" }) }],
 	[
-		// Real command: newRobot (safe-warns if not yet migrated).
-		{ label: "New Robot", icon: "i-lucide-file-plus", onSelect: () => game.dispatch({ type: "newRobot" }) },
+		{ label: "Save...", icon: "i-lucide-share", onSelect: () => open("export") },
+		{ label: "Load Robot...", icon: "i-lucide-clipboard-paste", onSelect: () => open("import") },
 	],
-	[
-		// Open the ported Import / Export panels as modals.
-		{ label: "Import...", icon: "i-lucide-clipboard-paste", onSelect: () => open("import") },
-		{ label: "Export...", icon: "i-lucide-share", onSelect: () => open("export") },
-	],
-	[
-		// UI-layer navigation back to the main menu screen (gameStore.appMode).
-		{ label: "Main Menu", icon: "i-lucide-home", onSelect: () => game.goToMenu() },
-	],
+	[{ label: "Main Menu", icon: "i-lucide-home", onSelect: () => game.goToMenu() }],
 ];
 
+// Edit menu — legacy BuildEditMenu (Change Settings / Clear All / Undo / Redo /
+// Cut / Copy / Paste / Delete / Move to Front / Move to Back).
 const editMenu: DropdownMenuItem[][] = [
+	[{ label: "Change Settings...", icon: "i-lucide-sliders-horizontal", onSelect: () => open("sandboxSettings") }],
 	[
-		// Real commands.
 		{ label: "Undo", icon: "i-lucide-undo-2", onSelect: () => game.dispatch({ type: "undo" }) },
 		{ label: "Redo", icon: "i-lucide-redo-2", onSelect: () => game.dispatch({ type: "redo" }) },
 	],
 	[
-		// Real command: deleteParts on the current selection.
 		{
-			label: "Delete Selected",
+			label: "Delete",
 			icon: "i-lucide-trash-2",
 			onSelect: () => game.dispatch({ type: "deleteParts", partIds: game.edit.selection }),
 		},
-		// Real command (setColour) lives inside the ColorPickerPanel modal.
-		{ label: "Colour...", icon: "i-lucide-palette", onSelect: () => open("colour") },
+		{ label: "Change Color...", icon: "i-lucide-palette", onSelect: () => open("colour") },
 	],
 ];
 
+// View menu — legacy BuildViewMenu (Zoom In/Out + display toggles). No zoom /
+// toggle commands are migrated yet, so the toggles are placeholders.
 const viewMenu: DropdownMenuItem[][] = [
 	[
-		// Opens the ported Advanced Sandbox Setup panel.
-		{ label: "Sandbox Settings...", icon: "i-lucide-sliders-horizontal", onSelect: () => open("sandboxSettings") },
+		// No zoom command is migrated to GameCore yet — placeholders, like the
+		// legacy items were before the pan/zoom controller landed.
+		{ label: "Zoom In", icon: "i-lucide-zoom-in" },
+		{ label: "Zoom Out", icon: "i-lucide-zoom-out" },
 	],
-];
-
-const challengeMenu: DropdownMenuItem[][] = [
 	[
-		{ label: "Conditions...", icon: "i-lucide-flag", onSelect: () => open("conditions") },
-		{ label: "Restrictions...", icon: "i-lucide-ban", onSelect: () => open("restrictions") },
+		{ label: "Snap to Center", icon: "i-lucide-crosshair" },
+		{ label: "Show Joints", icon: "i-lucide-git-commit-horizontal" },
+		{ label: "Show Colors", icon: "i-lucide-palette" },
+		{ label: "Show Outlines", icon: "i-lucide-square-dashed" },
 	],
 ];
 
+// Share! menu — legacy BuildCommentMenu (Comment / Link / Embed). No sharing
+// backend in the new stack; placeholders like the original redirects.
+const shareMenu: DropdownMenuItem[][] = [
+	[
+		{ label: "Comment on this Robot", icon: "i-lucide-message-square" },
+		{ label: "Link to this Robot", icon: "i-lucide-link" },
+		{ label: "Embed this Robot", icon: "i-lucide-code" },
+	],
+];
+
+// Help menu — legacy BuildHelpMenu (Incredibots Help / Forums).
 const helpMenu: DropdownMenuItem[][] = [
 	[
 		{ label: "Incredibots Help", icon: "i-lucide-life-buoy" },
 		{ label: "Forums", icon: "i-lucide-message-circle" },
 	],
-	[{ label: "About / Credits", icon: "i-lucide-info" }],
+];
+
+// Extras menu — legacy BuildExtrasMenu (Mirror H/V / Scale / Thrusters /
+// Cannon). Mirror/Scale aren't migrated; Conditions/Restrictions are ported
+// panels folded in here (they belong to the challenge flow the sandbox extras
+// menu shares).
+const extrasMenu: DropdownMenuItem[][] = [
+	[
+		{ label: "Mirror Horizontal", icon: "i-lucide-flip-horizontal" },
+		{ label: "Mirror Vertical", icon: "i-lucide-flip-vertical" },
+		{ label: "Scale...", icon: "i-lucide-scaling" },
+	],
+	[
+		{ label: "Set Conditions...", icon: "i-lucide-flag", onSelect: () => open("conditions") },
+		{ label: "Restrictions...", icon: "i-lucide-ban", onSelect: () => open("restrictions") },
+	],
+];
+
+// About menu — legacy BuildAboutMenu (Credits / GrubbyGames.com), pinned right.
+const aboutMenu: DropdownMenuItem[][] = [
+	[
+		{ label: "Credits", icon: "i-lucide-info" },
+		{ label: "GrubbyGames.com", icon: "i-lucide-external-link" },
+	],
 ];
 </script>
 
@@ -89,62 +129,72 @@ const helpMenu: DropdownMenuItem[][] = [
 	<div class="menu-bar">
 		<img :src="logoSrc" alt="Incredibots 2" class="logo" />
 
-		<UDropdownMenu :items="fileMenu" :content="{ align: 'start' }">
-			<UButton label="File" color="neutral" variant="ghost" size="sm" class="menu-trigger" />
-		</UDropdownMenu>
-		<UDropdownMenu :items="editMenu" :content="{ align: 'start' }">
-			<UButton label="Edit" color="neutral" variant="ghost" size="sm" class="menu-trigger" />
-		</UDropdownMenu>
-		<UDropdownMenu :items="viewMenu" :content="{ align: 'start' }">
-			<UButton label="View" color="neutral" variant="ghost" size="sm" class="menu-trigger" />
-		</UDropdownMenu>
-		<UDropdownMenu :items="challengeMenu" :content="{ align: 'start' }">
-			<UButton label="Challenge" color="neutral" variant="ghost" size="sm" class="menu-trigger" />
-		</UDropdownMenu>
-		<UDropdownMenu :items="helpMenu" :content="{ align: 'start' }">
-			<UButton label="Help" color="neutral" variant="ghost" size="sm" class="menu-trigger" />
-		</UDropdownMenu>
+		<div class="menu-items">
+			<UDropdownMenu :items="fileMenu" :content="{ align: 'start' }">
+				<UButton label="File" color="neutral" variant="ghost" size="xs" class="menu-trigger" />
+			</UDropdownMenu>
+			<UDropdownMenu :items="editMenu" :content="{ align: 'start' }">
+				<UButton label="Edit" color="neutral" variant="ghost" size="xs" class="menu-trigger" />
+			</UDropdownMenu>
+			<UDropdownMenu :items="viewMenu" :content="{ align: 'start' }">
+				<UButton label="View" color="neutral" variant="ghost" size="xs" class="menu-trigger" />
+			</UDropdownMenu>
+			<UDropdownMenu :items="shareMenu" :content="{ align: 'start' }">
+				<UButton label="Share!" color="neutral" variant="ghost" size="xs" class="menu-trigger" />
+			</UDropdownMenu>
+			<UDropdownMenu :items="helpMenu" :content="{ align: 'start' }">
+				<UButton label="Help" color="neutral" variant="ghost" size="xs" class="menu-trigger" />
+			</UDropdownMenu>
+			<UDropdownMenu :items="extrasMenu" :content="{ align: 'start' }">
+				<UButton label="Extras" color="neutral" variant="ghost" size="xs" class="menu-trigger" />
+			</UDropdownMenu>
+		</div>
 
 		<div class="spacer" />
-		<span class="build-tag">editor chrome — frame only</span>
+
+		<UDropdownMenu :items="aboutMenu" :content="{ align: 'end' }">
+			<UButton label="About" color="neutral" variant="ghost" size="xs" class="menu-trigger" />
+		</UDropdownMenu>
 	</div>
 </template>
 
 <style scoped>
+/* Thin top strip like the legacy 21px DropDownMenu bar: dark fill, purple
+   bottom edge, faint top bevel. Items are compact and evenly spaced. */
 .menu-bar {
 	display: flex;
 	align-items: center;
-	gap: 2px;
-	height: 40px;
-	padding: 0 12px;
-	/* Original PIXI dark chrome menu strip: dark fill, purple bottom edge,
-	   thin bevel highlight along the top. */
+	height: 26px;
+	padding: 0 8px;
 	background: #242930;
-	border-bottom: 3px solid #43366f;
+	border-bottom: 2px solid #43366f;
 	box-shadow: inset 0 1px 0 rgba(183, 170, 227, 0.18);
 	font-family: Arial, Helvetica, sans-serif;
+	flex-shrink: 0;
 }
 
 .logo {
-	height: 24px;
+	height: 18px;
 	width: auto;
-	margin-right: 16px;
+	margin-right: 14px;
 	image-rendering: auto;
+}
+
+.menu-items {
+	display: flex;
+	align-items: center;
+	gap: 0;
 }
 
 .menu-trigger {
 	font-family: Arial, Helvetica, sans-serif;
+	font-size: 12px;
 	font-weight: bold;
-	color: #fdf9ea;
+	color: #e1e1ea;
+	padding: 2px 10px;
 }
 
 .spacer {
 	flex: 1;
-}
-
-.build-tag {
-	font-family: Arial, Helvetica, sans-serif;
-	font-size: 10px;
-	color: #a08ed2;
 }
 </style>

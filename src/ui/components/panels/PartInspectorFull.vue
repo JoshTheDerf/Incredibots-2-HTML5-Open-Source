@@ -66,7 +66,7 @@ function clearSelection(): void {
 		<div class="inspector-panel ib-panel" :style="panelStyle">
 			<div class="inspector-header">
 				<span class="title">Part Editor</span>
-				<span class="badge">{{ selectionCount }} selected</span>
+				<span v-if="hasSelection" class="badge">{{ selectionCount }}</span>
 			</div>
 
 			<div class="inspector-body">
@@ -92,13 +92,17 @@ function clearSelection(): void {
 </template>
 
 <style scoped>
+/* Narrow vertical panel matching the legacy Gui/PartEditWindow.ts
+   (super(0, 90, 120, 500) — pinned to the LEFT edge under the toolbar,
+   ~120px content wide, tall). App.vue positions it over the left of the
+   canvas; here we just size it to the legacy width and let it fill height. */
 .inspector {
-	width: 272px;
+	width: 150px;
 	flex-shrink: 0;
-	padding: 10px 10px 10px 0;
 	box-sizing: border-box;
 	display: flex;
 	font-family: Arial, Helvetica, sans-serif;
+	height: 100%;
 }
 
 .inspector-panel {
@@ -112,8 +116,9 @@ function clearSelection(): void {
 .inspector-header {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	padding: 4px 6px 8px;
+	justify-content: center;
+	gap: 5px;
+	padding: 2px 4px 6px;
 	flex-shrink: 0;
 }
 
@@ -121,9 +126,8 @@ function clearSelection(): void {
 	font-family: Arial, Helvetica, sans-serif;
 	font-size: 12px;
 	font-weight: bold;
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
 	color: var(--ib-purple);
+	text-align: center;
 }
 
 .badge {

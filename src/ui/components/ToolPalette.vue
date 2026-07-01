@@ -1,10 +1,20 @@
 <script setup lang="ts">
-// Tool palette / toolbar — mirrors the old Pixi MainEditPanel build-tool row
-// plus sim transport controls (Play / Pause / Reset). Tool buttons dispatch
-// `{type:'setTool', tool}`; the active tool is highlighted via the pressed
-// (_click) texture from `store.edit.tool`. Play/Pause/Reset dispatch commands
-// that are not yet migrated in GameCore — the store's safe dispatch wrapper
-// keeps clicking them from crashing the page.
+// Tool palette — a faithful port of the legacy Gui/MainEditPanel.ts toolbar.
+//
+// The original is a wide, short parchment panel pinned just under the menu bar
+// and OVERLAYING the top of the play canvas. Its build tools are laid out in
+// TWO rows (MainEditPanel.ts constructor coordinates):
+//   Row 1 (y=15): Circle, Rectangle, Triangle  |  (Undo, Redo)  |  Zoom In  ...
+//   Row 2 (y=45): Fixed Joint, Rotating Joint, Sliding Joint  |  Text, Paste ...
+// with the tall "Play!" button pinned to the far RIGHT (x=700, spanning both
+// rows) and Zoom In/Out just left of the file/save cluster.
+//
+// We reproduce that two-row grouping and the right-pinned Play! transport.
+// Tool buttons dispatch `{type:'setTool', tool}` (the active tool is shown via
+// the pressed/`_click` texture from `store.edit.tool`); Undo/Redo/Save/Load/
+// Zoom live in the menu bar (legacy DropDownMenu covers all of them), so here
+// we keep the BUILD tools plus the sim transport (Play / Pause / Reset). All
+// wiring is unchanged — this is a layout pass only.
 import { computed } from "vue";
 import { useGameStore } from "../gameStore";
 import IbButton from "./IbButton.vue";
@@ -23,27 +33,34 @@ interface ToolDef {
 	family: ButtonFamily;
 }
 
-// Original panel colored most build buttons blue; here the shape/parts rails
-// are purple (the primary family) with joints in blue to keep a subtle
-// category cue, matching the reference's "purple primary" guidance.
-const shapeTools: ToolDef[] = [
-	{ tool: "select", label: "Select", family: "purple" },
-	{ tool: "newCircle", label: "Circle", family: "purple" },
-	{ tool: "newRect", label: "Rectangle", family: "purple" },
-	{ tool: "newTriangle", label: "Triangle", family: "purple" },
+// Row 1 — shape build tools (legacy: Circle / Rectangle / Triangle, BLUE),
+// preceded by the Select pointer.
+const row1Tools: ToolDef[] = [
+	{ tool: "select", label: "Select", family: "blue" },
+	{ tool: "newCircle", label: "Circle", family: "blue" },
+	{ tool: "newRect", label: "Rectangle", family: "blue" },
+	{ tool: "newTriangle", label: "Triangle", family: "blue" },
 ];
 
-const jointTools: ToolDef[] = [
+// Row 2 — joint build tools (legacy: Fixed / Rotating / Sliding Joint, BLUE),
+// then Text (legacy row 2 also carries Text).
+const row2Tools: ToolDef[] = [
 	{ tool: "newFixedJoint", label: "Fixed Joint", family: "blue" },
 	{ tool: "newRevoluteJoint", label: "Rotating Joint", family: "blue" },
 	{ tool: "newPrismaticJoint", label: "Sliding Joint", family: "blue" },
+	{ tool: "newText", label: "Text", family: "blue" },
 ];
 
-const miscTools: ToolDef[] = [
-	{ tool: "newThrusters", label: "Thrusters", family: "purple" },
-	{ tool: "newCannon", label: "Cannon", family: "purple" },
-	{ tool: "newText", label: "Text", family: "purple" },
+// Parts/transform tools that the legacy game reaches through the Extras menu
+// (Thrusters/Cannon) and the part-edit panel (Rotate); they are palette-wired
+// in the new stack, so keep them in a compact trailing group (one per row) to
+// preserve wiring without disturbing the two build rows.
+const partsRow1: ToolDef[] = [
+	{ tool: "newThrusters", label: "Thrusters", family: "blue" },
 	{ tool: "rotate", label: "Rotate", family: "pink" },
+];
+const partsRow2: ToolDef[] = [
+	{ tool: "newCannon", label: "Cannon", family: "blue" },
 	{ tool: "resize", label: "Resize", family: "pink" },
 ];
 
@@ -68,11 +85,22 @@ function reset(): void {
 
 <template>
 	<div class="tool-palette ib-panel" :style="panelStyle">
-		<div class="tool-group">
-			<span class="group-label">Shapes</span>
+		<!-- Two build-tool rows (shapes over joints), matching the legacy
+		     MainEditPanel two-row layout. -->
+		<div class="tool-grid">
 			<div class="tool-row">
 				<IbButton
-					v-for="t in shapeTools"
+					v-for="t in row1Tools"
+					:key="t.tool"
+					:family="t.family"
+					:label="t.label"
+					:pressed="currentTool === t.tool"
+					@click="selectTool(t.tool)"
+				/>
+			</div>
+			<div class="tool-row">
+				<IbButton
+					v-for="t in row2Tools"
 					:key="t.tool"
 					:family="t.family"
 					:label="t.label"
@@ -84,11 +112,21 @@ function reset(): void {
 
 		<div class="divider" />
 
-		<div class="tool-group">
-			<span class="group-label">Joints</span>
+		<!-- Extra parts / transform tools, one per row. -->
+		<div class="tool-grid">
 			<div class="tool-row">
 				<IbButton
-					v-for="t in jointTools"
+					v-for="t in partsRow1"
+					:key="t.tool"
+					:family="t.family"
+					:label="t.label"
+					:pressed="currentTool === t.tool"
+					@click="selectTool(t.tool)"
+				/>
+			</div>
+			<div class="tool-row">
+				<IbButton
+					v-for="t in partsRow2"
 					:key="t.tool"
 					:family="t.family"
 					:label="t.label"
@@ -98,29 +136,14 @@ function reset(): void {
 			</div>
 		</div>
 
-		<div class="divider" />
+		<div class="spacer" />
 
-		<div class="tool-group">
-			<span class="group-label">Parts &amp; Tools</span>
-			<div class="tool-row">
-				<IbButton
-					v-for="t in miscTools"
-					:key="t.tool"
-					:family="t.family"
-					:label="t.label"
-					:pressed="currentTool === t.tool"
-					@click="selectTool(t.tool)"
-				/>
-			</div>
-		</div>
-
-		<div class="divider" />
-
-		<div class="tool-group">
-			<span class="group-label">Simulation</span>
-			<div class="tool-row sim-row">
-				<IbButton family="play" play label="Play!" :disabled="phase === 'running'" @click="play" />
-				<IbButton family="purple" label="Pause" :disabled="phase !== 'running'" @click="pause" />
+		<!-- Sim transport, pinned to the far right like the legacy tall Play!
+		     button (Pause/Reset stack beside it). -->
+		<div class="transport">
+			<IbButton family="play" play label="Play!" :disabled="phase === 'running'" @click="play" />
+			<div class="transport-secondary">
+				<IbButton family="red" label="Pause" :disabled="phase !== 'running'" @click="pause" />
 				<IbButton family="red" label="Reset" @click="reset" />
 			</div>
 		</div>
@@ -128,41 +151,32 @@ function reset(): void {
 </template>
 
 <style scoped>
+/* Wide, short toolbar that overlays the top of the canvas. The .ib-panel
+   nine-patch frame supplies the background/border; keep inner padding modest. */
 .tool-palette {
 	display: flex;
-	align-items: flex-start;
-	gap: 14px;
-	/* Background + border come from the `.ib-panel` nine-patch frame; keep the
-	   inner padding modest since the frame already adds ~12–24px insets. */
-	padding: 4px 6px 6px;
-	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+	padding: 2px 6px;
 }
 
-.tool-group {
+.tool-grid {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
-}
-
-.group-label {
-	font-family: Arial, Helvetica, sans-serif;
-	font-size: 10px;
-	font-weight: bold;
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
-	/* Deep purple reads clearly on the periwinkle panel frame. */
-	color: #43366f;
+	gap: 4px;
 }
 
 .tool-row {
 	display: flex;
-	gap: 6px;
-	flex-wrap: wrap;
+	gap: 5px;
 	align-items: center;
 }
 
-.sim-row {
-	align-items: center;
+/* Compact the pill buttons a touch so two rows fit the short legacy bar. */
+.tool-row :deep(.ib-btn) {
+	height: 30px;
+	font-size: 11px;
+	padding: 0 10px;
 }
 
 .divider {
@@ -170,7 +184,29 @@ function reset(): void {
 	align-self: stretch;
 	background: #43366f;
 	border-radius: 1px;
-	margin-top: 16px;
-	opacity: 0.6;
+	margin: 4px 0;
+	opacity: 0.55;
+}
+
+.spacer {
+	flex: 1;
+}
+
+.transport {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.transport-secondary {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.transport-secondary :deep(.ib-btn) {
+	height: 30px;
+	font-size: 11px;
+	padding: 0 12px;
 }
 </style>

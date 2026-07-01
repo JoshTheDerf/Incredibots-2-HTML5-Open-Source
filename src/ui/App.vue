@@ -55,11 +55,27 @@ function closePanel(): void {
 		<MainMenu v-if="game.appMode === 'menu'" />
 
 		<div v-else class="editor-shell">
+			<!-- Thin top menu strip (legacy DropDownMenu, 21px). -->
 			<MenuBar @open="openPanel" />
-			<ToolPalette />
+
+			<!-- The play canvas fills the whole area below the menu bar; the
+			     toolbar and the part-edit panel OVERLAY it, exactly like the
+			     legacy MainEditPanel (top) and PartEditWindow (left) which are
+			     drawn on top of the game view. -->
 			<div class="workspace">
 				<StagePlaceholder />
-				<PartInspectorFull />
+
+				<!-- Toolbar pinned to the top, overlaying the canvas. -->
+				<div class="toolbar-overlay">
+					<ToolPalette />
+				</div>
+
+				<!-- Part-edit panel pinned to the LEFT, under the toolbar,
+				     overlaying the canvas (legacy PartEditWindow at x=0,y=90). -->
+				<div class="inspector-overlay">
+					<PartInspectorFull />
+				</div>
+
 				<!-- Tutorial dialog bubble (self-hides when no active message) and
 				     the post-replay window (shown once a replay playback finishes).
 				     Floated over the stage like the legacy draggable dialogs. -->
@@ -70,6 +86,7 @@ function closePanel(): void {
 					<PostReplayPanel @close="game.dispatch({ type: 'stopReplay' })" />
 				</div>
 			</div>
+
 			<StatusBar />
 		</div>
 
@@ -149,6 +166,9 @@ function closePanel(): void {
 	font-family: Arial, Helvetica, sans-serif;
 }
 
+/* The workspace is a positioned canvas region; the toolbar and inspector are
+   absolutely-positioned overlays on top of it (matching the legacy game where
+   the Pixi MainEditPanel / PartEditWindow are drawn over the play view). */
 .workspace {
 	flex: 1;
 	display: flex;
@@ -156,10 +176,37 @@ function closePanel(): void {
 	position: relative;
 }
 
+/* StagePlaceholder (the real Pixi canvas host) fills the whole workspace. */
+.workspace > :first-child {
+	position: absolute;
+	inset: 0;
+}
+
+/* Toolbar overlay — pinned across the top, overlaying the canvas. */
+.toolbar-overlay {
+	position: absolute;
+	top: 6px;
+	left: 6px;
+	right: 6px;
+	z-index: 15;
+	pointer-events: auto;
+}
+
+/* Part-edit panel overlay — pinned to the left edge, starting just below the
+   toolbar (legacy PartEditWindow y=90), running down the side. */
+.inspector-overlay {
+	position: absolute;
+	top: 84px;
+	left: 6px;
+	bottom: 8px;
+	z-index: 14;
+	pointer-events: auto;
+}
+
 .tutorial-overlay {
 	position: absolute;
-	top: 16px;
-	left: 16px;
+	top: 96px;
+	left: 170px;
 	z-index: 20;
 	pointer-events: auto;
 }
