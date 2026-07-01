@@ -35,6 +35,46 @@ export class Draw extends b2DebugDraw {
   private static s_staticEditableColor = new b2Color(0.6, 0.8, 0.6);
   private m_world = null;
 
+  // Visible viewport size in the SAME (CSS-pixel) screen space b2DebugDraw's
+  // on-screen culling uses (screen = world * m_drawScale - m_drawOff). The base
+  // b2DebugDraw.IsPolygonOnScreen / IsCircleOnScreen hardcode the legacy Flash
+  // 800x600 stage (the literal 805/605 bounds), which clips every shape past
+  // ~800x600 on the responsive Vue canvas. The renderer sets these each frame to
+  // the real canvas size so culling matches what's actually visible.
+  public m_screenWidth: number = 800;
+  public m_screenHeight: number = 600;
+
+  /**
+   * On-screen test for a polygon, overriding b2DebugDraw's 800x600-hardcoded
+   * version to use the live viewport size (m_screenWidth/Height). Keeps the base
+   * class's -5 / +5 screen-edge margins; a polygon is on screen if ANY vertex
+   * falls inside the padded viewport (the base also short-circuits huge polygons
+   * spanning the screen via the xLeft/yTop flags — preserved here verbatim).
+   */
+  public IsPolygonOnScreen(vertices: Array<any>, vertexCount: number): boolean {
+    const right = this.m_screenWidth + 5;
+    const bottom = this.m_screenHeight + 5;
+    const xLeft = vertices[0].x < -5;
+    const yTop = vertices[0].y < -5;
+    for (let i = 0; i < vertexCount; i++) {
+      const xVal = vertices[i].x * this.m_drawScale - this.m_drawXOff;
+      const yVal = vertices[i].y * this.m_drawScale - this.m_drawYOff;
+      if ((xVal >= -5 || !xLeft) && (xVal < right || xLeft) && (yVal >= -5 || !yTop) && (yVal < bottom || yTop))
+        return true;
+    }
+    return false;
+  }
+
+  /** On-screen test for a circle — same live-viewport override as above. */
+  public IsCircleOnScreen(center: any, radius: number): boolean {
+    const right = this.m_screenWidth + 5;
+    const bottom = this.m_screenHeight + 5;
+    const newRadius = radius * this.m_drawScale;
+    const cx = center.x * this.m_drawScale - this.m_drawXOff;
+    const cy = center.y * this.m_drawScale - this.m_drawYOff;
+    return cx + newRadius >= -5 && cx - newRadius < right && cy + newRadius >= -5 && cy - newRadius < bottom;
+  }
+
   // Renderer-side ownership of the Pixi Text display objects for TextParts.
   // The headless game core (TextPart) holds only plain data; the live Pixi
   // Text objects live here and are created/updated/destroyed per-frame.

@@ -37,7 +37,19 @@ export type Command =
 	| { type: "step"; frames?: number }
 	// --- editing (each produces an undoable Action) ---
 	| { type: "setTool"; tool: ToolMode }
-	| { type: "createShape"; kind: ShapeKind; x: number; y: number }
+	// Create a shape from the ORIGINAL click-drag gesture (ControllerGame.mouseClick
+	// NEW_CIRCLE/NEW_RECT/NEW_TRIANGLE, :2190/:2217/:2282). Per kind:
+	//   circle   — (x1,y1) is the CENTRE (press), radius = dist to (x2,y2) release  (:2196-2204)
+	//   rect     — (x1,y1)..(x2,y2) are opposite corners (press..release)           (:2228-2232)
+	//   triangle — (x1,y1)..(x2,y2) is the BASE edge (first press-drag-release, the
+	//              base length clamped to Triangle's range :2295-2316) and (x3,y3)
+	//              is the APEX (a second click, validated :2352-2360). x3/y3 are
+	//              REQUIRED for triangle and ignored otherwise — matching the
+	//              original's 3-click gesture faithfully.
+	// GameCore clamps each dimension to the Part's legal size range and rejects a
+	// degenerate (zero-length base / collinear apex) gesture. cannon is not created
+	// via this command.
+	| { type: "createShape"; kind: ShapeKind; x1: number; y1: number; x2: number; y2: number; x3?: number; y3?: number }
 	| { type: "createText"; x: number; y: number; text: string }
 	// Attach a Thrusters / Cannon at the click point. createThrusters snaps onto
 	// the single shape under (x,y) (ControllerGame.MaybeCreateThrusters :6797);

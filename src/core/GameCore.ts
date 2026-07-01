@@ -25,7 +25,7 @@ import { ShapePart } from "../Parts/ShapePart";
 import { TextPart } from "../Parts/TextPart";
 import { Thrusters } from "../Parts/Thrusters";
 import { Triangle } from "../Parts/Triangle";
-import type { Command } from "./Command";
+import type { Command, ShapeKind } from "./Command";
 import { GameState, PartSnapshot, createInitialState } from "./GameState";
 import { decodeRobot, encodeRobot } from "./robotSerialization";
 
@@ -66,14 +66,12 @@ interface HistorySnapshot {
 /** Max number of undo steps retained (older snapshots are dropped). */
 const HISTORY_CAP = 100;
 
-// Default sizes for click-to-create shapes. The original ControllerGame derives
-// each shape's dimensions from a click-drag gesture (ControllerGame.ts:2209 for
-// the circle, :2233 for the rect, :2367 for the triangle); the headless
-// create-at-point command has no drag, so we pick sensible world-unit defaults
-// in the middle of each shape's legal size range.
-const DEFAULT_CIRCLE_RADIUS = 1.0;
+// Default sizes for shapes the headless create commands still place from a
+// single point (text, cannon, prismatic-joint span). Circle/Rectangle/Triangle
+// now derive their dimensions from the click-drag gesture (see
+// buildDraggedShape), matching ControllerGame's NEW_CIRCLE/NEW_RECT/NEW_TRIANGLE
+// flows; these defaults remain for the point-placed parts only.
 const DEFAULT_RECT_SIZE = 2.0;
-const DEFAULT_TRIANGLE_SIDE = 2.0;
 const DEFAULT_TEXT_W = 4.0;
 const DEFAULT_TEXT_H = 2.0;
 
@@ -637,6 +635,83 @@ export class GameCore {
 		return hits;
 	}
 
+	/**
+	 * Construct a ShapePart from a click-drag gesture, mirroring
+	 * ControllerGame.mouseClick's NEW_CIRCLE/NEW_RECT/NEW_TRIANGLE branches.
+	 * (x1,y1) is the press point, (x2,y2) the release point. Returns null for a
+	 * degenerate (zero-length) drag so the caller can skip creation. The Part
+	 * constructors clamp each dimension to the type's legal MIN/MAX range, so we
+	 * only guard the "no drag at all" case here.
+	 */
+	private buildDraggedShape(
+		kind: ShapeKind,
+		x1: number,
+		y1: number,
+		x2: number,
+		y2: number,
+		x3?: number,
+		y3?: number,
+	): Part | null {
+		switch (kind) {
+			case "circle": {
+				// Press sets the CENTRE, drag sets the radius (ControllerGame :2196).
+				const radius = Util.GetDist(x1, y1, x2, y2);
+				if (radius <= 0) return null;
+				// Circle(x, y, rad) clamps rad to [MIN_RADIUS, MAX_RADIUS] (:2204).
+				return new Circle(x1, y1, radius);
+			}
+			case "rect": {
+				// Press/release are opposite corners (ControllerGame :2228). The
+				// Rectangle ctor clamps |w|,|h| to [MIN_WIDTH, MAX_WIDTH] and keeps the
+				// sign so it can be dragged in any direction.
+				if (x2 === x1 && y2 === y1) return null;
+				return new Rectangle(x1, y1, x2 - x1, y2 - y1);
+			}
+			case "triangle": {
+				// Faithful port of the original 3-click gesture (ControllerGame :2282).
+				// (x1,y1)-(x2,y2) is the BASE edge (already length-clamped by the caller
+				// exactly as the original clamps `secondClick` along the drag angle,
+				// :2295-2316); (x3,y3) is the APEX from the second click. Validate the
+				// same side-length + minimum-angle constraints the original enforces
+				// before building (:2329-2360); reject the gesture otherwise.
+				if (x3 === undefined || y3 === undefined) return null;
+				if ((x3 === x1 && y3 === y1) || (x3 === x2 && y3 === y2)) return null;
+				const sideLen1 = Util.GetDist(x1, y1, x3, y3);
+				const sideLen2 = Util.GetDist(x2, y2, x3, y3);
+				const sideLen0 = Util.GetDist(x1, y1, x2, y2);
+				if (sideLen0 <= 0) return null;
+				const angle1 = Util.NormalizeAngle(
+					Math.acos((sideLen0 * sideLen0 + sideLen1 * sideLen1 - sideLen2 * sideLen2) / (2 * sideLen0 * sideLen1)),
+				);
+				const angle2 = Util.NormalizeAngle(
+					Math.acos((sideLen0 * sideLen0 + sideLen2 * sideLen2 - sideLen1 * sideLen1) / (2 * sideLen0 * sideLen2)),
+				);
+				const angle3 = Util.NormalizeAngle(
+					Math.acos((sideLen1 * sideLen1 + sideLen2 * sideLen2 - sideLen0 * sideLen0) / (2 * sideLen1 * sideLen2)),
+				);
+				if (
+					sideLen1 <= Triangle.MAX_SIDE_LENGTH &&
+					sideLen1 >= Triangle.MIN_SIDE_LENGTH &&
+					sideLen2 <= Triangle.MAX_SIDE_LENGTH &&
+					sideLen2 >= Triangle.MIN_SIDE_LENGTH &&
+					angle1 >= Triangle.MIN_TRIANGLE_ANGLE &&
+					angle2 >= Triangle.MIN_TRIANGLE_ANGLE &&
+					angle3 >= Triangle.MIN_TRIANGLE_ANGLE
+				) {
+					return new Triangle(x1, y1, x2, y2, x3, y3);
+				}
+				return null;
+			}
+			case "cannon":
+				// Cannon is created via the createCannon command, not createShape.
+				throw new Error(`GameCore: createShape "cannon" not supported — use createCannon`);
+			default: {
+				const _never: never = kind;
+				throw new Error(`GameCore: unknown shape kind ${JSON.stringify(_never)}`);
+			}
+		}
+	}
+
 	// --- Physics simulation -------------------------------------------------
 
 	/**
@@ -909,40 +984,21 @@ export class GameCore {
 				return;
 			}
 			case "createShape": {
-				let part: Part;
-				switch (command.kind) {
-					case "circle":
-						// ControllerGame.ts:2209 `new Circle(x, y, radius)`.
-						part = new Circle(command.x, command.y, DEFAULT_CIRCLE_RADIUS);
-						break;
-					case "rect": {
-						// ControllerGame.ts:2233 `new Rectangle(x, y, w, h)` (x,y is a corner).
-						const half = DEFAULT_RECT_SIZE / 2;
-						part = new Rectangle(command.x - half, command.y - half, DEFAULT_RECT_SIZE, DEFAULT_RECT_SIZE);
-						break;
-					}
-					case "triangle": {
-						// ControllerGame.ts:2367 `new Triangle(x1,y1,x2,y2,x3,y3)`. Build an
-						// equilateral-ish triangle centred on (x,y).
-						const s = DEFAULT_TRIANGLE_SIDE;
-						const h = (s * Math.sqrt(3)) / 2;
-						part = new Triangle(
-							command.x - s / 2,
-							command.y + h / 3,
-							command.x + s / 2,
-							command.y + h / 3,
-							command.x,
-							command.y - (2 * h) / 3,
-						);
-						break;
-					}
-					case "cannon":
-						throw new Error(`GameCore: createShape "cannon" not yet migrated from ControllerGame`);
-					default: {
-						const _never: never = command.kind;
-						throw new Error(`GameCore: unknown shape kind ${JSON.stringify(_never)}`);
-					}
-				}
+				const part = this.buildDraggedShape(
+					command.kind,
+					command.x1,
+					command.y1,
+					command.x2,
+					command.y2,
+					command.x3,
+					command.y3,
+				);
+				// Ignore a zero-length (tiny-click) drag — the original required the
+				// release point to differ from the press point before creating the
+				// shape (circle: radius > 0 :2202; rect: end != start :2223; triangle:
+				// end != start :2288). pushHistory already ran, but with no state
+				// change undo just restores the identical graph, which is harmless.
+				if (!part) return;
 				part.id = ++this.nextId;
 				const selection = [part.id];
 				this.state = {

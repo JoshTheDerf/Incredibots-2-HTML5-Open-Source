@@ -16,15 +16,38 @@
 // rotateParts/resizeParts delta to the core. Creation tools (joints, thrusters,
 // cannon, text) place their part on pointer-down via the matching create*
 // command (ControllerGame.mouseClick MaybeCreate* dispatch, :2389-2510).
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { Application, Graphics } from "pixi.js";
 import { Draw } from "../Game/Draw";
+import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals";
+import { Triangle } from "../Parts/Triangle";
 import { useGameStore } from "./gameStore";
 import { screenToWorld, worldToScreen, hitTestPart, partsInBox } from "./renderer/sceneRenderer";
 import type { ToolMode } from "../core";
 import type { Part } from "../Parts/Part";
 
+type ShapeKind = "circle" | "rect" | "triangle";
+
+// Map a shape kind to the Draw.DrawTempShape `creatingItem` code so the in-
+// progress preview uses the ORIGINAL renderer's look (fills, outline, default
+// colour). Values mirror ControllerGameGlobals.NEW_CIRCLE/NEW_RECT/NEW_TRIANGLE.
+const shapeKindToCreatingItem: Record<ShapeKind, number> = {
+	circle: ControllerGameGlobals.NEW_CIRCLE,
+	rect: ControllerGameGlobals.NEW_RECT,
+	triangle: ControllerGameGlobals.NEW_TRIANGLE,
+};
+
 const game = useGameStore();
+
+// Cancel an in-progress triangle (base committed, apex not yet placed) whenever
+// the tool changes or the sim leaves editing — mirrors ControllerGame resetting
+// curAction/actionStep when a new tool button is pressed.
+watch(
+	() => [game.edit.tool, game.sim.phase],
+	() => {
+		triangleBase = null;
+	},
+);
 
 const container = ref<HTMLDivElement | null>(null);
 
@@ -58,9 +81,25 @@ type Gesture =
 	// scale (ControllerGame.ts:1558).
 	| { kind: "resize"; pivot: { x: number; y: number }; lastDist: number }
 	// Marquee box-select. `origin` is the world-space anchor (first corner).
-	| { kind: "marquee"; origin: { x: number; y: number }; current: { x: number; y: number } };
+	| { kind: "marquee"; origin: { x: number; y: number }; current: { x: number; y: number } }
+	// Create a Circle/Rectangle/Triangle by dragging. `start` is the press point
+	// (world), `current` the live cursor point. Ports ControllerGame's
+	// NEW_CIRCLE/NEW_RECT/NEW_TRIANGLE press-drag-release (mouseClick :2190-2380);
+	// pointer-move repaints the preview via Draw.DrawTempShape and pointer-up
+	// dispatches createShape with the final geometry.
+	| { kind: "create"; shape: ShapeKind; start: { x: number; y: number }; current: { x: number; y: number } };
 
 let gesture: Gesture = { kind: "none" };
+
+// Triangle is a TWO-STEP gesture in the original (ControllerGame :2282): the
+// first press-drag-release fixes the BASE edge (v1→v2, length-clamped), then a
+// second click places the APEX (v3). Between those two the base is committed
+// here while the apex tracks the cursor for a live preview. Null when no
+// triangle is mid-construction.
+let triangleBase: { v1: { x: number; y: number }; v2: { x: number; y: number } } | null = null;
+// Last known cursor position in world units — drives the triangle apex preview
+// while `triangleBase` is set (the cursor moves with no button held down).
+let pointerWorld: { x: number; y: number } | null = null;
 
 const toolToShapeKind: Partial<Record<ToolMode, "circle" | "rect" | "triangle">> = {
 	newCircle: "circle",
@@ -114,9 +153,40 @@ function onPointerDown(event: PointerEvent): void {
 	const tool = game.edit.tool;
 	const shapeKind = toolToShapeKind[tool as ToolMode];
 
-	// A "new*" shape tool places a shape on press, as before.
+	// Triangle SECOND step: the base edge is already committed (triangleBase set),
+	// so this click places the APEX and creates the triangle (ControllerGame
+	// mouseClick NEW_TRIANGLE actionStep==2, :2322-2381). We dispatch on this
+	// press (the apex is a click, not a drag); GameCore validates side/angle
+	// limits and no-ops the create if the point makes a degenerate triangle.
+	if (tool === "newTriangle" && triangleBase) {
+		const { v1, v2 } = triangleBase;
+		game.dispatch({
+			type: "createShape",
+			kind: "triangle",
+			x1: v1.x,
+			y1: v1.y,
+			x2: v2.x,
+			y2: v2.y,
+			x3: world.x,
+			y3: world.y,
+		});
+		triangleBase = null;
+		return;
+	}
+
+	// A "new*" shape tool BEGINS a click-drag-release creation gesture: press
+	// records the start point, pointer-move shows a live preview, pointer-up
+	// dispatches createShape with the dragged geometry. Ports ControllerGame's
+	// NEW_CIRCLE/NEW_RECT/NEW_TRIANGLE press-drag-release (mouseClick :2190-2380).
+	// For a triangle this first press-drag-release fixes the BASE edge only.
 	if (shapeKind) {
-		game.dispatch({ type: "createShape", kind: shapeKind, x: world.x, y: world.y });
+		gesture = {
+			kind: "create",
+			shape: shapeKind,
+			start: { x: world.x, y: world.y },
+			current: { x: world.x, y: world.y },
+		};
+		container.value.setPointerCapture(event.pointerId);
 		return;
 	}
 
@@ -200,11 +270,17 @@ function onPointerDown(event: PointerEvent): void {
 
 function onPointerMove(event: PointerEvent): void {
 	if (!app || !container.value) return;
-	if (gesture.kind === "none") return;
 	if (game.sim.phase !== "editing") return;
 
 	const s = screenOf(event);
 	const world = screenToWorld(s.x, s.y, game.camera, s.w, s.h);
+
+	// Track the cursor unconditionally so the triangle apex preview (drawn from
+	// `triangleBase` + `pointerWorld` in drawFrame) follows the mouse between the
+	// base-edge and apex clicks, when no pointer button is held.
+	pointerWorld = { x: world.x, y: world.y };
+
+	if (gesture.kind === "none") return;
 
 	if (gesture.kind === "drag") {
 		// Incremental world-space delta since the last move. moveParts is
@@ -252,6 +328,14 @@ function onPointerMove(event: PointerEvent): void {
 	if (gesture.kind === "marquee") {
 		gesture.current = { x: world.x, y: world.y };
 		drawMarquee();
+		return;
+	}
+
+	if (gesture.kind === "create") {
+		// Track the cursor; the preview is repainted from `gesture` inside the
+		// per-frame drawFrame() (DrawTempShape shares the Draw sprite, which is
+		// cleared/repainted every tick, so we must draw the preview there).
+		gesture.current = { x: world.x, y: world.y };
 	}
 }
 
@@ -266,6 +350,29 @@ function onPointerUp(event: PointerEvent): void {
 			game.dispatch({ type: "select", partIds: hits.map((p) => p.id) });
 		}
 		clearMarquee();
+	} else if (gesture.kind === "create") {
+		const { shape, start, current } = gesture;
+		if (shape === "triangle") {
+			// FIRST triangle step: commit the base edge. The original clamps the
+			// second point along the drag angle to Triangle's legal side length
+			// (ControllerGame :2295-2316); we do the same so a too-short/too-long
+			// drag still yields a valid base. The apex is placed by the NEXT click.
+			const base = clampTriangleBase(start.x, start.y, current.x, current.y);
+			if (base) triangleBase = { v1: { x: start.x, y: start.y }, v2: base };
+		} else {
+			// Circle/Rect finalize from the drag. GameCore ignores a zero-length
+			// drag and clamps each dimension to the part's legal range, so we
+			// dispatch unconditionally and let the core decide. Ports the on-`up`
+			// creation in ControllerGame.mouseClick (:2195/:2222).
+			game.dispatch({
+				type: "createShape",
+				kind: shape,
+				x1: start.x,
+				y1: start.y,
+				x2: current.x,
+				y2: current.y,
+			});
+		}
 	}
 	gesture = { kind: "none" };
 	try {
@@ -307,8 +414,16 @@ function drawFrame(): void {
 		game.dispatch({ type: "step" });
 	}
 
-	const w = app.renderer.width / app.renderer.resolution;
-	const h = app.renderer.height / app.renderer.resolution;
+	// Use the container's CSS-pixel size as the single source of truth for the
+	// draw transform — the SAME size (getBoundingClientRect) the pointer math and
+	// screenToWorld/worldToScreen use. Pixi's stage coordinate system is in CSS
+	// pixels (autoDensity handles the devicePixelRatio scale internally), so
+	// deriving canvas size from renderer.width/resolution is fragile across Pixi
+	// versions and on HiDPI displays diverged from the CSS size — pushing the
+	// world origin off-centre and confining drawing/interaction to a sub-region.
+	// clientWidth/clientHeight are always CSS px and always match the pointer math.
+	const w = container.value?.clientWidth || app.renderer.width / app.renderer.resolution;
+	const h = container.value?.clientHeight || app.renderer.height / app.renderer.resolution;
 
 	// Draw's screen transform is `worldX * m_drawScale - m_drawXOff` (no implicit
 	// canvas-center offset). To centre the world origin the way the editor camera
@@ -319,6 +434,12 @@ function drawFrame(): void {
 	draw.m_drawScale = camera.scale;
 	draw.m_drawXOff = camera.offsetX - w / 2;
 	draw.m_drawYOff = camera.offsetY - h / 2;
+	// Feed the live viewport size to Draw's on-screen culling. The base
+	// b2DebugDraw hardcodes an 800x600 stage (legacy Flash), which clips every
+	// shape drawn past ~800x600; Draw overrides the cull to use these instead so
+	// the whole responsive canvas is drawable, not just the top-left 800x600.
+	draw.m_screenWidth = w;
+	draw.m_screenHeight = h;
 	draw.drawColours = true;
 
 	// Map selection ids -> live Part instances for highlight.
@@ -338,6 +459,71 @@ function drawFrame(): void {
 		/* showOutlines */ true,
 		/* challenge */ undefined as any
 	);
+
+	// While a shape-creation drag is in progress, paint the in-progress shape
+	// over the world using the ORIGINAL renderer's DrawTempShape so the preview
+	// matches the finished shape's look (Draw.ts:819). It reuses the same Draw
+	// sprite DrawWorld just painted into, so it must run each frame after it.
+	drawShapePreview();
+}
+
+/**
+ * Paint the live shape-creation preview via Draw.DrawTempShape, exactly matching
+ * the original renderer's in-progress look (Draw.ts:819).
+ *   circle/rect       — actionStep==1, firstClick=start, mouse=cursor.
+ *   triangle step 1   — actionStep==1 (base-edge segment) while dragging the base.
+ *   triangle step 2   — actionStep==2 (full triangle / fallback segment) once the
+ *                       base is committed and the cursor sets the apex.
+ * These are the same creatingItem/actionStep codes ControllerGame passes to
+ * DrawTempShape in its render loop (:657-711).
+ */
+function drawShapePreview(): void {
+	if (!draw) return;
+
+	// Triangle, second step: base committed, apex tracks the cursor.
+	if (triangleBase && pointerWorld) {
+		const { v1, v2 } = triangleBase;
+		draw.DrawTempShape(
+			ControllerGameGlobals.NEW_TRIANGLE,
+			2,
+			v1.x,
+			v1.y,
+			v2.x,
+			v2.y,
+			pointerWorld.x,
+			pointerWorld.y,
+		);
+		return;
+	}
+
+	if (gesture.kind !== "create") return;
+	const { shape, start, current } = gesture;
+	const creatingItem = shapeKindToCreatingItem[shape];
+	// circle/rect (actionStep 1) and triangle first step (base-edge segment,
+	// actionStep 1) all use firstClick=start, mouse=current.
+	draw.DrawTempShape(creatingItem, 1, start.x, start.y, 0, 0, current.x, current.y);
+}
+
+/**
+ * Commit the triangle BASE edge from the first press-drag-release. Returns the
+ * second base vertex, clamped along the drag angle to Triangle's legal side
+ * length exactly as ControllerGame does (:2295-2316): a too-short/too-long drag
+ * snaps the base to MIN/MAX length in the drag direction. Returns null for a
+ * zero-length drag (no base to build).
+ */
+function clampTriangleBase(x1: number, y1: number, x2: number, y2: number): { x: number; y: number } | null {
+	const sideLen = Math.hypot(x2 - x1, y2 - y1);
+	if (sideLen <= 0) return null;
+	// atan2(y1 - y2, x2 - x1): the original's inverted-Y convention (:2303).
+	if (sideLen < Triangle.MIN_SIDE_LENGTH) {
+		const angle = Math.atan2(y1 - y2, x2 - x1);
+		return { x: x1 + Triangle.MIN_SIDE_LENGTH * Math.cos(angle), y: y1 - Triangle.MIN_SIDE_LENGTH * Math.sin(angle) };
+	}
+	if (sideLen > Triangle.MAX_SIDE_LENGTH) {
+		const angle = Math.atan2(y1 - y2, x2 - x1);
+		return { x: x1 + Triangle.MAX_SIDE_LENGTH * Math.cos(angle), y: y1 - Triangle.MAX_SIDE_LENGTH * Math.sin(angle) };
+	}
+	return { x: x2, y: y2 };
 }
 
 onMounted(async () => {
