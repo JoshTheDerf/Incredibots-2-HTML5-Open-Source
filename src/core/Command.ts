@@ -217,6 +217,21 @@ export type Command =
 	// Record a camera pan/zoom during a running sim (ControllerGame.ts:1837-1842).
 	// Pushed as a CameraMovement into the recording stream.
 	| { type: "moveCameraDuringSim"; drawXOff: number; drawYOff: number; scale: number }
+	// --- live play-mode interaction (RUNNING sim only) ---
+	// A keyboard event during the running sim, driving robot control: motors,
+	// pistons, thrusters, cannons, text displays. Faithful port of
+	// ControllerGame.keyInput (:1868-1883): forwards KeyInput(key, up, false) to
+	// every part (setting each part's live control flags, which its per-step
+	// Update reads) and records ONLY text-display / cannon-fire keys (on key up)
+	// into the replay stream. `up` is false on key-down, true on key-up.
+	| { type: "keyInput"; key: number; up: boolean }
+	// Mouse-joint grab/drag of a body during the running sim (ControllerGame
+	// MouseDrag :1782-1809). start creates a b2MouseJoint targeting the body under
+	// (worldX,worldY); move retargets it to the cursor; end destroys it. World
+	// units (screenToWorld already applied by the caller).
+	| { type: "mouseJointStart"; worldX: number; worldY: number }
+	| { type: "mouseJointMove"; worldX: number; worldY: number }
+	| { type: "mouseJointEnd" }
 	// --- tutorials (per-subclass dialog state machine; see src/core/tutorials.ts) ---
 	// loadTutorial builds the tutorial's terrain + prebuilt parts and shows its
 	// first dialog (TutorialSelectWindow.*Button + ControllerTutorial.Init).

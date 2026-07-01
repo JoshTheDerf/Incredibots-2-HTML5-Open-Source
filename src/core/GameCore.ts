@@ -9,7 +9,8 @@
 // migrated out of the monolithic ControllerGame incrementally; until a handler
 // is migrated it throws so nothing silently no-ops.
 
-import { b2AABB, b2Vec2, b2World } from "../Box2D";
+import { b2AABB, b2MouseJointDef, b2Vec2, b2World } from "../Box2D";
+import type { b2Joint } from "../Box2D";
 import { ContactFilter } from "../Game/ContactFilter";
 import { Util } from "../General/Util";
 import { Cannon } from "../Parts/Cannon";
@@ -99,6 +100,17 @@ const STEP_DT = 1 / 60;
 const STEP_ITERATIONS_WARMUP = 5;
 const STEP_ITERATIONS = 10;
 
+// --- Live play-mode interaction constants (ControllerGame) ---
+//
+// Mouse joint: the drag constraint's max force is 300 * body mass, with the
+// simulation time step 1/30 (ControllerGame.m_timeStep :89; MouseDrag :1790-1791).
+const MOUSE_JOINT_MAX_FORCE_FACTOR = 300.0;
+const MOUSE_JOINT_TIME_STEP = 1.0 / 30.0;
+// The GetBodyAtMouse pick box is a ±0.001 world-unit AABB around the cursor
+// (ControllerGame.GetBodyAtMouse :6968-6969).
+const MOUSE_PICK_HALF = 0.001;
+const MOUSE_PICK_MAX_COUNT = 10;
+
 /** Snapshot of a Part's pre-play edit transform, restored on reset. */
 interface EditTransform {
 	part: Part;
@@ -181,6 +193,12 @@ export class GameCore {
 	private levelsDone: boolean[] = new Array(TUTORIAL_LEVELS.length).fill(false);
 	/** Latches the one-shot tutorial "won" trigger so it fires once per run. */
 	private tutorialWonFired = false;
+	/**
+	 * The live b2MouseJoint dragging a body during the running sim, or null.
+	 * Owned here on the world (ControllerGame.m_mouseJoint :87); GameCanvas drives
+	 * it via the mouseJointStart/Move/End commands from pointer events.
+	 */
+	private mouseJoint: b2Joint | null = null;
 
 	constructor(initial: GameState = createInitialState()) {
 		this.state = initial;
@@ -1191,6 +1209,10 @@ export class GameCore {
 	private handleReset(): void {
 		if (this.state.sim.phase === "editing") return;
 
+		// Drop any active mouse-joint grab before tearing the world down (the joint
+		// lives on the world, which UnInit/rebuild discards).
+		this.mouseJoint = null;
+
 		const world = this.state.world;
 		if (world) {
 			for (const p of this.state.parts) p.UnInit(world);
@@ -1227,6 +1249,154 @@ export class GameCore {
 	}
 
 	/**
+	 * The ShapePart currently flagged isCameraFocus (and enabled), or null. The
+	 * live-play camera follows this part (ControllerGame play-time cameraPart pick,
+	 * :2770-2774). The last-flagged focus part wins if several are set (the legacy
+	 * loop keeps the last match). We do NOT fall back to FindCenterOfRobot here —
+	 * with no focus flag the camera stays where the user left it (the fallback is
+	 * only used by CenterOnLoadedRobot for the initial editor framing).
+	 */
+	private cameraFocusPart(): ShapePart | null {
+		let part: ShapePart | null = null;
+		for (const p of this.state.parts) {
+			if (p instanceof ShapePart && p.isCameraFocus && p.isEnabled) part = p;
+		}
+		return part;
+	}
+
+	/**
+	 * HandleCamera (ControllerGame.ts:1233-1247): pan the view to keep the focused
+	 * part's body world-centre at the screen focus point. The legacy screen
+	 * transform is `screen = world*scale - drawXOff` with the focus pinned at
+	 * ZOOM_FOCUS (400,310) in the fixed 800px stage. GameCanvas's transform is
+	 * `screen = canvas/2 + world*scale - offset`, so pinning the focus to the
+	 * canvas centre means offset = worldCentre*scale. NaN guard mirrors :1241-1244.
+	 * No-op during replay playback (the replay owns the camera then) and when no
+	 * part is focused. Mutates state.camera in place (called inside the step loop).
+	 */
+	private handleCamera(): void {
+		if (this.replaySession) return;
+		const part = this.cameraFocusPart();
+		if (!part) return;
+		const body = part.GetBody();
+		if (!body) return;
+		const center = body.GetWorldCenter();
+		const scale = this.state.camera.scale;
+		const nx = center.x * scale;
+		const ny = center.y * scale;
+		if (isNaN(nx) || isNaN(ny)) return;
+		if (nx !== this.state.camera.offsetX || ny !== this.state.camera.offsetY) {
+			this.state = { ...this.state, camera: { ...this.state.camera, offsetX: nx, offsetY: ny } };
+			this.markChanged();
+		}
+	}
+
+	/**
+	 * keyInput: a live keyboard event during the running sim (ControllerGame.
+	 * keyInput :1868-1883). Forwards KeyInput(key, up, playingReplay) to EVERY
+	 * part — setting each part's live control flags (revolute/prismatic motor
+	 * direction, thruster on/off, cannon fire, text toggle), which the per-step
+	 * Update reads — and records ONLY text-display / cannon-fire keys (on key up,
+	 * when not replaying) into the replay stream. `keyPress` gates this on
+	 * !paused && !playingReplay (:1885-1888); we gate on the running phase.
+	 */
+	private handleKeyInput(key: number, up: boolean): void {
+		if (this.state.sim.phase !== "running") return;
+		const replaying = this.replaySession !== null;
+		let recorded = false;
+		for (const p of this.state.parts) {
+			(p as unknown as { KeyInput?: (k: number, u: boolean, r: boolean) => void }).KeyInput?.(key, up, replaying);
+			if (
+				!recorded &&
+				up &&
+				!replaying &&
+				((p instanceof TextPart && key === p.displayKey) || (p instanceof Cannon && key === p.fireKey))
+			) {
+				recorded = true;
+				if (this.recording) recordKeyPress(this.recording, this.state.sim.frame, key);
+			}
+		}
+		this.syncReplayState();
+	}
+
+	// --- Mouse joint (grab / drag a body during play) -----------------------
+	//
+	// Faithful port of ControllerGame.MouseDrag's play-mode mouse-joint block
+	// (:1782-1809): pointer-down over a draggable body creates a b2MouseJoint,
+	// pointer-move retargets it, pointer-up destroys it. Core owns the joint on
+	// the world; GameCanvas feeds world-space pointer coords from pointer events.
+
+	/**
+	 * GetBodyAtMouse (ControllerGame.ts:6964-6991): the topmost non-static,
+	 * non-undragable, non-piston body whose shape contains the cursor. Queries a
+	 * ±0.001 AABB, then TestPoint-confirms each candidate shape.
+	 */
+	private bodyAtMouse(worldX: number, worldY: number): import("../Box2D").b2Body | null {
+		const world = this.state.world;
+		if (!world) return null;
+		const mousePVec = new b2Vec2(worldX, worldY);
+		const aabb = new b2AABB();
+		aabb.lowerBound.Set(worldX - MOUSE_PICK_HALF, worldY - MOUSE_PICK_HALF);
+		aabb.upperBound.Set(worldX + MOUSE_PICK_HALF, worldY + MOUSE_PICK_HALF);
+		const shapes: unknown[] = [];
+		world.Query(aabb, shapes, MOUSE_PICK_MAX_COUNT);
+		for (const s of shapes as Array<{
+			m_body: import("../Box2D").b2Body;
+			GetUserData: () => { undragable?: boolean; isPiston?: number };
+			TestPoint: (xf: unknown, p: b2Vec2) => boolean;
+		}>) {
+			const ud = s.GetUserData();
+			if (s.m_body.IsStatic() === false && !ud.undragable && ud.isPiston === -1) {
+				if (s.TestPoint(s.m_body.GetXForm(), mousePVec)) return s.m_body;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * mouseJointStart: create a b2MouseJoint on the body under the cursor
+	 * (ControllerGame.ts:1782-1794). body1 is the world ground body, body2 the
+	 * picked body, target the cursor, maxForce = 300 * body mass, timeStep 1/30.
+	 * No-op unless a normal (non-replay) sim is running, nothing is already grabbed,
+	 * and a draggable body sits under the cursor.
+	 */
+	private handleMouseJointStart(worldX: number, worldY: number): void {
+		if (this.state.sim.phase !== "running" || this.replaySession) return;
+		const world = this.state.world;
+		if (!world || this.mouseJoint) return;
+		const body = this.bodyAtMouse(worldX, worldY);
+		if (!body) return;
+		const md = new b2MouseJointDef();
+		md.body1 = world.m_groundBody;
+		md.body2 = body;
+		md.target.Set(worldX, worldY);
+		md.maxForce = MOUSE_JOINT_MAX_FORCE_FACTOR * body.m_mass;
+		md.timeStep = MOUSE_JOINT_TIME_STEP;
+		this.mouseJoint = world.CreateJoint(md);
+		body.WakeUp();
+	}
+
+	/**
+	 * mouseJointMove: retarget the active mouse joint to the cursor
+	 * (ControllerGame.ts:1798-1801). No-op if nothing is grabbed.
+	 */
+	private handleMouseJointMove(worldX: number, worldY: number): void {
+		if (!this.mouseJoint) return;
+		(this.mouseJoint as unknown as { SetTarget: (t: b2Vec2) => void }).SetTarget(new b2Vec2(worldX, worldY));
+	}
+
+	/**
+	 * mouseJointEnd: destroy the active mouse joint (ControllerGame.ts:1804-1808).
+	 */
+	private handleMouseJointEnd(): void {
+		const world = this.state.world;
+		if (this.mouseJoint && world) {
+			world.DestroyJoint(this.mouseJoint);
+		}
+		this.mouseJoint = null;
+	}
+
+	/**
 	 * step: advance the world by `frames` (default 1). Each frame does the two
 	 * Box2D sub-steps the legacy Update() loop runs (ControllerGame.ts:584-585):
 	 * a warm-up Step(1/60, 5) then Step(1/60, 10). After stepping, sync each
@@ -1257,8 +1427,21 @@ export class GameCore {
 				continue;
 			}
 
-			// NORMAL SIM: capture a sync point every REPLAY_SYNC_FRAMES BEFORE
-			// stepping (ControllerGame.ts:578), then the two Box2D sub-steps.
+			// NORMAL SIM. Mirror the legacy per-frame Update() order: pan the camera
+			// to the focused part (HandleCamera, called before MouseDrag/HandleKey
+			// when !paused && autoPanning :549-551), then drive every part's live
+			// control from the held-key flags (HandleKey's parts.Update loop
+			// :1187-1189), then break over-stressed joints (CheckForBreakage
+			// :556-559), and finally the two Box2D sub-steps.
+			this.handleCamera();
+			for (const p of this.state.parts) {
+				(p as unknown as { Update?: (w: b2World) => void }).Update?.(world);
+			}
+			for (const p of this.state.parts) {
+				if (p instanceof RevoluteJoint || p instanceof PrismaticJoint) p.CheckForBreakage(world);
+			}
+			// Capture a sync point every REPLAY_SYNC_FRAMES BEFORE stepping
+			// (ControllerGame.ts:578), then the two Box2D sub-steps.
 			if (this.recording && frame % REPLAY_SYNC_FRAMES === 0) {
 				addSyncPoint(this.recording, frame, this.replayBodies(), this.replayCannonballs());
 			}
@@ -2054,6 +2237,20 @@ export class GameCore {
 				return;
 			case "moveCameraDuringSim":
 				this.handleMoveCameraDuringSim(command.drawXOff, command.drawYOff, command.scale);
+				return;
+
+			// --- live play-mode interaction ---
+			case "keyInput":
+				this.handleKeyInput(command.key, command.up);
+				return;
+			case "mouseJointStart":
+				this.handleMouseJointStart(command.worldX, command.worldY);
+				return;
+			case "mouseJointMove":
+				this.handleMouseJointMove(command.worldX, command.worldY);
+				return;
+			case "mouseJointEnd":
+				this.handleMouseJointEnd();
 				return;
 
 			// --- tutorials ---

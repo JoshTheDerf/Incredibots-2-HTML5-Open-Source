@@ -95,6 +95,11 @@ type Gesture =
 
 let gesture: Gesture = { kind: "none" };
 
+// Whether a running-sim mouse-joint drag is in progress (pointer-down over a
+// body during play). Kept separate from `gesture` since it lives entirely in the
+// running phase, driving the core's b2MouseJoint via mouseJointMove/End.
+let mouseJointActive = false;
+
 // Triangle is a TWO-STEP gesture in the original (ControllerGame :2282): the
 // first press-drag-release fixes the BASE edge (v1→v2, length-clamped), then a
 // second click places the APEX (v3). Between those two the base is committed
@@ -146,13 +151,24 @@ function selectionCentroidScreen(canvasW: number, canvasH: number): { x: number;
 
 function onPointerDown(event: PointerEvent): void {
 	if (!app || !container.value) return;
-	// Editing is disabled while the simulation runs (matches ControllerGame's
-	// `if (!this.simStarted)` guard around MouseDrag, ControllerGame.ts:1255).
-	if (game.sim.phase !== "editing") return;
 
 	const s = screenOf(event);
 	const camera = game.camera;
 	const world = screenToWorld(s.x, s.y, camera, s.w, s.h);
+
+	// During the running sim, a pointer-down grabs a body with a b2MouseJoint
+	// (ControllerGame.MouseDrag play-mode block, :1782-1794): editing is disabled,
+	// but the player can drag their robot around. The core no-ops the grab if the
+	// cursor misses a draggable body. Pointer-move retargets, pointer-up releases.
+	if (game.sim.phase === "running") {
+		game.dispatch({ type: "mouseJointStart", worldX: world.x, worldY: world.y });
+		mouseJointActive = true;
+		container.value.setPointerCapture(event.pointerId);
+		return;
+	}
+	// Editing gestures are disabled while paused (matches ControllerGame's
+	// `if (!this.simStarted)` guard around MouseDrag, ControllerGame.ts:1255).
+	if (game.sim.phase !== "editing") return;
 
 	const tool = game.edit.tool;
 	const shapeKind = toolToShapeKind[tool as ToolMode];
@@ -274,6 +290,16 @@ function onPointerDown(event: PointerEvent): void {
 
 function onPointerMove(event: PointerEvent): void {
 	if (!app || !container.value) return;
+
+	// Running-sim mouse-joint drag: retarget the grabbed body to the cursor
+	// (ControllerGame.MouseDrag :1798-1801).
+	if (mouseJointActive) {
+		const s = screenOf(event);
+		const world = screenToWorld(s.x, s.y, game.camera, s.w, s.h);
+		game.dispatch({ type: "mouseJointMove", worldX: world.x, worldY: world.y });
+		return;
+	}
+
 	if (game.sim.phase !== "editing") return;
 
 	const s = screenOf(event);
@@ -345,6 +371,19 @@ function onPointerMove(event: PointerEvent): void {
 
 function onPointerUp(event: PointerEvent): void {
 	if (!container.value) return;
+
+	// Release a running-sim mouse-joint grab (ControllerGame.MouseDrag :1804-1808).
+	if (mouseJointActive) {
+		game.dispatch({ type: "mouseJointEnd" });
+		mouseJointActive = false;
+		try {
+			container.value.releasePointerCapture(event.pointerId);
+		} catch {
+			// pointer may not have been captured; ignore.
+		}
+		return;
+	}
+
 	if (gesture.kind === "marquee") {
 		// Select every part intersecting the marquee box, in a single select
 		// dispatch. Mirrors ControllerGame.ts:2407 (BOX_SELECTING on up).
@@ -384,6 +423,36 @@ function onPointerUp(event: PointerEvent): void {
 	} catch {
 		// pointer may not have been captured; ignore.
 	}
+}
+
+// --- live keyboard control (running sim) -----------------------------------
+// While the sim runs, held/pressed keys drive the robot: revolute/prismatic
+// motors, thrusters, cannons, text displays. A faithful port of the legacy key
+// path (Input.keyPress/keyRelease -> ControllerGame.keyPress -> keyInput,
+// :1885-1888 / :1868-1883): keydown feeds keyInput(key, up=false), keyup feeds
+// keyInput(key, up=true). The core forwards each to every part's KeyInput (which
+// sets the per-part control flags its per-step Update reads) and records only
+// text/cannon keys. Keys held down repeat browser keydown events, but the part
+// flags are idempotent (isKeyDown = !up), so repeats are harmless. We track the
+// pressed set so a browser key-repeat only fires one keydown per physical press.
+const pressedKeys = new Set<number>();
+
+function onKeyDown(event: KeyboardEvent): void {
+	if (game.sim.phase !== "running") return;
+	// keyCode is the code space the legacy parts compare against (motorCWKey etc.).
+	const key = event.keyCode;
+	if (pressedKeys.has(key)) return; // ignore auto-repeat
+	pressedKeys.add(key);
+	game.dispatch({ type: "keyInput", key, up: false });
+	// Arrow keys / space would otherwise scroll the page while driving.
+	if (key === 37 || key === 38 || key === 39 || key === 40 || key === 32) event.preventDefault();
+}
+
+function onKeyUp(event: KeyboardEvent): void {
+	const key = event.keyCode;
+	pressedKeys.delete(key);
+	if (game.sim.phase !== "running") return;
+	game.dispatch({ type: "keyInput", key, up: true });
 }
 
 /** Paint the marquee rectangle into the overlay (world -> screen each frame). */
@@ -591,15 +660,32 @@ onMounted(async () => {
 	container.value.addEventListener("pointermove", onPointerMove);
 	container.value.addEventListener("pointerup", onPointerUp);
 	container.value.addEventListener("pointercancel", onPointerUp);
+	// Live keyboard control during the running sim. Bound on window (like the
+	// legacy global Input listeners) so the robot is drivable without the canvas
+	// having to hold focus; the handlers no-op unless the sim is running.
+	window.addEventListener("keydown", onKeyDown);
+	window.addEventListener("keyup", onKeyUp);
 
-	resizeObserver = new ResizeObserver((entries) => {
-		for (const entry of entries) {
-			const cw = Math.max(1, Math.floor(entry.contentRect.width));
-			const ch = Math.max(1, Math.floor(entry.contentRect.height));
-			app?.renderer.resize(cw, ch);
+	// Keep the Pixi renderer exactly the size of its container. We read the
+	// container's LIVE clientWidth/clientHeight (border-box content area) rather
+	// than the observer's contentRect: drawFrame derives its world transform from
+	// clientWidth/clientHeight, so sizing the renderer from the same source keeps
+	// the drawn world, the pointer math, and the backing store in lockstep — no
+	// gray band from a renderer sized smaller than the (now full-bleed) container.
+	const resizeToContainer = (): void => {
+		if (!app || !container.value) return;
+		const cw = Math.max(1, Math.floor(container.value.clientWidth));
+		const ch = Math.max(1, Math.floor(container.value.clientHeight));
+		if (app.renderer.width !== cw || app.renderer.height !== ch) {
+			app.renderer.resize(cw, ch);
 		}
-	});
+	};
+	resizeObserver = new ResizeObserver(() => resizeToContainer());
 	resizeObserver.observe(container.value);
+	// The container may have grown to its full-bleed size while Application.init()
+	// was awaiting (the observer is only attached now, so it would otherwise miss
+	// that first layout). Force one resize to the current size immediately.
+	resizeToContainer();
 });
 
 onBeforeUnmount(() => {
@@ -609,6 +695,8 @@ onBeforeUnmount(() => {
 		container.value.removeEventListener("pointerup", onPointerUp);
 		container.value.removeEventListener("pointercancel", onPointerUp);
 	}
+	window.removeEventListener("keydown", onKeyDown);
+	window.removeEventListener("keyup", onKeyUp);
 	resizeObserver?.disconnect();
 	resizeObserver = null;
 	if (app && tickerFn) app.ticker.remove(tickerFn);

@@ -163,6 +163,15 @@ export class SkyRenderer {
 	 * (Sky.ts:111-141). `paused` mirrors !IsPaused() gating of the drift.
 	 */
 	update(cam: CameraState, bounds: SandboxState["bounds"], canvasW: number, canvasH: number, paused: boolean): void {
+		// The gradient is a full-screen background: it's built once (keyed by the
+		// sandbox settings) at a nominal size, but the canvas is now full-bleed and
+		// resizes, so stretch the gradient to the LIVE canvas size each frame.
+		// Without this it stays at its build-time 800x600 and leaves a gray band on
+		// the right/bottom of a larger canvas.
+		if (this.gradient) {
+			this.gradient.width = canvasW;
+			this.gradient.height = canvasH;
+		}
 		if (this.skyType === 0) {
 			for (let i = 0; i < this.clouds.length; i++) {
 				const c = this.clouds[i];
