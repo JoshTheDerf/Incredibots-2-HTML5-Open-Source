@@ -1,16 +1,15 @@
 <script setup lang="ts">
-// Center stage — placeholder for where the Pixi game canvas will mount.
-// Deliberately NOT embedding the real game here. This is a CLEAN, borderless,
-// full-bleed region: no frame or border of any kind, just the classic
-// light-periwinkle play-area fill, so the real canvas can later fill it
-// edge-to-edge and resize with its container.
+// Center stage — hosts the real Pixi game canvas (GameCanvas.vue). This is a
+// CLEAN, borderless, full-bleed region: no frame or border of any kind, just
+// the classic light-periwinkle play-area fill, with the canvas filling it
+// edge-to-edge and resizing with its container.
+import GameCanvas from "../GameCanvas.vue";
 </script>
 
 <template>
 	<div class="stage-wrap">
 		<div class="stage-inner">
-			<span class="stage-label">Pixi game canvas mounts here</span>
-			<span class="stage-dims">fills available space</span>
+			<GameCanvas />
 		</div>
 	</div>
 </template>

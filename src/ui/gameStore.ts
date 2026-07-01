@@ -10,6 +10,7 @@ import { computed, shallowRef } from "vue";
 import { defineStore } from "pinia";
 import { GameCore } from "../core/GameCore";
 import type { Command, EditState, SimState, CameraState } from "../core";
+import type { Part } from "../Parts/Part";
 
 const core = new GameCore();
 
@@ -23,6 +24,8 @@ export const useGameStore = defineStore("game", () => {
 	const sim = computed<Readonly<SimState>>(() => state.value.sim);
 	const camera = computed<Readonly<CameraState>>(() => state.value.camera);
 	const edit = computed<Readonly<EditState>>(() => state.value.edit);
+	// Raw live Part instances — the renderer reads this directly each frame.
+	const parts = computed<readonly Part[]>(() => state.value.parts);
 
 	// Safe dispatch wrapper: many commands (play/pause/createShape/etc.) are
 	// not yet migrated into GameCore and THROW "not yet migrated" there. The
@@ -38,5 +41,5 @@ export const useGameStore = defineStore("game", () => {
 		}
 	}
 
-	return { state, sim, camera, edit, dispatch };
+	return { state, sim, camera, edit, parts, dispatch };
 });
