@@ -138,7 +138,11 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 		} else if (od.type === "TextPart") {
 			// Legacy passes Main.m_curController; the headless core has no controller
 			// (TextPart never touches `cont` outside rendering), so pass null.
-			const text = new TextPart(null, od.x, od.y, od.w, od.h, od.text, od.inFront);
+			// TextPart stores its content in a private `_text` backing field behind a
+			// `text` getter/setter, so AMF serializes it as `_text`; older/AS3 bots use
+			// `text`. Accept both so the round-trip preserves the text content.
+			const textContent = od._text ?? od.text;
+			const text = new TextPart(null, od.x, od.y, od.w, od.h, textContent, od.inFront);
 			text.inFront = od.inFront;
 			text.scaleWithZoom = od.scaleWithZoom;
 			text.alwaysVisible = od.alwaysVisible;
