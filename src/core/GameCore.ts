@@ -29,6 +29,30 @@ import type { Command, ShapeKind } from "./Command";
 import { GameState, PartSnapshot, createInitialState } from "./GameState";
 import { decodeRobot, encodeRobot } from "./robotSerialization";
 import { buildTerrainParts, computeBounds } from "./sandboxEnvironment";
+import {
+	ChallengeSession,
+	CreatePartKind,
+	NO_LIMIT_MAX,
+	NO_LIMIT_MIN,
+	buildBuiltInChallenge,
+	challengeOver,
+	checkIfPartsFit,
+	clampDensity,
+	clampRJ,
+	clampSJ,
+	clampThruster,
+	conditionsContactAdded,
+	createChallengeSession,
+	getScore,
+	partTypeAllowed,
+	resetConditions,
+	toChallengeState,
+	updateConditions,
+	wonChallenge,
+} from "./challenge";
+import { WinCondition } from "../Game/WinCondition";
+import { LossCondition } from "../Game/LossCondition";
+import { b2ContactListener } from "../Box2D";
 
 // --- Physics simulation constants, mirrored from the legacy ControllerGame ---
 //
@@ -97,6 +121,19 @@ export class GameCore {
 	/** Undo / redo stacks of editable-state snapshots (see HistorySnapshot). */
 	private undoStack: HistorySnapshot[] = [];
 	private redoStack: HistorySnapshot[] = [];
+	/**
+	 * The live challenge session (ControllerChallenge's role): the domain
+	 * Challenge object + play/edit orchestration. null for a plain sandbox
+	 * session. The plain-data projection is mirrored into state.challenge.
+	 */
+	private challenge: ChallengeSession | null = null;
+	/**
+	 * Live cannonballs the running world spawns — fed to condition evaluation
+	 * (subject 4 / obj 5-6). Empty in the headless core (no cannon firing / key
+	 * handling), so shape-based conditions are exact; cannonball conditions are
+	 * a documented follow-up.
+	 */
+	private cannonballs: unknown[] = [];
 
 	constructor(initial: GameState = createInitialState()) {
 		this.state = initial;
@@ -111,6 +148,17 @@ export class GameCore {
 	/** Read-only snapshot for the renderer / views. */
 	getState(): Readonly<GameState> {
 		return this.state;
+	}
+
+	/**
+	 * The live legacy `Challenge` domain object (with its WinCondition/
+	 * LossCondition instances and b2AABB build areas), or null for a plain
+	 * sandbox session. The renderer feeds this straight into Draw.DrawWorld's
+	 * `challenge` param to paint condition zones (Draw.ts:129-164). NOT plain
+	 * data — do not send across a worker boundary; use state.challenge for that.
+	 */
+	getLiveChallenge(): import("../Game/Challenge").Challenge | null {
+		return this.challenge ? this.challenge.challenge : null;
 	}
 
 	/** Subscribe to state changes. Returns an unsubscribe function. */
@@ -196,6 +244,43 @@ export class GameCore {
 	/** Look up a live Part by its stable id. */
 	private findPart(id: number): Part | undefined {
 		return this.state.parts.find((p) => p.id === id);
+	}
+
+	// --- Challenge orchestration -------------------------------------------
+
+	/**
+	 * Recompute the CheckIfPartsFit gate (challenge play mode only) and re-project
+	 * the live challenge session into state.challenge. Called after any command
+	 * that touches conditions/restrictions/build areas/parts while a challenge is
+	 * active. No-op (leaves state.challenge null) when there is no session.
+	 */
+	private syncChallenge(): void {
+		if (!this.challenge) {
+			if (this.state.challenge !== null) {
+				this.state = { ...this.state, challenge: null };
+				this.markChanged();
+			}
+			return;
+		}
+		this.challenge.partsFit = checkIfPartsFit(this.challenge, this.state.parts);
+		this.state = { ...this.state, challenge: toChallengeState(this.challenge) };
+		this.markChanged();
+	}
+
+	/** Resolve a condition's picked ShapeParts by id (for subject-0 / obj-5/6). */
+	private applyConditionShapes(
+		cond: WinCondition | LossCondition,
+		shape1Id: number | null | undefined,
+		shape2Id: number | null | undefined,
+	): void {
+		if (shape1Id != null) {
+			const p = this.findPart(shape1Id);
+			if (p instanceof ShapePart) cond.shape1 = p;
+		}
+		if (shape2Id != null) {
+			const p = this.findPart(shape2Id);
+			if (p instanceof ShapePart) cond.shape2 = p;
+		}
 	}
 
 	// --- Undo / redo history -----------------------------------------------
@@ -741,6 +826,21 @@ export class GameCore {
 		// setSandboxSettings therefore takes effect only on the NEXT play (spec §4).
 		const world = new b2World(worldAABB, new b2Vec2(GRAVITY.x, this.state.sandbox.gravity), true);
 		world.SetContactFilter(new ContactFilter());
+		// Challenge "touching"/"touched" conditions (obj 5/6) need Box2D contact
+		// events. The vendored b2World invokes `listener.Add(cp)` for each new
+		// contact point (b2CircleContact.ts:94 etc.), where `cp.shape1/shape2` are
+		// the touching b2Shapes — exactly what Condition.ContactAdded matches
+		// against. Faithful mirror of ControllerGame.CreateWorld's
+		// SetContactListener (ControllerGame.ts:6634-6635) via ControllerChallenge.
+		// ContactAdded (:207-214). Only attached when a challenge is active.
+		if (this.challenge) {
+			const session = this.challenge;
+			const listener = new b2ContactListener();
+			listener.Add = (point: unknown): void => {
+				conditionsContactAdded(session, point, this.state.parts, this.cannonballs);
+			};
+			world.SetContactListener(listener);
+		}
 		return world;
 	}
 
@@ -757,6 +857,15 @@ export class GameCore {
 			this.state = { ...this.state, sim: { ...this.state.sim, phase: "running" } };
 			this.markChanged();
 			return;
+		}
+
+		// Challenge: reset every condition's isSatisfied before a fresh run and
+		// clear any prior outcome/score (ControllerChallenge.playButton :52-59).
+		if (this.challenge) {
+			resetConditions(this.challenge);
+			this.challenge.outcome = "playing";
+			this.challenge.score = null;
+			this.cannonballs = [];
 		}
 
 		const world = this.createWorld();
@@ -786,6 +895,7 @@ export class GameCore {
 
 		this.state = { ...this.state, world, sim: { phase: "running", frame: 0 } };
 		this.markChanged();
+		this.syncChallenge();
 	}
 
 	/** pause: stop stepping but keep the world alive (ControllerGame.pauseButton, :2796). */
@@ -817,6 +927,16 @@ export class GameCore {
 
 		this.state = { ...this.state, parts: [...this.state.parts], world: null, sim: { phase: "editing", frame: 0 } };
 		this.markChanged();
+
+		// Challenge: clear the run outcome/score and reset condition flags so the
+		// next play starts fresh (conditions are also reset on play :52-59).
+		if (this.challenge) {
+			this.challenge.outcome = null;
+			this.challenge.score = null;
+			resetConditions(this.challenge);
+			this.cannonballs = [];
+			this.syncChallenge();
+		}
 	}
 
 	/**
@@ -830,18 +950,48 @@ export class GameCore {
 		const world = this.state.world;
 		if (this.state.sim.phase !== "running" || !world) return;
 
+		let frame = this.state.sim.frame;
+		let ended = false;
 		for (let f = 0; f < frames; f++) {
 			world.Step(STEP_DT, STEP_ITERATIONS_WARMUP);
 			world.Step(STEP_DT, STEP_ITERATIONS);
+			frame++;
+
+			// Challenge: evaluate every win + loss condition this frame
+			// (ControllerChallenge.Update :23-30), then check for win/loss. The base
+			// loop pauses + records the outcome when ChallengeOver() first fires
+			// (ControllerGame.ts:738-772). obj-5 "touching" was reset to false at the
+			// top of each Condition.Update, then re-set by the frame's contacts;
+			// obj-6 "touched" latches. Contacts arrived during world.Step via the
+			// listener wired in createWorld.
+			if (this.challenge) {
+				updateConditions(this.challenge, this.state.parts, this.cannonballs);
+				if (challengeOver(this.challenge)) {
+					// ControllerGame :743 shows the score window only when actually WON;
+					// otherwise (an immediate loss) it's a failure. GetScore uses the
+					// frame counter at the moment of win (:749-751).
+					if (wonChallenge(this.challenge)) {
+						this.challenge.outcome = "won";
+						this.challenge.score = getScore(frame);
+					} else {
+						this.challenge.outcome = "failed";
+						this.challenge.score = null;
+					}
+					ended = true;
+					break;
+				}
+			}
 		}
 
 		// The bodies now hold the live transforms; Draw.DrawWorld reads them via
 		// GetBody().GetXForm() (Draw.ts:456), so no part-field sync is needed here.
 		this.state = {
 			...this.state,
-			sim: { ...this.state.sim, frame: this.state.sim.frame + frames },
+			// On a win/loss the base loop pauses the sim (ControllerGame.ts:740).
+			sim: { phase: ended ? "paused" : "running", frame },
 		};
 		this.markChanged();
+		if (this.challenge) this.syncChallenge();
 	}
 
 	/**
@@ -957,6 +1107,10 @@ export class GameCore {
 		// (undo/redo set their own flags via restoreSnapshot.)
 		if (mutating) {
 			this.state = { ...this.state, edit: { ...this.state.edit, ...this.undoRedoFlags() } };
+			// A parts-graph mutation can change whether the robot fits the build
+			// area, so recompute CheckIfPartsFit + re-project the challenge read-model
+			// (ControllerGame recomputes partsFit on every edit-frame :592-621).
+			if (this.challenge) this.syncChallenge();
 		}
 	}
 
@@ -1008,6 +1162,21 @@ export class GameCore {
 				case "loadRobot":
 				case "newRobot":
 				case "setSandboxSettings":
+				case "newChallenge":
+				case "loadBuiltInChallenge":
+				case "exitChallenge":
+				case "addWinCondition":
+				case "addLossCondition":
+				case "removeWinCondition":
+				case "removeLossCondition":
+				case "setWinConditionsAnded":
+				case "setAllowedParts":
+				case "setBuildPermissions":
+				case "setPartLimits":
+				case "addBuildArea":
+				case "removeBuildArea":
+				case "enterChallengePlay":
+				case "editChallenge":
 					return; // no-op during simulation
 			}
 		}
@@ -1043,6 +1212,15 @@ export class GameCore {
 				return;
 			}
 			case "createShape": {
+				// Restriction gate (ControllerChallenge.circle/rect/triangleButton
+				// :92-123): reject a disallowed part type in challenge play mode.
+				const kindMap: Record<ShapeKind, CreatePartKind> = {
+					circle: "circle",
+					rect: "rect",
+					triangle: "triangle",
+					cannon: "cannon",
+				};
+				if (this.challenge && !partTypeAllowed(this.challenge, kindMap[command.kind])) return;
 				const part = this.buildDraggedShape(
 					command.kind,
 					command.x1,
@@ -1141,7 +1319,9 @@ export class GameCore {
 			// Density: absolute value clamped to [MIN_DENSITY, MAX_DENSITY]
 			// (ControllerGame.densitySlider :4078; clamp :4095-4096).
 			case "setDensity": {
-				const v = Math.max(MIN_DENSITY, Math.min(MAX_DENSITY, command.value));
+				let v = Math.max(MIN_DENSITY, Math.min(MAX_DENSITY, command.value));
+				// Challenge density limits (ControllerGame.densityText :4090-4091).
+				if (this.challenge) v = clampDensity(this.challenge, v);
 				this.editParts(command.partIds, (p) => {
 					if (p instanceof ShapePart) p.density = v;
 				});
@@ -1205,18 +1385,24 @@ export class GameCore {
 			// slider range 1..30 — MAX_RJ_STRENGTH / MAX_SJ_STRENGTH).
 			case "setJointStrength": {
 				const v = Math.max(1, Math.min(MAX_JOINT_VALUE, command.value));
+				// Challenge joint-strength caps differ by joint type
+				// (ControllerGame.strengthText :4122 RJ / :4127 SJ).
+				const ch = this.challenge;
 				this.editParts(command.partIds, (p) => {
-					if (p instanceof RevoluteJoint) p.motorStrength = v;
-					else if (p instanceof PrismaticJoint) p.pistonStrength = v;
+					if (p instanceof RevoluteJoint) p.motorStrength = ch ? clampRJ(ch, v, "strength") : v;
+					else if (p instanceof PrismaticJoint) p.pistonStrength = ch ? clampSJ(ch, v, "strength") : v;
 				});
 				return;
 			}
 			// Speed: motorSpeed / pistonSpeed (ChangeSliderAction SPEED_TYPE).
 			case "setJointSpeed": {
 				const v = Math.max(1, Math.min(MAX_JOINT_VALUE, command.value));
+				// Challenge joint-speed caps differ by joint type
+				// (ControllerGame.speedText :4154 RJ / :4159 SJ).
+				const ch = this.challenge;
 				this.editParts(command.partIds, (p) => {
-					if (p instanceof RevoluteJoint) p.motorSpeed = v;
-					else if (p instanceof PrismaticJoint) p.pistonSpeed = v;
+					if (p instanceof RevoluteJoint) p.motorSpeed = ch ? clampRJ(ch, v, "speed") : v;
+					else if (p instanceof PrismaticJoint) p.pistonSpeed = ch ? clampSJ(ch, v, "speed") : v;
 				});
 				return;
 			}
@@ -1280,7 +1466,9 @@ export class GameCore {
 
 			// --- Thruster ---
 			case "setThrusterStrength": {
-				const v = Math.max(1, Math.min(MAX_JOINT_VALUE, command.value));
+				let v = Math.max(1, Math.min(MAX_JOINT_VALUE, command.value));
+				// Challenge thruster-strength cap (ControllerGame.thrustText :4179).
+				if (this.challenge) v = clampThruster(this.challenge, v);
 				this.editParts(command.partIds, (p) => {
 					if (p instanceof Thrusters) p.strength = v;
 				});
@@ -1389,6 +1577,8 @@ export class GameCore {
 				return;
 			}
 			case "createThrusters": {
+				// Restriction gate (ControllerChallenge.thrustersButton :158-167).
+				if (this.challenge && !partTypeAllowed(this.challenge, "thrusters")) return;
 				// Attach to the single top shape under the click (MaybeCreateThrusters :6817).
 				const hits = this.shapesAt(command.x, command.y);
 				if (hits.length === 0) return;
@@ -1404,6 +1594,8 @@ export class GameCore {
 				return;
 			}
 			case "createCannon": {
+				// Restriction gate (ControllerChallenge.cannonButton :169-178).
+				if (this.challenge && !partTypeAllowed(this.challenge, "cannon")) return;
 				// A Cannon is a free-standing ShapePart (NEW_CANNON flow :2274); the
 				// legacy drag sizes its width, the click-to-create core uses a default.
 				const cannon = new Cannon(command.x, command.y, DEFAULT_RECT_SIZE);
@@ -1422,6 +1614,8 @@ export class GameCore {
 				// the top two overlaps (MaybeCreateJoint candidateParts[0..1] :6756-6778);
 				// SIMPLIFICATION: the original's >2-overlap disambiguation click-cycle is
 				// collapsed. With fewer than two overlapping shapes, this is a no-op.
+				// Restriction gate (ControllerChallenge.fj/rj/pjButton :125-156).
+				if (this.challenge && !partTypeAllowed(this.challenge, command.kind)) return;
 				const hits = this.shapesAt(command.x, command.y);
 				if (hits.length < 2) return;
 				const p1 = hits[0];
@@ -1454,6 +1648,181 @@ export class GameCore {
 			case "redo":
 				this.handleRedo();
 				return;
+			// --- Challenge mode -------------------------------------------------
+			case "newChallenge": {
+				// Start a fresh authoring challenge (empty conditions/restrictions,
+				// default Challenge flags). Editing (not playOnly), so the author can
+				// build terrain + define conditions before switching to play.
+				this.challenge = createChallengeSession();
+				this.syncChallenge();
+				return;
+			}
+			case "loadBuiltInChallenge": {
+				// Faithful port of ControllerClimb / ControllerMonkeyBars ctors: bake
+				// the terrain + conditions + restrictions, mark playOnly + playMode,
+				// and seed the terrain into the parts graph (behind any robot parts).
+				this.challenge = createChallengeSession();
+				const terrain = buildBuiltInChallenge(command.name, this.challenge);
+				for (const p of terrain) p.id = ++this.nextId;
+				// Keep any existing robot parts (unlikely on a fresh load) after terrain.
+				const robotParts = this.state.parts.filter(
+					(p) => !(p as { isSandbox?: boolean }).isSandbox && p.isEditable,
+				);
+				this.state = { ...this.state, parts: [...terrain, ...robotParts] };
+				this.markChanged();
+				this.syncChallenge();
+				return;
+			}
+			case "exitChallenge": {
+				this.challenge = null;
+				this.cannonballs = [];
+				this.syncChallenge();
+				return;
+			}
+			case "addWinCondition": {
+				if (!this.challenge) return;
+				const cond = new WinCondition(command.name ?? "Condition", command.subject, command.object);
+				if (command.region) {
+					cond.minX = command.region.minX;
+					cond.maxX = command.region.maxX;
+					cond.minY = command.region.minY;
+					cond.maxY = command.region.maxY;
+				}
+				this.applyConditionShapes(cond, command.shape1Id, command.shape2Id);
+				this.challenge.challenge.winConditions.push(cond);
+				this.syncChallenge();
+				return;
+			}
+			case "addLossCondition": {
+				if (!this.challenge) return;
+				const cond = new LossCondition(
+					command.name ?? "Condition",
+					command.subject,
+					command.object,
+					command.immediate,
+				);
+				if (command.region) {
+					cond.minX = command.region.minX;
+					cond.maxX = command.region.maxX;
+					cond.minY = command.region.minY;
+					cond.maxY = command.region.maxY;
+				}
+				this.applyConditionShapes(cond, command.shape1Id, command.shape2Id);
+				this.challenge.challenge.lossConditions.push(cond);
+				this.syncChallenge();
+				return;
+			}
+			case "removeWinCondition": {
+				if (!this.challenge) return;
+				this.challenge.challenge.winConditions.splice(command.index, 1);
+				this.syncChallenge();
+				return;
+			}
+			case "removeLossCondition": {
+				if (!this.challenge) return;
+				this.challenge.challenge.lossConditions.splice(command.index, 1);
+				this.syncChallenge();
+				return;
+			}
+			case "setWinConditionsAnded": {
+				if (!this.challenge) return;
+				this.challenge.challenge.winConditionsAnded = command.value;
+				this.syncChallenge();
+				return;
+			}
+			case "setAllowedParts": {
+				if (!this.challenge) return;
+				const ch = this.challenge.challenge;
+				// Panel already un-inverts the editor's "exclude" checkboxes
+				// (RestrictionsWindow stores !box.selected :348-355).
+				ch.circlesAllowed = command.circles;
+				ch.rectanglesAllowed = command.rects;
+				ch.trianglesAllowed = command.tris;
+				ch.fixedJointsAllowed = command.fixed;
+				ch.rotatingJointsAllowed = command.revolute;
+				ch.slidingJointsAllowed = command.prismatic;
+				ch.thrustersAllowed = command.thrusters;
+				ch.cannonsAllowed = command.cannons;
+				this.syncChallenge();
+				return;
+			}
+			case "setBuildPermissions": {
+				if (!this.challenge) return;
+				const ch = this.challenge.challenge;
+				ch.mouseDragAllowed = command.mouseDrag;
+				ch.botControlAllowed = command.botControl;
+				ch.fixateAllowed = command.fixate;
+				ch.nonCollidingAllowed = command.nonColliding;
+				ch.showConditions = command.showConditions;
+				this.syncChallenge();
+				return;
+			}
+			case "setPartLimits": {
+				if (!this.challenge) return;
+				const ch = this.challenge.challenge;
+				// null == the ∓Number.MAX_VALUE "no limit" sentinel (Challenge.ts:22-28).
+				ch.minDensity = command.minDensity === null ? NO_LIMIT_MIN : command.minDensity;
+				ch.maxDensity = command.maxDensity === null ? NO_LIMIT_MAX : command.maxDensity;
+				ch.maxRJStrength = command.maxRJStrength === null ? NO_LIMIT_MAX : command.maxRJStrength;
+				ch.maxRJSpeed = command.maxRJSpeed === null ? NO_LIMIT_MAX : command.maxRJSpeed;
+				ch.maxSJStrength = command.maxSJStrength === null ? NO_LIMIT_MAX : command.maxSJStrength;
+				ch.maxSJSpeed = command.maxSJSpeed === null ? NO_LIMIT_MAX : command.maxSJSpeed;
+				ch.maxThrusterStrength =
+					command.maxThrusterStrength === null ? NO_LIMIT_MAX : command.maxThrusterStrength;
+				this.syncChallenge();
+				return;
+			}
+			case "addBuildArea": {
+				if (!this.challenge) return;
+				const area = new b2AABB();
+				area.lowerBound.Set(command.minX, command.minY);
+				area.upperBound.Set(command.maxX, command.maxY);
+				this.challenge.challenge.buildAreas.push(area);
+				this.syncChallenge();
+				return;
+			}
+			case "removeBuildArea": {
+				if (!this.challenge) return;
+				this.challenge.challenge.buildAreas.splice(command.index, 1);
+				this.syncChallenge();
+				return;
+			}
+			case "enterChallengePlay": {
+				// ControllerChallenge.playButton first press (:39-50): snapshot the
+				// editable robot into challenge.allParts, enter play mode, mark those
+				// parts uneditable, then CheckIfPartsFit + clear selection.
+				if (!this.challenge || this.challenge.playMode) return;
+				const robot = this.state.parts.filter((p) => p.isEditable);
+				this.challenge.savedRobot = robot;
+				this.challenge.challenge.allParts = robot;
+				this.challenge.playMode = true;
+				for (const p of robot) p.isEditable = false;
+				this.state = {
+					...this.state,
+					parts: [...this.state.parts],
+					edit: { ...this.state.edit, editable: false, selection: [], selectedPart: null },
+				};
+				this.markChanged();
+				this.syncChallenge();
+				return;
+			}
+			case "editChallenge": {
+				// ControllerChallenge.editButton (:64-76): guarded by playOnly; restore
+				// the saved robot parts as editable again and leave play mode.
+				if (!this.challenge) return;
+				if (this.challenge.playOnly) return; // "This challenge is uneditable!"
+				this.challenge.playMode = false;
+				for (const p of this.challenge.savedRobot) p.isEditable = true;
+				this.state = {
+					...this.state,
+					parts: [...this.state.parts],
+					edit: { ...this.state.edit, editable: true },
+				};
+				this.markChanged();
+				this.syncChallenge();
+				return;
+			}
+
 			case "loadRobot":
 			case "newRobot":
 				throw new Error(`GameCore: command "${command.type}" not yet migrated from ControllerGame`);

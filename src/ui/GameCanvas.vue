@@ -469,7 +469,9 @@ function drawFrame(): void {
 		/* drawStatic */ true,
 		/* showJoints */ true,
 		/* showOutlines */ true,
-		/* challenge */ undefined as any
+		// Live Challenge (or null): Draw paints win/loss condition zones when the
+		// sim is not started, or always if showConditions is set (Draw.ts:129-164).
+		/* challenge */ game.liveChallenge() as any
 	);
 
 	// While a shape-creation drag is in progress, paint the in-progress shape

@@ -26,6 +26,18 @@ export const useGameStore = defineStore("game", () => {
 	const edit = computed<Readonly<EditState>>(() => state.value.edit);
 	// Raw live Part instances — the renderer reads this directly each frame.
 	const parts = computed<readonly Part[]>(() => state.value.parts);
+	// Plain-data challenge read-model (null for a plain sandbox). The Vue panels
+	// read this for the condition/restriction editors + the score.
+	const challenge = computed(() => state.value.challenge);
+
+	/**
+	 * The live legacy `Challenge` domain object for the renderer to feed straight
+	 * into Draw.DrawWorld's `challenge` param (condition-zone drawing). Not part
+	 * of the reactive snapshot — call it each frame from the render loop.
+	 */
+	function liveChallenge() {
+		return core.getLiveChallenge();
+	}
 
 	// Safe dispatch wrapper: many commands (play/pause/createShape/etc.) are
 	// not yet migrated into GameCore and THROW "not yet migrated" there. The
@@ -82,6 +94,8 @@ export const useGameStore = defineStore("game", () => {
 		camera,
 		edit,
 		parts,
+		challenge,
+		liveChallenge,
 		dispatch,
 		exportRobot,
 		importRobot,

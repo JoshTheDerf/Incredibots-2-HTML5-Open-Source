@@ -7,24 +7,26 @@
 // Score, Main Menu, Retry/Close), plus a blue "Next Level" button that only
 // appears in the tutorial-like modes.
 //
-// GameCore has no score/replay/challenge-mode command surface yet (no
-// viewReplay / saveReplay / submitScore / next-level concept, and no score
-// read-model), so the whole panel renders placeholder data and every button
-// is flagged with <IbTodo/> rather than wired — matches the task's directive
-// that ScorePanel has no command to wire.
-import { ref } from "vue";
+// The score comes from the live challenge read-model (game.challenge.score =
+// 10000 - frame at win; ControllerChallenge.GetScore). The replay / submit /
+// next-level buttons remain unwired (dead cloud path + no replay model yet) and
+// are flagged with <IbTodo/>.
+import { computed, ref } from "vue";
+import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
 import IbTodo from "../IbTodo.vue";
 import { frameTextures } from "../../assets";
 import congratsHeader from "../../../../resource/Incredibots_Congratulations_1.png";
 
+const game = useGameStore();
+
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
 
-// Placeholder data standing in for ControllerGame's mode flags + score,
-// since GameCore doesn't yet expose challenge mode or score state.
-const placeholderScore = ref(1420);
+// Real score from the core (null until a win). Sandbox scores a flat 10000.
+const score = computed<number | null>(() => game.challenge?.score ?? null);
+const hidesScoreField = computed(() => score.value === null);
+
 const isTutorialLikeMode = ref(false); // Tutorial/HomeMovies/RubeGoldberg/NewFeatures
-const hidesScoreField = ref(false); // also includes ChallengeEditor
 const isHomeMoviesOrChallengeEditor = ref(false); // affects the close/retry label
 const viewingUnsavedReplay = ref(false); // affects the view-replay label
 </script>
@@ -33,7 +35,7 @@ const viewingUnsavedReplay = ref(false); // affects the view-replay label
 	<div class="score-panel ib-panel" :style="panelStyle">
 		<img class="header" :src="congratsHeader" alt="Congratulations!" />
 
-		<p v-if="!hidesScoreField" class="score-line">Your score is: {{ placeholderScore }}</p>
+		<p v-if="!hidesScoreField" class="score-line">Your score is: {{ score }}</p>
 
 		<div class="actions">
 			<IbButton

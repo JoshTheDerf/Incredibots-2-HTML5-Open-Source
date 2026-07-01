@@ -1,35 +1,25 @@
 <script setup lang="ts">
-// Visual port of the legacy Pixi ConditionsWindow (src/Gui/ConditionsWindow.ts).
-// Lets a challenge author define WIN and LOSS conditions (e.g. "A specific
-// shape is within a box", "Any cannonball is touching another shape") plus a
-// couple of global flags (AND vs OR win conditions, immediate-loss toggle).
+// Port of the legacy Pixi ConditionsWindow (src/Gui/ConditionsWindow.ts). Lets a
+// challenge author define WIN and LOSS conditions plus the AND-vs-OR win flag and
+// the immediate-loss toggle.
 //
-// GameCore has no concept of challenge conditions yet (no Condition/WinCondition/
-// LossCondition model, no "pick a shape/box/line on the stage" flow) — every
-// control here is local placeholder state, flagged with <IbTodo/>. See the
-// GameCore commands list in the component-level TODO block below.
-import { reactive, ref } from "vue";
+// Wired to GameCore: the condition lists come from the live challenge read-model
+// (game.challenge.winConditions / lossConditions), and add/remove/AND dispatch
+// addWinCondition / addLossCondition / removeWinCondition / removeLossCondition /
+// setWinConditionsAnded (see src/core/challenge.ts). SIMPLIFICATION: the legacy
+// "pick a shape / box / line on the stage" flow (subject-0 and obj-5/6 shape
+// picks, box/line region picks) is not yet ported — this editor adds conditions
+// with a default region, matching the subset the built-in challenges need
+// (subject-2 line conditions). Shape/region picking is a documented follow-up.
+import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
-import IbTodo from "../IbTodo.vue";
 import { frameTextures } from "../../assets";
-
-// TODO(core): none of this is wired. GameCore would need something like:
-//   { type: "addWinCondition"; name: string; subject: number; object: number; region?: {...}; shape1Id?: number; shape2Id?: number }
-//   { type: "addLossCondition"; name: string; subject: number; object: number; region?: {...}; shape1Id?: number; shape2Id?: number; immediate: boolean }
-//   { type: "removeWinCondition"; index: number }
-//   { type: "removeLossCondition"; index: number }
-//   { type: "setWinConditionsAnded"; anded: boolean }
-//   { type: "beginPickShapeForCondition" } / { type: "beginPickRegionForCondition" } (stage-picking mode, mirrors
-//     ControllerChallenge.GetShapeForConditions / GetBoxForConditions / Get{Horizontal,Vertical}LineForConditions)
-// plus read-model access to challenge.winConditions / lossConditions (currently only exist on the legacy
-// ControllerGameGlobals.challenge object).
 
 defineProps<{ visible?: boolean }>();
 const emit = defineEmits<{ close: [] }>();
 
 const game = useGameStore();
-void game; // store is wired for future dispatches; no condition commands exist yet.
 
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
 
@@ -50,9 +40,9 @@ interface ConditionRow {
 	object: number;
 }
 
-// Local placeholder lists — mirrors ControllerGameGlobals.challenge.winConditions / lossConditions.
-const winConditions = reactive<ConditionRow[]>([]);
-const lossConditions = reactive<ConditionRow[]>([]);
+// Live condition lists from the challenge read-model (empty when no challenge).
+const winConditions = computed<ConditionRow[]>(() => game.challenge?.winConditions ?? []);
+const lossConditions = computed<ConditionRow[]>(() => game.challenge?.lossConditions ?? []);
 
 const winSubject = ref(0);
 const winObject = ref(0);
@@ -65,7 +55,20 @@ const lossName = ref("Condition 1");
 const selectedWinIndex = ref<number | null>(null);
 const selectedLossIndex = ref<number | null>(null);
 
-const allConditionsAnded = ref(false);
+// Reflect / drive the AND-vs-OR flag through the core (winConditionsAnded).
+const allConditionsAnded = ref(game.challenge?.winConditionsAnded ?? true);
+watch(
+	() => game.challenge?.winConditionsAnded,
+	(v) => {
+		if (v != null) allConditionsAnded.value = v;
+	},
+);
+watch(allConditionsAnded, (v) => {
+	if (game.challenge && v !== game.challenge.winConditionsAnded) {
+		game.dispatch({ type: "setWinConditionsAnded", value: v });
+	}
+});
+
 const immediateLoss = ref(true);
 
 function verbFor(subject: number, object: number, have: boolean): string {
@@ -79,27 +82,40 @@ function describe(row: ConditionRow): string {
 }
 
 function addWinCondition(): void {
-	winConditions.push({ name: winName.value, subject: winSubject.value, object: winObject.value });
-	winName.value = `Condition ${winConditions.length + 1}`;
+	game.dispatch({
+		type: "addWinCondition",
+		name: winName.value,
+		subject: winSubject.value,
+		object: winObject.value,
+		region: { minX: 0, maxX: 0, minY: 0, maxY: 0 },
+	});
+	winName.value = `Condition ${winConditions.value.length + 1}`;
 }
 
 function addLossCondition(): void {
-	lossConditions.push({ name: lossName.value, subject: lossSubject.value, object: lossObject.value });
-	lossName.value = `Condition ${lossConditions.length + 1}`;
+	game.dispatch({
+		type: "addLossCondition",
+		name: lossName.value,
+		subject: lossSubject.value,
+		object: lossObject.value,
+		immediate: immediateLoss.value,
+		region: { minX: 0, maxX: 0, minY: 0, maxY: 0 },
+	});
+	lossName.value = `Condition ${lossConditions.value.length + 1}`;
 }
 
 function removeSelectedWin(): void {
 	if (selectedWinIndex.value === null) return;
-	winConditions.splice(selectedWinIndex.value, 1);
+	game.dispatch({ type: "removeWinCondition", index: selectedWinIndex.value });
 	selectedWinIndex.value = null;
-	winName.value = `Condition ${winConditions.length + 1}`;
+	winName.value = `Condition ${winConditions.value.length + 1}`;
 }
 
 function removeSelectedLoss(): void {
 	if (selectedLossIndex.value === null) return;
-	lossConditions.splice(selectedLossIndex.value, 1);
+	game.dispatch({ type: "removeLossCondition", index: selectedLossIndex.value });
 	selectedLossIndex.value = null;
-	lossName.value = `Condition ${lossConditions.length + 1}`;
+	lossName.value = `Condition ${lossConditions.value.length + 1}`;
 }
 
 function close(): void {
@@ -118,7 +134,7 @@ function close(): void {
 			<!-- WIN CONDITIONS -->
 			<section class="col">
 				<h3 class="section-title">New Win Condition:</h3>
-				<div class="builder-row ib-todo">
+				<div class="builder-row">
 					<USelectMenu
 						v-model="winSubject"
 						:items="SUBJECTS.map((label, value) => ({ label, value }))"
@@ -135,7 +151,7 @@ function close(): void {
 						class="object-select"
 					/>
 				</div>
-				<div class="name-row ib-todo">
+				<div class="name-row">
 					<UFormField label="Name" size="xs">
 						<UInput v-model="winName" maxlength="20" size="sm" />
 					</UFormField>
@@ -143,7 +159,7 @@ function close(): void {
 				</div>
 
 				<h3 class="section-title">All Existing Win Conditions:</h3>
-				<div class="list-box ib-todo">
+				<div class="list-box">
 					<ul class="condition-list">
 						<li
 							v-for="(row, i) in winConditions"
@@ -164,7 +180,7 @@ function close(): void {
 					@click="removeSelectedWin"
 				/>
 
-				<div class="check-row ib-todo">
+				<div class="check-row">
 					<UCheckbox v-model="allConditionsAnded" label="All conditions must be satisfied simultaneously" />
 				</div>
 			</section>
@@ -172,7 +188,7 @@ function close(): void {
 			<!-- LOSS CONDITIONS -->
 			<section class="col">
 				<h3 class="section-title">New Loss Condition:</h3>
-				<div class="builder-row ib-todo">
+				<div class="builder-row">
 					<USelectMenu
 						v-model="lossSubject"
 						:items="SUBJECTS.map((label, value) => ({ label, value }))"
@@ -189,7 +205,7 @@ function close(): void {
 						class="object-select"
 					/>
 				</div>
-				<div class="name-row ib-todo">
+				<div class="name-row">
 					<UFormField label="Name" size="xs">
 						<UInput v-model="lossName" maxlength="20" size="sm" />
 					</UFormField>
@@ -197,7 +213,7 @@ function close(): void {
 				</div>
 
 				<h3 class="section-title">All Existing Loss Conditions:</h3>
-				<div class="list-box ib-todo">
+				<div class="list-box">
 					<ul class="condition-list">
 						<li
 							v-for="(row, i) in lossConditions"
@@ -218,15 +234,11 @@ function close(): void {
 					@click="removeSelectedLoss"
 				/>
 
-				<div class="check-row ib-todo">
+				<div class="check-row">
 					<UCheckbox v-model="immediateLoss" label="Immediate loss if condition met" />
 				</div>
 			</section>
 		</div>
-
-		<footer class="footer-row">
-			<IbTodo label="no conditions Command in core" />
-		</footer>
 	</div>
 </template>
 

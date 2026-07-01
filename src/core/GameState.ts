@@ -7,6 +7,7 @@
 
 import type { b2World } from "../Box2D";
 import type { Part } from "../Parts/Part";
+import type { ChallengeState } from "./challenge";
 import { buildTerrainParts, createDefaultSandboxState } from "./sandboxEnvironment";
 
 export type SimPhase = "editing" | "running" | "paused";
@@ -173,6 +174,14 @@ export interface GameState {
 	 * core is moved behind a worker boundary this becomes a sim-side handle.
 	 */
 	world: b2World | null;
+	/**
+	 * Plain-data challenge read-model — win/loss conditions, restrictions, build
+	 * areas, live outcome + score. null for a plain sandbox session (no challenge
+	 * active). Derived from the core's live Challenge each notify; the renderer
+	 * reads it to draw condition zones + build areas and the Vue panels read it
+	 * for the editors. See src/core/challenge.ts.
+	 */
+	challenge: ChallengeState | null;
 }
 
 export function createInitialState(): GameState {
@@ -193,5 +202,6 @@ export function createInitialState(): GameState {
 		edit: { selection: [], tool: "select", editable: true, canUndo: false, canRedo: false, selectedPart: null },
 		sandbox,
 		world: null,
+		challenge: null,
 	};
 }

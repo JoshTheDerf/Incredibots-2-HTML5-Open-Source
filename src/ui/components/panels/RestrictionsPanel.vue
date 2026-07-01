@@ -1,34 +1,22 @@
 <script setup lang="ts">
-// Visual port of the legacy Pixi RestrictionsWindow (src/Gui/RestrictionsWindow.ts).
+// Port of the legacy Pixi RestrictionsWindow (src/Gui/RestrictionsWindow.ts).
 // Lets a challenge author toggle which part types/tools are allowed and set
 // min/max limits on density, joint strength/speed, and thruster strength.
 //
-// GameCore has no challenge-restrictions model yet — no allowed-parts flags,
-// no density/strength limits, no "conditions always visible" flag. Every
-// control is local placeholder state, flagged with <IbTodo/>. See the
-// GameCore commands list below.
-import { reactive, ref, watch } from "vue";
+// Wired to GameCore: on open we seed from the live challenge read-model
+// (game.challenge.restrictions), and on "Okay!" we dispatch setAllowedParts /
+// setBuildPermissions / setPartLimits (see src/core/challenge.ts). The editor's
+// checkboxes are phrased as "Exclude X" (disallow), so we un-invert them to the
+// "allowed" flags the Challenge stores (RestrictionsWindow.ts:137 vs :348).
+import { onMounted, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
-import IbTodo from "../IbTodo.vue";
 import { frameTextures } from "../../assets";
-
-// TODO(core): none of this is wired. GameCore would need something like:
-//   { type: "setAllowedParts"; circles: boolean; rectangles: boolean; triangles: boolean;
-//       fixedJoints: boolean; revoluteJoints: boolean; prismaticJoints: boolean;
-//       thrusters: boolean; cannons: boolean }
-//   { type: "setBuildPermissions"; mouseDrag: boolean; botControl: boolean; fixate: boolean;
-//       nonColliding: boolean; conditionsAlwaysVisible: boolean }
-//   { type: "setPartLimits"; minDensity: number; maxDensity: number; maxRJStrength: number;
-//       maxRJSpeed: number; maxSJStrength: number; maxSJSpeed: number; maxThrusterStrength: number }
-// plus a read-model for challenge.{circlesAllowed, rectanglesAllowed, ..., minDensity, maxDensity, ...}
-// (currently only exist on the legacy ControllerGameGlobals.challenge object).
 
 defineProps<{ visible?: boolean }>();
 const emit = defineEmits<{ close: [] }>();
 
 const game = useGameStore();
-void game; // store is wired for future dispatches; no restrictions commands exist yet.
 
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
 
@@ -96,13 +84,84 @@ function clampLimit(text: string): string {
 	return num.toString();
 }
 
+/** A numeric limit field resolves to null ("no limit") or its clamped number. */
+function limitValue(noLimit: boolean, text: string): number | null {
+	return noLimit ? null : Number(clampLimit(text));
+}
+
+/** Seed the checkboxes/inputs from the live challenge read-model (open flow). */
+function seedFromChallenge(): void {
+	const r = game.challenge?.restrictions;
+	if (!r) return;
+	excludeCircles.value = !r.circles;
+	excludeRectangles.value = !r.rects;
+	excludeTriangles.value = !r.tris;
+	excludeFixedJoints.value = !r.fixed;
+	excludeRotatingJoints.value = !r.revolute;
+	excludeSlidingJoints.value = !r.prismatic;
+	excludeThrusters.value = !r.thrusters;
+	excludeCannons.value = !r.cannons;
+	allowUserConstruction.value = r.circles || r.rects || r.tris || r.fixed || r.revolute || r.prismatic || r.thrusters || r.cannons;
+	allowMouseDrag.value = r.mouseDrag;
+	allowBotControl.value = r.botControl;
+	allowFixatedShapes.value = r.fixate;
+	allowNonColliding.value = r.nonColliding;
+	conditionsAlwaysVisible.value = r.showConditions;
+	// Numeric limits: null (no limit) -> checkbox on + input left at default "15".
+	minDensityNoLimit.value = r.minDensity === null;
+	if (r.minDensity !== null) minDensity.value = String(r.minDensity);
+	maxDensityNoLimit.value = r.maxDensity === null;
+	if (r.maxDensity !== null) maxDensity.value = String(r.maxDensity);
+	maxRJStrengthNoLimit.value = r.maxRJStrength === null;
+	if (r.maxRJStrength !== null) maxRJStrength.value = String(r.maxRJStrength);
+	maxRJSpeedNoLimit.value = r.maxRJSpeed === null;
+	if (r.maxRJSpeed !== null) maxRJSpeed.value = String(r.maxRJSpeed);
+	maxSJStrengthNoLimit.value = r.maxSJStrength === null;
+	if (r.maxSJStrength !== null) maxSJStrength.value = String(r.maxSJStrength);
+	maxSJSpeedNoLimit.value = r.maxSJSpeed === null;
+	if (r.maxSJSpeed !== null) maxSJSpeed.value = String(r.maxSJSpeed);
+	maxThrusterNoLimit.value = r.maxThrusterStrength === null;
+	if (r.maxThrusterStrength !== null) maxThruster.value = String(r.maxThrusterStrength);
+}
+
+onMounted(seedFromChallenge);
 
 function close(): void {
 	emit("close");
 }
 
 function okay(): void {
-	// Mirrors okButtonPressed -> backButtonPressed(false): clamp + close, no export wiring here.
+	// okButtonPressed (RestrictionsWindow.ts:347-411): write all flags back. The
+	// editor stores "exclude" (disallow); un-invert to the "allowed" flags.
+	game.dispatch({
+		type: "setAllowedParts",
+		circles: !excludeCircles.value,
+		rects: !excludeRectangles.value,
+		tris: !excludeTriangles.value,
+		fixed: !excludeFixedJoints.value,
+		revolute: !excludeRotatingJoints.value,
+		prismatic: !excludeSlidingJoints.value,
+		thrusters: !excludeThrusters.value,
+		cannons: !excludeCannons.value,
+	});
+	game.dispatch({
+		type: "setBuildPermissions",
+		mouseDrag: allowMouseDrag.value,
+		botControl: allowBotControl.value,
+		fixate: allowFixatedShapes.value,
+		nonColliding: allowNonColliding.value,
+		showConditions: conditionsAlwaysVisible.value,
+	});
+	game.dispatch({
+		type: "setPartLimits",
+		minDensity: limitValue(minDensityNoLimit.value, minDensity.value),
+		maxDensity: limitValue(maxDensityNoLimit.value, maxDensity.value),
+		maxRJStrength: limitValue(maxRJStrengthNoLimit.value, maxRJStrength.value),
+		maxRJSpeed: limitValue(maxRJSpeedNoLimit.value, maxRJSpeed.value),
+		maxSJStrength: limitValue(maxSJStrengthNoLimit.value, maxSJStrength.value),
+		maxSJSpeed: limitValue(maxSJSpeedNoLimit.value, maxSJSpeed.value),
+		maxThrusterStrength: limitValue(maxThrusterNoLimit.value, maxThruster.value),
+	});
 	close();
 }
 </script>
@@ -113,7 +172,7 @@ function okay(): void {
 			<h2 class="title">Set Restrictions For This Challenge</h2>
 		</header>
 
-		<section class="allowed-grid ib-todo">
+		<section class="allowed-grid">
 			<UCheckbox v-model="excludeCircles" label="Exclude Circles" @change="onExcludeChanged(excludeCircles)" />
 			<UCheckbox v-model="excludeRectangles" label="Exclude Rectangles" @change="onExcludeChanged(excludeRectangles)" />
 			<UCheckbox v-model="excludeTriangles" label="Exclude Triangles" @change="onExcludeChanged(excludeTriangles)" />
@@ -127,7 +186,7 @@ function okay(): void {
 			<UCheckbox v-model="excludeCannons" label="Exclude Cannons" @change="onExcludeChanged(excludeCannons)" />
 		</section>
 
-		<section class="permissions-grid ib-todo">
+		<section class="permissions-grid">
 			<UCheckbox v-model="allowNonColliding" label="Allow Non-colliding Shapes" />
 			<UCheckbox v-model="allowMouseDrag" label="Allow Dragging With Mouse" />
 			<UCheckbox v-model="allowFixatedShapes" label="Allow Fixated Shapes" />
@@ -141,7 +200,7 @@ function okay(): void {
 			<UCheckbox v-model="conditionsAlwaysVisible" label="Conditions Always Visible" />
 		</section>
 
-		<section class="limits-grid ib-todo">
+		<section class="limits-grid">
 			<div class="limit-row">
 				<label class="limit-label">Min Density:</label>
 				<UInput
@@ -233,7 +292,6 @@ function okay(): void {
 		</section>
 
 		<footer class="footer-row">
-			<IbTodo label="no restrictions Command in core" />
 			<div class="footer-buttons">
 				<IbButton family="purple" label="Back" @click="close" />
 				<IbButton family="blue" label="Okay!" @click="okay" />

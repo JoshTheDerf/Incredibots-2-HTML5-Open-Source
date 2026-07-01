@@ -131,6 +131,75 @@ export type Command =
 	| { type: "redo" }
 	// --- persistence (ByteArray under the hood; no network) ---
 	| { type: "loadRobot"; data: Uint8Array }
-	| { type: "newRobot" };
+	| { type: "newRobot" }
+	// --- challenge mode (ported from ControllerChallenge + Conditions/RestrictionsWindow) ---
+	// Start a new empty authoring challenge (creates ChallengeState) or load a
+	// built-in one (Climb / MonkeyBars) with its baked terrain + conditions.
+	| { type: "newChallenge" }
+	| { type: "loadBuiltInChallenge"; name: "climb" | "monkeyBars" }
+	| { type: "exitChallenge" }
+	// Conditions (ConditionsWindow add/remove + AND flag). subject 0-4, object 0-6
+	// (see Condition.ts). `region` sets the box/line extents; shape1Id/shape2Id
+	// bind picked shapes for subject-0 / obj-5/6 conditions.
+	| {
+			type: "addWinCondition";
+			name?: string;
+			subject: number;
+			object: number;
+			region?: { minX: number; maxX: number; minY: number; maxY: number } | null;
+			shape1Id?: number | null;
+			shape2Id?: number | null;
+	  }
+	| {
+			type: "addLossCondition";
+			name?: string;
+			subject: number;
+			object: number;
+			immediate: boolean;
+			region?: { minX: number; maxX: number; minY: number; maxY: number } | null;
+			shape1Id?: number | null;
+			shape2Id?: number | null;
+	  }
+	| { type: "removeWinCondition"; index: number }
+	| { type: "removeLossCondition"; index: number }
+	| { type: "setWinConditionsAnded"; value: boolean }
+	// Restrictions (RestrictionsWindow okButtonPressed). Panel stores "allowed"
+	// (already un-inverted from the editor's "exclude" checkboxes).
+	| {
+			type: "setAllowedParts";
+			circles: boolean;
+			rects: boolean;
+			tris: boolean;
+			fixed: boolean;
+			revolute: boolean;
+			prismatic: boolean;
+			thrusters: boolean;
+			cannons: boolean;
+	  }
+	| {
+			type: "setBuildPermissions";
+			mouseDrag: boolean;
+			botControl: boolean;
+			fixate: boolean;
+			nonColliding: boolean;
+			showConditions: boolean;
+	  }
+	// Numeric limits; null == the ∓Number.MAX_VALUE "no limit" sentinel.
+	| {
+			type: "setPartLimits";
+			minDensity: number | null;
+			maxDensity: number | null;
+			maxRJStrength: number | null;
+			maxRJSpeed: number | null;
+			maxSJStrength: number | null;
+			maxSJSpeed: number | null;
+			maxThrusterStrength: number | null;
+	  }
+	// Build areas (b2AABB regions parts must fit inside).
+	| { type: "addBuildArea"; minX: number; minY: number; maxX: number; maxY: number }
+	| { type: "removeBuildArea"; index: number }
+	// Play/edit transitions (ControllerChallenge.playButton first-press / editButton).
+	| { type: "enterChallengePlay" }
+	| { type: "editChallenge" };
 
 export type CommandType = Command["type"];
