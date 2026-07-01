@@ -1,86 +1,45 @@
 <script setup lang="ts">
-// Visual port of the legacy Gui/TutorialWindow.ts message bubble — the small
-// dialog that pops up during in-game tutorials with instructional text and
-// next/prev/close controls.
+// Port of the legacy Gui/TutorialWindow.ts message bubble — the small dialog
+// that pops up during in-game tutorials.
 //
-// This is a VISUAL port with logic-wiring flags. GameCore currently has no
-// tutorial concept at all (no step index, no message table, no "close
-// tutorial" command) — TutorialWindow.ts drove everything off a local
-// `TUTORIAL_MESSAGES` string array and a direct callback into
-// ControllerGame.CloseTutorialDialog(id). Until GameCore grows an equivalent
-// (see TODOs below), this panel renders placeholder copy and flags every
-// control that would need wiring.
-import { ref } from "vue";
+// Now wired to the real GameCore tutorial state machine (src/core/tutorials.ts):
+// the message text + "More..."/"OK" button come from state.tutorial.currentMessage
+// (resolved from the TUTORIAL_MESSAGES table), and the button dispatches
+// advanceTutorial(currentMessageId) — the faithful equivalent of
+// TutorialWindow.closeWindow() -> cont.CloseTutorialDialog(this.num). The panel
+// only renders when a tutorial dialog is active.
+import { computed } from "vue";
+import { storeToRefs } from "pinia";
 import IbButton from "../IbButton.vue";
-import IbTodo from "../IbTodo.vue";
 import { frameTextures } from "../../assets";
+import { useGameStore } from "../../gameStore";
 
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
 
-// Stand-in for TutorialWindow's `this.num` (the tutorial message id) and the
-// message lookup that used to index into TUTORIAL_MESSAGES[id].
-const stepIndex = ref(0);
-const totalSteps = 5;
+const store = useGameStore();
+const { tutorial } = storeToRefs(store);
 
-const placeholderMessages = [
-	"Welcome to the world of IncrediBots 2!\n\nThis is the robot building screen, where you'll learn to construct amazing robots like this tank... or anything else you can imagine!",
-	"These introductory levels will teach you the game's basics. Later, for a real test of your skill, go to one of the \"Challenges\" from the main menu.",
-	"For now, click and drag the world around to explore, and click \"Zoom In\" and \"Zoom Out\" as necessary.",
-	"Good job!\n\nYou can watch or save a replay using the menu that appears after playing a level.",
-	"Now you'll learn some of the game's tools so you can make your own creations...",
-];
+// The active dialog message (null when no tutorial dialog is showing).
+const message = computed(() => tutorial.value?.currentMessage ?? null);
+const messageId = computed(() => tutorial.value?.currentMessageId ?? null);
+// TutorialWindow's button label: "More..." when moreButton else "OK" (:102).
+const buttonLabel = computed(() => (message.value?.hasMore ? "More..." : "OK"));
 
-const canGoPrev = ref(true);
-const canGoNext = ref(true);
-
-// Mirrors TutorialWindow.closeWindow() -> cont.CloseTutorialDialog(this.num).
-// GameCore command needed: closeTutorial(step: number).
-function closeWindow(): void {
-	// TODO(wiring): needs a closeTutorial(step) GameCore command. No-op for now.
-}
-
-// Not present as a literal button in TutorialWindow.ts (it only ever showed a
-// single "OK"/"More..." button), but the panel is expected to support
-// stepping back and forth through tutorial messages once GameCore tracks a
-// step cursor. GameCore command needed: prevTutorialStep().
-function prevStep(): void {
-	// TODO(wiring): needs a prevTutorialStep GameCore command. No-op for now.
-	if (stepIndex.value > 0) stepIndex.value--;
-}
-
-// GameCore command needed: nextTutorialStep().
-function nextStep(): void {
-	// TODO(wiring): needs a nextTutorialStep GameCore command. No-op for now.
-	if (stepIndex.value < totalSteps - 1) stepIndex.value++;
+// TutorialWindow.closeWindow() -> cont.CloseTutorialDialog(this.num). The single
+// button both advances (More...) and dismisses (OK) via the per-tutorial switch.
+function advance(): void {
+	if (messageId.value != null) store.dispatch({ type: "advanceTutorial", messageId: messageId.value });
 }
 </script>
 
 <template>
-	<div class="tutorial-window ib-panel" :style="panelStyle">
+	<div v-if="message" class="tutorial-window ib-panel" :style="panelStyle">
 		<div class="msg-area">
-			{{ placeholderMessages[stepIndex] }}
+			{{ message.text }}
 		</div>
 
 		<div class="controls">
-			<IbButton
-				family="purple"
-				label="< Prev"
-				class="nav-btn ib-todo"
-				:disabled="!canGoPrev"
-				@click="prevStep"
-			/>
-			<IbButton family="purple" label="OK" class="ok-btn ib-todo" @click="closeWindow" />
-			<IbButton
-				family="purple"
-				label="Next >"
-				class="nav-btn ib-todo"
-				:disabled="!canGoNext"
-				@click="nextStep"
-			/>
-		</div>
-
-		<div class="todo-row">
-			<IbTodo label="no tutorial commands in GameCore yet" />
+			<IbButton family="purple" :label="buttonLabel" class="ok-btn" @click="advance" />
 		</div>
 	</div>
 </template>

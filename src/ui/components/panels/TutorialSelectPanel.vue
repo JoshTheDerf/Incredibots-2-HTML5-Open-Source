@@ -1,58 +1,48 @@
 <script setup lang="ts">
-// Visual port of the legacy Gui/TutorialSelectWindow.ts — the "Choose a
-// Level:" grid used to jump into any tutorial/level from the main menu.
+// Port of the legacy Gui/TutorialSelectWindow.ts — the "Choose a Level:" grid.
 //
-// This is a VISUAL port with logic-wiring flags. GameCore has no concept of
-// tutorials/levels or completion tracking (the original read/wrote
-// LSOManager.IsLevelDone(n) and flipped Main.nextControllerType directly) —
-// so this renders a placeholder list of levels with placeholder "done" flags
-// and flags every button as unwired.
-import { ref } from "vue";
+// Wired to the real GameCore tutorial system: the level grid comes from
+// TUTORIAL_LEVELS (src/core/tutorials.ts, the faithful level → controllerType →
+// levelDone mapping), and clicking a level dispatches loadTutorial(levelIndex) —
+// the equivalent of the legacy tankButton()/shapeButton()/... which set
+// Main.nextControllerType (and a SandboxSettings preset). `done` mirrors
+// LSOManager.IsLevelDone(n); until a persistence adapter lands it reflects the
+// core's in-memory levelsDone (set on tutorial win).
+import { computed } from "vue";
+import { storeToRefs } from "pinia";
 import IbButton from "../IbButton.vue";
-import IbTodo from "../IbTodo.vue";
 import { frameTextures } from "../../assets";
+import { useGameStore } from "../../gameStore";
+import { TUTORIAL_LEVELS } from "../../../core";
 
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
 
-interface LevelEntry {
-	label: string;
-	done: boolean;
+const store = useGameStore();
+const { tutorial } = storeToRefs(store);
+
+const emit = defineEmits<{ back: [] }>();
+
+// The 14 levels + their done flags (from the core's levelsDone when available).
+const levels = computed(() =>
+	TUTORIAL_LEVELS.map((l) => ({
+		label: l.label,
+		levelIndex: l.levelIndex,
+		done: tutorial.value?.levelsDone?.[l.levelIndex] ?? false,
+	})),
+);
+
+// tankButton()/shapeButton()/... -> loadTutorial(levelIndex). Entering the
+// editor is owned by the parent shell (goToEditor); we load the tutorial then
+// signal the parent to switch screens via `back` semantics upstream.
+function selectLevel(levelIndex: number): void {
+	store.dispatch({ type: "loadTutorial", levelIndex });
+	store.goToEditor();
+	emit("back"); // close the level-select modal, revealing the editor
 }
 
-// Stand-in for the 14 GuiButton entries in TutorialSelectWindow.ts (levels
-// 1-14, minus the numbering gap at #9 which the legacy code also skips over
-// visually). `done` stands in for LSOManager.IsLevelDone(n).
-const levels = ref<LevelEntry[]>([
-	{ label: "1. Drive a Tank!", done: true },
-	{ label: "2. Shape Up", done: true },
-	{ label: "3. Car Creation", done: false },
-	{ label: "4. JumpBot", done: false },
-	{ label: "5. DumpBot", done: false },
-	{ label: "6. Catapult", done: false },
-	{ label: "7. Home Movies", done: false },
-	{ label: "8. Rube Goldberg", done: false },
-	{ label: "9. New in IB2", done: false },
-	{ label: "10. Challenges", done: false },
-	{ label: "11. Monkey Bars", done: false },
-	{ label: "12. Climb", done: false },
-	{ label: "13. Bike Race", done: false },
-	{ label: "14. Spaceships", done: false },
-]);
-
-// Mirrors e.g. tankButton()/shapeButton()/... which each set
-// Main.changeControllers + Main.nextControllerType (and sometimes a
-// SandboxSettings preset) to jump straight into a level/challenge controller.
-// GameCore command needed: loadTutorial(levelIndex: number).
-function selectLevel(index: number): void {
-	// TODO(wiring): needs a loadTutorial(levelIndex) GameCore command. No-op for now.
-	void index;
-}
-
-// Mirrors backButton() -> this.visible = false; cont.fader2.visible = false.
-// GameCore command needed: closeTutorialSelect() (or this can stay purely a
-// local UI-visibility toggle owned by the parent, same as the legacy fader).
+// backButton() -> hide the window (parent owns the visibility/fader).
 function goBack(): void {
-	// TODO(wiring): needs a closeTutorialSelect command (or a parent visibility toggle). No-op for now.
+	emit("back");
 }
 </script>
 
@@ -61,23 +51,19 @@ function goBack(): void {
 		<div class="header">Choose a Level:</div>
 
 		<div class="level-grid">
-			<div v-for="(level, i) in levels" :key="level.label" class="level-cell">
+			<div v-for="level in levels" :key="level.label" class="level-cell">
 				<IbButton
 					family="orange"
 					:label="level.label"
-					class="level-btn ib-todo"
-					@click="selectLevel(i)"
+					class="level-btn"
+					@click="selectLevel(level.levelIndex)"
 				/>
 				<span v-if="level.done" class="done-check" title="Completed">&#10003;</span>
 			</div>
 		</div>
 
 		<div class="footer">
-			<IbButton family="purple" label="Back" class="back-btn ib-todo" @click="goBack" />
-		</div>
-
-		<div class="todo-row">
-			<IbTodo label="no tutorial/level commands in GameCore yet" />
+			<IbButton family="purple" label="Back" class="back-btn" @click="goBack" />
 		</div>
 	</div>
 </template>

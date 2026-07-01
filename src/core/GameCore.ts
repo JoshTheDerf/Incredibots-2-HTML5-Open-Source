@@ -53,6 +53,36 @@ import {
 import { WinCondition } from "../Game/WinCondition";
 import { LossCondition } from "../Game/LossCondition";
 import { b2ContactListener } from "../Box2D";
+import {
+	REPLAY_SYNC_FRAMES,
+	REPLAY_MAX_FRAMES,
+	REPLAY_MAX_CANNONBALLS,
+	type RecordingBuffers,
+	type ReplaySession,
+	type ReplayData,
+	type BodyLike,
+	createRecording,
+	createReplaySession,
+	addSyncPoint,
+	recordKeyPress,
+	recordCameraMovement,
+	finalizeReplay,
+	replayUpdate,
+	syncReplay,
+	syncReplay2,
+	moveCameraForReplay,
+} from "./replay";
+import {
+	type TutorialMachine,
+	type TutorialEvent,
+	type DialogAction,
+	createTutorialMachine,
+	resolveMessage,
+	tutorialLevel,
+	TUTORIAL_LEVELS,
+} from "./tutorials";
+import type { TutorialState } from "./GameState";
+import { b2Vec2 as B2Vec2 } from "../Box2D";
 
 // --- Physics simulation constants, mirrored from the legacy ControllerGame ---
 //
@@ -134,6 +164,23 @@ export class GameCore {
 	 * a documented follow-up.
 	 */
 	private cannonballs: unknown[] = [];
+	/**
+	 * Live replay recording buffers while a normal (non-replay) sim runs; null
+	 * otherwise. Reset on `play` (ControllerGame.ts:2730-2735). See src/core/replay.ts.
+	 */
+	private recording: RecordingBuffers | null = null;
+	/**
+	 * Active replay playback session (decoded replay + splines + cursors); null
+	 * unless playing a replay. When set, the sim runs FROZEN — the world is not
+	 * stepped; bodies are driven from sync points. See src/core/replay.ts.
+	 */
+	private replaySession: ReplaySession | null = null;
+	/** The active tutorial's hand-coded machine; null for non-tutorial sessions. */
+	private tutorialMachine: TutorialMachine | null = null;
+	/** Persistent level-done grid (mirrors LSOManager.IsLevelDone(0..13)). */
+	private levelsDone: boolean[] = new Array(TUTORIAL_LEVELS.length).fill(false);
+	/** Latches the one-shot tutorial "won" trigger so it fires once per run. */
+	private tutorialWonFired = false;
 
 	constructor(initial: GameState = createInitialState()) {
 		this.state = initial;
@@ -265,6 +312,217 @@ export class GameCore {
 		this.challenge.partsFit = checkIfPartsFit(this.challenge, this.state.parts);
 		this.state = { ...this.state, challenge: toChallengeState(this.challenge) };
 		this.markChanged();
+	}
+
+	// --- Replay recording / playback --------------------------------------
+	//
+	// See docs/PORT-SPEC-tutorials-replays.md §B and src/core/replay.ts. The
+	// body order below is the SINGLE source of truth used for both recording
+	// (AddSyncPoint) and playback (SyncReplay/SyncReplay2) — it must match the
+	// legacy dedup-by-body iteration over non-static ShapeParts (:797-808).
+
+	/**
+	 * The deduped, ordered list of live bodies replay syncs against: every
+	 * non-static ShapePart body, in parts order, deduped by body identity
+	 * (ControllerGame.AddSyncPoint :797-808 / SyncReplay :968-977).
+	 */
+	private replayBodies(): BodyLike[] {
+		const bodies: BodyLike[] = [];
+		const seen = new Set<unknown>();
+		for (const p of this.state.parts) {
+			if (p instanceof ShapePart && !p.isStatic) {
+				const body = p.GetBody();
+				if (body && !seen.has(body)) {
+					seen.add(body);
+					bodies.push(body as unknown as BodyLike);
+				}
+			}
+		}
+		return bodies;
+	}
+
+	/** Live cannonball bodies (empty in the headless core — no cannon firing). */
+	private replayCannonballs(): BodyLike[] {
+		return this.cannonballs as BodyLike[];
+	}
+
+	/** A b2Vec2 factory the sync helpers use (keeps replay.ts Box2D-free). */
+	private vec(x: number, y: number): B2Vec2 {
+		return new B2Vec2(x, y);
+	}
+
+	/** Project the replay read-model into state.replay. */
+	private replayStateSnapshot(): GameState["replay"] {
+		return {
+			recording: this.recording !== null && !this.replaySession,
+			playing: this.replaySession !== null,
+			frame: this.state.sim.frame,
+			numFrames: this.replaySession ? this.replaySession.data.numFrames : null,
+			canSave: this.recording ? this.recording.canSave : true,
+			finished: this.state.replay.finished,
+		};
+	}
+
+	private syncReplayState(): void {
+		this.state = { ...this.state, replay: this.replayStateSnapshot() };
+		this.markChanged();
+	}
+
+	/**
+	 * Finalize the current recording into a serializable ReplayData
+	 * (ControllerGame.ts:5354-5360). Returns null if there is no active recording.
+	 * A pure read — not a Command.
+	 */
+	exportReplay(): ReplayData | null {
+		if (!this.recording) return null;
+		return finalizeReplay(this.recording, this.state.sim.frame);
+	}
+
+	/**
+	 * Apply one playback frame's replay instructions (Replay.Update -> the
+	 * ControllerGame apply methods). Camera movements set the camera state; the
+	 * body sync hard-sets (SyncReplay) or spline-interpolates (SyncReplay2); key
+	 * presses would fire text/cannon parts (KeyInput) — in the headless core we
+	 * forward them to each part's KeyInput so text/cannon parts react.
+	 */
+	private applyReplayFrame(frame: number): void {
+		if (!this.replaySession) return;
+		const tick = replayUpdate(this.replaySession, frame);
+
+		// Camera (MoveCameraForReplay :777-790).
+		let cam = { drawXOff: this.state.camera.offsetX, drawYOff: this.state.camera.offsetY, scale: this.state.camera.scale };
+		for (const mv of tick.cameraMovements) {
+			cam = moveCameraForReplay(mv, cam);
+		}
+		if (
+			cam.drawXOff !== this.state.camera.offsetX ||
+			cam.drawYOff !== this.state.camera.offsetY ||
+			cam.scale !== this.state.camera.scale
+		) {
+			this.state = {
+				...this.state,
+				camera: { offsetX: cam.drawXOff, offsetY: cam.drawYOff, scale: cam.scale },
+			};
+			this.markChanged();
+		}
+
+		// Body sync (SyncReplay / SyncReplay2). The world is frozen — we hard-set
+		// or interpolate bodies straight from the recorded sync points.
+		const bodies = this.replayBodies();
+		const cannonballs = this.replayCannonballs();
+		if (tick.sync) {
+			if (tick.sync.kind === "hard") {
+				syncReplay(tick.sync.syncPoint, bodies, cannonballs, (x, y) => this.vec(x, y));
+			} else if (this.replaySession.splines) {
+				syncReplay2(
+					tick.sync.segmentIndex,
+					tick.sync.syncPoint1,
+					tick.sync.syncPoint2,
+					frame,
+					this.replaySession.splines,
+					bodies,
+					cannonballs,
+					(x, y) => this.vec(x, y),
+				);
+			}
+		}
+
+		// Key presses (KeyInput :1868-1883): forward to every part so text/cannon
+		// parts react at the recorded frame.
+		for (const key of tick.keyPresses) {
+			for (const p of this.state.parts) {
+				(p as unknown as { KeyInput?: (k: number, up: boolean, replay: boolean) => void }).KeyInput?.(key, true, true);
+			}
+		}
+	}
+
+	// --- Tutorials ----------------------------------------------------------
+	//
+	// See docs/PORT-SPEC-tutorials-replays.md §A and src/core/tutorials.ts. The
+	// active tutorial's hand-coded machine (tutorialMachine) drives which dialog
+	// shows; game events (part created / won) advance it.
+
+	/** Project the active tutorial machine + current dialog into state.tutorial. */
+	private tutorialStateSnapshot(current: { id: number; hasMore: boolean } | null): TutorialState {
+		const machine = this.tutorialMachine;
+		if (!machine) {
+			return {
+				active: false,
+				levelIndex: -1,
+				currentMessageId: null,
+				currentMessage: null,
+				levelsDone: [...this.levelsDone],
+			};
+		}
+		let message = null as TutorialState["currentMessage"];
+		if (current) {
+			const anchor = machine.worldAnchorFor(current.id);
+			// Project a world anchor through the CURRENT camera (World2ScreenX/Y),
+			// else use the screen anchor directly.
+			let sx: number;
+			let sy: number;
+			if (anchor) {
+				sx = anchor.x * this.state.camera.scale - this.state.camera.offsetX;
+				sy = anchor.y * this.state.camera.scale - this.state.camera.offsetY;
+			} else {
+				const s = machine.screenAnchorFor(current.id);
+				sx = s.x;
+				sy = s.y;
+			}
+			message = resolveMessage(current.id, sx, sy, current.hasMore);
+		}
+		return {
+			active: true,
+			levelIndex: machine.levelIndex,
+			currentMessageId: current ? current.id : null,
+			currentMessage: message,
+			levelsDone: [...this.levelsDone],
+		};
+	}
+
+	/** Apply a DialogAction from the tutorial machine to state.tutorial. */
+	private applyTutorialDialog(action: DialogAction | null): void {
+		if (!this.tutorialMachine || !action) return;
+		if (action.kind === "dismiss") {
+			this.state = { ...this.state, tutorial: this.tutorialStateSnapshot(null) };
+		} else if (action.kind === "show" && action.id != null) {
+			this.state = {
+				...this.state,
+				tutorial: this.tutorialStateSnapshot({ id: action.id, hasMore: action.hasMore ?? false }),
+			};
+		}
+		this.markChanged();
+	}
+
+	/**
+	 * Notify the active tutorial machine of a game event (part created / won),
+	 * replacing the subclass method overrides. Advances the dialog if the event
+	 * triggers a transition.
+	 */
+	private notifyTutorial(event: TutorialEvent): void {
+		if (!this.tutorialMachine) return;
+		if (event.type === "won") {
+			if (this.tutorialWonFired) return;
+			this.tutorialWonFired = true;
+			// Level-done write on win (ControllerGame.ts:754-762): tutorial idx ==
+			// type-10; via the level record this is just levelIndex.
+			const idx = this.tutorialMachine.levelIndex;
+			if (idx >= 0 && idx < this.levelsDone.length) this.levelsDone[idx] = true;
+		}
+		const action = this.tutorialMachine.onEvent(event);
+		if (action) this.applyTutorialDialog(action);
+		else {
+			// Still refresh levelsDone projection even without a dialog change.
+			this.state = {
+				...this.state,
+				tutorial: this.tutorialStateSnapshot(
+					this.state.tutorial && this.state.tutorial.currentMessageId != null
+						? { id: this.state.tutorial.currentMessageId, hasMore: this.state.tutorial.currentMessage?.hasMore ?? false }
+						: null,
+				),
+			};
+			this.markChanged();
+		}
 	}
 
 	/** Resolve a condition's picked ShapeParts by id (for subject-0 / obj-5/6). */
@@ -893,9 +1151,29 @@ export class GameCore {
 			if (p instanceof JointPart || p instanceof Thrusters) p.Init(world);
 		}
 
-		this.state = { ...this.state, world, sim: { phase: "running", frame: 0 } };
+		// Replay recording / playback setup (ControllerGame.ts:2728-2746). During a
+		// normal sim we seed fresh recording buffers (frame 0, +Infinity camera
+		// sentinel). During playback (replaySession set) we reset the replay
+		// cursors instead — the world is created but never stepped.
+		if (this.replaySession) {
+			this.replaySession.syncPointIndex = 0;
+			this.replaySession.cameraMovementIndex = 0;
+			this.replaySession.keyPressIndex = 0;
+			this.recording = null;
+		} else {
+			this.recording = createRecording(this.state.camera.scale);
+		}
+		this.tutorialWonFired = false;
+
+		this.state = {
+			...this.state,
+			world,
+			sim: { phase: "running", frame: 0 },
+			replay: { ...this.state.replay, finished: false },
+		};
 		this.markChanged();
 		this.syncChallenge();
+		this.syncReplayState();
 	}
 
 	/** pause: stop stepping but keep the world alive (ControllerGame.pauseButton, :2796). */
@@ -925,7 +1203,16 @@ export class GameCore {
 		}
 		this.editSnapshots = [];
 
-		this.state = { ...this.state, parts: [...this.state.parts], world: null, sim: { phase: "editing", frame: 0 } };
+		// Replay: reset recording buffers; playback ends only via stopReplay (reset
+		// during editing is a no-op there), so leave replaySession alone here.
+		this.recording = null;
+		this.state = {
+			...this.state,
+			parts: [...this.state.parts],
+			world: null,
+			sim: { phase: "editing", frame: 0 },
+			replay: this.replayStateSnapshot(),
+		};
 		this.markChanged();
 
 		// Challenge: clear the run outcome/score and reset condition flags so the
@@ -952,10 +1239,36 @@ export class GameCore {
 
 		let frame = this.state.sim.frame;
 		let ended = false;
+		let replayFinished = false;
 		for (let f = 0; f < frames; f++) {
+			if (this.replaySession) {
+				// PLAYBACK: sim-FREE. Drive bodies from sync points + splines and apply
+				// recorded camera/key events for this frame (ControllerGame.HandleKey
+				// :1182-1186 -> Replay.Update). The world is NOT stepped. frame still
+				// advances one logical frame per tick.
+				this.applyReplayFrame(frame);
+				const tick = replayUpdate(this.replaySession, frame);
+				frame++;
+				if (tick.done) {
+					replayFinished = true;
+					ended = true;
+					break;
+				}
+				continue;
+			}
+
+			// NORMAL SIM: capture a sync point every REPLAY_SYNC_FRAMES BEFORE
+			// stepping (ControllerGame.ts:578), then the two Box2D sub-steps.
+			if (this.recording && frame % REPLAY_SYNC_FRAMES === 0) {
+				addSyncPoint(this.recording, frame, this.replayBodies(), this.replayCannonballs());
+			}
 			world.Step(STEP_DT, STEP_ITERATIONS_WARMUP);
 			world.Step(STEP_DT, STEP_ITERATIONS);
 			frame++;
+			// Replay save cap (ControllerGame.ts:585).
+			if (this.recording && (frame >= REPLAY_MAX_FRAMES || this.cannonballs.length > REPLAY_MAX_CANNONBALLS)) {
+				this.recording.canSave = false;
+			}
 
 			// Challenge: evaluate every win + loss condition this frame
 			// (ControllerChallenge.Update :23-30), then check for win/loss. The base
@@ -988,10 +1301,189 @@ export class GameCore {
 		this.state = {
 			...this.state,
 			// On a win/loss the base loop pauses the sim (ControllerGame.ts:740).
+			// Replay playback also pauses once it reaches numFrames (Replay.Update
+			// -> pauseButton, ControllerGame.ts:1183-1184).
 			sim: { phase: ended ? "paused" : "running", frame },
+			replay: { ...this.state.replay, frame, finished: this.state.replay.finished || replayFinished },
 		};
 		this.markChanged();
 		if (this.challenge) this.syncChallenge();
+
+		// Tutorial win trigger: the base loop sets wonChallenge when ChallengeOver()
+		// first returns true (ControllerGame.ts:738-739); the tutorial's Update then
+		// shows its win dialog (e.g. ControllerTank.Update :309-313). We fire it via
+		// the challenge outcome when a tutorial+challenge is active.
+		if (this.tutorialMachine && this.challenge && this.challenge.outcome === "won" && !this.tutorialWonFired) {
+			this.notifyTutorial({ type: "won" });
+		}
+	}
+
+	// --- Replay command handlers -------------------------------------------
+
+	/**
+	 * playReplay: begin sim-FREE playback of a decoded replay. Sets up the
+	 * playback session (splines precomputed) then enters the running phase like
+	 * playButton — but with playingReplay set, so handleStep drives bodies from
+	 * sync points instead of stepping the world (ControllerGame.ts:2737-2746).
+	 */
+	private handlePlayReplay(data: ReplayData): void {
+		// Only from editing (mirrors playButton's simStarted gate).
+		if (this.state.sim.phase !== "editing") return;
+		this.replaySession = createReplaySession(data);
+		this.state = { ...this.state, replay: { ...this.state.replay, finished: false } };
+		this.handlePlay();
+	}
+
+	/**
+	 * viewReplayAgain: restart the current replay from frame 0 (PostReplayWindow
+	 * "View Again!"). Resets the world + cursors and plays again.
+	 */
+	private handleViewReplayAgain(): void {
+		if (!this.replaySession) return;
+		// Tear the current world down (like reset) but keep the replay session.
+		if (this.state.world) {
+			for (const p of this.state.parts) p.UnInit(this.state.world);
+		}
+		for (const snap of this.editSnapshots) {
+			snap.part.Move(snap.x, snap.y);
+			if (snap.part instanceof ShapePart) snap.part.angle = snap.angle;
+		}
+		this.editSnapshots = [];
+		this.state = {
+			...this.state,
+			parts: [...this.state.parts],
+			world: null,
+			sim: { phase: "editing", frame: 0 },
+			replay: { ...this.state.replay, finished: false },
+		};
+		this.handlePlay();
+	}
+
+	/**
+	 * stopReplay: end playback and return to editing (PostReplayWindow "Stop
+	 * Replay"). Clears the replay session and tears the world down.
+	 */
+	private handleStopReplay(): void {
+		if (!this.replaySession) return;
+		this.replaySession = null;
+		const world = this.state.world;
+		if (world) {
+			for (const p of this.state.parts) p.UnInit(world);
+		}
+		for (const snap of this.editSnapshots) {
+			snap.part.Move(snap.x, snap.y);
+			if (snap.part instanceof ShapePart) snap.part.angle = snap.angle;
+		}
+		this.editSnapshots = [];
+		this.state = {
+			...this.state,
+			parts: [...this.state.parts],
+			world: null,
+			sim: { phase: "editing", frame: 0 },
+			replay: { recording: false, playing: false, frame: 0, numFrames: null, canSave: true, finished: false },
+		};
+		this.markChanged();
+	}
+
+	/**
+	 * replayKey: a text-display / cannon-fire key at the current frame. During a
+	 * normal (recording) sim this both fires the key on parts AND records it into
+	 * the stream (ControllerGame.keyInput :1868-1883 — but only for text/cannon
+	 * keys). During playback it is applied but NOT recorded.
+	 */
+	private handleReplayKey(key: number): void {
+		if (this.state.sim.phase !== "running") return;
+		// Fire the key on every part (KeyInput).
+		for (const p of this.state.parts) {
+			(p as unknown as { KeyInput?: (k: number, up: boolean, replay: boolean) => void }).KeyInput?.(
+				key,
+				true,
+				this.replaySession !== null,
+			);
+		}
+		// Record ONLY text-display / cannon-fire keys, and only when NOT replaying
+		// (matches the legacy `recorded` guard — at most one per call).
+		if (this.recording && !this.replaySession) {
+			let recorded = false;
+			for (const p of this.state.parts) {
+				if (recorded) break;
+				if (p instanceof TextPart && key === p.displayKey) recorded = true;
+				else if (p instanceof Cannon && key === p.fireKey) recorded = true;
+			}
+			if (recorded) recordKeyPress(this.recording, this.state.sim.frame, key);
+		}
+		this.syncReplayState();
+	}
+
+	/**
+	 * moveCameraDuringSim: record a camera pan/zoom during a running sim
+	 * (ControllerGame.ts:1837-1842). Also updates the live camera state so the
+	 * view follows. No-op during playback (the replay owns the camera then).
+	 */
+	private handleMoveCameraDuringSim(drawXOff: number, drawYOff: number, scale: number): void {
+		if (this.state.sim.phase !== "running" || this.replaySession) return;
+		if (this.recording) {
+			recordCameraMovement(this.recording, this.state.sim.frame, drawXOff, drawYOff, scale);
+		}
+		this.state = { ...this.state, camera: { offsetX: drawXOff, offsetY: drawYOff, scale } };
+		this.markChanged();
+	}
+
+	// --- Tutorial command handlers -----------------------------------------
+
+	/**
+	 * loadTutorial: build the tutorial's session and show its first dialog. Sets
+	 * the per-tutorial default sandbox settings + initial camera, creates the
+	 * hand-coded machine, and runs Init() (ControllerTutorial subclass Init ->
+	 * ShowTutorialDialog). Editing-phase only. If the level's machine isn't ported
+	 * yet, activates the session with no dialog (framework still usable).
+	 */
+	private handleLoadTutorial(levelIndex: number): void {
+		if (this.state.sim.phase !== "editing") return;
+		const level = tutorialLevel(levelIndex);
+		this.tutorialMachine = createTutorialMachine(levelIndex);
+		this.tutorialWonFired = false;
+
+		// Apply the per-tutorial default sandbox settings + initial camera.
+		if (level) {
+			const s = level.settings;
+			const sandbox = {
+				...this.state.sandbox,
+				gravity: s.gravity,
+				size: s.size,
+				terrainType: s.terrainType,
+				terrainTheme: s.terrainTheme,
+				background: s.background,
+			};
+			sandbox.bounds = computeBounds(sandbox);
+			this.state = { ...this.state, sandbox, parts: [...this.state.parts] };
+		}
+		if (this.tutorialMachine) {
+			const cam = this.tutorialMachine.initialCamera;
+			this.state = { ...this.state, camera: { ...this.state.camera, offsetX: cam.drawXOff, offsetY: cam.drawYOff } };
+		}
+
+		// Init() -> first dialog.
+		const first = this.tutorialMachine ? this.tutorialMachine.init() : null;
+		this.applyTutorialDialog(first ?? { kind: "dismiss" });
+	}
+
+	/**
+	 * advanceTutorial(messageId): mirrors TutorialWindow.closeWindow ->
+	 * cont.CloseTutorialDialog(num). Runs the machine's close(num) switch and
+	 * applies the resulting dialog action.
+	 */
+	private handleAdvanceTutorial(messageId: number): void {
+		if (!this.tutorialMachine) return;
+		const action = this.tutorialMachine.close(messageId);
+		this.applyTutorialDialog(action);
+	}
+
+	/** closeTutorial: end the tutorial session (dismiss dialog + clear machine). */
+	private handleCloseTutorial(): void {
+		this.tutorialMachine = null;
+		this.state = { ...this.state, tutorial: null };
+		this.markChanged();
 	}
 
 	/**
@@ -1236,6 +1728,9 @@ export class GameCore {
 				// end != start :2288). pushHistory already ran, but with no state
 				// change undo just restores the identical graph, which is harmless.
 				if (!part) return;
+				// Tutorial part-created trigger (ControllerShapes.Update :28-40): the
+				// new editable part type is Rectangle/Triangle/Circle.
+				const createdKind = part.type;
 				part.id = ++this.nextId;
 				const selection = [part.id];
 				this.state = {
@@ -1244,6 +1739,7 @@ export class GameCore {
 					edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(part) },
 				};
 				this.markChanged();
+				if (this.tutorialMachine) this.notifyTutorial({ type: "partCreated", partKind: createdKind });
 				return;
 			}
 			case "createText": {
@@ -1541,6 +2037,34 @@ export class GameCore {
 				return;
 			case "step":
 				this.handleStep(command.frames ?? 1);
+				return;
+
+			// --- replays ---
+			case "playReplay":
+				this.handlePlayReplay(command.data);
+				return;
+			case "viewReplayAgain":
+				this.handleViewReplayAgain();
+				return;
+			case "stopReplay":
+				this.handleStopReplay();
+				return;
+			case "replayKey":
+				this.handleReplayKey(command.key);
+				return;
+			case "moveCameraDuringSim":
+				this.handleMoveCameraDuringSim(command.drawXOff, command.drawYOff, command.scale);
+				return;
+
+			// --- tutorials ---
+			case "loadTutorial":
+				this.handleLoadTutorial(command.levelIndex);
+				return;
+			case "advanceTutorial":
+				this.handleAdvanceTutorial(command.messageId);
+				return;
+			case "closeTutorial":
+				this.handleCloseTutorial();
 				return;
 			// Rotate the selection about its centroid by `angle` radians. GameCanvas
 			// feeds the incremental delta since the last pointer move.

@@ -16,8 +16,14 @@ export type {
 	EditState,
 	SandboxState,
 	PartSnapshot,
+	ReplayState,
+	TutorialState,
 } from "./GameState";
 export { createInitialState } from "./GameState";
+export type { ReplayData, CameraMovement, KeyPress, ReplaySyncPoint } from "./replay";
+export { REPLAY_SYNC_FRAMES, VERSION_STRING_FOR_REPLAYS } from "./replay";
+export { TUTORIAL_MESSAGES, TUTORIAL_LEVELS, tutorialLevel, resolveMessage, tutorialWindowHeight, clampTutorialPosition, levelDoneIndexForControllerType } from "./tutorials";
+export type { TutorialLevel } from "./tutorials";
 export {
 	buildTerrainParts,
 	computeBounds,

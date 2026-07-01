@@ -24,6 +24,9 @@ export const useGameStore = defineStore("game", () => {
 	const sim = computed<Readonly<SimState>>(() => state.value.sim);
 	const camera = computed<Readonly<CameraState>>(() => state.value.camera);
 	const edit = computed<Readonly<EditState>>(() => state.value.edit);
+	// Tutorial + replay read-models (null tutorial for non-tutorial sessions).
+	const tutorial = computed(() => state.value.tutorial);
+	const replay = computed(() => state.value.replay);
 	// Raw live Part instances — the renderer reads this directly each frame.
 	const parts = computed<readonly Part[]>(() => state.value.parts);
 	// Plain-data challenge read-model (null for a plain sandbox). The Vue panels
@@ -64,6 +67,14 @@ export const useGameStore = defineStore("game", () => {
 		return core.importRobot(str);
 	}
 
+	/**
+	 * Finalize the current replay recording into serializable ReplayData (or null
+	 * when nothing was recorded). A pure read — not a dispatched Command.
+	 */
+	function exportReplay() {
+		return core.exportReplay();
+	}
+
 	// --- UI-only application mode (menu vs editor) ---------------------------
 	// This is deliberately NOT part of GameCore/GameState: the headless core
 	// knows only about robots/sim/edit, not about which screen the shell shows.
@@ -95,10 +106,13 @@ export const useGameStore = defineStore("game", () => {
 		edit,
 		parts,
 		challenge,
+		tutorial,
+		replay,
 		liveChallenge,
 		dispatch,
 		exportRobot,
 		importRobot,
+		exportReplay,
 		appMode,
 		goToEditor,
 		goToMenu,

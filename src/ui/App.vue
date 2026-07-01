@@ -27,11 +27,15 @@ import SandboxSettingsPanel from "./components/panels/SandboxSettingsPanel.vue";
 import ConditionsPanel from "./components/panels/ConditionsPanel.vue";
 import RestrictionsPanel from "./components/panels/RestrictionsPanel.vue";
 import ColorPickerPanel from "./components/panels/ColorPickerPanel.vue";
+import TutorialPanel from "./components/panels/TutorialPanel.vue";
+import PostReplayPanel from "./components/panels/PostReplayPanel.vue";
+import { storeToRefs } from "pinia";
 
 // Top-level screen switch. `appMode` is a UI-only ref in gameStore (NOT part of
 // GameCore) — 'menu' shows the ported MainMenu, 'editor' shows the editor
 // chrome below. Boots to 'menu', matching the original ControllerMainMenu flow.
 const game = useGameStore();
+const { replay } = storeToRefs(game);
 
 // Exactly one panel is open at a time; `null` means all modals closed. The
 // MenuBar emits which panel to open.
@@ -56,6 +60,15 @@ function closePanel(): void {
 			<div class="workspace">
 				<StagePlaceholder />
 				<PartInspectorFull />
+				<!-- Tutorial dialog bubble (self-hides when no active message) and
+				     the post-replay window (shown once a replay playback finishes).
+				     Floated over the stage like the legacy draggable dialogs. -->
+				<div class="tutorial-overlay">
+					<TutorialPanel />
+				</div>
+				<div v-if="replay.finished" class="post-replay-overlay">
+					<PostReplayPanel @close="game.dispatch({ type: 'stopReplay' })" />
+				</div>
 			</div>
 			<StatusBar />
 		</div>
@@ -140,6 +153,23 @@ function closePanel(): void {
 	flex: 1;
 	display: flex;
 	min-height: 0;
+	position: relative;
+}
+
+.tutorial-overlay {
+	position: absolute;
+	top: 16px;
+	left: 16px;
+	z-index: 20;
+	pointer-events: auto;
+}
+
+.post-replay-overlay {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 30;
 }
 </style>
 

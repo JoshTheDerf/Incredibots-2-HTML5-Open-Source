@@ -15,8 +15,11 @@ import { computed } from "vue";
 import IbButton from "../IbButton.vue";
 import IbTodo from "../IbTodo.vue";
 import { frameTextures } from "../../assets";
+import { useGameStore } from "../../gameStore";
 
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
+
+const store = useGameStore();
 
 const props = withDefaults(defineProps<{ hasReplayId?: boolean }>(), {
 	// Placeholder stand-in for ControllerGameGlobals.curReplayID != "".
@@ -32,6 +35,19 @@ const emit = defineEmits<{
 	close: [];
 }>();
 
+// "View Again!" / "Stop Replay" are wired to the real GameCore replay commands
+// (viewReplayAgain restarts the same replay from frame 0; stopReplay ends
+// playback and returns to editing). Load/Rate/Main Menu remain shell concerns.
+function viewAgain(): void {
+	store.dispatch({ type: "viewReplayAgain" });
+	emit("viewReplay");
+}
+
+function stop(): void {
+	store.dispatch({ type: "stopReplay" });
+	emit("stopReplay");
+}
+
 const panelHeight = computed(() => (props.hasReplayId ? 240 : 210));
 </script>
 
@@ -40,9 +56,9 @@ const panelHeight = computed(() => (props.hasReplayId ? 240 : 210));
 		<div class="header">End of Replay</div>
 
 		<div class="actions">
-			<IbButton family="purple" label="View Again!" class="action-btn ib-todo" @click="emit('viewReplay')" />
+			<IbButton family="purple" label="View Again!" class="action-btn" @click="viewAgain" />
 			<IbButton family="purple" label="Load Replay" class="action-btn ib-todo" @click="emit('loadReplay')" />
-			<IbButton family="purple" label="Stop Replay" class="action-btn ib-todo" @click="emit('stopReplay')" />
+			<IbButton family="purple" label="Stop Replay" class="action-btn" @click="stop" />
 			<IbButton
 				v-if="hasReplayId"
 				family="purple"

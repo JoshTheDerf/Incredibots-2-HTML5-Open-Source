@@ -133,6 +133,49 @@ export interface SandboxState {
 	bounds: { minX: number; maxX: number; minY: number; maxY: number };
 }
 
+/**
+ * Replay read-model (docs/PORT-SPEC-tutorials-replays.md §B.7). Recording is
+ * live during a normal (non-replay) sim; playback drives bodies from sync points
+ * with the world FROZEN (not stepped). See src/core/replay.ts for the mechanics.
+ */
+export interface ReplayState {
+	/** capturing the three streams this sim (true while a normal sim runs). */
+	recording: boolean;
+	/** playing a decoded replay back (playingReplay). */
+	playing: boolean;
+	/** logical frame counter (== ControllerGame.frameCounter). */
+	frame: number;
+	/** playback bound (numFrames of the active replay); null when not playing. */
+	numFrames: number | null;
+	/** recording still saveable (frame<9000 && cannonballs<=500). */
+	canSave: boolean;
+	/** true once a playback has reached numFrames (drives PostReplayPanel). */
+	finished: boolean;
+}
+
+/**
+ * Tutorial read-model (docs/PORT-SPEC-tutorials-replays.md §A.5). The active
+ * message dialog + the level-done grid. The per-tutorial state machine lives in
+ * src/core/tutorials.ts; this is just what the view needs to render.
+ */
+export interface TutorialState {
+	active: boolean;
+	/** 0-13 level index (see the level-select mapping); -1 when inactive. */
+	levelIndex: number;
+	/** index into the TUTORIAL_MESSAGES table; null when no dialog is showing. */
+	currentMessageId: number | null;
+	/** the resolved current message + its window layout; null when none. */
+	currentMessage: {
+		text: string;
+		hasMore: boolean;
+		x: number;
+		y: number;
+		height: number;
+	} | null;
+	/** mirrors LSOManager.IsLevelDone(0..13). */
+	levelsDone: boolean[];
+}
+
 export interface EditState {
 	/** ids of currently-selected parts (indexes into GameState.parts by Part id). */
 	selection: number[];
@@ -182,6 +225,16 @@ export interface GameState {
 	 * for the editors. See src/core/challenge.ts.
 	 */
 	challenge: ChallengeState | null;
+	/**
+	 * Replay recording / playback read-model. Always present; `recording` and
+	 * `playing` are false in a plain editing session. See src/core/replay.ts.
+	 */
+	replay: ReplayState;
+	/**
+	 * Active tutorial read-model, or null for a non-tutorial session. See
+	 * src/core/tutorials.ts.
+	 */
+	tutorial: TutorialState | null;
 }
 
 export function createInitialState(): GameState {
@@ -203,5 +256,7 @@ export function createInitialState(): GameState {
 		sandbox,
 		world: null,
 		challenge: null,
+		replay: { recording: false, playing: false, frame: 0, numFrames: null, canSave: true, finished: false },
+		tutorial: null,
 	};
 }

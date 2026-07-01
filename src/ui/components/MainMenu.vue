@@ -150,7 +150,7 @@ function enterEditor(): void {
 			@update:open="(v: boolean) => !v && closeModal()"
 		>
 			<template #content>
-				<TutorialSelectPanel />
+				<TutorialSelectPanel @back="closeModal" />
 			</template>
 		</UModal>
 

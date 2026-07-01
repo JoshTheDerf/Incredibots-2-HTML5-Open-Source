@@ -200,6 +200,30 @@ export type Command =
 	| { type: "removeBuildArea"; index: number }
 	// Play/edit transitions (ControllerChallenge.playButton first-press / editButton).
 	| { type: "enterChallengePlay" }
-	| { type: "editChallenge" };
+	| { type: "editChallenge" }
+	// --- replays (deterministic record + playback; see src/core/replay.ts) ---
+	// Recording is automatic on `play` (during a normal sim); these drive playback.
+	// playReplay begins sim-FREE playback of a decoded replay (splines precomputed,
+	// world frozen); viewReplayAgain restarts the same replay from frame 0;
+	// stopReplay ends playback and returns to editing.
+	| { type: "playReplay"; data: import("./replay").ReplayData }
+	| { type: "viewReplayAgain" }
+	| { type: "stopReplay" }
+	// Fire a text-display / cannon-fire key at the current frame. During a normal
+	// sim this is recorded into the replay stream (ControllerGame.keyInput
+	// :1868-1883, text/cannon keys only). During playback it is applied but never
+	// recorded.
+	| { type: "replayKey"; key: number }
+	// Record a camera pan/zoom during a running sim (ControllerGame.ts:1837-1842).
+	// Pushed as a CameraMovement into the recording stream.
+	| { type: "moveCameraDuringSim"; drawXOff: number; drawYOff: number; scale: number }
+	// --- tutorials (per-subclass dialog state machine; see src/core/tutorials.ts) ---
+	// loadTutorial builds the tutorial's terrain + prebuilt parts and shows its
+	// first dialog (TutorialSelectWindow.*Button + ControllerTutorial.Init).
+	// advanceTutorial == TutorialWindow.closeWindow -> CloseTutorialDialog(num).
+	// closeTutorial dismisses the tutorial session.
+	| { type: "loadTutorial"; levelIndex: number }
+	| { type: "advanceTutorial"; messageId: number }
+	| { type: "closeTutorial" };
 
 export type CommandType = Command["type"];
