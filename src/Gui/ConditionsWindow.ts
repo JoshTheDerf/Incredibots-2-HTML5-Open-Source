@@ -1,6 +1,7 @@
 import { Text, TextStyle } from "pixi.js";
 import { Condition } from "../Game/Condition"
 import { ControllerChallenge } from "../Game/ControllerChallenge"
+import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
 import { LossCondition } from "../Game/LossCondition"
 import { WinCondition } from "../Game/WinCondition"
 import { Util } from "../General/Util"
@@ -191,7 +192,7 @@ export class ConditionsWindow extends GuiWindow
 		format.fontSize = 12;
 		this.allConditionsBox = new GuiCheckBox(340, 245, 320);
 		this.allConditionsBox.label = "All conditions must be satisfied simultaneously ";
-		this.allConditionsBox.selected = ControllerChallenge.challenge.winConditionsAnded;
+		this.allConditionsBox.selected = ControllerGameGlobals.challenge.winConditionsAnded;
 		this.allConditionsBox.style = format;
 		this.addChild(this.allConditionsBox);
 		this.immediateLossBox = new GuiCheckBox(420, 323, 300);
@@ -286,7 +287,7 @@ export class ConditionsWindow extends GuiWindow
 				cond.maxY = y2;
 			}
 			if (this.shape1) cond.shape1 = this.shape1;
-			ControllerChallenge.challenge.winConditions.push(cond);
+			ControllerGameGlobals.challenge.winConditions.push(cond);
 			this.RefreshList(true);
 		} else {
 			var con:LossCondition = new LossCondition(this.lossNameArea.text, this.lossSubjectBox.selectedIndex, this.lossObjectBox.selectedIndex, this.immediateLossBox.selected);
@@ -307,7 +308,7 @@ export class ConditionsWindow extends GuiWindow
 				con.maxY = y2;
 			}
 			if (this.shape1) con.shape1 = this.shape1;
-			ControllerChallenge.challenge.lossConditions.push(con);
+			ControllerGameGlobals.challenge.lossConditions.push(con);
 			this.RefreshList(false);
 		}
 	}
@@ -322,13 +323,13 @@ export class ConditionsWindow extends GuiWindow
 				var cond:WinCondition = new WinCondition(this.winNameArea.text, this.winSubjectBox.selectedIndex, this.winObjectBox.selectedIndex);
 				cond.shape2 = shape;
 				if (this.shape1) cond.shape1 = this.shape1;
-				ControllerChallenge.challenge.winConditions.push(cond);
+				ControllerGameGlobals.challenge.winConditions.push(cond);
 				this.RefreshList(true);
 			} else {
 				var con:LossCondition = new LossCondition(this.lossNameArea.text, this.lossSubjectBox.selectedIndex, this.lossObjectBox.selectedIndex, this.immediateLossBox.selected);
 				con.shape2 = shape;
 				if (this.shape1) con.shape1 = this.shape1;
-				ControllerChallenge.challenge.lossConditions.push(con);
+				ControllerGameGlobals.challenge.lossConditions.push(con);
 				this.RefreshList(false);
 			}
 		}
@@ -365,18 +366,18 @@ export class ConditionsWindow extends GuiWindow
 	}
 
 	private removeWinButtonPressed():void {
-		ControllerChallenge.challenge.winConditions = Util.RemoveFromArray(ControllerChallenge.challenge.winConditions[this.winConditions.selectedIndex], ControllerChallenge.challenge.winConditions);
+		ControllerGameGlobals.challenge.winConditions = Util.RemoveFromArray(ControllerGameGlobals.challenge.winConditions[this.winConditions.selectedIndex], ControllerGameGlobals.challenge.winConditions);
 		this.RefreshList(true);
 	}
 
 	private removeLossButtonPressed():void {
-		ControllerChallenge.challenge.lossConditions = Util.RemoveFromArray(ControllerChallenge.challenge.lossConditions[this.lossConditions.selectedIndex], ControllerChallenge.challenge.lossConditions);
+		ControllerGameGlobals.challenge.lossConditions = Util.RemoveFromArray(ControllerGameGlobals.challenge.lossConditions[this.lossConditions.selectedIndex], ControllerGameGlobals.challenge.lossConditions);
 		this.RefreshList(false);
 	}
 
 	private RefreshList(win:boolean):void {
 		var list = (win ? this.winConditions : this.lossConditions);
-		var conditions:Array<Condition> = (win ? ControllerChallenge.challenge.winConditions : ControllerChallenge.challenge.lossConditions);
+		var conditions:Array<Condition> = (win ? ControllerGameGlobals.challenge.winConditions : ControllerGameGlobals.challenge.lossConditions);
 		list.clear();
 		for (var i:number = 0; i < conditions.length; i++) {
 			var listItem:any = new Object();
@@ -390,6 +391,6 @@ export class ConditionsWindow extends GuiWindow
 	private closeButtonPressed():void {
 		this.visible = false;
 		this.cont.m_fader.visible = false;
-		ControllerChallenge.challenge.winConditionsAnded = this.allConditionsBox.selected;
+		ControllerGameGlobals.challenge.winConditionsAnded = this.allConditionsBox.selected;
 	}
 }

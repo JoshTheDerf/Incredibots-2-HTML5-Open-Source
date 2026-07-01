@@ -28,15 +28,10 @@ import { TextCheckboxAction } from "../Actions/TextCheckboxAction"
 import { TextSizeChangeAction } from "../Actions/TextSizeChangeAction"
 import { CameraMovement } from "./CameraMovement"
 import { Challenge } from "./Challenge"
-import { ControllerClimb } from "./Challenges/ControllerClimb"
-import { ControllerMonkeyBars } from "./Challenges/ControllerMonkeyBars"
-import { ControllerRace } from "./Challenges/ControllerRace"
-import { ControllerSpaceship } from "./Challenges/ControllerSpaceship"
 import { ContactFilter } from "./ContactFilter"
 import { ContactListener } from "./ContactListener"
 import { Controller } from "./Controller"
-import { ControllerChallenge } from "./ControllerChallenge"
-import { ControllerSandbox } from "./ControllerSandbox"
+import type { ControllerChallenge } from "./ControllerChallenge"
 import { Draw } from "./Draw"
 import { ControllerGameGlobals } from "./Globals/ControllerGameGlobals"
 import { b2DebugDraw } from "./Graphics/b2DebugDraw"
@@ -45,11 +40,6 @@ import { KeyPress } from "./KeyPress"
 import { Replay } from "./Replay"
 import { ReplaySyncPoint } from "./ReplaySyncPoint"
 import { Robot } from "./Robot"
-import { ControllerChallengeEditor } from "./Tutorials/ControllerChallengeEditor"
-import { ControllerHomeMovies } from "./Tutorials/ControllerHomeMovies"
-import { ControllerNewFeatures } from "./Tutorials/ControllerNewFeatures"
-import { ControllerRubeGoldberg } from "./Tutorials/ControllerRubeGoldberg"
-import { ControllerTutorial } from "./Tutorials/ControllerTutorial"
 import { Database } from "../General/Database"
 import { Input } from "../General/Input"
 import { LSOManager } from "../General/LSOManager"
@@ -358,7 +348,7 @@ export class ControllerGame extends Controller {
     if (ControllerGameGlobals.loadedParts) {
       if (
         this.controllerType === "challenge" &&
-        ControllerChallenge.playChallengeMode &&
+        ControllerGameGlobals.playChallengeMode &&
         !ControllerGameGlobals.justLoadedRobotWithChallenge
       ) {
         for (i = 0; i < ControllerGameGlobals.loadedParts.length; i++) {
@@ -366,7 +356,7 @@ export class ControllerGame extends Controller {
         }
       }
       if (ControllerGameGlobals.justLoadedRobotWithChallenge) {
-        this.allParts = this.allParts.concat(ControllerChallenge.challenge.allParts);
+        this.allParts = this.allParts.concat(ControllerGameGlobals.challenge.allParts);
         for (i = 0; i < this.allParts.length; i++) {
           this.allParts[i].isEditable = false;
         }
@@ -412,16 +402,16 @@ export class ControllerGame extends Controller {
     ControllerGameGlobals.initZoom = Number.MAX_VALUE;
 
     if (this.controllerType === "challenge") {
-      ControllerGameGlobals.minDensity = ControllerChallenge.challenge.minDensity == -Number.MAX_VALUE ? 1 : ControllerChallenge.challenge.minDensity;
-      ControllerGameGlobals.maxDensity = ControllerChallenge.challenge.maxDensity == Number.MAX_VALUE ? 30 : ControllerChallenge.challenge.maxDensity;
+      ControllerGameGlobals.minDensity = ControllerGameGlobals.challenge.minDensity == -Number.MAX_VALUE ? 1 : ControllerGameGlobals.challenge.minDensity;
+      ControllerGameGlobals.maxDensity = ControllerGameGlobals.challenge.maxDensity == Number.MAX_VALUE ? 30 : ControllerGameGlobals.challenge.maxDensity;
       ControllerGameGlobals.maxRJStrength =
-        ControllerChallenge.challenge.maxRJStrength == Number.MAX_VALUE ? 30 : ControllerChallenge.challenge.maxRJStrength;
-      ControllerGameGlobals.maxRJSpeed = ControllerChallenge.challenge.maxRJSpeed == Number.MAX_VALUE ? 30 : ControllerChallenge.challenge.maxRJSpeed;
+        ControllerGameGlobals.challenge.maxRJStrength == Number.MAX_VALUE ? 30 : ControllerGameGlobals.challenge.maxRJStrength;
+      ControllerGameGlobals.maxRJSpeed = ControllerGameGlobals.challenge.maxRJSpeed == Number.MAX_VALUE ? 30 : ControllerGameGlobals.challenge.maxRJSpeed;
       ControllerGameGlobals.maxSJStrength =
-        ControllerChallenge.challenge.maxSJStrength == Number.MAX_VALUE ? 30 : ControllerChallenge.challenge.maxSJStrength;
-      ControllerGameGlobals.maxSJSpeed = ControllerChallenge.challenge.maxSJSpeed == Number.MAX_VALUE ? 30 : ControllerChallenge.challenge.maxSJSpeed;
+        ControllerGameGlobals.challenge.maxSJStrength == Number.MAX_VALUE ? 30 : ControllerGameGlobals.challenge.maxSJStrength;
+      ControllerGameGlobals.maxSJSpeed = ControllerGameGlobals.challenge.maxSJSpeed == Number.MAX_VALUE ? 30 : ControllerGameGlobals.challenge.maxSJSpeed;
       ControllerGameGlobals.maxThrusterStrength =
-        ControllerChallenge.challenge.maxThrusterStrength == Number.MAX_VALUE ? 30 : ControllerChallenge.challenge.maxThrusterStrength;
+        ControllerGameGlobals.challenge.maxThrusterStrength == Number.MAX_VALUE ? 30 : ControllerGameGlobals.challenge.maxThrusterStrength;
     } else {
       ControllerGameGlobals.minDensity = 1;
       ControllerGameGlobals.maxDensity = 30;
@@ -626,7 +616,7 @@ export class ControllerGame extends Controller {
         }
         this.m_selectedBuildAreas[i].visible =
           this.m_sidePanel.BuildWindowShowing() &&
-          this.selectedBuildArea == ControllerChallenge.challenge.buildAreas[i];
+          this.selectedBuildArea == ControllerGameGlobals.challenge.buildAreas[i];
         this.m_buildAreas[i].visible = !this.m_selectedBuildAreas[i].visible && this.partsFit;
         this.m_badBuildAreas[i].visible = !this.m_selectedBuildAreas[i].visible && !this.partsFit;
       }
@@ -655,7 +645,7 @@ export class ControllerGame extends Controller {
         false,
         ControllerGameGlobals.showJoints,
         ControllerGameGlobals.showOutlines,
-        this.constructor.name === "ControllerChallenge" ? ControllerChallenge.challenge : undefined
+        this.constructor.name === "ControllerChallenge" ? ControllerGameGlobals.challenge : undefined
       );
       this.redrawRobot = false;
     }
@@ -755,7 +745,7 @@ export class ControllerGame extends Controller {
       this.pauseButton();
       if (!ControllerGameGlobals.playingReplay || ControllerGameGlobals.viewingUnsavedReplay) {
         this.m_fader.visible = true;
-        if (this instanceof ControllerTutorial || this.WonChallenge()) {
+        if (this.IsTutorial() || this.WonChallenge()) {
           if (this.m_scoreWindow) {
             try {
               this.removeChild(this.m_scoreWindow);
@@ -766,13 +756,13 @@ export class ControllerGame extends Controller {
             ControllerGameGlobals.winSound.play()
           }
           this.addChild(this.m_scoreWindow);
-          if (this instanceof ControllerTutorial) {
+          if (this.IsTutorial()) {
             LSOManager.SetLevelDone(Main.nextControllerType - 10);
           } else if (
-            this instanceof ControllerMonkeyBars ||
-            this instanceof ControllerClimb ||
-            this instanceof ControllerRace ||
-            this instanceof ControllerSpaceship
+            this.IsMonkeyBars() ||
+            this.IsClimb() ||
+            this.IsRace() ||
+            this.IsSpaceship()
           ) {
             LSOManager.SetLevelDone(Main.nextControllerType + 8);
           }
@@ -1135,7 +1125,7 @@ export class ControllerGame extends Controller {
     this.partsFit = true;
 
     if (this.controllerType === "sandbox") return;
-    if (this.controllerType === "challenge" && !ControllerChallenge.playChallengeMode) return;
+    if (this.controllerType === "challenge" && !ControllerGameGlobals.playChallengeMode) return;
     if (numAreas == 0) return;
 
     // Make sure the parts fit in the allowed building area
@@ -1791,7 +1781,7 @@ export class ControllerGame extends Controller {
     } else if (
       !this.paused &&
       ((this.controllerType === "sandbox" && !(this.controllerType === "challenge")) ||
-        (this.controllerType === "challenge" && ControllerChallenge.challenge.mouseDragAllowed))
+        (this.controllerType === "challenge" && ControllerGameGlobals.challenge.mouseDragAllowed))
     ) {
       // mouse press
       if (Input.mouseDown && !this.m_mouseJoint) {
@@ -2146,9 +2136,9 @@ export class ControllerGame extends Controller {
           Math.max(this.firstClickX, ControllerGameGlobals.mouseXWorldPhys),
           Math.max(this.firstClickY, ControllerGameGlobals.mouseYWorldPhys)
         );
-        ControllerChallenge.challenge.buildAreas.push(buildArea);
+        ControllerGameGlobals.challenge.buildAreas.push(buildArea);
         this.selectedBuildArea =
-          ControllerChallenge.challenge.buildAreas[ControllerChallenge.challenge.buildAreas.length - 1];
+          ControllerGameGlobals.challenge.buildAreas[ControllerGameGlobals.challenge.buildAreas.length - 1];
         this.m_sidePanel.ShowBuildBoxPanel();
         this.BuildBuildArea();
         this.redrawRobot = true;
@@ -2186,16 +2176,16 @@ export class ControllerGame extends Controller {
       this.selectedParts.length == 0 &&
       this.curAction == -1 &&
       this.controllerType === "challenge" &&
-      !ControllerChallenge.playChallengeMode
+      !ControllerGameGlobals.playChallengeMode
     ) {
-      for (i = 0; i < ControllerChallenge.challenge.buildAreas.length; i++) {
+      for (i = 0; i < ControllerGameGlobals.challenge.buildAreas.length; i++) {
         if (
-          ControllerGameGlobals.mouseXWorldPhys > ControllerChallenge.challenge.buildAreas[i].lowerBound.x &&
-          ControllerGameGlobals.mouseXWorldPhys < ControllerChallenge.challenge.buildAreas[i].upperBound.x &&
-          ControllerGameGlobals.mouseYWorldPhys > ControllerChallenge.challenge.buildAreas[i].lowerBound.y &&
-          ControllerGameGlobals.mouseYWorldPhys < ControllerChallenge.challenge.buildAreas[i].upperBound.y
+          ControllerGameGlobals.mouseXWorldPhys > ControllerGameGlobals.challenge.buildAreas[i].lowerBound.x &&
+          ControllerGameGlobals.mouseXWorldPhys < ControllerGameGlobals.challenge.buildAreas[i].upperBound.x &&
+          ControllerGameGlobals.mouseYWorldPhys > ControllerGameGlobals.challenge.buildAreas[i].lowerBound.y &&
+          ControllerGameGlobals.mouseYWorldPhys < ControllerGameGlobals.challenge.buildAreas[i].upperBound.y
         ) {
-          this.selectedBuildArea = ControllerChallenge.challenge.buildAreas[i];
+          this.selectedBuildArea = ControllerGameGlobals.challenge.buildAreas[i];
           this.m_sidePanel.ShowBuildBoxPanel();
           break;
         }
@@ -3087,7 +3077,7 @@ export class ControllerGame extends Controller {
 
   public buildBoxButton(): void {
     if (this.selectingCondition) return;
-    /*if (ControllerChallenge.challenge.buildAreas.length != 0) {
+    /*if (ControllerGameGlobals.challenge.buildAreas.length != 0) {
 			m_fader.visible = true;
 			if (m_progressDialog) removeChild(m_progressDialog);
 			m_progressDialog = new DialogWindow(this, "One or more build boxes already exists.  Would you like to keep them or delete them?", true, false, true);
@@ -3103,9 +3093,9 @@ export class ControllerGame extends Controller {
     if (!this.simStarted) {
       if (
         this.controllerType === "sandbox" &&
-        (!(this.controllerType === "challenge") || !ControllerChallenge.playOnlyMode)
+        (!(this.controllerType === "challenge") || !ControllerGameGlobals.playOnlyMode)
       ) {
-        this.m_sandboxWindow = new AdvancedSandboxWindow(this, ControllerSandbox.settings);
+        this.m_sandboxWindow = new AdvancedSandboxWindow(this, ControllerGameGlobals.settings);
         this.m_fader.visible = true;
         this.addChild(this.m_sandboxWindow);
       } else {
@@ -4051,9 +4041,9 @@ export class ControllerGame extends Controller {
     if (!ControllerGameGlobals.curRobotEditable) return;
     if (this.simStarted) return;
     if (this.selectedBuildArea) {
-      ControllerChallenge.challenge.buildAreas = Util.RemoveFromArray(
+      ControllerGameGlobals.challenge.buildAreas = Util.RemoveFromArray(
         this.selectedBuildArea,
-        ControllerChallenge.challenge.buildAreas
+        ControllerGameGlobals.challenge.buildAreas
       );
       this.BuildBuildArea();
       this.redrawBuildArea = true;
@@ -5063,16 +5053,16 @@ export class ControllerGame extends Controller {
     }
     if (
       this.controllerType === "challenge" &&
-      ControllerChallenge.playChallengeMode &&
-      ((hasStatic && !ControllerChallenge.challenge.fixateAllowed) ||
-        (hasCircles && !ControllerChallenge.challenge.circlesAllowed) ||
-        (hasRects && !ControllerChallenge.challenge.rectanglesAllowed) ||
-        (hasTriangles && !ControllerChallenge.challenge.trianglesAllowed) ||
-        (hasFJs && !ControllerChallenge.challenge.fixedJointsAllowed) ||
-        (hasRJs && !ControllerChallenge.challenge.rotatingJointsAllowed) ||
-        (hasSJs && !ControllerChallenge.challenge.slidingJointsAllowed) ||
-        (hasThrusters && !ControllerChallenge.challenge.thrustersAllowed) ||
-        (hasCannons && !ControllerChallenge.challenge.cannonsAllowed))
+      ControllerGameGlobals.playChallengeMode &&
+      ((hasStatic && !ControllerGameGlobals.challenge.fixateAllowed) ||
+        (hasCircles && !ControllerGameGlobals.challenge.circlesAllowed) ||
+        (hasRects && !ControllerGameGlobals.challenge.rectanglesAllowed) ||
+        (hasTriangles && !ControllerGameGlobals.challenge.trianglesAllowed) ||
+        (hasFJs && !ControllerGameGlobals.challenge.fixedJointsAllowed) ||
+        (hasRJs && !ControllerGameGlobals.challenge.rotatingJointsAllowed) ||
+        (hasSJs && !ControllerGameGlobals.challenge.slidingJointsAllowed) ||
+        (hasThrusters && !ControllerGameGlobals.challenge.thrustersAllowed) ||
+        (hasCannons && !ControllerGameGlobals.challenge.cannonsAllowed))
     ) {
       this.m_fader.visible = true;
       this.ShowDialog3("Sorry, some of the copied parts are not allowed in this challenge!");
@@ -5359,8 +5349,8 @@ export class ControllerGame extends Controller {
           "_ScoreReplay",
           "This replay instanceof saved for a score",
           ControllerGameGlobals.curRobotID,
-          new Robot(this.allParts, ControllerSandbox.settings),
-          ControllerChallenge.ChallengeOver() ? this.GetScore() : -1,
+          new Robot(this.allParts, ControllerGameGlobals.settings),
+          this.ChallengeOver() ? this.GetScore() : -1,
           ControllerGameGlobals.curChallengeID,
           1,
           this.finishSavingReplay
@@ -5379,8 +5369,8 @@ export class ControllerGame extends Controller {
           "_ScoreReplay",
           "This replay instanceof saved for a score",
           ControllerGameGlobals.curRobotID,
-          new Robot(this.allParts, ControllerSandbox.settings),
-          ControllerChallenge.ChallengeOver() ? this.GetScore() : -1,
+          new Robot(this.allParts, ControllerGameGlobals.settings),
+          this.ChallengeOver() ? this.GetScore() : -1,
           ControllerGameGlobals.curChallengeID,
           1,
           this.finishSavingReplay
@@ -5511,11 +5501,11 @@ export class ControllerGame extends Controller {
         }
       }
       if (
-        this instanceof ControllerTutorial ||
-        this instanceof ControllerHomeMovies ||
-        this instanceof ControllerRubeGoldberg ||
-        this instanceof ControllerNewFeatures ||
-        this instanceof ControllerChallengeEditor ||
+        this.IsTutorial() ||
+        this.IsHomeMovies() ||
+        this.IsRubeGoldberg() ||
+        this.IsNewFeatures() ||
+        this.IsChallengeEditor() ||
         (ControllerGameGlobals.curRobotID != "" &&
           (!(this.controllerType === "challenge") || ControllerGameGlobals.curChallengeID != "")) ||
         (!partsExist && !(this.controllerType === "challenge"))
@@ -5557,7 +5547,7 @@ export class ControllerGame extends Controller {
             }
           }
         }
-        if (this.controllerType === "challenge" && !ControllerChallenge.playChallengeMode) {
+        if (this.controllerType === "challenge" && !ControllerGameGlobals.playChallengeMode) {
           if (this.m_restrictionsDialog) this.removeChild(this.m_restrictionsDialog);
           this.m_restrictionsDialog = new RestrictionsWindow(this as ControllerChallenge);
           this.addChild(this.m_restrictionsDialog);
@@ -5569,7 +5559,7 @@ export class ControllerGame extends Controller {
           Database.ExportRobot(
             new Robot(
               this.allParts.filter(this.PartIsEditable),
-              ControllerSandbox.settings,
+              ControllerGameGlobals.settings,
               this.draw.m_drawXOff,
               this.draw.m_drawYOff,
               this.m_physScale
@@ -5773,15 +5763,15 @@ export class ControllerGame extends Controller {
         }
         if (
           this.controllerType === "challenge" &&
-          ((hasStatic && !ControllerChallenge.challenge.fixateAllowed) ||
-            (hasCircles && !ControllerChallenge.challenge.circlesAllowed) ||
-            (hasRects && !ControllerChallenge.challenge.rectanglesAllowed) ||
-            (hasTriangles && !ControllerChallenge.challenge.trianglesAllowed) ||
-            (hasFJs && !ControllerChallenge.challenge.fixedJointsAllowed) ||
-            (hasRJs && !ControllerChallenge.challenge.rotatingJointsAllowed) ||
-            (hasSJs && !ControllerChallenge.challenge.slidingJointsAllowed) ||
-            (hasThrusters && !ControllerChallenge.challenge.thrustersAllowed) ||
-            (hasCannons && !ControllerChallenge.challenge.cannonsAllowed))
+          ((hasStatic && !ControllerGameGlobals.challenge.fixateAllowed) ||
+            (hasCircles && !ControllerGameGlobals.challenge.circlesAllowed) ||
+            (hasRects && !ControllerGameGlobals.challenge.rectanglesAllowed) ||
+            (hasTriangles && !ControllerGameGlobals.challenge.trianglesAllowed) ||
+            (hasFJs && !ControllerGameGlobals.challenge.fixedJointsAllowed) ||
+            (hasRJs && !ControllerGameGlobals.challenge.rotatingJointsAllowed) ||
+            (hasSJs && !ControllerGameGlobals.challenge.slidingJointsAllowed) ||
+            (hasThrusters && !ControllerGameGlobals.challenge.thrustersAllowed) ||
+            (hasCannons && !ControllerGameGlobals.challenge.cannonsAllowed))
         ) {
           this.m_fader.visible = true;
           ControllerGameGlobals.loadAndInsert = true;
@@ -5825,10 +5815,10 @@ export class ControllerGame extends Controller {
         ControllerGameGlobals.initZoom = robot.zoomLevel;
         if (robot.challenge) {
           Main.nextControllerType = 1;
-          ControllerChallenge.challenge = robot.challenge;
-          ControllerChallenge.playChallengeMode = true;
-          ControllerChallenge.playOnlyMode = true;
-          ControllerSandbox.settings = robot.challenge.settings;
+          ControllerGameGlobals.challenge = robot.challenge;
+          ControllerGameGlobals.playChallengeMode = true;
+          ControllerGameGlobals.playOnlyMode = true;
+          ControllerGameGlobals.settings = robot.challenge.settings;
           ControllerGameGlobals.curChallengeID = ControllerGameGlobals.potentialChallengeID;
           ControllerGameGlobals.ratedCurChallenge = false;
           ControllerGameGlobals.curChallengePublic = false;
@@ -5836,7 +5826,7 @@ export class ControllerGame extends Controller {
           ControllerGameGlobals.justLoadedRobotWithChallenge = true;
         } else {
           Main.nextControllerType = 0;
-          ControllerSandbox.settings = robot.settings;
+          ControllerGameGlobals.settings = robot.settings;
           ControllerGameGlobals.curChallengeID = "";
         }
       }
@@ -5887,7 +5877,7 @@ export class ControllerGame extends Controller {
               "",
               "",
               ControllerGameGlobals.curRobotID,
-              new Robot(this.allParts, ControllerSandbox.settings),
+              new Robot(this.allParts, ControllerGameGlobals.settings),
               -1,
               "",
               1,
@@ -5905,7 +5895,7 @@ export class ControllerGame extends Controller {
               "",
               "",
               ControllerGameGlobals.curRobotID,
-              new Robot(this.allParts, ControllerSandbox.settings),
+              new Robot(this.allParts, ControllerGameGlobals.settings),
               -1,
               "",
               1,
@@ -6140,8 +6130,8 @@ export class ControllerGame extends Controller {
             "_ScoreReplay",
             "This replay instanceof saved for a score",
             ControllerGameGlobals.curRobotID,
-            new Robot(this.allParts, ControllerSandbox.settings),
-            ControllerChallenge.ChallengeOver() ? this.GetScore() : -1,
+            new Robot(this.allParts, ControllerGameGlobals.settings),
+            this.ChallengeOver() ? this.GetScore() : -1,
             ControllerGameGlobals.curChallengeID,
             1,
             this.finishSavingReplay
@@ -6160,8 +6150,8 @@ export class ControllerGame extends Controller {
             "_ScoreReplay",
             "This replay instanceof saved for a score",
             ControllerGameGlobals.curRobotID,
-            new Robot(this.allParts, ControllerSandbox.settings),
-            ControllerChallenge.ChallengeOver() ? this.GetScore() : -1,
+            new Robot(this.allParts, ControllerGameGlobals.settings),
+            this.ChallengeOver() ? this.GetScore() : -1,
             ControllerGameGlobals.curChallengeID,
             1,
             this.finishSavingReplay
@@ -6293,7 +6283,7 @@ export class ControllerGame extends Controller {
       } else {
         var robot: Robot = replayAndRobot[1];
         ControllerGameGlobals.replayParts = robot.allParts;
-        ControllerSandbox.settings = robot.settings;
+        ControllerGameGlobals.settings = robot.settings;
         ControllerGameGlobals.playingReplay = true;
         ControllerGameGlobals.viewingUnsavedReplay = false;
         Main.changeControllers = true;
@@ -6360,10 +6350,10 @@ export class ControllerGame extends Controller {
       Main.nextControllerType = 1;
       ControllerGameGlobals.playingReplay = false;
 
-      ControllerChallenge.challenge = challenge;
-      ControllerChallenge.playChallengeMode = !ControllerGameGlobals.potentialChallengeEditable;
-      ControllerChallenge.playOnlyMode = !ControllerGameGlobals.potentialChallengeEditable;
-      ControllerSandbox.settings = challenge.settings;
+      ControllerGameGlobals.challenge = challenge;
+      ControllerGameGlobals.playChallengeMode = !ControllerGameGlobals.potentialChallengeEditable;
+      ControllerGameGlobals.playOnlyMode = !ControllerGameGlobals.potentialChallengeEditable;
+      ControllerGameGlobals.settings = challenge.settings;
       ControllerGameGlobals.curChallengeID = ControllerGameGlobals.potentialChallengeID;
       ControllerGameGlobals.ratedCurChallenge = false;
       ControllerGameGlobals.curChallengePublic = ControllerGameGlobals.potentialChallengePublic;

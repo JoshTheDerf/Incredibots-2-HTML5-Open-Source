@@ -12,6 +12,10 @@ import { ShapePart } from "../../Parts/ShapePart"
 
 export class ControllerRubeGoldberg extends ControllerSandbox
 {
+
+	public IsRubeGoldberg(): boolean {
+		return true;
+	}
 	private ball:ShapePart;
 	private straightRect:ShapePart;
 	private angledRect:ShapePart;

@@ -113,6 +113,49 @@ export class Controller extends Container {
     return false;
   }
 
+  public IsMainMenu(): boolean {
+    return false;
+  }
+
+  // Type predicates used in place of `instanceof` across modules, to avoid
+  // controller subclasses becoming part of a base class's module-load graph
+  // (which caused TDZ cycles). Each subclass overrides the relevant one.
+  public IsTutorial(): boolean {
+    return false;
+  }
+
+  public IsMonkeyBars(): boolean {
+    return false;
+  }
+
+  public IsClimb(): boolean {
+    return false;
+  }
+
+  public IsRace(): boolean {
+    return false;
+  }
+
+  public IsSpaceship(): boolean {
+    return false;
+  }
+
+  public IsHomeMovies(): boolean {
+    return false;
+  }
+
+  public IsRubeGoldberg(): boolean {
+    return false;
+  }
+
+  public IsNewFeatures(): boolean {
+    return false;
+  }
+
+  public IsChallengeEditor(): boolean {
+    return false;
+  }
+
   public GetPhysScale(): number {
     return 30;
   }

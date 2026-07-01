@@ -9,15 +9,11 @@ import { Main } from "../Main"
 import { TextPart } from "../Parts/TextPart"
 
 export class ControllerChallenge extends ControllerSandbox {
-  public static challenge: Challenge;
-  public static playChallengeMode: boolean = false;
-  public static playOnlyMode: boolean = false;
-
   public controllerType: string = "challenge";
 
   constructor() {
     super();
-    if (!ControllerChallenge.challenge) ControllerChallenge.challenge = new Challenge(ControllerChallenge.settings);
+    if (!ControllerGameGlobals.challenge) ControllerGameGlobals.challenge = new Challenge(ControllerGameGlobals.settings);
     this.BuildBuildArea();
   }
 
@@ -25,15 +21,15 @@ export class ControllerChallenge extends ControllerSandbox {
     super.Update();
 
     if (this.simStarted && !this.paused) {
-      for (var i: number = 0; i < ControllerChallenge.challenge.winConditions.length; i++) {
-        ControllerChallenge.challenge.winConditions[i].Update(this.allParts, ControllerGameGlobals.cannonballs);
+      for (var i: number = 0; i < ControllerGameGlobals.challenge.winConditions.length; i++) {
+        ControllerGameGlobals.challenge.winConditions[i].Update(this.allParts, ControllerGameGlobals.cannonballs);
       }
-      for (i = 0; i < ControllerChallenge.challenge.lossConditions.length; i++) {
-        ControllerChallenge.challenge.lossConditions[i].Update(this.allParts, ControllerGameGlobals.cannonballs);
+      for (i = 0; i < ControllerGameGlobals.challenge.lossConditions.length; i++) {
+        ControllerGameGlobals.challenge.lossConditions[i].Update(this.allParts, ControllerGameGlobals.cannonballs);
       }
     }
 
-    if (ControllerChallenge.playChallengeMode) {
+    if (ControllerGameGlobals.playChallengeMode) {
       this.m_guiPanel.ShowEditButton();
     } else {
       this.m_guiPanel.HideEditButton();
@@ -41,11 +37,11 @@ export class ControllerChallenge extends ControllerSandbox {
   }
 
   public playButton (maybeShowAd: boolean = true): void {
-    if (!ControllerChallenge.playChallengeMode) {
-      ControllerChallenge.challenge.allParts = this.allParts.filter(this.PartIsEditable);
-      ControllerChallenge.playChallengeMode = true;
-      for (var i: number = 0; i < ControllerChallenge.challenge.allParts.length; i++) {
-        ControllerChallenge.challenge.allParts[i].isEditable = false;
+    if (!ControllerGameGlobals.playChallengeMode) {
+      ControllerGameGlobals.challenge.allParts = this.allParts.filter(this.PartIsEditable);
+      ControllerGameGlobals.playChallengeMode = true;
+      for (var i: number = 0; i < ControllerGameGlobals.challenge.allParts.length; i++) {
+        ControllerGameGlobals.challenge.allParts[i].isEditable = false;
       }
       this.m_sidePanel.visible = false;
       this.CheckIfPartsFit();
@@ -54,11 +50,11 @@ export class ControllerChallenge extends ControllerSandbox {
       this.lastAction = -1;
     } else {
       if (!this.simStarted) {
-        for (i = 0; i < ControllerChallenge.challenge.winConditions.length; i++) {
-          ControllerChallenge.challenge.winConditions[i].isSatisfied = false;
+        for (i = 0; i < ControllerGameGlobals.challenge.winConditions.length; i++) {
+          ControllerGameGlobals.challenge.winConditions[i].isSatisfied = false;
         }
-        for (i = 0; i < ControllerChallenge.challenge.lossConditions.length; i++) {
-          ControllerChallenge.challenge.lossConditions[i].isSatisfied = false;
+        for (i = 0; i < ControllerGameGlobals.challenge.lossConditions.length; i++) {
+          ControllerGameGlobals.challenge.lossConditions[i].isSatisfied = false;
         }
       }
       super.playButton(maybeShowAd);
@@ -69,26 +65,26 @@ export class ControllerChallenge extends ControllerSandbox {
     if (confirmed) {
       this.m_fader.visible = false;
       this.m_progressDialog.visible = false;
-      ControllerChallenge.playChallengeMode = false;
+      ControllerGameGlobals.playChallengeMode = false;
       this.allParts = new Array();
       this.RefreshSandboxSettings();
-      for (var i: number = 0; i < ControllerChallenge.challenge.allParts.length; i++) {
-        this.allParts.push(ControllerChallenge.challenge.allParts[i]);
-        ControllerChallenge.challenge.allParts[i].isEditable = true;
-        if (ControllerChallenge.challenge.allParts[i] instanceof TextPart) {
-          if (ControllerChallenge.challenge.allParts[i].inFront) {
+      for (var i: number = 0; i < ControllerGameGlobals.challenge.allParts.length; i++) {
+        this.allParts.push(ControllerGameGlobals.challenge.allParts[i]);
+        ControllerGameGlobals.challenge.allParts[i].isEditable = true;
+        if (ControllerGameGlobals.challenge.allParts[i] instanceof TextPart) {
+          if (ControllerGameGlobals.challenge.allParts[i].inFront) {
             this.addChildAt(
-              ControllerChallenge.challenge.allParts[i].m_textField,
+              ControllerGameGlobals.challenge.allParts[i].m_textField,
               this.getChildIndex(this.m_canvas) + 1
             );
           } else {
-            this.addChildAt(ControllerChallenge.challenge.allParts[i].m_textField, this.getChildIndex(this.m_canvas));
+            this.addChildAt(ControllerGameGlobals.challenge.allParts[i].m_textField, this.getChildIndex(this.m_canvas));
           }
         }
       }
     } else {
       this.m_fader.visible = true;
-      if (ControllerChallenge.playOnlyMode) {
+      if (ControllerGameGlobals.playOnlyMode) {
         this.ShowDialog3("This challenge is uneditable!");
         this.m_progressDialog.ShowOKButton();
         this.m_progressDialog.StopTimer();
@@ -102,7 +98,7 @@ export class ControllerChallenge extends ControllerSandbox {
   }
 
   public circleButton(): void {
-    if (ControllerChallenge.playChallengeMode && !ControllerChallenge.challenge.circlesAllowed) {
+    if (ControllerGameGlobals.playChallengeMode && !ControllerGameGlobals.challenge.circlesAllowed) {
       this.m_fader.visible = true;
       this.ShowDialog3("Circles are not allowed in this challenge!");
       this.m_progressDialog.ShowOKButton();
@@ -113,7 +109,7 @@ export class ControllerChallenge extends ControllerSandbox {
   }
 
   public rectButton(): void {
-    if (ControllerChallenge.playChallengeMode && !ControllerChallenge.challenge.rectanglesAllowed) {
+    if (ControllerGameGlobals.playChallengeMode && !ControllerGameGlobals.challenge.rectanglesAllowed) {
       this.m_fader.visible = true;
       this.ShowDialog3("Rectangles are not allowed in this challenge!");
       this.m_progressDialog.ShowOKButton();
@@ -124,7 +120,7 @@ export class ControllerChallenge extends ControllerSandbox {
   }
 
   public triangleButton(): void {
-    if (ControllerChallenge.playChallengeMode && !ControllerChallenge.challenge.trianglesAllowed) {
+    if (ControllerGameGlobals.playChallengeMode && !ControllerGameGlobals.challenge.trianglesAllowed) {
       this.m_fader.visible = true;
       this.ShowDialog3("Triangles are not allowed in this challenge!");
       this.m_progressDialog.ShowOKButton();
@@ -135,7 +131,7 @@ export class ControllerChallenge extends ControllerSandbox {
   }
 
   public fjButton(): void {
-    if (ControllerChallenge.playChallengeMode && !ControllerChallenge.challenge.fixedJointsAllowed) {
+    if (ControllerGameGlobals.playChallengeMode && !ControllerGameGlobals.challenge.fixedJointsAllowed) {
       this.m_fader.visible = true;
       this.ShowDialog3("Fixed Joints are not allowed in this challenge!");
       this.m_progressDialog.ShowOKButton();
@@ -146,7 +142,7 @@ export class ControllerChallenge extends ControllerSandbox {
   }
 
   public rjButton(): void {
-    if (ControllerChallenge.playChallengeMode && !ControllerChallenge.challenge.rotatingJointsAllowed) {
+    if (ControllerGameGlobals.playChallengeMode && !ControllerGameGlobals.challenge.rotatingJointsAllowed) {
       this.m_fader.visible = true;
       this.ShowDialog3("Rotating Joints are not allowed in this challenge!");
       this.m_progressDialog.ShowOKButton();
@@ -157,7 +153,7 @@ export class ControllerChallenge extends ControllerSandbox {
   }
 
   public pjButton(): void {
-    if (ControllerChallenge.playChallengeMode && !ControllerChallenge.challenge.slidingJointsAllowed) {
+    if (ControllerGameGlobals.playChallengeMode && !ControllerGameGlobals.challenge.slidingJointsAllowed) {
       this.m_fader.visible = true;
       this.ShowDialog3("Sliding Joints are not allowed in this challenge!");
       this.m_progressDialog.ShowOKButton();
@@ -168,7 +164,7 @@ export class ControllerChallenge extends ControllerSandbox {
   }
 
   public thrustersButton(): void {
-    if (ControllerChallenge.playChallengeMode && !ControllerChallenge.challenge.thrustersAllowed) {
+    if (ControllerGameGlobals.playChallengeMode && !ControllerGameGlobals.challenge.thrustersAllowed) {
       this.m_fader.visible = true;
       this.ShowDialog3("Thrusters are not allowed in this challenge!");
       this.m_progressDialog.ShowOKButton();
@@ -179,7 +175,7 @@ export class ControllerChallenge extends ControllerSandbox {
   }
 
   public cannonButton(): void {
-    if (ControllerChallenge.playChallengeMode && !ControllerChallenge.challenge.cannonsAllowed) {
+    if (ControllerGameGlobals.playChallengeMode && !ControllerGameGlobals.challenge.cannonsAllowed) {
       this.m_fader.visible = true;
       this.ShowDialog3("Cannons are not allowed in this challenge!");
       this.m_progressDialog.ShowOKButton();
@@ -190,15 +186,15 @@ export class ControllerChallenge extends ControllerSandbox {
   }
 
   protected GetBuildingArea(): b2AABB {
-    return ControllerChallenge.challenge.buildAreas[0];
+    return ControllerGameGlobals.challenge.buildAreas[0];
   }
 
   protected GetBuildingAreaNumber(i: number): b2AABB {
-    return ControllerChallenge.challenge.buildAreas[i];
+    return ControllerGameGlobals.challenge.buildAreas[i];
   }
 
   protected NumBuildingAreas(): number {
-    return ControllerChallenge.challenge.buildAreas.length;
+    return ControllerGameGlobals.challenge.buildAreas.length;
   }
 
   public DeleteBuildBoxes(e: Event): void {
@@ -212,16 +208,16 @@ export class ControllerChallenge extends ControllerSandbox {
     this.m_buildAreas = new Array();
     this.m_badBuildAreas = new Array();
     this.m_selectedBuildAreas = new Array();
-    ControllerChallenge.challenge.buildAreas = new Array();
+    ControllerGameGlobals.challenge.buildAreas = new Array();
     this.redrawBuildArea = true;
   }
 
   public ContactAdded(contact: b2Contact): void {
-    for (var i: number = 0; i < ControllerChallenge.challenge.winConditions.length; i++) {
-      ControllerChallenge.challenge.winConditions[i].ContactAdded(contact, this.allParts, ControllerGameGlobals.cannonballs);
+    for (var i: number = 0; i < ControllerGameGlobals.challenge.winConditions.length; i++) {
+      ControllerGameGlobals.challenge.winConditions[i].ContactAdded(contact, this.allParts, ControllerGameGlobals.cannonballs);
     }
-    for (i = 0; i < ControllerChallenge.challenge.lossConditions.length; i++) {
-      ControllerChallenge.challenge.lossConditions[i].ContactAdded(contact, this.allParts, ControllerGameGlobals.cannonballs);
+    for (i = 0; i < ControllerGameGlobals.challenge.lossConditions.length; i++) {
+      ControllerGameGlobals.challenge.lossConditions[i].ContactAdded(contact, this.allParts, ControllerGameGlobals.cannonballs);
     }
   }
 
@@ -230,28 +226,28 @@ export class ControllerChallenge extends ControllerSandbox {
   }
 
   protected WonChallenge(): boolean {
-    if (ControllerChallenge.challenge.winConditions.length == 0) return false;
-    for (var i: number = 0; i < ControllerChallenge.challenge.lossConditions.length; i++) {
-      if (ControllerChallenge.challenge.lossConditions[i].isSatisfied) return false;
+    if (ControllerGameGlobals.challenge.winConditions.length == 0) return false;
+    for (var i: number = 0; i < ControllerGameGlobals.challenge.lossConditions.length; i++) {
+      if (ControllerGameGlobals.challenge.lossConditions[i].isSatisfied) return false;
     }
-    if (ControllerChallenge.challenge.winConditionsAnded) {
-      for (i = 0; i < ControllerChallenge.challenge.winConditions.length; i++) {
-        if (!ControllerChallenge.challenge.winConditions[i].isSatisfied) return false;
+    if (ControllerGameGlobals.challenge.winConditionsAnded) {
+      for (i = 0; i < ControllerGameGlobals.challenge.winConditions.length; i++) {
+        if (!ControllerGameGlobals.challenge.winConditions[i].isSatisfied) return false;
       }
       return true;
     } else {
-      for (i = 0; i < ControllerChallenge.challenge.winConditions.length; i++) {
-        if (ControllerChallenge.challenge.winConditions[i].isSatisfied) return true;
+      for (i = 0; i < ControllerGameGlobals.challenge.winConditions.length; i++) {
+        if (ControllerGameGlobals.challenge.winConditions[i].isSatisfied) return true;
       }
       return false;
     }
   }
 
   protected LostChallenge(): boolean {
-    for (var i: number = 0; i < ControllerChallenge.challenge.lossConditions.length; i++) {
+    for (var i: number = 0; i < ControllerGameGlobals.challenge.lossConditions.length; i++) {
       if (
-        ControllerChallenge.challenge.lossConditions[i].isSatisfied &&
-        ControllerChallenge.challenge.lossConditions[i].immediate
+        ControllerGameGlobals.challenge.lossConditions[i].isSatisfied &&
+        ControllerGameGlobals.challenge.lossConditions[i].immediate
       ) {
         return true;
       }
@@ -283,7 +279,7 @@ export class ControllerChallenge extends ControllerSandbox {
               "_ScoreReplay",
               "This replay is saved for a score",
               curRobotID,
-              new Robot(this.allParts, ControllerSandbox.settings),
+              new Robot(this.allParts, ControllerGameGlobals.settings),
               this.ChallengeOver() ? this.GetScore() : -1,
               curChallengeID,
               1,
@@ -303,7 +299,7 @@ export class ControllerChallenge extends ControllerSandbox {
               "_ScoreReplay",
               "This replay is saved for a score",
               curRobotID,
-              new Robot(this.allParts, ControllerSandbox.settings),
+              new Robot(this.allParts, ControllerGameGlobals.settings),
               this.ChallengeOver() ? this.GetScore() : -1,
               curChallengeID,
               1,

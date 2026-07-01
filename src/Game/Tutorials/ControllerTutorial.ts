@@ -9,6 +9,10 @@ import { Sky } from "../Graphics/Sky"
 
 export class ControllerTutorial extends ControllerGame
 {
+
+	public IsTutorial(): boolean {
+		return true;
+	}
 	protected sGround1:Graphics;
 	protected sGround2:Graphics;
 	protected sGround3:Graphics;

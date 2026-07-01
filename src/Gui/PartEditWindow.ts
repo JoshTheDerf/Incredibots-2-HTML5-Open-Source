@@ -1054,12 +1054,12 @@ export class PartEditWindow extends GuiWindow {
     this.m_collisionBox.visible =
       this.cont.controllerType === "sandbox" ||
       (this.cont.controllerType === "challenge" &&
-        (ControllerChallenge.challenge.nonCollidingAllowed || !ControllerChallenge.playChallengeMode));
+        (ControllerGameGlobals.challenge.nonCollidingAllowed || !ControllerGameGlobals.playChallengeMode));
     this.m_fixateBox.selected = shape.isStatic;
     this.m_fixateBox.visible =
       this.cont.controllerType === "sandbox" ||
       (this.cont.controllerType === "challenge" &&
-        (ControllerChallenge.challenge.fixateAllowed || !ControllerChallenge.playChallengeMode));
+        (ControllerGameGlobals.challenge.fixateAllowed || !ControllerGameGlobals.playChallengeMode));
     this.m_cameraBox.selected = shape.isCameraFocus;
     this.m_outlineBox.selected = shape.outline;
     this.m_terrainBox.selected = shape.terrain;
@@ -1091,12 +1091,12 @@ export class PartEditWindow extends GuiWindow {
     this.m_collisionBox7.visible =
       (this.cont.controllerType === "sandbox" && !(this.cont.controllerType === "challenge")) ||
       (this.cont.controllerType === "challenge" &&
-        (ControllerChallenge.challenge.nonCollidingAllowed || !ControllerChallenge.playChallengeMode));
+        (ControllerGameGlobals.challenge.nonCollidingAllowed || !ControllerGameGlobals.playChallengeMode));
     this.m_fixateBox7.selected = cannon.isStatic;
     this.m_fixateBox7.visible =
       (this.cont.controllerType === "sandbox" && !(this.cont.controllerType === "challenge")) ||
       (this.cont.controllerType === "challenge" &&
-        (ControllerChallenge.challenge.fixateAllowed || !ControllerChallenge.playChallengeMode));
+        (ControllerGameGlobals.challenge.fixateAllowed || !ControllerGameGlobals.playChallengeMode));
     this.m_outlineBox7.selected = cannon.outline;
     this.m_terrainBox7.selected = cannon.terrain;
     this.m_undragableBox7.selected = cannon.undragable;
@@ -1152,11 +1152,11 @@ export class PartEditWindow extends GuiWindow {
     this.m_collisionBox2.visible =
       (this.cont.controllerType === "sandbox" && !(this.cont.controllerType === "challenge")) ||
       (this.cont.controllerType === "challenge" &&
-        (ControllerChallenge.challenge.nonCollidingAllowed || !ControllerChallenge.playChallengeMode));
+        (ControllerGameGlobals.challenge.nonCollidingAllowed || !ControllerGameGlobals.playChallengeMode));
     this.m_fixateBox2.visible =
       (this.cont.controllerType === "sandbox" && !(this.cont.controllerType === "challenge")) ||
       (this.cont.controllerType === "challenge" &&
-        (ControllerChallenge.challenge.fixateAllowed || !ControllerChallenge.playChallengeMode));
+        (ControllerGameGlobals.challenge.fixateAllowed || !ControllerGameGlobals.playChallengeMode));
     this.m_buildBoxPanel.visible = false;
     for (var i: number = 0; i < parts.length; i++) {
       if (
@@ -1303,7 +1303,7 @@ export class PartEditWindow extends GuiWindow {
       this.m_collisionBox3.visible =
         (this.cont.controllerType === "sandbox" && !(this.cont.controllerType === "challenge")) ||
         (this.cont.controllerType === "challenge" &&
-          (ControllerChallenge.challenge.nonCollidingAllowed || !ControllerChallenge.playChallengeMode));
+          (ControllerGameGlobals.challenge.nonCollidingAllowed || !ControllerGameGlobals.playChallengeMode));
       this.m_collisionBox3.selected = pjoint.collide;
       this.m_jointHeader.text = "Sliding Joint";
       format = new TextStyle();
@@ -1337,20 +1337,20 @@ export class PartEditWindow extends GuiWindow {
 
     this.m_inputLabel1.visible =
       !(this.cont.controllerType === "challenge") ||
-      !ControllerChallenge.playChallengeMode ||
-      (this.cont.controllerType === "challenge" && ControllerChallenge.challenge.botControlAllowed);
+      !ControllerGameGlobals.playChallengeMode ||
+      (this.cont.controllerType === "challenge" && ControllerGameGlobals.challenge.botControlAllowed);
     this.m_inputLabel2.visible =
       !(this.cont.controllerType === "challenge") ||
-      !ControllerChallenge.playChallengeMode ||
-      (this.cont.controllerType === "challenge" && ControllerChallenge.challenge.botControlAllowed);
+      !ControllerGameGlobals.playChallengeMode ||
+      (this.cont.controllerType === "challenge" && ControllerGameGlobals.challenge.botControlAllowed);
     this.m_controlKeyArea1.visible =
       !(this.cont.controllerType === "challenge") ||
-      !ControllerChallenge.playChallengeMode ||
-      (this.cont.controllerType === "challenge" && ControllerChallenge.challenge.botControlAllowed);
+      !ControllerGameGlobals.playChallengeMode ||
+      (this.cont.controllerType === "challenge" && ControllerGameGlobals.challenge.botControlAllowed);
     this.m_controlKeyArea2.visible =
       !(this.cont.controllerType === "challenge") ||
-      !ControllerChallenge.playChallengeMode ||
-      (this.cont.controllerType === "challenge" && ControllerChallenge.challenge.botControlAllowed);
+      !ControllerGameGlobals.playChallengeMode ||
+      (this.cont.controllerType === "challenge" && ControllerGameGlobals.challenge.botControlAllowed);
   }
 
   public ShowThrustersPanel(t: Thrusters): void {
@@ -1375,12 +1375,12 @@ export class PartEditWindow extends GuiWindow {
 
     this.m_thrustKeyLabel.visible =
       !(this.cont.controllerType === "challenge") ||
-      !ControllerChallenge.playChallengeMode ||
-      (this.cont.controllerType === "challenge" && ControllerChallenge.challenge.botControlAllowed);
+      !ControllerGameGlobals.playChallengeMode ||
+      (this.cont.controllerType === "challenge" && ControllerGameGlobals.challenge.botControlAllowed);
     this.m_thrustKeyArea.visible =
       !(this.cont.controllerType === "challenge") ||
-      !ControllerChallenge.playChallengeMode ||
-      (this.cont.controllerType === "challenge" && ControllerChallenge.challenge.botControlAllowed);
+      !ControllerGameGlobals.playChallengeMode ||
+      (this.cont.controllerType === "challenge" && ControllerGameGlobals.challenge.botControlAllowed);
   }
 
   public ShowBuildBoxPanel(): void {

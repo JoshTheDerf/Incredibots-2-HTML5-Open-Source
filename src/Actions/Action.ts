@@ -1,4 +1,6 @@
-import { ControllerGame } from "../Game/ControllerGame"
+// type-only: erased at runtime so it does not create a load-time cycle
+// (ControllerGame imports every Action subclass, which extend this base).
+import type { ControllerGame } from "../Game/ControllerGame"
 import { IllegalOperationError, Part } from "../Parts/Part"
 
 export class Action {

@@ -7,17 +7,21 @@ import { Database } from "../../General/Database"
 import { Challenge } from "../Challenge";
 
 export class ControllerSpaceship extends ControllerChallenge {
+
+  public IsSpaceship(): boolean {
+    return true;
+  }
   constructor(cSpaceship: ByteArray|null) {
     super();
-    ControllerChallenge.playChallengeMode = true;
-    ControllerChallenge.playOnlyMode = true;
+    ControllerGameGlobals.playChallengeMode = true;
+    ControllerGameGlobals.playOnlyMode = true;
 
     if (!ControllerGameGlobals.playingReplay && cSpaceship) {
       cSpaceship.uncompress()
       const challenge = Database.ExtractChallengeFromByteArray(cSpaceship)
-      ControllerSpaceship.challenge = challenge;
-      ControllerGameGlobals.loadedParts = ControllerSpaceship.challenge.allParts;
-      ControllerSandbox.settings = ControllerSpaceship.challenge.settings;
+      ControllerGameGlobals.challenge = challenge;
+      ControllerGameGlobals.loadedParts = ControllerGameGlobals.challenge.allParts;
+      ControllerGameGlobals.settings = ControllerGameGlobals.challenge.settings;
     }
 
     this.draw.m_drawXOff = -10000;

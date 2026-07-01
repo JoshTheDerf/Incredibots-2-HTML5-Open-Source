@@ -1,10 +1,14 @@
 import { Application } from 'pixi.js';
 
 import { Resource } from "./Game/Graphics/Resource"
+import { createController } from "./Game/createController"
 import { Main } from "./Main"
 
 
 async function main() {
+    // Wire up the controller factory before any controllers are instantiated.
+    Main.instantiate = createController
+
     await Resource.load()
 
     const renderer = new Application({

@@ -1,14 +1,8 @@
 import { Sprite, Text, TextStyle } from "pixi.js";
-import { ControllerGame } from "../Game/ControllerGame"
-import { ControllerSandbox } from "../Game/ControllerSandbox"
+import type { ControllerGame } from "../Game/ControllerGame"
 import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
 import { Resource } from "../Game/Graphics/Resource"
 import { SandboxSettings } from "../Game/SandboxSettings"
-import { ControllerChallengeEditor } from "../Game/Tutorials/ControllerChallengeEditor"
-import { ControllerHomeMovies } from "../Game/Tutorials/ControllerHomeMovies"
-import { ControllerNewFeatures } from "../Game/Tutorials/ControllerNewFeatures"
-import { ControllerRubeGoldberg } from "../Game/Tutorials/ControllerRubeGoldberg"
-import { ControllerTutorial } from "../Game/Tutorials/ControllerTutorial"
 import { GuiButton } from "./GuiButton"
 import { GuiWindow } from "./GuiWindow"
 import { Main } from "../Main"
@@ -28,11 +22,11 @@ export class ScoreWindow extends GuiWindow
 	constructor(contr:ControllerGame, score:number)
 	{
 		var y:number = 40;
-		if (!(contr instanceof ControllerTutorial || contr instanceof ControllerHomeMovies || contr instanceof ControllerRubeGoldberg || contr instanceof ControllerNewFeatures || contr instanceof ControllerChallengeEditor)) {
+		if (!(contr.IsTutorial() || contr.IsHomeMovies() || contr.IsRubeGoldberg() || contr.IsNewFeatures() || contr.IsChallengeEditor())) {
 			y = 60;
 		}
 
-		super(323, 130, 200, (contr instanceof ControllerTutorial || contr instanceof ControllerHomeMovies || contr instanceof ControllerRubeGoldberg || contr instanceof ControllerNewFeatures ? y + 200 : y + 170));
+		super(323, 130, 200, (contr.IsTutorial() || contr.IsHomeMovies() || contr.IsRubeGoldberg() || contr.IsNewFeatures() ? y + 200 : y + 170));
 		this.cont = contr;
 
 		this.m_header = new Sprite(Resource.cCongrats);
@@ -42,7 +36,7 @@ export class ScoreWindow extends GuiWindow
 		this.m_header.y = 15;
 		this.addChild(this.m_header);
 
-		if (!(this.cont instanceof ControllerTutorial || this.cont instanceof ControllerHomeMovies || this.cont instanceof ControllerRubeGoldberg || this.cont instanceof ControllerNewFeatures || this.cont instanceof ControllerChallengeEditor)) {
+		if (!(this.cont.IsTutorial() || this.cont.IsHomeMovies() || this.cont.IsRubeGoldberg() || this.cont.IsNewFeatures() || this.cont.IsChallengeEditor())) {
 			this.m_scoreField = new Text('');
 			this.m_scoreField.text = "Your score is: " + score;
 			this.m_scoreField.width = 120;
@@ -65,9 +59,9 @@ export class ScoreWindow extends GuiWindow
 		this.addChild(this.m_submitScoreButton);
 		this.m_mainMenuButton = new GuiButton("Main Menu", 45, y + 90, 110, 35, this.cont.newButton.bind(this), GuiButton.PURPLE);
 		this.addChild(this.m_mainMenuButton);
-		this.m_cancelButton = new GuiButton((this.cont instanceof ControllerHomeMovies || this.cont instanceof ControllerChallengeEditor ? "Close" : "Retry"), 45, y + 120, 110, 35, this.cancelButton.bind(this), GuiButton.PURPLE);
+		this.m_cancelButton = new GuiButton((this.cont.IsHomeMovies() || this.cont.IsChallengeEditor() ? "Close" : "Retry"), 45, y + 120, 110, 35, this.cancelButton.bind(this), GuiButton.PURPLE);
 		this.addChild(this.m_cancelButton);
-		if (this.cont instanceof ControllerTutorial || this.cont instanceof ControllerHomeMovies || this.cont instanceof ControllerRubeGoldberg || this.cont instanceof ControllerNewFeatures) {
+		if (this.cont.IsTutorial() || this.cont.IsHomeMovies() || this.cont.IsRubeGoldberg() || this.cont.IsNewFeatures()) {
 			this.m_nextLevelButton = new GuiButton("Next Level", 45, y + 150, 110, 35, this.nextButton.bind(this), GuiButton.BLUE);
 			this.addChild(this.m_nextLevelButton);
 		}
@@ -84,7 +78,7 @@ export class ScoreWindow extends GuiWindow
 	private cancelButton():void {
 		this.visible = false;
 		this.cont.m_fader.visible = false;
-		if (!(this.cont instanceof ControllerHomeMovies || this.cont instanceof ControllerChallengeEditor)) this.cont.resetButton();
+		if (!(this.cont.IsHomeMovies() || this.cont.IsChallengeEditor())) this.cont.resetButton();
 	}
 
 	private nextButton():void {
@@ -94,7 +88,7 @@ export class ScoreWindow extends GuiWindow
 			var settings:SandboxSettings = new SandboxSettings(15.0, 1, 0, 0, 0);
 			if (Main.nextControllerType == 18) settings = new SandboxSettings(1.0, 0, 1, 5, 1);
 			if (Main.nextControllerType == 19) settings = new SandboxSettings(15.0, 0, 2, 0, 5);
-			ControllerSandbox.settings = settings;
+			ControllerGameGlobals.settings = settings;
 		}
 		ControllerGameGlobals.playingReplay = false;
 		ControllerGameGlobals.viewingUnsavedReplay = false;

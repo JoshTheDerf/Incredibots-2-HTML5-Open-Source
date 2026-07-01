@@ -9,29 +9,33 @@ import { Rectangle } from "../../Parts/Rectangle"
 import { ShapePart } from "../../Parts/ShapePart"
 
 export class ControllerClimb extends ControllerChallenge {
+
+  public IsClimb(): boolean {
+    return true;
+  }
   private groundTex: Texture;
 
   constructor() {
     super();
-    ControllerChallenge.playChallengeMode = true;
-    ControllerChallenge.playOnlyMode = true;
+    ControllerGameGlobals.playChallengeMode = true;
+    ControllerGameGlobals.playOnlyMode = true;
 
     var cond: WinCondition = new WinCondition("Cond", 2, 1);
     cond.minY = -10.5;
     cond.maxY = -10.5;
-    ControllerClimb.challenge.winConditions.push(cond);
+    ControllerGameGlobals.challenge.winConditions.push(cond);
     cond = new WinCondition("Cond", 2, 4);
     cond.minX = 45;
     cond.maxX = 45;
-    ControllerClimb.challenge.winConditions.push(cond);
-    ControllerClimb.challenge.cannonsAllowed = false;
-    ControllerClimb.challenge.thrustersAllowed = false;
-    ControllerClimb.challenge.mouseDragAllowed = false;
-    ControllerClimb.challenge.winConditionsAnded = true;
+    ControllerGameGlobals.challenge.winConditions.push(cond);
+    ControllerGameGlobals.challenge.cannonsAllowed = false;
+    ControllerGameGlobals.challenge.thrustersAllowed = false;
+    ControllerGameGlobals.challenge.mouseDragAllowed = false;
+    ControllerGameGlobals.challenge.winConditionsAnded = true;
     var buildArea = new b2AABB();
     buildArea.lowerBound.Set(1, 1);
     buildArea.upperBound.Set(15, 11.1);
-    ControllerClimb.challenge.buildAreas.push(buildArea);
+    ControllerGameGlobals.challenge.buildAreas.push(buildArea);
     this.BuildBuildArea();
 
     this.draw.m_drawXOff = 0;

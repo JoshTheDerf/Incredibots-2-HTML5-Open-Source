@@ -1,6 +1,7 @@
 import { Sprite, Text, TextStyle } from "pixi.js";
 import { Controller } from "../Game/Controller"
 import { ControllerGame } from "../Game/ControllerGame"
+import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
 import { ControllerMainMenu } from "../Game/ControllerMainMenu"
 import { ControllerSandbox } from "../Game/ControllerSandbox"
 import { SandboxSettings } from "../Game/SandboxSettings"
@@ -271,10 +272,10 @@ export class AdvancedSandboxWindow extends GuiWindow {
       parseInt(this.greenArea.text),
       parseInt(this.blueArea.text)
     );
-    ControllerSandbox.settings = settings;
+    ControllerGameGlobals.settings = settings;
     if (this.cont instanceof ControllerMainMenu) Main.changeControllers = true;
     else {
-      if (this.cont.controllerType === "challenge") ControllerChallenge.challenge.settings = settings;
+      if (this.cont.controllerType === "challenge") ControllerGameGlobals.challenge.settings = settings;
       (this.cont as ControllerSandbox).RefreshSandboxSettings();
       (this.cont as ControllerSandbox).m_fader.visible = false;
     }

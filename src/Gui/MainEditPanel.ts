@@ -639,7 +639,7 @@ export class MainEditPanel extends GuiWindow {
     this.m_conditionsButton.visible = false;
     this.m_buildBoxButton.visible = false;
     this.m_restrictionsButton.visible = false;
-    this.m_editButton.visible = !ControllerChallenge.playOnlyMode;
+    this.m_editButton.visible = !ControllerGameGlobals.playOnlyMode;
   }
 
   public HideEditButton(): void {

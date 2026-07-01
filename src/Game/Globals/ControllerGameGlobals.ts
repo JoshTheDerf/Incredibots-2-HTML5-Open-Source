@@ -1,6 +1,8 @@
 import PIXIsound from "pixi-sound";
 import { Resource } from "../Graphics/Resource"
 import { Replay } from "../Replay"
+import type { Challenge } from "../Challenge"
+import type { SandboxSettings } from "../SandboxSettings"
 
 type Sound = PIXIsound.Sound;
 
@@ -89,6 +91,25 @@ export class ControllerGameGlobals {
   public static justLoadedRobotWithChallenge: boolean = false;
 
   public static cannonballs: Array<any> = [];
+
+  // Challenge state, relocated here from ControllerChallenge so that the
+  // ControllerGame base class (and other modules) can read/write it without
+  // importing ControllerChallenge, which extends ControllerGame and therefore
+  // caused a module-load-order (TDZ) cycle.
+  public static challenge: Challenge;
+  public static playChallengeMode: boolean = false;
+  public static playOnlyMode: boolean = false;
+
+  // Relocated from ControllerSandbox for the same reason: the ControllerGame
+  // base class reads/writes the active sandbox settings and must not import
+  // ControllerSandbox (a subclass).
+  public static settings: SandboxSettings;
+
+  // Separate cannonball list tracked while the main menu demo is active.
+  // (ControllerMainMenu is a distinct controller branch from ControllerGame and
+  // maintains its own list; kept here so Parts/Cannon does not need to import
+  // ControllerMainMenu, which caused a module-load-order cycle.)
+  public static mainMenuCannonballs: Array<any> = new Array();
 
   public static showTutorial: boolean = true;
 

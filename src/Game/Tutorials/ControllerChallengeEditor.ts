@@ -15,6 +15,10 @@ import { Triangle } from "../../Parts/Triangle"
 
 export class ControllerChallengeEditor extends ControllerChallenge
 {
+
+	public IsChallengeEditor(): boolean {
+		return true;
+	}
 	private clickedBuildBox:boolean = false;
 	private builtBuildBox:boolean = false;
 	private clickedConditions:boolean = false;
@@ -44,8 +48,8 @@ export class ControllerChallengeEditor extends ControllerChallenge
 	{
 		super()
 		if (!ControllerGameGlobals.playingReplay) this.LoadParts();
-		ControllerChallengeEditor.playChallengeMode = false;
-		ControllerChallengeEditor.playOnlyMode = false;
+		ControllerGameGlobals.playChallengeMode = false;
+		ControllerGameGlobals.playOnlyMode = false;
 	}
 
 	private LoadParts():void {
@@ -363,19 +367,19 @@ export class ControllerChallengeEditor extends ControllerChallenge
 			} else if (this.clickedConditions && !this.addingCondition && !this.m_conditionsDialog.visible && this.curAction == ControllerGameGlobals.SELECTING_SHAPE) {
 				this.addingCondition = true;
 				this.ShowTutorialDialog(96);
-			} else if (this.addingCondition && !this.addedWinCondition && ControllerChallengeEditor.challenge.winConditions.length == 1) {
+			} else if (this.addingCondition && !this.addedWinCondition && ControllerGameGlobals.challenge.winConditions.length == 1) {
 				this.addedWinCondition = true;
 				this.ShowTutorialWindow(97, 0, 160, true);
 			} else if (this.addedWinCondition && !this.addingLossCondition1 && !this.m_conditionsDialog.visible && this.curAction == ControllerGameGlobals.DRAWING_HORIZONTAL_LINE) {
 				this.addingLossCondition1 = true;
 				this.ShowTutorialDialog(99);
-			} else if (this.addingLossCondition1 && !this.addedLossCondition1 && ControllerChallengeEditor.challenge.lossConditions.length == 1) {
+			} else if (this.addingLossCondition1 && !this.addedLossCondition1 && ControllerGameGlobals.challenge.lossConditions.length == 1) {
 				this.addedLossCondition1 = true;
 				this.ShowTutorialWindow(100, 276, 130);
 			} else if (this.addedLossCondition1 && !this.addingLossCondition2 && !this.m_conditionsDialog.visible && this.curAction == ControllerGameGlobals.SELECTING_SHAPE) {
 				this.addingLossCondition2 = true;
 				this.ShowTutorialDialog(101);
-			} else if (this.addingLossCondition2 && !this.addedLossCondition2 && ControllerChallengeEditor.challenge.lossConditions.length == 2) {
+			} else if (this.addingLossCondition2 && !this.addedLossCondition2 && ControllerGameGlobals.challenge.lossConditions.length == 2) {
 				this.addedLossCondition2 = true;
 				this.ShowTutorialWindow(102, 276, 130);
 			} else if (this.addedLossCondition2 && !this.clickedRestrictions && this.m_restrictionsDialog && this.m_restrictionsDialog.visible) {
@@ -384,7 +388,7 @@ export class ControllerChallengeEditor extends ControllerChallenge
 			} else if (this.clickedRestrictions && !this.excludedStuff && this.m_restrictionsDialog.fjBox.selected && this.m_restrictionsDialog.sjBox.selected && this.m_restrictionsDialog.thrustersBox.selected) {
 				this.excludedStuff = true;
 				this.ShowTutorialWindow(105, 0, 220);
-			} else if (this.excludedStuff && !this.disallowedControl && !ControllerChallengeEditor.challenge.botControlAllowed && !this.m_restrictionsDialog.visible) {
+			} else if (this.excludedStuff && !this.disallowedControl && !ControllerGameGlobals.challenge.botControlAllowed && !this.m_restrictionsDialog.visible) {
 				this.disallowedControl = true;
 				this.ShowTutorialWindow(106, 276, 180);
 			}

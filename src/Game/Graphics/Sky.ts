@@ -1,7 +1,6 @@
 import { b2Vec2 } from "../../Box2D";
 import { Container, Graphics, Sprite } from "pixi.js";
 import { Controller } from "../Controller"
-import { ControllerMainMenu } from "../ControllerMainMenu"
 import { Gradient } from "./Gradient"
 import { Resource } from "./Resource"
 import { SandboxSettings } from "../SandboxSettings"
@@ -83,7 +82,7 @@ export class Sky {
       }
     } else if (type == 1) {
       var worldSize: number = this.cont.GetMaxX() - this.cont.GetMinX() + 10;
-      if (this.cont instanceof ControllerMainMenu) worldSize *= 1.5;
+      if (this.cont.IsMainMenu()) worldSize *= 1.5;
       this.numClouds = (this.cont.GetMaxX() - this.cont.GetMinX()) * 10;
       var stars = new Graphics();
       stars.beginFill(0xaec9da);
@@ -98,7 +97,7 @@ export class Sky {
         );
         this.cloudVelocities.push(0);
         this.starRadii.push(
-          this.cont instanceof ControllerMainMenu ? Util.RangedRandom(3, 8) : Util.RangedRandom(2, 6)
+          this.cont.IsMainMenu() ? Util.RangedRandom(3, 8) : Util.RangedRandom(2, 6)
         );
         stars.beginFill(0xaec9da);
         stars.drawCircle(this.cloudPositions[i].x, this.cloudPositions[i].y, this.starRadii[i]);

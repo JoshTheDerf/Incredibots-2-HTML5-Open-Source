@@ -1,5 +1,6 @@
 import { TextStyle, Text } from "pixi.js";
 import { ControllerChallenge } from "../Game/ControllerChallenge"
+import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
 import { ControllerMainMenu } from "../Game/ControllerMainMenu"
 import { ControllerSandbox } from "../Game/ControllerSandbox"
 import { SandboxSettings } from "../Game/SandboxSettings"
@@ -107,61 +108,61 @@ export class TutorialSelectWindow extends GuiWindow
 
 	private homeMovieButton():void {
 		var settings:SandboxSettings = new SandboxSettings(15.0, 1, 0, 0, 0);
-		ControllerSandbox.settings = settings;
+		ControllerGameGlobals.settings = settings;
 		Main.changeControllers = true;
 		Main.nextControllerType = 16;
 	}
 
 	private rubeGoldbergButton():void {
 		var settings:SandboxSettings = new SandboxSettings(15.0, 1, 0, 0, 0);
-		ControllerSandbox.settings = settings;
+		ControllerGameGlobals.settings = settings;
 		Main.changeControllers = true;
 		Main.nextControllerType = 17;
 	}
 
 	private newFeaturesButton():void {
 		var settings:SandboxSettings = new SandboxSettings(1.0, 0, 1, 5, 1);
-		ControllerSandbox.settings = settings;
+		ControllerGameGlobals.settings = settings;
 		Main.changeControllers = true;
 		Main.nextControllerType = 18;
 	}
 
 	private challengeEditorButton():void {
-		ControllerChallenge.challenge = null;
+		ControllerGameGlobals.challenge = null;
 		var settings:SandboxSettings = new SandboxSettings(15.0, 0, 2, 0, 5);
-		ControllerSandbox.settings = settings;
+		ControllerGameGlobals.settings = settings;
 		Main.changeControllers = true;
 		Main.nextControllerType = 19;
 	}
 
 	private monkeyBarsButton():void {
-		ControllerChallenge.challenge = null;
+		ControllerGameGlobals.challenge = null;
 		var settings:SandboxSettings = new SandboxSettings(15.0, 0, 2, 0, 0);
-		ControllerSandbox.settings = settings;
+		ControllerGameGlobals.settings = settings;
 		Main.changeControllers = true;
 		Main.nextControllerType = 2;
 	}
 
 	private climbButton():void {
-		ControllerChallenge.challenge = null;
+		ControllerGameGlobals.challenge = null;
 		var settings:SandboxSettings = new SandboxSettings(15.0, 0, 2, 0, 3);
-		ControllerSandbox.settings = settings;
+		ControllerGameGlobals.settings = settings;
 		Main.changeControllers = true;
 		Main.nextControllerType = 3;
 	}
 
 	private lunarButton():void {
-		ControllerChallenge.challenge = null;
+		ControllerGameGlobals.challenge = null;
 		var settings:SandboxSettings = new SandboxSettings(15.0, 0, 2, 0, 5);
-		ControllerSandbox.settings = settings;
+		ControllerGameGlobals.settings = settings;
 		Main.changeControllers = true;
 		Main.nextControllerType = 4;
 	}
 
 	private cannonButton():void {
-		ControllerChallenge.challenge = null;
+		ControllerGameGlobals.challenge = null;
 		var settings:SandboxSettings = new SandboxSettings(15.0, 0, 2, 0, 1);
-		ControllerSandbox.settings = settings;
+		ControllerGameGlobals.settings = settings;
 		Main.changeControllers = true;
 		Main.nextControllerType = 5;
 	}

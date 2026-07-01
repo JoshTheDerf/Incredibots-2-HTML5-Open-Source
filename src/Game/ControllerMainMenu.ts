@@ -99,12 +99,15 @@ export class ControllerMainMenu extends Controller {
   private draw: Draw = new Draw();
   private world;
   private allParts: Array<any> = new Array();
-  public static cannonballs: Array<any> = new Array();
+
+  public IsMainMenu(): boolean {
+    return true;
+  }
 
   constructor(straightToLevelSelect: boolean = false) {
     super();
     this.sSky = new Sky(this, 1);
-    ControllerMainMenu.cannonballs = new Array();
+    ControllerGameGlobals.mainMenuCannonballs = new Array();
 
     if (Main.enableSound) {
       ControllerGameGlobals.introVolume = straightToLevelSelect ? 0.4 : 0.5;
@@ -651,10 +654,10 @@ export class ControllerMainMenu extends Controller {
     Main.changeControllers = true;
     if (robot.challenge) {
       Main.nextControllerType = 1;
-      ControllerChallenge.challenge = robot.challenge;
-      ControllerChallenge.playChallengeMode = true;
-      ControllerChallenge.playOnlyMode = true;
-      ControllerSandbox.settings = robot.challenge.settings;
+      ControllerGameGlobals.challenge = robot.challenge;
+      ControllerGameGlobals.playChallengeMode = true;
+      ControllerGameGlobals.playOnlyMode = true;
+      ControllerGameGlobals.settings = robot.challenge.settings;
       ControllerGameGlobals.curChallengeID = ControllerGameGlobals.potentialChallengeID;
       ControllerGameGlobals.ratedCurChallenge = false;
       ControllerGameGlobals.curChallengePublic = false;
@@ -662,7 +665,7 @@ export class ControllerMainMenu extends Controller {
       ControllerGameGlobals.justLoadedRobotWithChallenge = true;
     } else {
       Main.nextControllerType = 0;
-      ControllerSandbox.settings = robot.settings;
+      ControllerGameGlobals.settings = robot.settings;
       ControllerGameGlobals.curChallengeID = "";
     }
   }
@@ -690,10 +693,10 @@ export class ControllerMainMenu extends Controller {
       Main.changeControllers = true;
       if (robot.challenge) {
         Main.nextControllerType = 1;
-        ControllerChallenge.challenge = robot.challenge;
-        ControllerChallenge.playChallengeMode = true;
-        ControllerChallenge.playOnlyMode = true;
-        ControllerSandbox.settings = robot.challenge.settings;
+        ControllerGameGlobals.challenge = robot.challenge;
+        ControllerGameGlobals.playChallengeMode = true;
+        ControllerGameGlobals.playOnlyMode = true;
+        ControllerGameGlobals.settings = robot.challenge.settings;
         ControllerGameGlobals.curChallengeID = ControllerGameGlobals.potentialChallengeID;
         ControllerGameGlobals.ratedCurChallenge = false;
         ControllerGameGlobals.curChallengePublic = false;
@@ -701,7 +704,7 @@ export class ControllerMainMenu extends Controller {
         ControllerGameGlobals.justLoadedRobotWithChallenge = true;
       } else {
         Main.nextControllerType = 0;
-        ControllerSandbox.settings = robot.settings;
+        ControllerGameGlobals.settings = robot.settings;
         ControllerGameGlobals.curChallengeID = "";
       }
     }
@@ -718,7 +721,7 @@ export class ControllerMainMenu extends Controller {
       } else {
         var robot: Robot = replayAndRobot[1];
         ControllerGameGlobals.replayParts = robot.allParts;
-        ControllerSandbox.settings = robot.settings;
+        ControllerGameGlobals.settings = robot.settings;
         ControllerGameGlobals.playingReplay = true;
         Main.changeControllers = true;
         Main.nextControllerType = 0;
@@ -743,7 +746,7 @@ export class ControllerMainMenu extends Controller {
     } else {
       var robot: Robot = replayAndRobot[1];
       ControllerGameGlobals.replayParts = robot.allParts;
-      ControllerSandbox.settings = robot.settings;
+      ControllerGameGlobals.settings = robot.settings;
       ControllerGameGlobals.playingReplay = true;
       Main.changeControllers = true;
       Main.nextControllerType = 0;
@@ -763,10 +766,10 @@ export class ControllerMainMenu extends Controller {
     Main.changeControllers = true;
     Main.nextControllerType = 1;
 
-    ControllerChallenge.challenge = challenge;
-    ControllerChallenge.playChallengeMode = !ControllerGameGlobals.potentialChallengeEditable;
-    ControllerChallenge.playOnlyMode = !ControllerGameGlobals.potentialChallengeEditable;
-    ControllerSandbox.settings = challenge.settings;
+    ControllerGameGlobals.challenge = challenge;
+    ControllerGameGlobals.playChallengeMode = !ControllerGameGlobals.potentialChallengeEditable;
+    ControllerGameGlobals.playOnlyMode = !ControllerGameGlobals.potentialChallengeEditable;
+    ControllerGameGlobals.settings = challenge.settings;
     ControllerGameGlobals.curChallengeID = ControllerGameGlobals.potentialChallengeID;
     ControllerGameGlobals.ratedCurChallenge = false;
     ControllerGameGlobals.curChallengePublic = ControllerGameGlobals.potentialChallengePublic;
@@ -786,10 +789,10 @@ export class ControllerMainMenu extends Controller {
       Main.changeControllers = true;
       Main.nextControllerType = 1;
 
-      ControllerChallenge.challenge = challenge;
-      ControllerChallenge.playChallengeMode = !ControllerGameGlobals.potentialChallengeEditable;
-      ControllerChallenge.playOnlyMode = !ControllerGameGlobals.potentialChallengeEditable;
-      ControllerSandbox.settings = challenge.settings;
+      ControllerGameGlobals.challenge = challenge;
+      ControllerGameGlobals.playChallengeMode = !ControllerGameGlobals.potentialChallengeEditable;
+      ControllerGameGlobals.playOnlyMode = !ControllerGameGlobals.potentialChallengeEditable;
+      ControllerGameGlobals.settings = challenge.settings;
       ControllerGameGlobals.curChallengeID = ControllerGameGlobals.potentialChallengeID;
       ControllerGameGlobals.ratedCurChallenge = false;
       ControllerGameGlobals.curChallengePublic = ControllerGameGlobals.potentialChallengePublic;
@@ -1323,7 +1326,7 @@ export class ControllerMainMenu extends Controller {
 
   private sandboxButton(e: MouseEvent): void {
     var settings: SandboxSettings = new SandboxSettings(15.0, 1, 0, 0, 0);
-    ControllerSandbox.settings = settings;
+    ControllerGameGlobals.settings = settings;
     Main.changeControllers = true;
     Main.nextControllerType = 0;
   }
@@ -1336,9 +1339,9 @@ export class ControllerMainMenu extends Controller {
   }
 
   private editorButton(e: MouseEvent): void {
-    ControllerChallenge.challenge = null;
-    ControllerChallenge.playChallengeMode = false;
-    ControllerChallenge.playOnlyMode = false;
+    ControllerGameGlobals.challenge = null;
+    ControllerGameGlobals.playChallengeMode = false;
+    ControllerGameGlobals.playOnlyMode = false;
     Main.nextControllerType = 1;
     this.m_sandboxWindow = new AdvancedSandboxWindow(this);
     this.fader2.visible = true;
@@ -1402,7 +1405,7 @@ export class ControllerMainMenu extends Controller {
       this.replay.syncPointIndex = 0;
       this.replay.cameraMovementIndex = 0;
       this.replay.keyPressIndex = 0;
-      ControllerMainMenu.cannonballs = new Array();
+      ControllerGameGlobals.mainMenuCannonballs = new Array();
       for (i = 0; i < this.allParts.length; i++) {
         this.allParts[i].UnInit(this.world);
       }
@@ -1496,8 +1499,8 @@ export class ControllerMainMenu extends Controller {
         bodiesUsed.push(this.allParts[i].GetBody());
       }
     }
-    for (i = 0; i < ControllerMainMenu.cannonballs.length; i++) {
-      ControllerMainMenu.cannonballs[i].SetXForm(syncPoint.cannonballPositions[i], 0);
+    for (i = 0; i < ControllerGameGlobals.mainMenuCannonballs.length; i++) {
+      ControllerGameGlobals.mainMenuCannonballs[i].SetXForm(syncPoint.cannonballPositions[i], 0);
     }
   }
 
@@ -1517,7 +1520,7 @@ export class ControllerMainMenu extends Controller {
         bodiesUsed.push(this.allParts[i].GetBody());
       }
     }
-    for (i = 0; i < ControllerMainMenu.cannonballs.length; i++) {
+    for (i = 0; i < ControllerGameGlobals.mainMenuCannonballs.length; i++) {
       if (syncPoint1.cannonballPositions.length > i) {
         var frameDiff: number = syncPoint2.frame - syncPoint1.frame;
         var newX: number =
@@ -1528,9 +1531,9 @@ export class ControllerMainMenu extends Controller {
           (syncPoint1.cannonballPositions[i].y * (syncPoint2.frame - this.frameCounter) +
             syncPoint2.cannonballPositions[i].y * (this.frameCounter - syncPoint1.frame)) /
           frameDiff;
-        ControllerMainMenu.cannonballs[i].SetXForm(Util.Vector(newX, newY), 0);
+        ControllerGameGlobals.mainMenuCannonballs[i].SetXForm(Util.Vector(newX, newY), 0);
       } else {
-        ControllerMainMenu.cannonballs[i].SetXForm(syncPoint2.cannonballPositions[i], 0);
+        ControllerGameGlobals.mainMenuCannonballs[i].SetXForm(syncPoint2.cannonballPositions[i], 0);
       }
     }
   }

@@ -13,6 +13,10 @@ import { ShapePart } from "../../Parts/ShapePart"
 
 export class ControllerNewFeatures extends ControllerSandbox
 {
+
+	public IsNewFeatures(): boolean {
+		return true;
+	}
 	private partsConnected:boolean = false;
 	private outlinesBehinded:boolean = false;
 	private simStopped:boolean = false;

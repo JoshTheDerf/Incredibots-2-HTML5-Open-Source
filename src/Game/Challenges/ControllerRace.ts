@@ -6,23 +6,27 @@ import { ByteArray } from "../../General/ByteArray"
 import { Database } from "../../General/Database"
 
 export class ControllerRace extends ControllerChallenge {
+
+  public IsRace(): boolean {
+    return true;
+  }
   constructor(cRace: any) {
     super();
-    ControllerChallenge.playChallengeMode = true;
-    ControllerChallenge.playOnlyMode = true;
+    ControllerGameGlobals.playChallengeMode = true;
+    ControllerGameGlobals.playOnlyMode = true;
 
     if (!ControllerGameGlobals.playingReplay && cRace) {
       cRace.uncompress();
       const challenge = Database.ExtractChallengeFromByteArray(cRace);
-      ControllerRace.challenge = challenge;
-      ControllerGameGlobals.loadedParts = ControllerRace.challenge.allParts;
-      ControllerSandbox.settings = ControllerRace.challenge.settings;
+      ControllerGameGlobals.challenge = challenge;
+      ControllerGameGlobals.loadedParts = ControllerGameGlobals.challenge.allParts;
+      ControllerGameGlobals.settings = ControllerGameGlobals.challenge.settings;
     }
 
     this.draw.m_drawXOff = -10000;
     this.draw.m_drawYOff = -10000;
-    ControllerGameGlobals.initZoom = ControllerRace.challenge.zoomLevel;
-    this.m_physScale = ControllerRace.challenge.zoomLevel;
+    ControllerGameGlobals.initZoom = ControllerGameGlobals.challenge.zoomLevel;
+    this.m_physScale = ControllerGameGlobals.challenge.zoomLevel;
   }
 
   public Init(e: Event): void {

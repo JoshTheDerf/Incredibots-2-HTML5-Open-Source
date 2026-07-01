@@ -10,6 +10,10 @@ import { Rectangle } from "../../Parts/Rectangle"
 import { Triangle } from "../../Parts/Triangle"
 
 export class ControllerMonkeyBars extends ControllerChallenge {
+
+  public IsMonkeyBars(): boolean {
+    return true;
+  }
   private sGround1: Graphics;
   private sGround2: Graphics;
 
@@ -18,25 +22,25 @@ export class ControllerMonkeyBars extends ControllerChallenge {
     this.draw.m_drawXOff = 0;
     this.draw.m_drawYOff = -190;
 
-    ControllerChallenge.playChallengeMode = true;
-    ControllerChallenge.playOnlyMode = true;
+    ControllerGameGlobals.playChallengeMode = true;
+    ControllerGameGlobals.playOnlyMode = true;
 
     var cond: WinCondition = new WinCondition("Cond", 2, 1);
     cond.minY = 11;
     cond.maxY = 11;
-    ControllerChallenge.challenge.winConditions.push(cond);
+    ControllerGameGlobals.challenge.winConditions.push(cond);
     cond = new WinCondition("Cond", 2, 4);
     cond.minX = 44;
     cond.maxX = 44;
-    ControllerChallenge.challenge.winConditions.push(cond);
-    ControllerChallenge.challenge.cannonsAllowed = false;
-    ControllerChallenge.challenge.thrustersAllowed = false;
-    ControllerChallenge.challenge.mouseDragAllowed = false;
-    ControllerChallenge.challenge.winConditionsAnded = true;
+    ControllerGameGlobals.challenge.winConditions.push(cond);
+    ControllerGameGlobals.challenge.cannonsAllowed = false;
+    ControllerGameGlobals.challenge.thrustersAllowed = false;
+    ControllerGameGlobals.challenge.mouseDragAllowed = false;
+    ControllerGameGlobals.challenge.winConditionsAnded = true;
     var buildArea: b2AABB = new b2AABB();
     buildArea.lowerBound.Set(1, 1);
     buildArea.upperBound.Set(15, 11.1);
-    ControllerChallenge.challenge.buildAreas.push(buildArea);
+    ControllerGameGlobals.challenge.buildAreas.push(buildArea);
     this.BuildBuildArea();
 
     var p: Part;

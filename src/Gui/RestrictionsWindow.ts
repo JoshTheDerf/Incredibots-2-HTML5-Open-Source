@@ -134,14 +134,14 @@ export class RestrictionsWindow extends GuiWindow {
 		this.circleBox.label = "Exclude Circles";
 		this.circleBox.x = 15;
 		this.circleBox.y = 45;
-		this.circleBox.selected = !ControllerChallenge.challenge.circlesAllowed;
+		this.circleBox.selected = !ControllerGameGlobals.challenge.circlesAllowed;
 		this.circleBox.style = format
 		this.circleBox.on("change", (value) => this.boxChanged(value));
 		this.addChild(this.circleBox);
 
 		this.rectBox = new GuiCheckBox(205, 45, 190);
 		this.rectBox.label = "Exclude Rectangles";
-		this.rectBox.selected = !ControllerChallenge.challenge.rectanglesAllowed;
+		this.rectBox.selected = !ControllerGameGlobals.challenge.rectanglesAllowed;
 		this.rectBox.style = format
 		this.rectBox.on("change", value => this.boxChanged(value));
 		this.addChild(this.rectBox);
@@ -150,128 +150,128 @@ export class RestrictionsWindow extends GuiWindow {
 		this.triBox.label = "Exclude Triangles";
 		this.triBox.x = 395;
 		this.triBox.y = 45;
-		this.triBox.selected = !ControllerChallenge.challenge.trianglesAllowed;
+		this.triBox.selected = !ControllerGameGlobals.challenge.trianglesAllowed;
 		this.triBox.style = format
 		this.triBox.on("change", value => this.boxChanged(value));
 		this.addChild(this.triBox);
 
 		this.fjBox = new GuiCheckBox(15, 75, 190);
 		this.fjBox.label = "Exclude Fixed Joints";
-		this.fjBox.selected = !ControllerChallenge.challenge.fixedJointsAllowed;
+		this.fjBox.selected = !ControllerGameGlobals.challenge.fixedJointsAllowed;
 		this.fjBox.style = format
 		this.fjBox.on("change", value => this.boxChanged(value));
 		this.addChild(this.fjBox);
 
 		this.rjBox = new GuiCheckBox(205, 75, 190);
 		this.rjBox.label = "Exclude Rotating Joints";
-		this.rjBox.selected = !ControllerChallenge.challenge.rotatingJointsAllowed;
+		this.rjBox.selected = !ControllerGameGlobals.challenge.rotatingJointsAllowed;
 		this.rjBox.style = format
 		this.rjBox.on("change", value => this.boxChanged(value));
 		this.addChild(this.rjBox);
 
 		this.sjBox = new GuiCheckBox(395, 75, 190);
 		this.sjBox.label = "Exclude Sliding Joints";
-		this.sjBox.selected = !ControllerChallenge.challenge.slidingJointsAllowed;
+		this.sjBox.selected = !ControllerGameGlobals.challenge.slidingJointsAllowed;
 		this.sjBox.style = format
 		this.sjBox.on("change", value => this.boxChanged(value));
 		this.addChild(this.sjBox);
 
 		this.thrustersBox = new GuiCheckBox(110, 105, 190);
 		this.thrustersBox.label = "Exclude Thrusters";
-		this.thrustersBox.selected = !ControllerChallenge.challenge.thrustersAllowed;
+		this.thrustersBox.selected = !ControllerGameGlobals.challenge.thrustersAllowed;
 		this.thrustersBox.style = format
 		this.thrustersBox.on("change", value => this.boxChanged(value));
 		this.addChild(this.thrustersBox);
 
 		this.cannonBox = new GuiCheckBox(300, 105, 190);
 		this.cannonBox.label = "Exclude Cannons";
-		this.cannonBox.selected = !ControllerChallenge.challenge.cannonsAllowed;
+		this.cannonBox.selected = !ControllerGameGlobals.challenge.cannonsAllowed;
 		this.cannonBox.style = format
 		this.cannonBox.on("change", value => this.boxChanged(value));
 		this.addChild(this.cannonBox);
 
 		this.mouseBox = new GuiCheckBox(15, 145, 200);
 		this.mouseBox.label = "Allow Dragging With Mouse";
-		this.mouseBox.selected = ControllerChallenge.challenge.mouseDragAllowed;
+		this.mouseBox.selected = ControllerGameGlobals.challenge.mouseDragAllowed;
 		this.mouseBox.style = format
 		this.addChild(this.mouseBox);
 
 		this.controlBox = new GuiCheckBox(205, 145, 190);
 		this.controlBox.label = "Allow User Control of Bot";
-		this.controlBox.selected = ControllerChallenge.challenge.botControlAllowed;
+		this.controlBox.selected = ControllerGameGlobals.challenge.botControlAllowed;
 		this.controlBox.style = format
 		this.addChild(this.controlBox);
 
 		this.constructionBox = new GuiCheckBox(395, 145, 190);
 		this.constructionBox.label = "Allow User Construction";
-		this.constructionBox.selected = (ControllerChallenge.challenge.circlesAllowed || ControllerChallenge.challenge.rectanglesAllowed || ControllerChallenge.challenge.trianglesAllowed || ControllerChallenge.challenge.fixedJointsAllowed || ControllerChallenge.challenge.rotatingJointsAllowed || ControllerChallenge.challenge.slidingJointsAllowed || ControllerChallenge.challenge.thrustersAllowed);
+		this.constructionBox.selected = (ControllerGameGlobals.challenge.circlesAllowed || ControllerGameGlobals.challenge.rectanglesAllowed || ControllerGameGlobals.challenge.trianglesAllowed || ControllerGameGlobals.challenge.fixedJointsAllowed || ControllerGameGlobals.challenge.rotatingJointsAllowed || ControllerGameGlobals.challenge.slidingJointsAllowed || ControllerGameGlobals.challenge.thrustersAllowed);
 		this.constructionBox.style = format
 		this.constructionBox.on("change", () => this.allowBuildingBoxChanged());
 		this.addChild(this.constructionBox);
 
 		this.fixateBox = new GuiCheckBox(205, 175, 190);
 		this.fixateBox.label = "Allow Fixated Shapes";
-		this.fixateBox.selected = ControllerChallenge.challenge.fixateAllowed;
+		this.fixateBox.selected = ControllerGameGlobals.challenge.fixateAllowed;
 		this.fixateBox.style = format
 		this.addChild(this.fixateBox);
 
 		this.collisionBox = new GuiCheckBox(15, 175, 200);
 		this.collisionBox.label = "Allow Non-colliding Shapes";
-		this.collisionBox.selected = ControllerChallenge.challenge.nonCollidingAllowed;
+		this.collisionBox.selected = ControllerGameGlobals.challenge.nonCollidingAllowed;
 		this.collisionBox.style = format
 		this.addChild(this.collisionBox);
 
 		this.conditionsBox = new GuiCheckBox(395, 175, 200);
 		this.conditionsBox.label = "Conditions Always Visible";
-		this.conditionsBox.selected = ControllerChallenge.challenge.showConditions;
+		this.conditionsBox.selected = ControllerGameGlobals.challenge.showConditions;
 		this.conditionsBox.style = format
 		this.addChild(this.conditionsBox);
 
 		this.minDensityBox = new GuiCheckBox(95, 230, 190);
 		this.minDensityBox.label = "No Limit";
-		this.minDensityBox.selected = (ControllerChallenge.challenge.minDensity == -Number.MAX_VALUE);
+		this.minDensityBox.selected = (ControllerGameGlobals.challenge.minDensity == -Number.MAX_VALUE);
 		this.minDensityBox.style = format
 		this.minDensityBox.on("change", () => this.minDensityBoxChanged());
 		this.addChild(this.minDensityBox);
 
 		this.maxDensityBox = new GuiCheckBox(95, 280, 190);
 		this.maxDensityBox.label = "No Limit";
-		this.maxDensityBox.selected = (ControllerChallenge.challenge.maxDensity == Number.MAX_VALUE);
+		this.maxDensityBox.selected = (ControllerGameGlobals.challenge.maxDensity == Number.MAX_VALUE);
 		this.maxDensityBox.style = format
 		this.maxDensityBox.on("change", () => this.maxDensityBoxChanged());
 		this.addChild(this.maxDensityBox);
 
 		this.maxSJStrengthBox = new GuiCheckBox(95, 330, 190);
 		this.maxSJStrengthBox.label = "No Limit";
-		this.maxSJStrengthBox.selected = (ControllerChallenge.challenge.maxSJStrength == Number.MAX_VALUE);
+		this.maxSJStrengthBox.selected = (ControllerGameGlobals.challenge.maxSJStrength == Number.MAX_VALUE);
 		this.maxSJStrengthBox.style = format
 		this.maxSJStrengthBox.on("change", () => this.maxSJStrengthBoxChanged());
 		this.addChild(this.maxSJStrengthBox);
 
 		this.maxSJSpeedBox = new GuiCheckBox(95, 380, 190);
 		this.maxSJSpeedBox.label = "No Limit";
-		this.maxSJSpeedBox.selected = (ControllerChallenge.challenge.maxSJSpeed == Number.MAX_VALUE);
+		this.maxSJSpeedBox.selected = (ControllerGameGlobals.challenge.maxSJSpeed == Number.MAX_VALUE);
 		this.maxSJSpeedBox.style = format
 		this.maxSJSpeedBox.on("change", () => this.maxSJSpeedBoxChanged());
 		this.addChild(this.maxSJSpeedBox);
 
 		this.maxRJStrengthBox = new GuiCheckBox(300, 230, 190);
 		this.maxRJStrengthBox.label = "No Limit";
-		this.maxRJStrengthBox.selected = (ControllerChallenge.challenge.maxRJStrength == Number.MAX_VALUE);
+		this.maxRJStrengthBox.selected = (ControllerGameGlobals.challenge.maxRJStrength == Number.MAX_VALUE);
 		this.maxRJStrengthBox.style = format
 		this.maxRJStrengthBox.on("change", () => this.maxRJStrengthBoxChanged());
 		this.addChild(this.maxRJStrengthBox);
 
 		this.maxRJSpeedBox = new GuiCheckBox(300, 280, 190);
 		this.maxRJSpeedBox.label = "No Limit";
-		this.maxRJSpeedBox.selected = (ControllerChallenge.challenge.maxRJSpeed == Number.MAX_VALUE);
+		this.maxRJSpeedBox.selected = (ControllerGameGlobals.challenge.maxRJSpeed == Number.MAX_VALUE);
 		this.maxRJSpeedBox.style = format
 		this.maxRJSpeedBox.on("change", () => this.maxRJSpeedBoxChanged());
 		this.addChild(this.maxRJSpeedBox);
 
 		this.maxThrusterBox = new GuiCheckBox(300, 330, 190);
 		this.maxThrusterBox.label = "No Limit";
-		this.maxThrusterBox.selected = (ControllerChallenge.challenge.maxThrusterStrength == Number.MAX_VALUE);
+		this.maxThrusterBox.selected = (ControllerGameGlobals.challenge.maxThrusterStrength == Number.MAX_VALUE);
 		this.maxThrusterBox.style = format
 		this.maxThrusterBox.on("change", () => this.maxThrusterBoxChanged());
 		this.addChild(this.maxThrusterBox);
@@ -280,7 +280,7 @@ export class RestrictionsWindow extends GuiWindow {
 		format.fontSize = 12;
 		format.fontFamily = Main.GLOBAL_FONT;
 		this.minDensityArea = new GuiTextInput(195, 230, 60, 20, format);
-		this.minDensityArea.text = (ControllerChallenge.challenge.minDensity == -Number.MAX_VALUE ? "15" : ControllerChallenge.challenge.minDensity.toString());
+		this.minDensityArea.text = (ControllerGameGlobals.challenge.minDensity == -Number.MAX_VALUE ? "15" : ControllerGameGlobals.challenge.minDensity.toString());
 		this.minDensityArea.maxLength = 4;
 		this.minDensityArea.enabled = false;
 		this.minDensityArea.editable = false;
@@ -288,7 +288,7 @@ export class RestrictionsWindow extends GuiWindow {
 		this.minDensityArea.on("blur", text => this.textEntered(this.minDensityArea, text))
 		this.addChild(this.minDensityArea);
 		this.maxDensityArea = new GuiTextInput(195, 280, 60, 20, format);
-		this.maxDensityArea.text = (ControllerChallenge.challenge.maxDensity == Number.MAX_VALUE ? "15" : ControllerChallenge.challenge.maxDensity.toString());
+		this.maxDensityArea.text = (ControllerGameGlobals.challenge.maxDensity == Number.MAX_VALUE ? "15" : ControllerGameGlobals.challenge.maxDensity.toString());
 		this.maxDensityArea.maxLength = 4;
 		this.maxDensityArea.enabled = false;
 		this.maxDensityArea.editable = false;
@@ -296,7 +296,7 @@ export class RestrictionsWindow extends GuiWindow {
 		this.maxDensityArea.on("blur", text => this.textEntered(this.maxDensityArea, text))
 		this.addChild(this.maxDensityArea);
 		this.maxSJStrengthArea = new GuiTextInput(195, 330, 60, 20, format);
-		this.maxSJStrengthArea.text = (ControllerChallenge.challenge.maxSJStrength == Number.MAX_VALUE ? "15" : ControllerChallenge.challenge.maxSJStrength.toString());
+		this.maxSJStrengthArea.text = (ControllerGameGlobals.challenge.maxSJStrength == Number.MAX_VALUE ? "15" : ControllerGameGlobals.challenge.maxSJStrength.toString());
 		this.maxSJStrengthArea.maxLength = 4;
 		this.maxSJStrengthArea.enabled = false;
 		this.maxSJStrengthArea.editable = false;
@@ -304,7 +304,7 @@ export class RestrictionsWindow extends GuiWindow {
 		this.maxSJStrengthArea.on("blur", text => this.textEntered(this.maxSJStrengthArea, text))
 		this.addChild(this.maxSJStrengthArea);
 		this.maxSJSpeedArea = new GuiTextInput(195, 380, 60, 20, format);
-		this.maxSJSpeedArea.text = (ControllerChallenge.challenge.maxSJSpeed == Number.MAX_VALUE ? "15" : ControllerChallenge.challenge.maxSJSpeed.toString());
+		this.maxSJSpeedArea.text = (ControllerGameGlobals.challenge.maxSJSpeed == Number.MAX_VALUE ? "15" : ControllerGameGlobals.challenge.maxSJSpeed.toString());
 		this.maxSJSpeedArea.maxLength = 4;
 		this.maxSJSpeedArea.enabled = false;
 		this.maxSJSpeedArea.editable = false;
@@ -312,7 +312,7 @@ export class RestrictionsWindow extends GuiWindow {
 		this.maxSJSpeedArea.on("blur", text => this.textEntered(this.maxSJSpeedArea, text))
 		this.addChild(this.maxSJSpeedArea);
 		this.maxRJStrengthArea = new GuiTextInput(400, 230, 60, 20, format);
-		this.maxRJStrengthArea.text = (ControllerChallenge.challenge.maxRJStrength == Number.MAX_VALUE ? "15" : ControllerChallenge.challenge.maxRJStrength.toString());
+		this.maxRJStrengthArea.text = (ControllerGameGlobals.challenge.maxRJStrength == Number.MAX_VALUE ? "15" : ControllerGameGlobals.challenge.maxRJStrength.toString());
 		this.maxRJStrengthArea.maxLength = 4;
 		this.maxRJStrengthArea.enabled = false;
 		this.maxRJStrengthArea.editable = false;
@@ -320,7 +320,7 @@ export class RestrictionsWindow extends GuiWindow {
 		this.maxRJStrengthArea.on("blur", text => this.textEntered(this.maxRJStrengthArea, text))
 		this.addChild(this.maxRJStrengthArea);
 		this.maxRJSpeedArea = new GuiTextInput(400, 280, 60, 20, format);
-		this.maxRJSpeedArea.text = (ControllerChallenge.challenge.maxRJSpeed == Number.MAX_VALUE ? "15" : ControllerChallenge.challenge.maxRJSpeed.toString());
+		this.maxRJSpeedArea.text = (ControllerGameGlobals.challenge.maxRJSpeed == Number.MAX_VALUE ? "15" : ControllerGameGlobals.challenge.maxRJSpeed.toString());
 		this.maxRJSpeedArea.maxLength = 4;
 		this.maxRJSpeedArea.enabled = false;
 		this.maxRJSpeedArea.editable = false;
@@ -328,7 +328,7 @@ export class RestrictionsWindow extends GuiWindow {
 		this.maxRJSpeedArea.on("blur", text => this.textEntered(this.maxRJSpeedArea, text))
 		this.addChild(this.maxRJSpeedArea);
 		this.maxThrusterArea = new GuiTextInput(400, 330, 60, 20, format);
-		this.maxThrusterArea.text = (ControllerChallenge.challenge.maxThrusterStrength == Number.MAX_VALUE ? "15" : ControllerChallenge.challenge.maxThrusterStrength.toString());
+		this.maxThrusterArea.text = (ControllerGameGlobals.challenge.maxThrusterStrength == Number.MAX_VALUE ? "15" : ControllerGameGlobals.challenge.maxThrusterStrength.toString());
 		this.maxThrusterArea.maxLength = 4;
 		this.maxThrusterArea.enabled = false;
 		this.maxThrusterArea.editable = false;
@@ -345,19 +345,19 @@ export class RestrictionsWindow extends GuiWindow {
 	}
 
 	private backButtonPressed(callback:boolean = true):boolean {
-		ControllerChallenge.challenge.circlesAllowed = !this.circleBox.selected;
-		ControllerChallenge.challenge.rectanglesAllowed = !this.rectBox.selected;
-		ControllerChallenge.challenge.trianglesAllowed = !this.triBox.selected;
-		ControllerChallenge.challenge.fixedJointsAllowed = !this.fjBox.selected;
-		ControllerChallenge.challenge.rotatingJointsAllowed = !this.rjBox.selected;
-		ControllerChallenge.challenge.slidingJointsAllowed = !this.sjBox.selected;
-		ControllerChallenge.challenge.thrustersAllowed = !this.thrustersBox.selected;
-		ControllerChallenge.challenge.cannonsAllowed = !this.cannonBox.selected;
-		ControllerChallenge.challenge.mouseDragAllowed = this.mouseBox.selected;
-		ControllerChallenge.challenge.botControlAllowed = this.controlBox.selected;
-		ControllerChallenge.challenge.fixateAllowed = this.fixateBox.selected;
-		ControllerChallenge.challenge.nonCollidingAllowed = this.collisionBox.selected;
-		ControllerChallenge.challenge.showConditions = this.conditionsBox.selected;
+		ControllerGameGlobals.challenge.circlesAllowed = !this.circleBox.selected;
+		ControllerGameGlobals.challenge.rectanglesAllowed = !this.rectBox.selected;
+		ControllerGameGlobals.challenge.trianglesAllowed = !this.triBox.selected;
+		ControllerGameGlobals.challenge.fixedJointsAllowed = !this.fjBox.selected;
+		ControllerGameGlobals.challenge.rotatingJointsAllowed = !this.rjBox.selected;
+		ControllerGameGlobals.challenge.slidingJointsAllowed = !this.sjBox.selected;
+		ControllerGameGlobals.challenge.thrustersAllowed = !this.thrustersBox.selected;
+		ControllerGameGlobals.challenge.cannonsAllowed = !this.cannonBox.selected;
+		ControllerGameGlobals.challenge.mouseDragAllowed = this.mouseBox.selected;
+		ControllerGameGlobals.challenge.botControlAllowed = this.controlBox.selected;
+		ControllerGameGlobals.challenge.fixateAllowed = this.fixateBox.selected;
+		ControllerGameGlobals.challenge.nonCollidingAllowed = this.collisionBox.selected;
+		ControllerGameGlobals.challenge.showConditions = this.conditionsBox.selected;
 
 		var minDensity:number = (this.minDensityBox.selected ? -Number.MAX_VALUE : Number(this.minDensityArea.text));
 		var maxDensity:number = (this.maxDensityBox.selected ? Number.MAX_VALUE : Number(this.maxDensityArea.text));
@@ -403,13 +403,13 @@ export class RestrictionsWindow extends GuiWindow {
 			if (isNaN(maxThrusterStrength)) maxThrusterStrength = 15.0;
 		}
 
-		ControllerChallenge.challenge.minDensity = minDensity;
-		ControllerChallenge.challenge.maxDensity = maxDensity;
-		ControllerChallenge.challenge.maxRJStrength = maxRJStrength;
-		ControllerChallenge.challenge.maxRJSpeed = maxRJSpeed;
-		ControllerChallenge.challenge.maxSJStrength = maxSJStrength;
-		ControllerChallenge.challenge.maxSJSpeed = maxSJSpeed;
-		ControllerChallenge.challenge.maxThrusterStrength = maxThrusterStrength;
+		ControllerGameGlobals.challenge.minDensity = minDensity;
+		ControllerGameGlobals.challenge.maxDensity = maxDensity;
+		ControllerGameGlobals.challenge.maxRJStrength = maxRJStrength;
+		ControllerGameGlobals.challenge.maxRJSpeed = maxRJSpeed;
+		ControllerGameGlobals.challenge.maxSJStrength = maxSJStrength;
+		ControllerGameGlobals.challenge.maxSJSpeed = maxSJSpeed;
+		ControllerGameGlobals.challenge.maxThrusterStrength = maxThrusterStrength;
 
 		ControllerGameGlobals.minDensity = minDensity;
 		ControllerGameGlobals.maxDensity = maxDensity;
@@ -452,7 +452,7 @@ export class RestrictionsWindow extends GuiWindow {
 				//Database.GetChallengeData(ControllerGameGlobals.userName, ControllerGameGlobals.password, false, Database.curSortType, (Database.curSortPeriod == Database.SORT_PERIOD_FEATURED ? Database.SORT_PERIOD_ALLTIME : Database.curSortPeriod), 1, "", cont.finishGettingSaveChallengeData);
 				//cont.ShowDialog("Getting challenges...");
 				//Main.ShowHourglass();
-				Database.ExportChallenge(ControllerChallenge.challenge, "", "", 1, 1, (...args) => this.cont.finishExporting(...args));
+				Database.ExportChallenge(ControllerGameGlobals.challenge, "", "", 1, 1, (...args) => this.cont.finishExporting(...args));
 			} else {
 				this.cont.m_fader.visible = false;
 			}

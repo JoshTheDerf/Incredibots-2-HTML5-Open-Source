@@ -14,6 +14,10 @@ import { Triangle } from "../../Parts/Triangle"
 
 export class ControllerHomeMovies extends ControllerSandbox
 {
+
+	public IsHomeMovies(): boolean {
+		return true;
+	}
 	private face:ShapePart;
 	private neck:ShapePart;
 	private hair1:ShapePart;
