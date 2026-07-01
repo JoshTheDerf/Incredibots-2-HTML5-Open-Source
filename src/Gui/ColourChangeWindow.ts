@@ -1,16 +1,14 @@
 import { Graphics, Text, TextStyle, utils } from "pixi.js";
-import {
-  ControllerGame,
-  GuiButton,
-  GuiCheckBox,
-  GuiCombobox,
-  GuiTextInput,
-  GuiWindow,
-  Main,
-  Part,
-  PartEditWindow,
-  TextPart,
-} from "../imports";
+import { ControllerGame } from "../Game/ControllerGame"
+import { GuiButton } from "./GuiButton"
+import { GuiCheckBox } from "./GuiCheckBox"
+import { GuiCombobox } from "./GuiCombobox"
+import { GuiTextInput } from "./GuiTextInput"
+import { GuiWindow } from "./GuiWindow"
+import { PartEditWindow } from "./PartEditWindow"
+import { Main } from "../Main"
+import { Part } from "../Parts/Part"
+import { TextPart } from "../Parts/TextPart"
 
 export class ColourChangeWindow extends GuiWindow {
   private cont: ControllerGame;

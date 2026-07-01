@@ -1,6 +1,11 @@
 import { b2Vec2 } from "../../Box2D";
 import { Container, Graphics, Sprite } from "pixi.js";
-import { Controller, ControllerMainMenu, Gradient, Resource, SandboxSettings, Util } from "../../imports";
+import { Controller } from "../Controller"
+import { ControllerMainMenu } from "../ControllerMainMenu"
+import { Gradient } from "./Gradient"
+import { Resource } from "./Resource"
+import { SandboxSettings } from "../SandboxSettings"
+import { Util } from "../../General/Util"
 
 export class Sky {
   private static topColours = [

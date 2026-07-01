@@ -1,5 +1,10 @@
 import { b2Body, b2Shape, b2World } from "../Box2D";
-import { ControllerGameGlobals, FixedJoint, IllegalOperationError, JointPart, Part, Thrusters, Util } from "../imports";
+import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
+import { Util } from "../General/Util"
+import { FixedJoint } from "./FixedJoint"
+import { JointPart } from "./JointPart"
+import { IllegalOperationError, Part } from "./Part"
+import { Thrusters } from "./Thrusters"
 
 export class ShapePart extends Part {
   public centerX: number;

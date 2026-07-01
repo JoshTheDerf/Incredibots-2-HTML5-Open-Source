@@ -1,5 +1,5 @@
-import { ControllerGame } from "../imports";
-import { IllegalOperationError, Part } from "../imports";
+import { ControllerGame } from "../Game/ControllerGame"
+import { IllegalOperationError, Part } from "../Parts/Part"
 
 export class Action {
 	public static m_controller:ControllerGame;

@@ -1,34 +1,32 @@
 import { Container, DisplayObject, Graphics, Matrix, Sprite, Text, TextStyle } from "pixi.js";
 import { b2AABB, b2Vec2, b2World } from "../Box2D";
-import {
-  AdvancedSandboxWindow,
-  ByteArray,
-  Cannon,
-  Challenge,
-  ContactFilter,
-  Controller,
-  ControllerChallenge,
-  ControllerGameGlobals,
-  ControllerSandbox,
-  Database,
-  DialogWindow,
-  Draw,
-  Gradient,
-  GuiButton,
-  ImportWindow,
-  JointPart,
-  LSOManager,
-  Main,
-  Replay,
-  Resource,
-  Robot,
-  SandboxSettings,
-  ShapePart,
-  Sky,
-  Thrusters,
-	TutorialSelectWindow,
-  Util,
-} from "../imports";
+import { Challenge } from "./Challenge"
+import { ContactFilter } from "./ContactFilter"
+import { Controller } from "./Controller"
+import { ControllerChallenge } from "./ControllerChallenge"
+import { ControllerSandbox } from "./ControllerSandbox"
+import { Draw } from "./Draw"
+import { ControllerGameGlobals } from "./Globals/ControllerGameGlobals"
+import { Gradient } from "./Graphics/Gradient"
+import { Resource } from "./Graphics/Resource"
+import { Sky } from "./Graphics/Sky"
+import { Replay } from "./Replay"
+import { Robot } from "./Robot"
+import { SandboxSettings } from "./SandboxSettings"
+import { ByteArray } from "../General/ByteArray"
+import { Database } from "../General/Database"
+import { LSOManager } from "../General/LSOManager"
+import { Util } from "../General/Util"
+import { AdvancedSandboxWindow } from "../Gui/AdvancedSandboxWindow"
+import { DialogWindow } from "../Gui/DialogWindow"
+import { GuiButton } from "../Gui/GuiButton"
+import { ImportWindow } from "../Gui/ImportWindow"
+import { TutorialSelectWindow } from "../Gui/TutorialSelectWindow"
+import { Main } from "../Main"
+import { Cannon } from "../Parts/Cannon"
+import { JointPart } from "../Parts/JointPart"
+import { ShapePart } from "../Parts/ShapePart"
+import { Thrusters } from "../Parts/Thrusters"
 
 export class ControllerMainMenu extends Controller {
 	private static LOGO_STRETCH_WIDTHS:Array<number> = [101.2, 101, 100.7, 100.5, 100.2, 100, 99.7, 99.4, 99.1, 98.9, 98.6, 98.4, 98.2, 98, 97.8, 97.7, 97.5, 97.5, 97.4, 97.4, 97.4, 97.5, 97.6, 97.8, 98.1, 98.3, 98.6, 99, 99.3, 99.6, 100, 100.3, 100.7, 101, 101.3, 101.6, 101.8, 102, 102.1, 102.2, 102.3, 102.2, 102.2, 102.1, 102, 101.8, 101.6, 101.4];

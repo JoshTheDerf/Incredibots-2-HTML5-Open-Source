@@ -1,5 +1,7 @@
 import { b2Body, b2BodyDef, b2MassData, b2PolygonDef, b2PolygonShape, b2Vec2, b2World } from "../Box2D";
-import { FixedJoint, ShapePart, Util } from "../imports";
+import { Util } from "../General/Util"
+import { FixedJoint } from "./FixedJoint"
+import { ShapePart } from "./ShapePart"
 
 export class Rectangle extends ShapePart {
   public x: number;

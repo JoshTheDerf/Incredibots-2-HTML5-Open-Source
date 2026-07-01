@@ -1,6 +1,6 @@
-import { Part } from "../imports";
-import { ShapePart } from "../imports";
-import { Action } from "../imports";
+import { Part } from "../Parts/Part"
+import { ShapePart } from "../Parts/ShapePart"
+import { Action } from "./Action"
 
 export class CameraAction extends Action
 {

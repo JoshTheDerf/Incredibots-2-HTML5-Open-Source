@@ -1,5 +1,9 @@
 import { b2Body, b2BodyDef, b2CircleDef, b2CircleShape, b2MassData, b2PolygonDef, b2Vec2, b2World } from "../Box2D";
-import { ControllerGameGlobals, ControllerMainMenu, FixedJoint, ShapePart, Util } from "../imports";
+import { ControllerMainMenu } from "../Game/ControllerMainMenu"
+import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
+import { Util } from "../General/Util"
+import { FixedJoint } from "./FixedJoint"
+import { ShapePart } from "./ShapePart"
 
 export class Cannon extends ShapePart {
   public x: number;

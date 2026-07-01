@@ -1,4 +1,4 @@
-import { Action } from "../imports";
+import { Action } from "./Action"
 
 export class MultiOutlineAction extends Action
 {

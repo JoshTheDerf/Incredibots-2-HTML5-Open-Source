@@ -1,5 +1,9 @@
 import { Text, TextStyle } from 'pixi.js'
-import { ControllerGame, ControllerGameGlobals, GuiButton, GuiWindow, Main } from "../imports";
+import { ControllerGame } from "../Game/ControllerGame"
+import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
+import { GuiButton } from "./GuiButton"
+import { GuiWindow } from "./GuiWindow"
+import { Main } from "../Main"
 
 export class PostReplayWindow extends GuiWindow
 {

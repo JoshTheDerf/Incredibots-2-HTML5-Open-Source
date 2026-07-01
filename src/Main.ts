@@ -1,7 +1,32 @@
 // permanent mochi ID for version 0.02: 1913f89f65e17063
 
 import { Application, Container } from "pixi.js";
-import { ByteArray, Controller, ControllerCar, ControllerCatapult, ControllerChallenge, ControllerChallengeEditor, ControllerClimb, ControllerDumpbot, ControllerGame, ControllerGameGlobals, ControllerHomeMovies, ControllerJumpbot, ControllerMainMenu, ControllerMonkeyBars, ControllerNewFeatures, ControllerRace, ControllerRubeGoldberg, ControllerSandbox, ControllerShapes, ControllerSpaceship, ControllerTank, FpsCounter, Input, LSOManager, Resource, SandboxSettings } from "./imports";
+import { ControllerClimb } from "./Game/Challenges/ControllerClimb"
+import { ControllerMonkeyBars } from "./Game/Challenges/ControllerMonkeyBars"
+import { ControllerRace } from "./Game/Challenges/ControllerRace"
+import { ControllerSpaceship } from "./Game/Challenges/ControllerSpaceship"
+import { Controller } from "./Game/Controller"
+import { ControllerChallenge } from "./Game/ControllerChallenge"
+import { ControllerGame } from "./Game/ControllerGame"
+import { ControllerMainMenu } from "./Game/ControllerMainMenu"
+import { ControllerSandbox } from "./Game/ControllerSandbox"
+import { ControllerGameGlobals } from "./Game/Globals/ControllerGameGlobals"
+import { Resource } from "./Game/Graphics/Resource"
+import { SandboxSettings } from "./Game/SandboxSettings"
+import { ControllerCar } from "./Game/Tutorials/ControllerCar"
+import { ControllerCatapult } from "./Game/Tutorials/ControllerCatapult"
+import { ControllerChallengeEditor } from "./Game/Tutorials/ControllerChallengeEditor"
+import { ControllerDumpbot } from "./Game/Tutorials/ControllerDumpbot"
+import { ControllerHomeMovies } from "./Game/Tutorials/ControllerHomeMovies"
+import { ControllerJumpbot } from "./Game/Tutorials/ControllerJumpbot"
+import { ControllerNewFeatures } from "./Game/Tutorials/ControllerNewFeatures"
+import { ControllerRubeGoldberg } from "./Game/Tutorials/ControllerRubeGoldberg"
+import { ControllerShapes } from "./Game/Tutorials/ControllerShapes"
+import { ControllerTank } from "./Game/Tutorials/ControllerTank"
+import { ByteArray } from "./General/ByteArray"
+import { FpsCounter } from "./General/FpsCounter"
+import { Input } from "./General/Input"
+import { LSOManager } from "./General/LSOManager"
 
 export class Main {
 

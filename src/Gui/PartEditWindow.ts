@@ -1,28 +1,26 @@
 import { Sprite, Text, TextStyle } from "pixi.js";
-import {
-  Cannon,
-  Circle,
-  ColourChangeWindow,
-	ControllerChallenge,
-  ControllerGame,
-  ControllerGameGlobals,
-  GuiButton,
-  GuiCheckBox,
-  GuiSlider,
-  GuiTextArea,
-  GuiTextInput,
-  GuiWindow,
-  Input,
-  JointPart,
-  Main,
-  PrismaticJoint,
-  Rectangle,
-  RevoluteJoint,
-  ShapePart,
-  TextPart,
-  Thrusters,
-  Triangle,
-} from "../imports";
+import { ControllerChallenge } from "../Game/ControllerChallenge"
+import { ControllerGame } from "../Game/ControllerGame"
+import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
+import { Input } from "../General/Input"
+import { ColourChangeWindow } from "./ColourChangeWindow"
+import { GuiButton } from "./GuiButton"
+import { GuiCheckBox } from "./GuiCheckBox"
+import { GuiSlider } from "./GuiSlider"
+import { GuiTextArea } from "./GuiTextArea"
+import { GuiTextInput } from "./GuiTextInput"
+import { GuiWindow } from "./GuiWindow"
+import { Main } from "../Main"
+import { Cannon } from "../Parts/Cannon"
+import { Circle } from "../Parts/Circle"
+import { JointPart } from "../Parts/JointPart"
+import { PrismaticJoint } from "../Parts/PrismaticJoint"
+import { Rectangle } from "../Parts/Rectangle"
+import { RevoluteJoint } from "../Parts/RevoluteJoint"
+import { ShapePart } from "../Parts/ShapePart"
+import { TextPart } from "../Parts/TextPart"
+import { Thrusters } from "../Parts/Thrusters"
+import { Triangle } from "../Parts/Triangle"
 
 export class PartEditWindow extends GuiWindow {
   private cont: ControllerGame;

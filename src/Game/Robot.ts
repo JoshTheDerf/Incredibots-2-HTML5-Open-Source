@@ -1,4 +1,5 @@
-import { Challenge, SandboxSettings } from "../imports";
+import { Challenge } from "./Challenge"
+import { SandboxSettings } from "./SandboxSettings"
 
 export class Robot {
   public allParts: Array<any>;

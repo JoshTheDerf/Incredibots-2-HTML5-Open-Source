@@ -1,4 +1,4 @@
-import { Controller } from "../imports";
+import { Controller } from "./Controller"
 
 export class Replay {
   public cameraMovements: Array<any>;

@@ -7,7 +7,7 @@ import { deflateSync, deflateRawSync, inflateSync, inflateRawSync } from "zlib";
 import { LZMA } from "../vendor/lzma_worker.js";
 import { encodingExists, decode, encode } from "iconv-lite";
 
-import { CompressionAlgorithm, Endian, ObjectEncoding } from "../imports";
+import { CompressionAlgorithm, Endian, ObjectEncoding } from "./ByteArrayEnums"
 
 import amf0 from "./AMF/AMF0.js"
 import amf3 from "./AMF/AMF3.js"

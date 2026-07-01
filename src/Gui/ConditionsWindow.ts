@@ -1,5 +1,12 @@
 import { Text, TextStyle } from "pixi.js";
-import { ControllerChallenge, ShapePart, Main, WinCondition, LossCondition, Util, Condition, GuiList } from "../imports";
+import { Condition } from "../Game/Condition"
+import { ControllerChallenge } from "../Game/ControllerChallenge"
+import { LossCondition } from "../Game/LossCondition"
+import { WinCondition } from "../Game/WinCondition"
+import { Util } from "../General/Util"
+import { GuiList } from "./GuiList"
+import { Main } from "../Main"
+import { ShapePart } from "../Parts/ShapePart"
 import { GuiButton } from "./GuiButton";
 import { GuiCheckBox } from "./GuiCheckBox";
 import { GuiCombobox } from "./GuiCombobox";

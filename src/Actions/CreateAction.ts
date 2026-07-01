@@ -1,5 +1,5 @@
-import { Part } from "../imports";
-import { Action } from "../imports";
+import { Part } from "../Parts/Part"
+import { Action } from "./Action"
 
 export class CreateAction extends Action
 {

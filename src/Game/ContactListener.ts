@@ -1,5 +1,5 @@
 import { b2ContactListener } from "../Box2D";
-import { ControllerGame } from "../imports";
+import { ControllerGame } from "./ControllerGame"
 
 export class ContactListener extends b2ContactListener {
   private cont: ControllerGame;

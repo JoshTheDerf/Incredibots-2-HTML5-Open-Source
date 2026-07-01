@@ -1,5 +1,9 @@
 import { ByteArray } from "../../General/ByteArray";
-import { ControllerChallenge, ControllerGameGlobals, ControllerSandbox, Database, Resource } from "../../imports";
+import { ControllerChallenge } from "../ControllerChallenge"
+import { ControllerSandbox } from "../ControllerSandbox"
+import { ControllerGameGlobals } from "../Globals/ControllerGameGlobals"
+import { Resource } from "../Graphics/Resource"
+import { Database } from "../../General/Database"
 import { Challenge } from "../Challenge";
 
 export class ControllerSpaceship extends ControllerChallenge {

@@ -1,6 +1,8 @@
 import PIXIsound from "pixi-sound";
 import { Container, Graphics, Sprite, Text, TextStyle, Texture } from "pixi.js";
-import { GuiComboboxItem, Main, Resource } from "../imports";
+import { Resource } from "../Game/Graphics/Resource"
+import { GuiComboboxItem } from "./GuiComboboxItem"
+import { Main } from "../Main"
 type Sound = PIXIsound.Sound;
 
 type ComboBoxItem = {

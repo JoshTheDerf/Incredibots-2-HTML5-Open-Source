@@ -1,5 +1,9 @@
 import { b2Body, b2PolygonDef, b2PolygonShape, b2PrismaticJoint, b2PrismaticJointDef, b2Vec2, b2World } from "../Box2D";
-import { ControllerGame, ControllerGameGlobals, JointPart, ShapePart, Util } from "../imports";
+import { ControllerGame } from "../Game/ControllerGame"
+import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
+import { Util } from "../General/Util"
+import { JointPart } from "./JointPart"
+import { ShapePart } from "./ShapePart"
 
 export class PrismaticJoint extends JointPart {
   public axis: b2Vec2;

@@ -1,8 +1,8 @@
-import { Part } from "../imports";
-import { ShapePart } from "../imports";
-import { TextPart } from "../imports";
-import { Thrusters } from "../imports";
-import { Action } from "../imports";
+import { Part } from "../Parts/Part"
+import { ShapePart } from "../Parts/ShapePart"
+import { TextPart } from "../Parts/TextPart"
+import { Thrusters } from "../Parts/Thrusters"
+import { Action } from "./Action"
 
 export class MoveAction extends Action
 {

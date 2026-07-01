@@ -1,5 +1,5 @@
 import { Graphics, Matrix } from "pixi.js";
-import { Resource } from "../imports";
+import { Resource } from "../Game/Graphics/Resource"
 
 export class GuiWindow extends Graphics {
   public fader: Graphics;

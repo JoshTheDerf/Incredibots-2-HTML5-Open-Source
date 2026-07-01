@@ -7,25 +7,23 @@ import {
   b2Vec2,
 } from "../Box2D";
 import { TextStyle } from "pixi.js";
-import {
-  b2DebugDraw,
-  Cannon,
-  Challenge,
-  Circle,
-  ControllerGameGlobals,
-  FixedJoint,
-  JointPart,
-  Main,
-  Part,
-  PrismaticJoint,
-  Rectangle,
-  RevoluteJoint,
-  ShapePart,
-  TextPart,
-  Thrusters,
-  Triangle,
-  Util,
-} from "../imports";
+import { Challenge } from "./Challenge"
+import { ControllerGameGlobals } from "./Globals/ControllerGameGlobals"
+import { b2DebugDraw } from "./Graphics/b2DebugDraw"
+import { Util } from "../General/Util"
+import { Main } from "../Main"
+import { Cannon } from "../Parts/Cannon"
+import { Circle } from "../Parts/Circle"
+import { FixedJoint } from "../Parts/FixedJoint"
+import { JointPart } from "../Parts/JointPart"
+import { Part } from "../Parts/Part"
+import { PrismaticJoint } from "../Parts/PrismaticJoint"
+import { Rectangle } from "../Parts/Rectangle"
+import { RevoluteJoint } from "../Parts/RevoluteJoint"
+import { ShapePart } from "../Parts/ShapePart"
+import { TextPart } from "../Parts/TextPart"
+import { Thrusters } from "../Parts/Thrusters"
+import { Triangle } from "../Parts/Triangle"
 
 export class Draw extends b2DebugDraw {
   private static s_jointColor = new b2Color(0.8, 0.8, 0.4);

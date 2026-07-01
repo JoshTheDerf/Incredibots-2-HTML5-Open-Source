@@ -1,5 +1,6 @@
 import PIXIsound from "pixi-sound";
-import { Replay, Resource } from "../../imports";
+import { Resource } from "../Graphics/Resource"
+import { Replay } from "../Replay"
 
 type Sound = PIXIsound.Sound;
 

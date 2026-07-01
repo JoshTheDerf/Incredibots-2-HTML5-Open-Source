@@ -1,5 +1,6 @@
 ﻿import { Application, Container } from "pixi.js";
-import { ControllerGame, Main } from "../imports";
+import { ControllerGame } from "../Game/ControllerGame"
+import { Main } from "../Main"
 
 export class Input {
   //======================

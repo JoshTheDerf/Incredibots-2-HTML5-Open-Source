@@ -1,5 +1,9 @@
 import { Graphics, Text, TextStyle, Texture } from "pixi.js";
-import { ControllerGame, ControllerGameGlobals, DropDownMenuItem, Main, Resource } from "../imports";
+import { ControllerGame } from "../Game/ControllerGame"
+import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
+import { Resource } from "../Game/Graphics/Resource"
+import { DropDownMenuItem } from "./DropDownMenuItem"
+import { Main } from "../Main"
 
 class MenuText extends Graphics {
   private text;

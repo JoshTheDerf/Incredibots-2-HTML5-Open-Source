@@ -1,5 +1,15 @@
 import { Text, TextStyle } from 'pixi.js'
-import { Circle, ControllerGameGlobals, ControllerSandbox, FixedJoint, JointPart, LSOManager, Main, Rectangle, RevoluteJoint, ScoreWindow, ShapePart } from "../../imports";
+import { ControllerSandbox } from "../ControllerSandbox"
+import { ControllerGameGlobals } from "../Globals/ControllerGameGlobals"
+import { LSOManager } from "../../General/LSOManager"
+import { ScoreWindow } from "../../Gui/ScoreWindow"
+import { Main } from "../../Main"
+import { Circle } from "../../Parts/Circle"
+import { FixedJoint } from "../../Parts/FixedJoint"
+import { JointPart } from "../../Parts/JointPart"
+import { Rectangle } from "../../Parts/Rectangle"
+import { RevoluteJoint } from "../../Parts/RevoluteJoint"
+import { ShapePart } from "../../Parts/ShapePart"
 
 export class ControllerNewFeatures extends ControllerSandbox
 {

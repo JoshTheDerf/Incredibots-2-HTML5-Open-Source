@@ -1,5 +1,6 @@
 import { Container, NineSlicePlane, Text, TextStyle } from "pixi.js";
-import { Main, Resource } from '../imports';
+import { Resource } from "../Game/Graphics/Resource"
+import { Main } from "../Main"
 import { Scrollbox } from "pixi-scrollbox";
 
 export class GuiList extends Container {

@@ -1,5 +1,8 @@
 import { Graphics, Sprite, Text, TextStyle } from "pixi.js";
-import { DropDownMenu, Input, Main, Resource } from "../imports";
+import { Resource } from "../Game/Graphics/Resource"
+import { Input } from "../General/Input"
+import { DropDownMenu } from "./DropDownMenu"
+import { Main } from "../Main"
 
 export class DropDownMenuItem extends Graphics {
   private m_Text: Text;

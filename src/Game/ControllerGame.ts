@@ -1,89 +1,86 @@
 ﻿import { Graphics, Matrix, Text, TextStyle } from "pixi.js";
 import { b2AABB, b2MouseJointDef, b2Vec2, b2World } from "../Box2D";
-import {
-	Action,
-	AdvancedSandboxWindow,
-	b2DebugDraw,
-	CameraAction,
-	CameraMovement,
-	Cannon,
-	Challenge,
-	ChangeSliderAction,
-	Circle,
-	ClearAction,
-	ColourChangeAction,
-	ContactFilter,
-	ContactListener,
-	ControlKeyAction,
-	Controller,
-	ControllerChallenge,
-  ControllerChallengeEditor,
-  ControllerClimb,
-	ControllerGameGlobals,
-  ControllerHomeMovies,
-  ControllerMonkeyBars,
-  ControllerNewFeatures,
-  ControllerRace,
-  ControllerRubeGoldberg,
-	ControllerSandbox,
-  ControllerSpaceship,
-  ControllerTutorial,
-	CreateAction,
-	Database,
-	DeleteAction,
-  DialogWindow,
-	Draw,
-	DropDownMenu,
-	EnterTextAction,
-	ExportWindow,
-	FixedJoint,
-	GuiTextInput,
-	IllegalOperationError,
-	ImportWindow,
-	Input,
-	JointCheckboxAction,
-	JointPart,
-	KeyPress,
-	LimitChangeAction,
-	LoadWindow,
-	LSOManager,
-	Main,
-	MainEditPanel,
-	MassCreateAction,
-	MoveAction,
-	MoveZAction,
-	MultiCollideAction,
-	MultiColourChangeAction,
-	MultiFixateAction,
-	MultiOutlineAction,
-	MultiTerrainAction,
-	MultiUndragableAction,
-	Part,
-	PartEditWindow,
-  PostReplayWindow,
-	PrismaticJoint,
-	Rectangle,
-	Replay,
-	ReplaySyncPoint,
-	ResizeShapesAction,
-	ResizeTextAction,
-	RevoluteJoint,
-	Robot,
-	RotateAction,
-  ScoreWindow,
-	ShapeCheckboxAction,
-	ShapePart,
-	Sky,
-	TextCheckboxAction,
-	TextPart,
-	TextSizeChangeAction,
-	Thrusters,
-	Triangle,
-	TutorialWindow,
-  ConditionsWindow,
-	Util,
-  RestrictionsWindow
-} from "../imports";
+import { Action } from "../Actions/Action"
+import { CameraAction } from "../Actions/CameraAction"
+import { ChangeSliderAction } from "../Actions/ChangeSliderAction"
+import { ClearAction } from "../Actions/ClearAction"
+import { ColourChangeAction } from "../Actions/ColourChangeAction"
+import { ControlKeyAction } from "../Actions/ControlKeyAction"
+import { CreateAction } from "../Actions/CreateAction"
+import { DeleteAction } from "../Actions/DeleteAction"
+import { EnterTextAction } from "../Actions/EnterTextAction"
+import { JointCheckboxAction } from "../Actions/JointCheckboxAction"
+import { LimitChangeAction } from "../Actions/LimitChangeAction"
+import { MassCreateAction } from "../Actions/MassCreateAction"
+import { MoveAction } from "../Actions/MoveAction"
+import { MoveZAction } from "../Actions/MoveZAction"
+import { MultiCollideAction } from "../Actions/MultiCollideAction"
+import { MultiColourChangeAction } from "../Actions/MultiColourChangeAction"
+import { MultiFixateAction } from "../Actions/MultiFixateAction"
+import { MultiOutlineAction } from "../Actions/MultiOutlineAction"
+import { MultiTerrainAction } from "../Actions/MultiTerrainAction"
+import { MultiUndragableAction } from "../Actions/MultiUndragableAction"
+import { ResizeShapesAction } from "../Actions/ResizeShapesAction"
+import { ResizeTextAction } from "../Actions/ResizeTextAction"
+import { RotateAction } from "../Actions/RotateAction"
+import { ShapeCheckboxAction } from "../Actions/ShapeCheckboxAction"
+import { TextCheckboxAction } from "../Actions/TextCheckboxAction"
+import { TextSizeChangeAction } from "../Actions/TextSizeChangeAction"
+import { CameraMovement } from "./CameraMovement"
+import { Challenge } from "./Challenge"
+import { ControllerClimb } from "./Challenges/ControllerClimb"
+import { ControllerMonkeyBars } from "./Challenges/ControllerMonkeyBars"
+import { ControllerRace } from "./Challenges/ControllerRace"
+import { ControllerSpaceship } from "./Challenges/ControllerSpaceship"
+import { ContactFilter } from "./ContactFilter"
+import { ContactListener } from "./ContactListener"
+import { Controller } from "./Controller"
+import { ControllerChallenge } from "./ControllerChallenge"
+import { ControllerSandbox } from "./ControllerSandbox"
+import { Draw } from "./Draw"
+import { ControllerGameGlobals } from "./Globals/ControllerGameGlobals"
+import { b2DebugDraw } from "./Graphics/b2DebugDraw"
+import { Sky } from "./Graphics/Sky"
+import { KeyPress } from "./KeyPress"
+import { Replay } from "./Replay"
+import { ReplaySyncPoint } from "./ReplaySyncPoint"
+import { Robot } from "./Robot"
+import { ControllerChallengeEditor } from "./Tutorials/ControllerChallengeEditor"
+import { ControllerHomeMovies } from "./Tutorials/ControllerHomeMovies"
+import { ControllerNewFeatures } from "./Tutorials/ControllerNewFeatures"
+import { ControllerRubeGoldberg } from "./Tutorials/ControllerRubeGoldberg"
+import { ControllerTutorial } from "./Tutorials/ControllerTutorial"
+import { Database } from "../General/Database"
+import { Input } from "../General/Input"
+import { LSOManager } from "../General/LSOManager"
+import { Util } from "../General/Util"
+import { AdvancedSandboxWindow } from "../Gui/AdvancedSandboxWindow"
+import { ConditionsWindow } from "../Gui/ConditionsWindow"
+import { DialogWindow } from "../Gui/DialogWindow"
+import { DropDownMenu } from "../Gui/DropDownMenu"
+import { ExportWindow } from "../Gui/ExportWindow"
+import { GuiTextInput } from "../Gui/GuiTextInput"
+import { ImportWindow } from "../Gui/ImportWindow"
+import { LoadWindow } from "../Gui/LoadWindow"
+import { MainEditPanel } from "../Gui/MainEditPanel"
+import { PartEditWindow } from "../Gui/PartEditWindow"
+import { PostReplayWindow } from "../Gui/PostReplayWindow"
+import { RestrictionsWindow } from "../Gui/RestrictionsWindow"
+import { ScoreWindow } from "../Gui/ScoreWindow"
+import { TutorialWindow } from "../Gui/TutorialWindow"
+import { Main } from "../Main"
+import { Cannon } from "../Parts/Cannon"
+import { Circle } from "../Parts/Circle"
+import { FixedJoint } from "../Parts/FixedJoint"
+import { JointPart } from "../Parts/JointPart"
+import { IllegalOperationError, Part } from "../Parts/Part"
+import { PrismaticJoint } from "../Parts/PrismaticJoint"
+import { Rectangle } from "../Parts/Rectangle"
+import { RevoluteJoint } from "../Parts/RevoluteJoint"
+import { ShapePart } from "../Parts/ShapePart"
+import { TextPart } from "../Parts/TextPart"
+import { Thrusters } from "../Parts/Thrusters"
+import { Triangle } from "../Parts/Triangle"
 import { Gradient } from "./Graphics/Gradient";
 
 export class ControllerGame extends Controller {

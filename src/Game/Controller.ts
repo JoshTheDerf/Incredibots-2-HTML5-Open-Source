@@ -1,5 +1,6 @@
 import { Container } from "pixi.js";
-import { Challenge, Robot } from "../imports";
+import { Challenge } from "./Challenge"
+import { Robot } from "./Robot"
 
 class IllegalOperationError extends Error {}
 

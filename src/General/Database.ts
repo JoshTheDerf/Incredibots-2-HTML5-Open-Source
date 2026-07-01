@@ -1,34 +1,32 @@
 ﻿import { b2AABB, b2Vec2 } from "../Box2D";
-import {
-  Base64Decoder,
-  Base64Encoder,
-  ByteArray,
-  CameraMovement,
-  Cannon,
-  Challenge,
-  Circle,
-  ControllerGame,
-  ControllerGameGlobals,
-  FixedJoint,
-  JointPart,
-  KeyPress,
-  LossCondition,
-  Main,
-  Part,
-  PrismaticJoint,
-  Rectangle,
-  Replay,
-  ReplaySyncPoint,
-  RevoluteJoint,
-  Robot,
-  SandboxSettings,
-  ShapePart,
-  TextPart,
-  Thrusters,
-  Triangle,
-  Util,
-  WinCondition,
-} from "../imports";
+import { CameraMovement } from "../Game/CameraMovement"
+import { Challenge } from "../Game/Challenge"
+import { ControllerGame } from "../Game/ControllerGame"
+import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
+import { KeyPress } from "../Game/KeyPress"
+import { LossCondition } from "../Game/LossCondition"
+import { Replay } from "../Game/Replay"
+import { ReplaySyncPoint } from "../Game/ReplaySyncPoint"
+import { Robot } from "../Game/Robot"
+import { SandboxSettings } from "../Game/SandboxSettings"
+import { WinCondition } from "../Game/WinCondition"
+import { ByteArray } from "./ByteArray"
+import { Util } from "./Util"
+import { Main } from "../Main"
+import { Base64Decoder } from "../mx/utils/Base64Decoder"
+import { Base64Encoder } from "../mx/utils/Base64Encoder"
+import { Cannon } from "../Parts/Cannon"
+import { Circle } from "../Parts/Circle"
+import { FixedJoint } from "../Parts/FixedJoint"
+import { JointPart } from "../Parts/JointPart"
+import { Part } from "../Parts/Part"
+import { PrismaticJoint } from "../Parts/PrismaticJoint"
+import { Rectangle } from "../Parts/Rectangle"
+import { RevoluteJoint } from "../Parts/RevoluteJoint"
+import { ShapePart } from "../Parts/ShapePart"
+import { TextPart } from "../Parts/TextPart"
+import { Thrusters } from "../Parts/Thrusters"
+import { Triangle } from "../Parts/Triangle"
 
 export class Database {
   public static waitingForResponse: boolean = false;

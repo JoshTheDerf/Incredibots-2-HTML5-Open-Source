@@ -1,5 +1,7 @@
 import { b2Joint, b2World } from "../Box2D";
-import { IllegalOperationError, Part, ShapePart, Util } from "../imports";
+import { Util } from "../General/Util"
+import { IllegalOperationError, Part } from "./Part"
+import { ShapePart } from "./ShapePart"
 
 export class JointPart extends Part {
   public part1: ShapePart;

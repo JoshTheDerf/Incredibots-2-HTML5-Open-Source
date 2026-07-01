@@ -1,5 +1,6 @@
 import { b2CircleShape, b2Math, b2PolygonShape, b2Vec2 } from "../Box2D";
-import { Part, ShapePart } from "../imports";
+import { Part } from "../Parts/Part"
+import { ShapePart } from "../Parts/ShapePart"
 
 export class Condition {
   public name: String;

@@ -1,5 +1,8 @@
 import { Text, TextStyle } from "pixi.js";
-import { ControllerGame, GuiButton, GuiWindow, Main } from "../imports";
+import { ControllerGame } from "../Game/ControllerGame"
+import { GuiButton } from "./GuiButton"
+import { GuiWindow } from "./GuiWindow"
+import { Main } from "../Main"
 
 export class TutorialWindow extends GuiWindow
 {

@@ -1,6 +1,7 @@
 import { b2AABB } from "../../Box2D";
 import { Rectangle, Circle } from "pixi.js";
-import { ControllerGameGlobals, Triangle } from "../../imports";
+import { ControllerGameGlobals } from "../Globals/ControllerGameGlobals"
+import { Triangle } from "../../Parts/Triangle"
 import { ControllerTutorial } from "./ControllerTutorial";
 
 export class ControllerShapes extends ControllerTutorial

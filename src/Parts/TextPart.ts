@@ -1,6 +1,7 @@
 import { b2Body, b2World } from "../Box2D";
 import { Text, TextStyle } from "pixi.js";
-import { ControllerGame, Part } from "../imports";
+import { ControllerGame } from "../Game/ControllerGame"
+import { Part } from "./Part"
 
 export class TextPart extends Part {
   public x: number;

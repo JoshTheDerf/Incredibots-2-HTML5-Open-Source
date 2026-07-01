@@ -1,5 +1,7 @@
 import { b2Body, b2BodyDef, b2CircleDef, b2MassData, b2Vec2, b2World } from "../Box2D";
-import { FixedJoint, ShapePart, Util } from "../imports";
+import { Util } from "../General/Util"
+import { FixedJoint } from "./FixedJoint"
+import { ShapePart } from "./ShapePart"
 
 export class Circle extends ShapePart {
   public radius: number;

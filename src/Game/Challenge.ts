@@ -1,4 +1,4 @@
-import { SandboxSettings } from "../imports";
+import { SandboxSettings } from "./SandboxSettings"
 
 export class Challenge {
   public settings: SandboxSettings;

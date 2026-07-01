@@ -1,5 +1,9 @@
 import { b2Body, b2RevoluteJoint, b2RevoluteJointDef, b2Vec2, b2World } from "../Box2D";
-import { Circle, ControllerGameGlobals, JointPart, ShapePart, Util } from "../imports";
+import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
+import { Util } from "../General/Util"
+import { Circle } from "./Circle"
+import { JointPart } from "./JointPart"
+import { ShapePart } from "./ShapePart"
 
 export class RevoluteJoint extends JointPart {
   public enableMotor: boolean;

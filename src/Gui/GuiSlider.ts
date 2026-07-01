@@ -1,6 +1,6 @@
 // import { ISliderOptions, Slider, Sprite, Stage } from "@puxi/core";
 import { Container, Graphics } from "pixi.js";
-import { Resource } from "../imports";
+import { Resource } from "../Game/Graphics/Resource"
 
 export class GuiSlider extends Container {
   private thumb: Graphics;

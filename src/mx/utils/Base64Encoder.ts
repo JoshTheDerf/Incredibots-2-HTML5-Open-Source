@@ -9,7 +9,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-import { ByteArray } from "../../imports";
+import { ByteArray } from "../../General/ByteArray"
 
 /**
  * A utility class to encode a String or ByteArray as a Base64 encoded String.

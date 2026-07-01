@@ -1,17 +1,15 @@
 import { Sprite, Text, TextStyle } from "pixi.js";
-import {
-  Controller,
-  ControllerGame,
-  ControllerMainMenu,
-  ControllerSandbox,
-  GuiButton,
-  GuiCombobox,
-  GuiSlider,
-  GuiTextInput,
-  GuiWindow,
-  Main,
-  SandboxSettings,
-} from "../imports";
+import { Controller } from "../Game/Controller"
+import { ControllerGame } from "../Game/ControllerGame"
+import { ControllerMainMenu } from "../Game/ControllerMainMenu"
+import { ControllerSandbox } from "../Game/ControllerSandbox"
+import { SandboxSettings } from "../Game/SandboxSettings"
+import { GuiButton } from "./GuiButton"
+import { GuiCombobox } from "./GuiCombobox"
+import { GuiSlider } from "./GuiSlider"
+import { GuiTextInput } from "./GuiTextInput"
+import { GuiWindow } from "./GuiWindow"
+import { Main } from "../Main"
 
 export class AdvancedSandboxWindow extends GuiWindow {
   private cont: Controller;

@@ -1,5 +1,7 @@
 import { b2Body, b2World } from "../Box2D";
-import { JointPart, ShapePart, Util } from "../imports";
+import { Util } from "../General/Util"
+import { JointPart } from "./JointPart"
+import { ShapePart } from "./ShapePart"
 
 export class FixedJoint extends JointPart {
   constructor(p1: ShapePart, p2: ShapePart, x: number, y: number) {

@@ -1,5 +1,8 @@
 import { b2Body, b2Vec2, b2World } from "../Box2D";
-import { ControllerGameGlobals, Part, ShapePart, Util } from "../imports";
+import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
+import { Util } from "../General/Util"
+import { Part } from "./Part"
+import { ShapePart } from "./ShapePart"
 
 export class Thrusters extends Part {
   public shape: ShapePart;

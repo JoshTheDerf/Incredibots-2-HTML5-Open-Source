@@ -1,5 +1,11 @@
 import { TextStyle, Text } from "pixi.js";
-import { GuiWindow, ControllerMainMenu, GuiButton, LSOManager, SandboxSettings, ControllerSandbox, ControllerChallenge } from "../imports";
+import { ControllerChallenge } from "../Game/ControllerChallenge"
+import { ControllerMainMenu } from "../Game/ControllerMainMenu"
+import { ControllerSandbox } from "../Game/ControllerSandbox"
+import { SandboxSettings } from "../Game/SandboxSettings"
+import { LSOManager } from "../General/LSOManager"
+import { GuiButton } from "./GuiButton"
+import { GuiWindow } from "./GuiWindow"
 import { Main } from "../Main";
 
 export class TutorialSelectWindow extends GuiWindow

@@ -1,5 +1,10 @@
 import { Text, TextStyle } from "pixi.js";
-import { Controller, Database, GuiButton, GuiTextArea, GuiWindow, Main } from "../imports";
+import { Controller } from "../Game/Controller"
+import { Database } from "../General/Database"
+import { GuiButton } from "./GuiButton"
+import { GuiTextArea } from "./GuiTextArea"
+import { GuiWindow } from "./GuiWindow"
+import { Main } from "../Main"
 
 export class ImportWindow extends GuiWindow {
   public static TYPE_ROBOT: number = 0;

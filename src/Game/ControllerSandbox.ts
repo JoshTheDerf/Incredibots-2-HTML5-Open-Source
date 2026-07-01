@@ -1,6 +1,14 @@
 import { Graphics, Matrix, Text } from "pixi.js";
 import { b2Vec2 } from "../Box2D";
-import { Circle, ControllerGame, Gradient, Part, Rectangle, SandboxSettings, Sky, TextPart, Util } from "../imports";
+import { ControllerGame } from "./ControllerGame"
+import { Gradient } from "./Graphics/Gradient"
+import { Sky } from "./Graphics/Sky"
+import { SandboxSettings } from "./SandboxSettings"
+import { Util } from "../General/Util"
+import { Circle } from "../Parts/Circle"
+import { Part } from "../Parts/Part"
+import { Rectangle } from "../Parts/Rectangle"
+import { TextPart } from "../Parts/TextPart"
 
 export class ControllerSandbox extends ControllerGame {
 	private static terrainTopColours:Array<any>     = ['#65CD4E', Util.HexColourString(191, 131, 83), Util.HexColourString(214, 189, 100), Util.HexColourString(181, 197, 201), Util.HexColourString(224, 238, 253), Util.HexColourString(198, 196, 205), Util.HexColourString(249, 172, 101)];

@@ -1,4 +1,16 @@
-import { Circle, ControllerGameGlobals, ControllerSandbox, FixedJoint, LSOManager, Part, Rectangle, RevoluteJoint, ScoreWindow, ShapePart, TextPart, Triangle, Util } from "../../imports";
+import { ControllerSandbox } from "../ControllerSandbox"
+import { ControllerGameGlobals } from "../Globals/ControllerGameGlobals"
+import { LSOManager } from "../../General/LSOManager"
+import { Util } from "../../General/Util"
+import { ScoreWindow } from "../../Gui/ScoreWindow"
+import { Circle } from "../../Parts/Circle"
+import { FixedJoint } from "../../Parts/FixedJoint"
+import { Part } from "../../Parts/Part"
+import { Rectangle } from "../../Parts/Rectangle"
+import { RevoluteJoint } from "../../Parts/RevoluteJoint"
+import { ShapePart } from "../../Parts/ShapePart"
+import { TextPart } from "../../Parts/TextPart"
+import { Triangle } from "../../Parts/Triangle"
 
 export class ControllerHomeMovies extends ControllerSandbox
 {

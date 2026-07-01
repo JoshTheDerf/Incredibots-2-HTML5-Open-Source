@@ -1,4 +1,4 @@
-import { Condition } from "../imports";
+import { Condition } from "./Condition"
 
 export class LossCondition extends Condition {
   public immediate: boolean;

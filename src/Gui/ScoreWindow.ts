@@ -1,5 +1,17 @@
 import { Sprite, Text, TextStyle } from "pixi.js";
-import { ControllerChallengeEditor, ControllerGame, ControllerGameGlobals, ControllerHomeMovies, ControllerNewFeatures, ControllerRubeGoldberg, ControllerSandbox, ControllerTutorial, GuiButton, GuiWindow, Main, Resource, SandboxSettings } from "../imports";
+import { ControllerGame } from "../Game/ControllerGame"
+import { ControllerSandbox } from "../Game/ControllerSandbox"
+import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
+import { Resource } from "../Game/Graphics/Resource"
+import { SandboxSettings } from "../Game/SandboxSettings"
+import { ControllerChallengeEditor } from "../Game/Tutorials/ControllerChallengeEditor"
+import { ControllerHomeMovies } from "../Game/Tutorials/ControllerHomeMovies"
+import { ControllerNewFeatures } from "../Game/Tutorials/ControllerNewFeatures"
+import { ControllerRubeGoldberg } from "../Game/Tutorials/ControllerRubeGoldberg"
+import { ControllerTutorial } from "../Game/Tutorials/ControllerTutorial"
+import { GuiButton } from "./GuiButton"
+import { GuiWindow } from "./GuiWindow"
+import { Main } from "../Main"
 
 export class ScoreWindow extends GuiWindow
 {

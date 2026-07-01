@@ -18,7 +18,7 @@
 
 import { b2Color, b2Vec2 } from "../../Box2D";
 import { Graphics } from "pixi.js";
-import { Util } from "../../imports";
+import { Util } from "../../General/Util"
 
 /// Implement and register this class with a b2World to provide debug drawing of physics
 /// entities in your game.

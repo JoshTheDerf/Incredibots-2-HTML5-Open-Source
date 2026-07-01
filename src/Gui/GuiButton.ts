@@ -1,6 +1,7 @@
 import PIXIsound from "pixi-sound";
 import { Container, filters, InteractionEvent, Sprite, Text, TextStyle, Texture } from "pixi.js";
-import { Main, Resource } from "../imports";
+import { Resource } from "../Game/Graphics/Resource"
+import { Main } from "../Main"
 
 type Sound = PIXIsound.Sound;
 

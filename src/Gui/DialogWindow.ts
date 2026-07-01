@@ -1,4 +1,10 @@
-import { Controller, ControllerChallenge, ControllerGame, ControllerGameGlobals, GuiButton, GuiWindow, Main } from "../imports";
+import { Controller } from "../Game/Controller"
+import { ControllerChallenge } from "../Game/ControllerChallenge"
+import { ControllerGame } from "../Game/ControllerGame"
+import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
+import { GuiButton } from "./GuiButton"
+import { GuiWindow } from "./GuiWindow"
+import { Main } from "../Main"
 import { Text, TextStyle } from 'pixi.js';
 
 export class DialogWindow extends GuiWindow

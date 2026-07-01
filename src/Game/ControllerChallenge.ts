@@ -1,5 +1,12 @@
 import { b2AABB, b2Contact } from "../Box2D";
-import { Challenge, ControllerGameGlobals, ControllerSandbox, Database, Main, Replay, Robot, TextPart } from "../imports";
+import { Challenge } from "./Challenge"
+import { ControllerSandbox } from "./ControllerSandbox"
+import { ControllerGameGlobals } from "./Globals/ControllerGameGlobals"
+import { Replay } from "./Replay"
+import { Robot } from "./Robot"
+import { Database } from "../General/Database"
+import { Main } from "../Main"
+import { TextPart } from "../Parts/TextPart"
 
 export class ControllerChallenge extends ControllerSandbox {
   public static challenge: Challenge;

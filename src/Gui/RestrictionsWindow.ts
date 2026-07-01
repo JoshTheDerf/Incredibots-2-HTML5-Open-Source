@@ -1,4 +1,12 @@
-import { ControllerChallenge, Main, ControllerGameGlobals, Database, ControllerGame, GuiButton,	GuiCheckBox, GuiTextInput, GuiWindow } from "../imports";
+import { ControllerChallenge } from "../Game/ControllerChallenge"
+import { ControllerGame } from "../Game/ControllerGame"
+import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
+import { Database } from "../General/Database"
+import { GuiButton } from "./GuiButton"
+import { GuiCheckBox } from "./GuiCheckBox"
+import { GuiTextInput } from "./GuiTextInput"
+import { GuiWindow } from "./GuiWindow"
+import { Main } from "../Main"
 import { Text, TextStyle } from 'pixi.js'
 
 export class RestrictionsWindow extends GuiWindow {

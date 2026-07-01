@@ -1,5 +1,17 @@
 import { b2Contact } from "../Box2D";
-import { ShapePart, JointPart, Thrusters, RevoluteJoint, Rectangle, Circle, Triangle, FixedJoint, TextPart, LSOManager, ScoreWindow, ControllerChallenge, ControllerGameGlobals } from "../../imports";
+import { ControllerChallenge } from "../ControllerChallenge"
+import { ControllerGameGlobals } from "../Globals/ControllerGameGlobals"
+import { LSOManager } from "../../General/LSOManager"
+import { ScoreWindow } from "../../Gui/ScoreWindow"
+import { Circle } from "../../Parts/Circle"
+import { FixedJoint } from "../../Parts/FixedJoint"
+import { JointPart } from "../../Parts/JointPart"
+import { Rectangle } from "../../Parts/Rectangle"
+import { RevoluteJoint } from "../../Parts/RevoluteJoint"
+import { ShapePart } from "../../Parts/ShapePart"
+import { TextPart } from "../../Parts/TextPart"
+import { Thrusters } from "../../Parts/Thrusters"
+import { Triangle } from "../../Parts/Triangle"
 
 export class ControllerChallengeEditor extends ControllerChallenge
 {

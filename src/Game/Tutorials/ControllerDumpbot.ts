@@ -1,6 +1,16 @@
 import { b2AABB } from '../../Box2D';
 import { Text, TextStyle } from 'pixi.js'
-import { Circle, ControllerGameGlobals, ControllerTutorial, FixedJoint, Main, Part, Rectangle, RevoluteJoint, ShapePart, Triangle, Util } from "../../imports";
+import { ControllerGameGlobals } from "../Globals/ControllerGameGlobals"
+import { ControllerTutorial } from "./ControllerTutorial"
+import { Util } from "../../General/Util"
+import { Main } from "../../Main"
+import { Circle } from "../../Parts/Circle"
+import { FixedJoint } from "../../Parts/FixedJoint"
+import { Part } from "../../Parts/Part"
+import { Rectangle } from "../../Parts/Rectangle"
+import { RevoluteJoint } from "../../Parts/RevoluteJoint"
+import { ShapePart } from "../../Parts/ShapePart"
+import { Triangle } from "../../Parts/Triangle"
 
 export class ControllerDumpbot extends ControllerTutorial
 {

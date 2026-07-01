@@ -1,4 +1,4 @@
-import { Util } from "../imports";
+import { Util } from "./Util"
 
 interface IncredibotsSharedObject {
   data: {

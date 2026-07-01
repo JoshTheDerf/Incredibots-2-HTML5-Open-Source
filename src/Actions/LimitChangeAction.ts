@@ -1,6 +1,6 @@
-import { Part } from "../imports";
-import { RevoluteJoint } from "../imports";
-import { Action } from "../imports";
+import { Part } from "../Parts/Part"
+import { RevoluteJoint } from "../Parts/RevoluteJoint"
+import { Action } from "./Action"
 
 export class LimitChangeAction extends Action
 {

@@ -1,6 +1,7 @@
 import { Application } from 'pixi.js';
 
-import { Main, Resource } from './imports'
+import { Resource } from "./Game/Graphics/Resource"
+import { Main } from "./Main"
 
 
 async function main() {

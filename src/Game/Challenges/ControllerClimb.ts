@@ -1,6 +1,12 @@
 import { b2AABB } from "../../Box2D";
 import { Graphics, Matrix, Texture } from "pixi.js";
-import { Circle, ControllerChallenge, ControllerGameGlobals, Gradient, Rectangle, ShapePart, WinCondition } from "../../imports";
+import { ControllerChallenge } from "../ControllerChallenge"
+import { ControllerGameGlobals } from "../Globals/ControllerGameGlobals"
+import { Gradient } from "../Graphics/Gradient"
+import { WinCondition } from "../WinCondition"
+import { Circle } from "../../Parts/Circle"
+import { Rectangle } from "../../Parts/Rectangle"
+import { ShapePart } from "../../Parts/ShapePart"
 
 export class ControllerClimb extends ControllerChallenge {
   private groundTex: Texture;
