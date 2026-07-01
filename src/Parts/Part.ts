@@ -3,6 +3,8 @@ import { b2Body, b2World } from "../Box2D";
 export class IllegalOperationError extends Error {}
 
 export class Part {
+  /** Stable unique id assigned by GameCore on creation. */
+  public id!: number;
   public isEnabled: boolean = true;
   public isStatic: boolean = false;
   public isEditable: boolean = true;

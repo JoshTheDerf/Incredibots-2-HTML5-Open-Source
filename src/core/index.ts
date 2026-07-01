@@ -12,6 +12,7 @@ export type {
 	SimPhase,
 	CameraState,
 	EditState,
+	PartSnapshot,
 } from "./GameState";
 export { createInitialState } from "./GameState";
 export type { Command, CommandType, ToolMode, ShapeKind } from "./Command";

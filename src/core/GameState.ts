@@ -9,6 +9,29 @@ import type { Part } from "../Parts/Part";
 
 export type SimPhase = "editing" | "running" | "paused";
 
+/**
+ * A plain-data projection of a single Part for the view layer to read. Carries
+ * no class instances or Pixi types so it can cross a worker boundary. `kind` is
+ * the Part's `type` string (e.g. "Circle", "Rectangle", "Triangle", "TextPart").
+ * Colour channels (red/green/blue) are 0-255; opacity is 0-1.
+ */
+export type PartSnapshot = {
+	id: number;
+	kind: string;
+	x: number;
+	y: number;
+	red: number;
+	green: number;
+	blue: number;
+	opacity: number;
+	radius?: number;
+	w?: number;
+	h?: number;
+	angle?: number;
+	text?: string;
+	size?: number;
+};
+
 export interface CameraState {
 	/** world→screen scale (physics scale). */
 	scale: number;
@@ -33,6 +56,8 @@ export interface EditState {
 	/** depth of the undo / redo stacks, for enabling toolbar buttons. */
 	canUndo: boolean;
 	canRedo: boolean;
+	/** plain-data projection of the FIRST selected part; null when none selected. */
+	selectedPart: PartSnapshot | null;
 }
 
 /**
@@ -55,7 +80,7 @@ export function createInitialState(): GameState {
 	return {
 		parts: [],
 		sim: { phase: "editing", frame: 0 },
-		camera: { scale: 1, offsetX: 0, offsetY: 0 },
-		edit: { selection: [], tool: "select", editable: true, canUndo: false, canRedo: false },
+		camera: { scale: 30, offsetX: 0, offsetY: 0 },
+		edit: { selection: [], tool: "select", editable: true, canUndo: false, canRedo: false, selectedPart: null },
 	};
 }
