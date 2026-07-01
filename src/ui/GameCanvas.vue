@@ -9,10 +9,13 @@
 // (ControllerGame.ts:1254 / :1991) but re-expressed as pointer events driving
 // the GameCore command layer instead of mutating parts directly.
 //
-// DEFERRED: rotate & resize gestures. ControllerGame handles those in the same
-// MouseDrag() (rotatingPart branch ~:1527, RESIZING_SHAPES ~:1620), but the
-// matching GameCore handlers (rotateParts/resizeParts) currently throw, so
-// those interactions are a follow-up once those command handlers land.
+// Rotate & resize gestures are ported here from ControllerGame's MouseDrag()
+// (rotatingPart branch ~:1527, RESIZING_SHAPES ~:1620): with the Rotate/Resize
+// tool active and a selection present, a pointer-drag reads the cursor's
+// angle/distance about the selection centroid and dispatches the incremental
+// rotateParts/resizeParts delta to the core. Creation tools (joints, thrusters,
+// cannon, text) place their part on pointer-down via the matching create*
+// command (ControllerGame.mouseClick MaybeCreate* dispatch, :2389-2510).
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import { Application, Graphics } from "pixi.js";
 import { Draw } from "../Game/Draw";
@@ -44,6 +47,16 @@ type Gesture =
 	// (world units) — matching ControllerGame's per-frame Part.Move to
 	// mouseWorld - dragOff (ControllerGame.ts:1517).
 	| { kind: "drag"; lastWorld: { x: number; y: number } }
+	// Rotate the selection. `pivot` is the selection centroid (screen px); we
+	// track the cursor's last angle about it and dispatch the incremental delta,
+	// mirroring ControllerGame's ROTATE branch which reads the mouse angle from
+	// the part centre (ControllerGame.ts:1528).
+	| { kind: "rotate"; pivot: { x: number; y: number }; lastAngle: number }
+	// Resize the selection. `pivot` is the selection centroid (screen px); we
+	// track the cursor's last distance from it and dispatch the incremental
+	// scale ratio, mirroring ControllerGame's RESIZING_SHAPES distance-driven
+	// scale (ControllerGame.ts:1558).
+	| { kind: "resize"; pivot: { x: number; y: number }; lastDist: number }
 	// Marquee box-select. `origin` is the world-space anchor (first corner).
 	| { kind: "marquee"; origin: { x: number; y: number }; current: { x: number; y: number } };
 
@@ -66,6 +79,28 @@ function screenOf(event: PointerEvent): { x: number; y: number; w: number; h: nu
 	};
 }
 
+/**
+ * Screen-space centroid of the current selection's anchors. Matches the pivot
+ * the GameCore rotate/resize handlers use (the mean of the parts' centres), so
+ * the gesture reads angle/distance about the same point the core rotates around.
+ * Returns null if nothing is selected.
+ */
+function selectionCentroidScreen(canvasW: number, canvasH: number): { x: number; y: number } | null {
+	const sel = new Set(game.edit.selection);
+	const parts = game.parts.filter((p) => sel.has(p.id));
+	if (parts.length === 0) return null;
+	let wx = 0;
+	let wy = 0;
+	for (const p of parts) {
+		const anchor = p as unknown as { centerX?: number; centerY?: number; anchorX?: number; anchorY?: number; x?: number; y?: number };
+		wx += anchor.centerX ?? anchor.anchorX ?? anchor.x ?? 0;
+		wy += anchor.centerY ?? anchor.anchorY ?? anchor.y ?? 0;
+	}
+	wx /= parts.length;
+	wy /= parts.length;
+	return worldToScreen(wx, wy, game.camera, canvasW, canvasH);
+}
+
 function onPointerDown(event: PointerEvent): void {
 	if (!app || !container.value) return;
 	// Editing is disabled while the simulation runs (matches ControllerGame's
@@ -82,6 +117,50 @@ function onPointerDown(event: PointerEvent): void {
 	// A "new*" shape tool places a shape on press, as before.
 	if (shapeKind) {
 		game.dispatch({ type: "createShape", kind: shapeKind, x: world.x, y: world.y });
+		return;
+	}
+
+	// Creation tools that place a part at the click point. Joints/thrusters
+	// hit-test the shapes under the click inside the core (they no-op if the
+	// click misses; joints need two overlapping shapes). Mirrors
+	// ControllerGame.mouseClick's MaybeCreate* dispatch (:2389-2510).
+	if (tool === "newThrusters") {
+		game.dispatch({ type: "createThrusters", x: world.x, y: world.y });
+		return;
+	}
+	if (tool === "newCannon") {
+		game.dispatch({ type: "createCannon", x: world.x, y: world.y });
+		return;
+	}
+	if (tool === "newFixedJoint" || tool === "newRevoluteJoint" || tool === "newPrismaticJoint") {
+		const kind = tool === "newFixedJoint" ? "fixed" : tool === "newRevoluteJoint" ? "revolute" : "prismatic";
+		game.dispatch({ type: "createJoint", kind, x: world.x, y: world.y });
+		return;
+	}
+	if (tool === "newText") {
+		// The legacy editor drops a TextPart then opens its panel to enter text
+		// (EnterTextAction). Headless, we prompt for the content up front.
+		const text = window.prompt("Text:", "Text");
+		if (text != null) game.dispatch({ type: "createText", x: world.x, y: world.y, text });
+		return;
+	}
+
+	// Rotate / Resize tools: drag about the selection centroid. Requires a
+	// current selection (ControllerGame.rotateButton/resizeButton no-op with an
+	// empty selection, :3446/:3985). The gesture tracks the cursor's angle
+	// (rotate) or distance (resize) from the centroid and dispatches the
+	// incremental delta on each move.
+	if (tool === "rotate" || tool === "resize") {
+		if (game.edit.selection.length === 0) return;
+		const pivot = selectionCentroidScreen(s.w, s.h);
+		if (!pivot) return;
+		if (tool === "rotate") {
+			gesture = { kind: "rotate", pivot, lastAngle: Math.atan2(s.y - pivot.y, s.x - pivot.x) };
+		} else {
+			const d = Math.hypot(s.x - pivot.x, s.y - pivot.y);
+			gesture = { kind: "resize", pivot, lastDist: Math.max(d, 1e-6) };
+		}
+		container.value.setPointerCapture(event.pointerId);
 		return;
 	}
 
@@ -141,6 +220,31 @@ function onPointerMove(event: PointerEvent): void {
 				game.dispatch({ type: "moveParts", partIds, dx, dy });
 			}
 			gesture.lastWorld = { x: world.x, y: world.y };
+		}
+		return;
+	}
+
+	if (gesture.kind === "rotate") {
+		// Angle of the cursor about the pivot; dispatch the incremental delta.
+		const angle = Math.atan2(s.y - gesture.pivot.y, s.x - gesture.pivot.x);
+		const delta = angle - gesture.lastAngle;
+		if (delta !== 0) {
+			const partIds = [...game.edit.selection];
+			if (partIds.length > 0) game.dispatch({ type: "rotateParts", partIds, angle: delta });
+			gesture.lastAngle = angle;
+		}
+		return;
+	}
+
+	if (gesture.kind === "resize") {
+		// Ratio of the cursor's distance from the pivot vs. the last move;
+		// dispatch it as the incremental scale factor.
+		const dist = Math.max(Math.hypot(s.x - gesture.pivot.x, s.y - gesture.pivot.y), 1e-6);
+		const factor = dist / gesture.lastDist;
+		if (factor !== 1) {
+			const partIds = [...game.edit.selection];
+			if (partIds.length > 0) game.dispatch({ type: "resizeParts", partIds, scaleFactor: factor });
+			gesture.lastDist = dist;
 		}
 		return;
 	}

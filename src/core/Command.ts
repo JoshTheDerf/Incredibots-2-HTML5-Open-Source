@@ -39,6 +39,17 @@ export type Command =
 	| { type: "setTool"; tool: ToolMode }
 	| { type: "createShape"; kind: ShapeKind; x: number; y: number }
 	| { type: "createText"; x: number; y: number; text: string }
+	// Attach a Thrusters / Cannon at the click point. createThrusters snaps onto
+	// the single shape under (x,y) (ControllerGame.MaybeCreateThrusters :6797);
+	// createCannon places a free-standing Cannon ShapePart (NEW_CANNON flow :2251).
+	| { type: "createThrusters"; x: number; y: number }
+	| { type: "createCannon"; x: number; y: number }
+	// Create a joint at the click point, attaching the two overlapping shapes
+	// under (x,y). Mirrors ControllerGame.MaybeCreateJoint (:6736) /
+	// MaybeStart/FinishCreatingPrismaticJoint (:6849/:6889). SIMPLIFICATION: the
+	// single-click form takes the top two overlapping shapes — the original's
+	// >2-overlap disambiguation click-cycle is collapsed. Needs ≥2 overlapping shapes.
+	| { type: "createJoint"; kind: "fixed" | "revolute" | "prismatic"; x: number; y: number }
 	| { type: "deleteParts"; partIds: number[] }
 	| { type: "moveParts"; partIds: number[]; dx: number; dy: number }
 	| { type: "rotateParts"; partIds: number[]; angle: number }

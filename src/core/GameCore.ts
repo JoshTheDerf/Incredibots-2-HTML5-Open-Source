@@ -11,8 +11,11 @@
 
 import { b2AABB, b2Vec2, b2World } from "../Box2D";
 import { ContactFilter } from "../Game/ContactFilter";
+import { Util } from "../General/Util";
 import { Cannon } from "../Parts/Cannon";
 import { Circle } from "../Parts/Circle";
+import { FixedJoint } from "../Parts/FixedJoint";
+import { JointPart } from "../Parts/JointPart";
 import type { Part } from "../Parts/Part";
 import { PrismaticJoint } from "../Parts/PrismaticJoint";
 import { MAX_DENSITY, MIN_DENSITY } from "../Parts/partDefaults";
@@ -288,6 +291,159 @@ export class GameCore {
 		this.markChanged();
 	}
 
+	// --- Rotate / resize geometry ------------------------------------------
+
+	/**
+	 * Selection centroid used as the pivot for both rotate and resize. The legacy
+	 * ControllerGame rotates about the highest-mass ShapePart's centre
+	 * (rotatingPart, :3449-3458) and resizes about selectedParts[0]'s centre
+	 * (initDragX/Y, :3985-3996). We use the mean of the parts' anchors, a stable
+	 * pivot independent of selection order that coincides with the single part's
+	 * own centre in the common one-part case.
+	 */
+	private selectionCentroid(parts: Part[]): { x: number; y: number } {
+		let sx = 0;
+		let sy = 0;
+		for (const p of parts) {
+			const xy = this.currentXY(p);
+			sx += xy.x;
+			sy += xy.y;
+		}
+		const n = parts.length || 1;
+		return { x: sx / n, y: sy / n };
+	}
+
+	/**
+	 * Rotate a part about (cx,cy) by `delta` radians, moving its anchor and (for
+	 * shapes/thrusters) advancing its own orientation. Incremental form of
+	 * ControllerGame's RotateAround path (MouseDrag :1533) — rotation composes
+	 * additively, so feeding the per-move delta equals the original's
+	 * `newAngle - initAngle`.
+	 */
+	private rotatePartAbout(p: Part, cx: number, cy: number, delta: number): void {
+		const anchor = this.currentXY(p);
+		const dx = anchor.x - cx;
+		const dy = anchor.y - cy;
+		const cos = Math.cos(delta);
+		const sin = Math.sin(delta);
+		const nx = cx + dx * cos - dy * sin;
+		const ny = cy + dx * sin + dy * cos;
+		if (p instanceof ShapePart) {
+			p.Move(nx, ny);
+			p.angle += delta;
+		} else if (p instanceof Thrusters) {
+			p.centerX = nx;
+			p.centerY = ny;
+			p.angle += delta;
+		} else if (p instanceof JointPart) {
+			p.Move(nx, ny);
+			if (p instanceof PrismaticJoint) {
+				const ax = p.axis.x;
+				const ay = p.axis.y;
+				p.axis.x = ax * cos - ay * sin;
+				p.axis.y = ax * sin + ay * cos;
+			}
+		}
+	}
+
+	/**
+	 * Scale a part's geometry and its offset from (cx,cy) by `factor`, clamped to
+	 * the part type's legal size range. Incremental multiplicative form of
+	 * ControllerGame's RESIZING_SHAPES branch (MouseDrag :1558-1669) — the
+	 * original scales from a PrepareForResizing() baseline captured at gesture
+	 * start; feeding the per-move ratio composes to the same total scale.
+	 */
+	private scalePartAbout(p: Part, cx: number, cy: number, factor: number): void {
+		if (factor <= 0) return;
+
+		// Clamp so no shape leaves its legal size range (ControllerGame :1570-1614).
+		let f = factor;
+		if (p instanceof Circle) {
+			f = this.clampScale(f, p.radius, Circle.MIN_RADIUS, Circle.MAX_RADIUS);
+		} else if (p instanceof Rectangle) {
+			f = this.clampScale(f, p.w, Rectangle.MIN_WIDTH, Rectangle.MAX_WIDTH);
+			f = this.clampScale(f, p.h, Rectangle.MIN_WIDTH, Rectangle.MAX_WIDTH);
+		} else if (p instanceof Cannon) {
+			f = this.clampScale(f, p.w, Cannon.MIN_WIDTH, Cannon.MAX_WIDTH);
+		} else if (p instanceof Triangle) {
+			const l1 = Util.GetDist(p.x1, p.y1, p.x2, p.y2);
+			const l2 = Util.GetDist(p.x1, p.y1, p.x3, p.y3);
+			const l3 = Util.GetDist(p.x2, p.y2, p.x3, p.y3);
+			f = this.clampScale(f, l1, Triangle.MIN_SIDE_LENGTH, Triangle.MAX_SIDE_LENGTH);
+			f = this.clampScale(f, l2, Triangle.MIN_SIDE_LENGTH, Triangle.MAX_SIDE_LENGTH);
+			f = this.clampScale(f, l3, Triangle.MIN_SIDE_LENGTH, Triangle.MAX_SIDE_LENGTH);
+		}
+		if (f <= 0) return;
+
+		const anchor = this.currentXY(p);
+		const nx = cx + (anchor.x - cx) * f;
+		const ny = cy + (anchor.y - cy) * f;
+
+		if (p instanceof Circle) {
+			p.radius *= f;
+			p.Move(nx, ny);
+		} else if (p instanceof Rectangle) {
+			p.w *= f;
+			p.h *= f;
+			p.Move(nx, ny);
+		} else if (p instanceof Cannon) {
+			p.w *= f;
+			p.Move(nx, ny);
+		} else if (p instanceof Triangle) {
+			// Triangle vertices are stored absolutely; scale each about the new centre.
+			const dx1 = p.x1 - anchor.x;
+			const dy1 = p.y1 - anchor.y;
+			const dx2 = p.x2 - anchor.x;
+			const dy2 = p.y2 - anchor.y;
+			const dx3 = p.x3 - anchor.x;
+			const dy3 = p.y3 - anchor.y;
+			p.centerX = nx;
+			p.centerY = ny;
+			p.x1 = nx + dx1 * f;
+			p.y1 = ny + dy1 * f;
+			p.x2 = nx + dx2 * f;
+			p.y2 = ny + dy2 * f;
+			p.x3 = nx + dx3 * f;
+			p.y3 = ny + dy3 * f;
+		} else if (p instanceof PrismaticJoint) {
+			p.Move(nx, ny);
+			p.initLength *= f;
+		} else if (p instanceof JointPart) {
+			p.Move(nx, ny);
+		} else if (p instanceof Thrusters) {
+			p.centerX = nx;
+			p.centerY = ny;
+		} else if (p instanceof TextPart) {
+			p.w *= f;
+			p.h *= f;
+			p.x = nx - p.w / 2;
+			p.y = ny - p.h / 2;
+		}
+	}
+
+	/** Clamp a scale factor so `value * f` stays within [min, max]. */
+	private clampScale(f: number, value: number, min: number, max: number): number {
+		if (value <= 0) return f;
+		if (value * f > max) return max / value;
+		if (value * f < min) return min / value;
+		return f;
+	}
+
+	/**
+	 * Every ShapePart whose geometry contains (x,y), topmost first. Used by the
+	 * joint / thruster creation flows (ControllerGame iterates allParts back to
+	 * front collecting InsideShape hits — MaybeCreateJoint :6747).
+	 */
+	private shapesAt(x: number, y: number): ShapePart[] {
+		const hits: ShapePart[] = [];
+		const scale = this.state.camera.scale;
+		for (let i = this.state.parts.length - 1; i >= 0; i--) {
+			const p = this.state.parts[i];
+			if (p instanceof ShapePart && p.InsideShape(x, y, scale)) hits.push(p);
+		}
+		return hits;
+	}
+
 	// --- Physics simulation -------------------------------------------------
 
 	/**
@@ -336,9 +492,14 @@ export class GameCore {
 			if (p instanceof ShapePart) p.SetCollisionGroup(-(i + 1));
 		});
 
-		// Init every physical part into the world (ControllerGame.ts:2764-2767).
+		// Init shapes/text first (ControllerGame.ts:2764-2767), then joints and
+		// thrusters (:2769-2773) — a JointPart's Init requires both its shapes to
+		// already be initted (see FixedJoint.Init), so ordering matters.
 		for (const p of this.state.parts) {
 			if (p instanceof ShapePart || p instanceof TextPart) p.Init(world);
+		}
+		for (const p of this.state.parts) {
+			if (p instanceof JointPart || p instanceof Thrusters) p.Init(world);
 		}
 
 		this.state = { ...this.state, world, sim: { phase: "running", frame: 0 } };
@@ -410,6 +571,9 @@ export class GameCore {
 			switch (command.type) {
 				case "createShape":
 				case "createText":
+				case "createThrusters":
+				case "createCannon":
+				case "createJoint":
 				case "deleteParts":
 				case "moveParts":
 				case "rotateParts":
@@ -806,8 +970,100 @@ export class GameCore {
 			case "step":
 				this.handleStep(command.frames ?? 1);
 				return;
-			case "rotateParts":
-			case "resizeParts":
+			// Rotate the selection about its centroid by `angle` radians. GameCanvas
+			// feeds the incremental delta since the last pointer move.
+			case "rotateParts": {
+				if (command.angle === 0) return;
+				const target = new Set(command.partIds);
+				const parts = this.state.parts.filter((p) => target.has(p.id));
+				if (parts.length === 0) return;
+				const c = this.selectionCentroid(parts);
+				for (const p of parts) this.rotatePartAbout(p, c.x, c.y, command.angle);
+				this.state = {
+					...this.state,
+					parts: [...this.state.parts],
+					edit: { ...this.state.edit, selectedPart: this.deriveSelectedPart(this.state.edit.selection) },
+				};
+				this.markChanged();
+				return;
+			}
+			// Scale the selection about its centroid (>1 grows, <1 shrinks).
+			// GameCanvas feeds the incremental ratio since the last move.
+			case "resizeParts": {
+				if (command.scaleFactor === 1 || command.scaleFactor <= 0) return;
+				const target = new Set(command.partIds);
+				const parts = this.state.parts.filter((p) => target.has(p.id));
+				if (parts.length === 0) return;
+				const c = this.selectionCentroid(parts);
+				for (const p of parts) this.scalePartAbout(p, c.x, c.y, command.scaleFactor);
+				this.state = {
+					...this.state,
+					parts: [...this.state.parts],
+					edit: { ...this.state.edit, selectedPart: this.deriveSelectedPart(this.state.edit.selection) },
+				};
+				this.markChanged();
+				return;
+			}
+			case "createThrusters": {
+				// Attach to the single top shape under the click (MaybeCreateThrusters :6817).
+				const hits = this.shapesAt(command.x, command.y);
+				if (hits.length === 0) return;
+				const t = new Thrusters(hits[0], command.x, command.y);
+				t.id = ++this.nextId;
+				const selection = [t.id];
+				this.state = {
+					...this.state,
+					parts: [...this.state.parts, t],
+					edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(t) },
+				};
+				this.markChanged();
+				return;
+			}
+			case "createCannon": {
+				// A Cannon is a free-standing ShapePart (NEW_CANNON flow :2274); the
+				// legacy drag sizes its width, the click-to-create core uses a default.
+				const cannon = new Cannon(command.x, command.y, DEFAULT_RECT_SIZE);
+				cannon.id = ++this.nextId;
+				const selection = [cannon.id];
+				this.state = {
+					...this.state,
+					parts: [...this.state.parts, cannon],
+					edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(cannon) },
+				};
+				this.markChanged();
+				return;
+			}
+			case "createJoint": {
+				// A joint attaches the two overlapping shapes under the click. We take
+				// the top two overlaps (MaybeCreateJoint candidateParts[0..1] :6756-6778);
+				// SIMPLIFICATION: the original's >2-overlap disambiguation click-cycle is
+				// collapsed. With fewer than two overlapping shapes, this is a no-op.
+				const hits = this.shapesAt(command.x, command.y);
+				if (hits.length < 2) return;
+				const p1 = hits[0];
+				const p2 = hits[1];
+				let joint: Part;
+				if (command.kind === "revolute") {
+					joint = new RevoluteJoint(p1, p2, command.x, command.y);
+				} else if (command.kind === "fixed") {
+					joint = new FixedJoint(p1, p2, command.x, command.y);
+				} else {
+					// The original's two-click gesture picks the slide axis; here we
+					// default to a short horizontal span centred on the click, giving a
+					// valid axis + initLength (PrismaticJoint ctor :57-81).
+					const half = DEFAULT_RECT_SIZE / 2;
+					joint = new PrismaticJoint(p1, p2, command.x - half, command.y, command.x + half, command.y);
+				}
+				joint.id = ++this.nextId;
+				const selection = [joint.id];
+				this.state = {
+					...this.state,
+					parts: [...this.state.parts, joint],
+					edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(joint) },
+				};
+				this.markChanged();
+				return;
+			}
 			case "undo":
 			case "redo":
 			case "loadRobot":
