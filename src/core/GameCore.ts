@@ -28,6 +28,7 @@ import { Triangle } from "../Parts/Triangle";
 import type { Command, ShapeKind } from "./Command";
 import { GameState, PartSnapshot, createInitialState } from "./GameState";
 import { decodeRobot, encodeRobot } from "./robotSerialization";
+import { buildTerrainParts, computeBounds } from "./sandboxEnvironment";
 
 // --- Physics simulation constants, mirrored from the legacy ControllerGame ---
 //
@@ -99,6 +100,12 @@ export class GameCore {
 
 	constructor(initial: GameState = createInitialState()) {
 		this.state = initial;
+		// Any parts seeded into the initial state (e.g. the sandbox terrain bodies
+		// built by createInitialState) need stable ids from our monotonic source so
+		// later create commands don't collide with them.
+		for (const p of this.state.parts) {
+			if (p.id == null || p.id === 0) p.id = ++this.nextId;
+		}
 	}
 
 	/** Read-only snapshot for the renderer / views. */
@@ -162,9 +169,12 @@ export class GameCore {
 		this.notifyDepth++;
 		try {
 			this.pushHistory();
+			// Keep the sandbox terrain bodies (isSandbox) so the imported robot lands
+			// on the existing ground; only the robot parts are replaced.
+			const terrain = this.state.parts.filter((p) => (p as { isSandbox?: boolean }).isSandbox);
 			this.state = {
 				...this.state,
-				parts: decoded.parts,
+				parts: [...terrain, ...decoded.parts],
 				edit: {
 					...this.state.edit,
 					selection: [],
@@ -725,7 +735,11 @@ export class GameCore {
 		const worldAABB = new b2AABB();
 		worldAABB.lowerBound.Set(WORLD_AABB_LOWER.x, WORLD_AABB_LOWER.y);
 		worldAABB.upperBound.Set(WORLD_AABB_UPPER.x, WORLD_AABB_UPPER.y);
-		const world = new b2World(worldAABB, new b2Vec2(GRAVITY.x, GRAVITY.y), true);
+		// Gravity is read from the sandbox settings at world-creation time — the
+		// downward vector b2Vec2(0, sandbox.gravity), matching
+		// ControllerSandbox.GetGravity() (:716). Changing gravity via
+		// setSandboxSettings therefore takes effect only on the NEXT play (spec §4).
+		const world = new b2World(worldAABB, new b2Vec2(GRAVITY.x, this.state.sandbox.gravity), true);
 		world.SetContactFilter(new ContactFilter());
 		return world;
 	}
@@ -826,6 +840,50 @@ export class GameCore {
 		this.state = {
 			...this.state,
 			sim: { ...this.state.sim, frame: this.state.sim.frame + frames },
+		};
+		this.markChanged();
+	}
+
+	/**
+	 * setSandboxSettings: faithful port of AdvancedSandboxWindow's Apply +
+	 * ControllerSandbox.RefreshSandboxSettings (ControllerSandbox.ts:570-678).
+	 *
+	 * Store the new settings on state.sandbox, then (editing phase only, which is
+	 * the only phase this reaches — see the sim guard) REBUILD the isSandbox
+	 * terrain bodies from the new terrainType/size and recompute the world bounds.
+	 * Robot parts (isSandbox false) are untouched; the sim/world are NOT reset.
+	 * Gravity is stored but applied only at the next play (createWorld reads
+	 * state.sandbox.gravity), matching the legacy deferred behaviour (spec §4).
+	 *
+	 * Not registered as "mutating" for undo — the legacy Apply is a sandbox-config
+	 * operation outside the robot-edit undo history, and it drops/rebuilds the
+	 * terrain wholesale (RefreshSandboxSettings clears groundParts, :571-573).
+	 */
+	private handleSetSandboxSettings(command: Extract<Command, { type: "setSandboxSettings" }>): void {
+		const next = {
+			gravity: command.gravity,
+			size: command.size,
+			terrainType: command.terrainType,
+			terrainTheme: command.terrainTheme,
+			background: command.background,
+			backgroundR: command.backgroundR,
+			backgroundG: command.backgroundG,
+			backgroundB: command.backgroundB,
+			bounds: computeBounds({ size: command.size, terrainType: command.terrainType }),
+		};
+
+		// Drop the current terrain bodies (isSandbox) and rebuild from the new
+		// settings, keeping robot parts in place. Preserve robot-part ordering.
+		const robotParts = this.state.parts.filter((p) => !(p as { isSandbox?: boolean }).isSandbox);
+		const terrainParts = buildTerrainParts(next);
+		for (const p of terrainParts) p.id = ++this.nextId;
+
+		this.state = {
+			...this.state,
+			sandbox: next,
+			// Terrain first so it draws behind robot parts, matching BuildGround
+			// which pushes ground into allParts before the robot exists.
+			parts: [...terrainParts, ...robotParts],
 		};
 		this.markChanged();
 	}
@@ -949,6 +1007,7 @@ export class GameCore {
 				case "redo":
 				case "loadRobot":
 				case "newRobot":
+				case "setSandboxSettings":
 					return; // no-op during simulation
 			}
 		}
@@ -1277,6 +1336,10 @@ export class GameCore {
 				this.editParts(command.partIds, (p) => {
 					if (p instanceof TextPart) p.scaleWithZoom = command.value;
 				});
+				return;
+
+			case "setSandboxSettings":
+				this.handleSetSandboxSettings(command);
 				return;
 
 			case "play":

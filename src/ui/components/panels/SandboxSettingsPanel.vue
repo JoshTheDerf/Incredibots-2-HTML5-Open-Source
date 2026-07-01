@@ -1,15 +1,15 @@
 <script setup lang="ts">
-// Visual port of the legacy PIXI AdvancedSandboxWindow (src/Gui/AdvancedSandboxWindow.ts).
-// That window let players configure a sandbox before entering it: world size,
-// terrain shape/theme, background (with a custom RGB solid-color option), and
-// gravity. GameCore has no sandbox/world-settings concept yet (see
-// src/core/Command.ts — no setSandboxSettings/setGravity/etc.), so every
-// control here is local placeholder state flagged with <IbTodo/>. Once a
-// command lands, "Okay!" should dispatch it instead of just closing.
+// Visual + behavioural port of the legacy PIXI AdvancedSandboxWindow
+// (src/Gui/AdvancedSandboxWindow.ts). That window let players configure a
+// sandbox before entering it: world size, terrain shape/theme, background (with
+// a custom RGB solid-color option), and gravity. "Okay!" dispatches the
+// GameCore `setSandboxSettings` command — the port of the legacy Apply flow
+// (AdvancedSandboxWindow.okButtonPressed + ControllerSandbox.RefreshSandboxSettings):
+// it stores the settings, rebuilds the terrain bodies + world bounds, and (for
+// gravity) takes effect on the NEXT play, matching the original.
 import { computed, ref } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
-import IbTodo from "../IbTodo.vue";
 import { frameTextures } from "../../assets";
 
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
@@ -21,21 +21,22 @@ const emit = defineEmits<{
 	(e: "cancel"): void;
 }>();
 
-// --- placeholder state, mirroring SandboxSettings.ts field/index meanings ---
-// size: 0 Small, 1 Medium, 2 Large
-const sizeIndex = ref(1);
-// terrainType: 0 Flat Land, 1 Box, 2 Empty
-const shapeIndex = ref(0);
-// terrainTheme: 0 Grass .. 6 Mars
-const themeIndex = ref(0);
-// background: 0 Sky .. 5 Sunset, 6 Solid Color
-const bgIndex = ref(0);
+// --- state, seeded from the current sandbox settings in GameState ---
+// (mirrors AdvancedSandboxWindow reading ControllerGameGlobals.settings into the
+// widgets on open). size 0-2, terrainType 0-2, terrainTheme 0-6, background 0-6.
+const sb = game.state.sandbox;
+const sizeIndex = ref(sb.size);
+const shapeIndex = ref(sb.terrainType);
+const themeIndex = ref(sb.terrainTheme);
+const bgIndex = ref(sb.background);
 
-const redValue = ref(125);
-const greenValue = ref(125);
-const blueValue = ref(255);
+// UI defaults 125/125/255 when the stored solid colour is the 0/0/0 default,
+// matching AdvancedSandboxWindow's text-field defaults (:195,203,211).
+const redValue = ref(sb.backgroundR || 125);
+const greenValue = ref(sb.backgroundG || 125);
+const blueValue = ref(sb.backgroundB || 255);
 
-const gravity = ref(15);
+const gravity = ref(sb.gravity);
 
 // Plain label lists paired with index refs — mirrors the ShapeProps.vue
 // convention (USelect + separate index state) rather than object items,
@@ -77,29 +78,25 @@ function clampGravity(n: number): number {
 }
 
 function onOk(): void {
-	// TODO(core): once a sandbox-settings command exists, dispatch it here, e.g.
-	// game.dispatch({
-	//   type: "setSandboxSettings",
-	//   gravity: gravity.value,
-	//   size: sizeIndex.value,
-	//   terrainType: shapeIndex.value,
-	//   terrainTheme: themeIndex.value,
-	//   background: bgIndex.value,
-	//   backgroundR: redValue.value,
-	//   backgroundG: greenValue.value,
-	//   backgroundB: blueValue.value,
-	// });
+	// Faithful port of AdvancedSandboxWindow.okButtonPressed: build a fresh
+	// SandboxSettings from the widgets (with the legacy clamps) and apply it.
+	game.dispatch({
+		type: "setSandboxSettings",
+		gravity: clampGravity(Number(gravity.value)),
+		size: sizeIndex.value,
+		terrainType: shapeIndex.value,
+		terrainTheme: themeIndex.value,
+		background: bgIndex.value,
+		backgroundR: clampByte(Number(redValue.value)),
+		backgroundG: clampByte(Number(greenValue.value)),
+		backgroundB: clampByte(Number(blueValue.value)),
+	});
 	emit("ok");
 }
 
 function onCancel(): void {
 	emit("cancel");
 }
-
-// Referenced so the store import is exercised even though this panel has no
-// real command to dispatch yet — keeps the component consistent with other
-// ported panels that read game state.
-void game;
 </script>
 
 <template>
@@ -109,29 +106,25 @@ void game;
 		<div class="body">
 			<div class="field-row">
 				<label class="field-label" for="sandbox-size">Sandbox Size:</label>
-				<USelect id="sandbox-size" v-model="sizeLabel" :items="sizeLabels" size="sm" class="ib-todo" />
-				<IbTodo />
+				<USelect id="sandbox-size" v-model="sizeLabel" :items="sizeLabels" size="sm" />
 			</div>
 
 			<div class="field-row">
 				<label class="field-label" for="sandbox-shape">Terrain Shape:</label>
-				<USelect id="sandbox-shape" v-model="shapeLabel" :items="shapeLabels" size="sm" class="ib-todo" />
-				<IbTodo />
+				<USelect id="sandbox-shape" v-model="shapeLabel" :items="shapeLabels" size="sm" />
 			</div>
 
 			<div class="field-row">
 				<label class="field-label" for="sandbox-theme">Terrain Theme:</label>
-				<USelect id="sandbox-theme" v-model="themeLabel" :items="themeLabels" size="sm" class="ib-todo" />
-				<IbTodo />
+				<USelect id="sandbox-theme" v-model="themeLabel" :items="themeLabels" size="sm" />
 			</div>
 
 			<div class="field-row">
 				<label class="field-label" for="sandbox-bg">Background:</label>
-				<USelect id="sandbox-bg" v-model="bgLabel" :items="bgLabels" size="sm" class="ib-todo" />
-				<IbTodo />
+				<USelect id="sandbox-bg" v-model="bgLabel" :items="bgLabels" size="sm" />
 			</div>
 
-			<div class="rgb-block ib-todo">
+			<div class="rgb-block">
 				<div class="rgb-row">
 					<label class="rgb-label" for="sandbox-red">Red:</label>
 					<UInput
@@ -168,10 +161,9 @@ void game;
 						@update:model-value="(v) => (blueValue = clampByte(Number(v)))"
 					/>
 				</div>
-				<IbTodo label="solid color not wired" />
 			</div>
 
-			<div class="gravity-block ib-todo">
+			<div class="gravity-block">
 				<label class="field-label gravity-label">Gravity:</label>
 				<USlider
 					:model-value="gravity"
@@ -189,7 +181,6 @@ void game;
 					class="gravity-input"
 					@update:model-value="(v) => (gravity = clampGravity(Number(v)))"
 				/>
-				<IbTodo label="no setGravity command" />
 			</div>
 		</div>
 
@@ -239,15 +230,13 @@ void game;
 	color: var(--ib-dark);
 }
 
-.field-row :deep(.ib-todo),
-.rgb-block.ib-todo,
-.gravity-block.ib-todo {
-	border-radius: 4px;
-}
-
 .field-row > :global(.u-select),
 .field-row select {
 	flex: 1;
+}
+
+.rgb-block {
+	border-radius: 4px;
 }
 
 .rgb-block {

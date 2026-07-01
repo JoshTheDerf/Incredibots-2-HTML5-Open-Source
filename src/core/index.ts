@@ -14,7 +14,21 @@ export type {
 	SimPhase,
 	CameraState,
 	EditState,
+	SandboxState,
 	PartSnapshot,
 } from "./GameState";
 export { createInitialState } from "./GameState";
+export {
+	buildTerrainParts,
+	computeBounds,
+	createDefaultSandboxState,
+	DEFAULT_SANDBOX_SETTINGS,
+	SIZE_SMALL,
+	SIZE_MEDIUM,
+	SIZE_LARGE,
+	TERRAIN_LAND,
+	TERRAIN_BOX,
+	TERRAIN_EMPTY,
+	BACKGROUND_SOLID_COLOUR,
+} from "./sandboxEnvironment";
 export type { Command, CommandType, ToolMode, ShapeKind } from "./Command";

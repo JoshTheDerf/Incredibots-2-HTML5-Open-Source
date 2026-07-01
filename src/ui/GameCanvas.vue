@@ -23,6 +23,7 @@ import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals";
 import { Triangle } from "../Parts/Triangle";
 import { useGameStore } from "./gameStore";
 import { screenToWorld, worldToScreen, hitTestPart, partsInBox } from "./renderer/sceneRenderer";
+import { SkyRenderer } from "./renderer/skyRenderer";
 import type { ToolMode } from "../core";
 import type { Part } from "../Parts/Part";
 
@@ -54,6 +55,9 @@ const container = ref<HTMLDivElement | null>(null);
 let app: Application | null = null;
 let draw: Draw | null = null;
 let drawSprite: Graphics | null = null;
+// Renderer-only sky/background (gradient + clouds/stars), a faithful port of
+// Sky.ts. Mounted BEHIND the Draw sprite so the world draws over it.
+let sky: SkyRenderer | null = null;
 // Lightweight overlay Graphics for the marquee rectangle — kept separate from
 // the Draw sprite so it never fights Draw.ts's per-frame clear/repaint.
 let overlay: Graphics | null = null;
@@ -442,6 +446,14 @@ function drawFrame(): void {
 	draw.m_screenHeight = h;
 	draw.drawColours = true;
 
+	// Sky/background: build for the current sandbox settings (cheap no-op unless
+	// they changed) then reposition/drift each frame. Cloud drift is gated on the
+	// sim NOT running-paused, mirroring Sky.Update's !IsPaused() (Sky.ts:126).
+	if (sky) {
+		sky.build(state.sandbox);
+		sky.update(camera, state.sandbox.bounds, w, h, state.sim.phase === "paused");
+	}
+
 	// Map selection ids -> live Part instances for highlight.
 	const selected = new Set(state.edit.selection);
 	const selectedParts: Part[] = state.parts.filter((p) => selected.has(p.id));
@@ -555,6 +567,12 @@ onMounted(async () => {
 
 	// The Graphics that Draw paints into (its m_sprite). Draw's text containers
 	// attach relative to this sprite's parent, so it must live on the stage.
+	// Sky/background sits at the BOTTOM of the stage so the world draws over it.
+	sky = new SkyRenderer();
+	app.stage.addChild(sky.view);
+	// Preload cloud textures; the next drawFrame rebuilds the sky with them.
+	void sky.preload();
+
 	drawSprite = new Graphics();
 	app.stage.addChild(drawSprite);
 	draw = new Draw();
@@ -596,6 +614,7 @@ onBeforeUnmount(() => {
 	draw = null;
 	drawSprite = null;
 	overlay = null;
+	sky = null;
 	if (app) {
 		app.destroy(true, { children: true });
 		app = null;

@@ -103,6 +103,26 @@ export type Command =
 	| { type: "setTextDisplayKey"; partIds: number[]; key: number }
 	| { type: "setTextAlwaysVisible"; partIds: number[]; value: boolean }
 	| { type: "setTextScaleWithZoom"; partIds: number[]; value: boolean }
+	// --- sandbox environment (ported from AdvancedSandboxWindow Apply flow) ---
+	// Mirrors AdvancedSandboxWindow.okButtonPressed + ControllerSandbox.
+	// RefreshSandboxSettings (ControllerSandbox.ts:570-678): store the new
+	// settings, and while editing rebuild the isSandbox terrain bodies + world
+	// bounds from the new terrainType/size WITHOUT touching robot parts or the
+	// sim. Gravity is applied at the NEXT play (world creation), not live —
+	// GetGravity() is read at world-creation time (spec §4). Enum axes match
+	// SandboxSettings.* (size 0-2, terrainType 0-2, terrainTheme 0-6,
+	// background 0-6, R/G/B 0-255).
+	| {
+			type: "setSandboxSettings";
+			gravity: number;
+			size: number;
+			terrainType: number;
+			terrainTheme: number;
+			background: number;
+			backgroundR: number;
+			backgroundG: number;
+			backgroundB: number;
+	  }
 	// --- selection (view state, but routed through the core so it stays authoritative) ---
 	| { type: "select"; partIds: number[]; additive?: boolean }
 	| { type: "clearSelection" }
