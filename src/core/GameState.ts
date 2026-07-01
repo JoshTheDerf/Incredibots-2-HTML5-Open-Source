@@ -5,6 +5,7 @@
 // into a Pinia store (reactively) to render chrome. Nothing outside the core
 // mutates it — all changes go through Command dispatch. See docs/CONTRACT.md.
 
+import type { b2World } from "../Box2D";
 import type { Part } from "../Parts/Part";
 
 export type SimPhase = "editing" | "running" | "paused";
@@ -74,6 +75,13 @@ export interface GameState {
 	sim: SimState;
 	camera: CameraState;
 	edit: EditState;
+	/**
+	 * The live Box2D world while a simulation is running/paused; null while
+	 * editing. Like `parts`, this is a live object (not plain-serializable) held
+	 * here so the renderer can read body transforms via Draw.DrawWorld. When the
+	 * core is moved behind a worker boundary this becomes a sim-side handle.
+	 */
+	world: b2World | null;
 }
 
 export function createInitialState(): GameState {
@@ -82,5 +90,6 @@ export function createInitialState(): GameState {
 		sim: { phase: "editing", frame: 0 },
 		camera: { scale: 30, offsetX: 0, offsetY: 0 },
 		edit: { selection: [], tool: "select", editable: true, canUndo: false, canRedo: false, selectedPart: null },
+		world: null,
 	};
 }

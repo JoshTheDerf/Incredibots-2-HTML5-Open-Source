@@ -9,6 +9,8 @@
 // migrated out of the monolithic ControllerGame incrementally; until a handler
 // is migrated it throws so nothing silently no-ops.
 
+import { b2AABB, b2Vec2, b2World } from "../Box2D";
+import { ContactFilter } from "../Game/ContactFilter";
 import { Circle } from "../Parts/Circle";
 import type { Part } from "../Parts/Part";
 import { Rectangle } from "../Parts/Rectangle";
@@ -17,6 +19,29 @@ import { TextPart } from "../Parts/TextPart";
 import { Triangle } from "../Parts/Triangle";
 import type { Command } from "./Command";
 import { GameState, PartSnapshot, createInitialState } from "./GameState";
+
+// --- Physics simulation constants, mirrored from the legacy ControllerGame ---
+//
+// CreateWorld (ControllerGame.ts:6628) builds a b2World spanning
+// (-300,-200)..(300,200) with gravity from GetGravity() (ControllerGame.ts:6643,
+// returns b2Vec2(0, 15) — i.e. downward, +Y is down in world space) and
+// doSleep=true. The Update() step loop (ControllerGame.ts:584-585) advances the
+// world twice per frame: Step(1/60, 5) then Step(1/60, m_iterations) where
+// m_iterations=10 (ControllerGame.ts:88).
+const WORLD_AABB_LOWER = { x: -300.0, y: -200.0 };
+const WORLD_AABB_UPPER = { x: 300.0, y: 200.0 };
+const GRAVITY = { x: 0.0, y: 15.0 };
+const STEP_DT = 1 / 60;
+const STEP_ITERATIONS_WARMUP = 5;
+const STEP_ITERATIONS = 10;
+
+/** Snapshot of a Part's pre-play edit transform, restored on reset. */
+interface EditTransform {
+	part: Part;
+	x: number;
+	y: number;
+	angle: number;
+}
 
 // Default sizes for click-to-create shapes. The original ControllerGame derives
 // each shape's dimensions from a click-drag gesture (ControllerGame.ts:2209 for
@@ -40,6 +65,8 @@ export class GameCore {
 	private dirty = false;
 	/** monotonic source of stable Part ids. */
 	private nextId = 0;
+	/** Per-part pre-play edit transforms, captured on play, restored on reset. */
+	private editSnapshots: EditTransform[] = [];
 
 	constructor(initial: GameState = createInitialState()) {
 		this.state = initial;
@@ -177,7 +204,142 @@ export class GameCore {
 		return first ? this.snapshotOf(first) : null;
 	}
 
+	// --- Physics simulation -------------------------------------------------
+
+	/**
+	 * Build a fresh b2World, mirroring ControllerGame.CreateWorld()
+	 * (ControllerGame.ts:6628). We attach the vendored ContactFilter (which honours
+	 * each shape's `collide` / group flags) but omit the ControllerGame-bound
+	 * ContactListener — that only drives cannonball / challenge callbacks the
+	 * headless editor has no use for; basic rigid-body simulation is unaffected.
+	 */
+	private createWorld(): b2World {
+		const worldAABB = new b2AABB();
+		worldAABB.lowerBound.Set(WORLD_AABB_LOWER.x, WORLD_AABB_LOWER.y);
+		worldAABB.upperBound.Set(WORLD_AABB_UPPER.x, WORLD_AABB_UPPER.y);
+		const world = new b2World(worldAABB, new b2Vec2(GRAVITY.x, GRAVITY.y), true);
+		world.SetContactFilter(new ContactFilter());
+		return world;
+	}
+
+	/**
+	 * play: create the world, snapshot each part's edit transform (for reset),
+	 * assign collision groups and Init every part into the world, then mark the
+	 * sim running. Mirrors ControllerGame.playButton() (ControllerGame.ts:2715):
+	 * SetCollisionGroup per part (:2758) then Init(world) (:2764). Resuming from a
+	 * paused state just flips the phase back to running — the world is kept.
+	 */
+	private handlePlay(): void {
+		if (this.state.sim.phase === "running") return;
+		if (this.state.sim.phase === "paused") {
+			this.state = { ...this.state, sim: { ...this.state.sim, phase: "running" } };
+			this.markChanged();
+			return;
+		}
+
+		const world = this.createWorld();
+
+		// Snapshot pre-play transforms so reset can restore them exactly.
+		this.editSnapshots = this.state.parts.map((p) => {
+			const xy = this.currentXY(p);
+			const angle = p instanceof ShapePart ? p.angle : 0;
+			return { part: p, x: xy.x, y: xy.y, angle };
+		});
+
+		// Assign a unique collision group per shape (ControllerGame.ts:2755-2760).
+		for (const p of this.state.parts) p.checkedCollisionGroup = false;
+		this.state.parts.forEach((p, i) => {
+			if (p instanceof ShapePart) p.SetCollisionGroup(-(i + 1));
+		});
+
+		// Init every physical part into the world (ControllerGame.ts:2764-2767).
+		for (const p of this.state.parts) {
+			if (p instanceof ShapePart || p instanceof TextPart) p.Init(world);
+		}
+
+		this.state = { ...this.state, world, sim: { phase: "running", frame: 0 } };
+		this.markChanged();
+	}
+
+	/** pause: stop stepping but keep the world alive (ControllerGame.pauseButton, :2796). */
+	private handlePause(): void {
+		if (this.state.sim.phase !== "running") return;
+		this.state = { ...this.state, sim: { ...this.state.sim, phase: "paused" } };
+		this.markChanged();
+	}
+
+	/**
+	 * reset: tear the world down, restore each part's pre-play edit transform, and
+	 * return to editing. Mirrors ControllerGame.resetButton() (ControllerGame.ts:2803):
+	 * UnInit every part (:2815) and go back to the pre-sim state.
+	 */
+	private handleReset(): void {
+		if (this.state.sim.phase === "editing") return;
+
+		const world = this.state.world;
+		if (world) {
+			for (const p of this.state.parts) p.UnInit(world);
+		}
+
+		// Restore the exact edit-space transform captured at play time.
+		for (const snap of this.editSnapshots) {
+			snap.part.Move(snap.x, snap.y);
+			if (snap.part instanceof ShapePart) snap.part.angle = snap.angle;
+		}
+		this.editSnapshots = [];
+
+		this.state = { ...this.state, parts: [...this.state.parts], world: null, sim: { phase: "editing", frame: 0 } };
+		this.markChanged();
+	}
+
+	/**
+	 * step: advance the world by `frames` (default 1). Each frame does the two
+	 * Box2D sub-steps the legacy Update() loop runs (ControllerGame.ts:584-585):
+	 * a warm-up Step(1/60, 5) then Step(1/60, 10). After stepping, sync each
+	 * ShapePart's centerX/centerY/angle from its body so the renderer (which draws
+	 * from those fields via GetVertices/centerX) shows the live body pose.
+	 */
+	private handleStep(frames: number): void {
+		const world = this.state.world;
+		if (this.state.sim.phase !== "running" || !world) return;
+
+		for (let f = 0; f < frames; f++) {
+			world.Step(STEP_DT, STEP_ITERATIONS_WARMUP);
+			world.Step(STEP_DT, STEP_ITERATIONS);
+		}
+
+		// The bodies now hold the live transforms; Draw.DrawWorld reads them via
+		// GetBody().GetXForm() (Draw.ts:456), so no part-field sync is needed here.
+		this.state = {
+			...this.state,
+			sim: { ...this.state.sim, frame: this.state.sim.frame + frames },
+		};
+		this.markChanged();
+	}
+
 	private apply(command: Command): void {
+		// ControllerGame disallows editing during simulation (the side panel is
+		// hidden and curAction cleared on play, :2728-2730). Ignore editing
+		// mutations while running/paused; sim controls (play/pause/reset/step) and
+		// selection changes still pass through.
+		if (this.state.sim.phase !== "editing") {
+			switch (command.type) {
+				case "createShape":
+				case "createText":
+				case "deleteParts":
+				case "moveParts":
+				case "rotateParts":
+				case "resizeParts":
+				case "setColour":
+				case "setTool":
+				case "undo":
+				case "redo":
+				case "loadRobot":
+				case "newRobot":
+					return; // no-op during simulation
+			}
+		}
+
 		switch (command.type) {
 			// Handlers are migrated from ControllerGame one command at a time.
 			// Each should mutate this.state and call this.markChanged().
@@ -323,9 +485,17 @@ export class GameCore {
 				return;
 			}
 			case "play":
+				this.handlePlay();
+				return;
 			case "pause":
+				this.handlePause();
+				return;
 			case "reset":
+				this.handleReset();
+				return;
 			case "step":
+				this.handleStep(command.frames ?? 1);
+				return;
 			case "rotateParts":
 			case "resizeParts":
 			case "undo":
