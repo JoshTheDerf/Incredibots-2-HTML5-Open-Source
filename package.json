@@ -5,7 +5,9 @@
         "build": "vite build",
         "preview": "vite preview",
         "typecheck": "tsc --noEmit",
-        "check:core": "scripts/check-core-purity.sh",
+        "check:core:imports": "scripts/check-core-purity.sh",
+        "check:core:node": "node scripts/check-core-node.mjs",
+        "check:core": "npm run check:core:imports && npm run check:core:node",
         "gate": "npm run typecheck ; npm run check:core"
     },
     "browserslist": [

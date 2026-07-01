@@ -4,6 +4,14 @@ import { Replay } from "../Replay"
 import type { Challenge } from "../Challenge"
 import type { SandboxSettings } from "../SandboxSettings"
 import {
+  getCollisionGroup,
+  setCollisionGroup,
+  getCannonballs,
+  setCannonballs,
+  getMainMenuCannonballs,
+  setMainMenuCannonballs,
+} from "../../Parts/partGlobals"
+import {
   DEFAULT_R,
   DEFAULT_G,
   DEFAULT_B,
@@ -65,7 +73,14 @@ export class ControllerGameGlobals {
   public static replay: Replay;
   public static replayDirectlyLinked: boolean = false;
 
-  public static collisionGroup: number = 0x0001;
+  // Delegated to the pixi-free src/Parts/partGlobals so headless Part code
+  // (PrismaticJoint) can read this without importing this heavy globals module.
+  public static get collisionGroup(): number {
+    return getCollisionGroup();
+  }
+  public static set collisionGroup(value: number) {
+    setCollisionGroup(value);
+  }
 
   // world mouse position
   public static wasMouseDown: boolean = false;
@@ -103,7 +118,14 @@ export class ControllerGameGlobals {
   public static failedChallenge: boolean = false;
   public static justLoadedRobotWithChallenge: boolean = false;
 
-  public static cannonballs: Array<any> = [];
+  // Delegated to the pixi-free src/Parts/partGlobals so Cannon can push spawned
+  // cannonball bodies here without importing this heavy globals module.
+  public static get cannonballs(): Array<any> {
+    return getCannonballs();
+  }
+  public static set cannonballs(value: Array<any>) {
+    setCannonballs(value);
+  }
 
   // Challenge state, relocated here from ControllerChallenge so that the
   // ControllerGame base class (and other modules) can read/write it without
@@ -122,7 +144,12 @@ export class ControllerGameGlobals {
   // (ControllerMainMenu is a distinct controller branch from ControllerGame and
   // maintains its own list; kept here so Parts/Cannon does not need to import
   // ControllerMainMenu, which caused a module-load-order cycle.)
-  public static mainMenuCannonballs: Array<any> = new Array();
+  public static get mainMenuCannonballs(): Array<any> {
+    return getMainMenuCannonballs();
+  }
+  public static set mainMenuCannonballs(value: Array<any>) {
+    setMainMenuCannonballs(value);
+  }
 
   public static showTutorial: boolean = true;
 

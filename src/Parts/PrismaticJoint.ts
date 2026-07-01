@@ -1,6 +1,5 @@
 import { b2Body, b2PolygonDef, b2PolygonShape, b2PrismaticJoint, b2PrismaticJointDef, b2Vec2, b2World } from "../Box2D";
-import { ControllerGame } from "../Game/ControllerGame"
-import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
+import { getCollisionGroup } from "./partGlobals"
 import { Util } from "../General/Util"
 import { JointPart } from "./JointPart"
 import { DEFAULT_B, DEFAULT_G, DEFAULT_O, DEFAULT_R, MAX_SJ_SPEED, MAX_SJ_STRENGTH } from "./partDefaults"
@@ -166,7 +165,7 @@ export class PrismaticJoint extends JointPart {
 
     this.m_shapes = new Array();
     if (this.part1.GetBody() != this.part2.GetBody()) {
-      var collisionGroup:number = ControllerGameGlobals.collisionGroup;
+      var collisionGroup:number = getCollisionGroup();
       this.part1.GetShape()!.m_filter.categoryBits = collisionGroup;
       this.part2.GetShape()!.m_filter.categoryBits = collisionGroup;
 

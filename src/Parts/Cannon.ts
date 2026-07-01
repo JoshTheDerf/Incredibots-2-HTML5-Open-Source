@@ -1,5 +1,5 @@
 import { b2Body, b2BodyDef, b2CircleDef, b2CircleShape, b2MassData, b2PolygonDef, b2Vec2, b2World } from "../Box2D";
-import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals"
+import { getCannonballs, getMainMenuCannonballs } from "./partGlobals"
 import { Util } from "../General/Util"
 import { FixedJoint } from "./FixedJoint"
 import { ShapePart } from "./ShapePart"
@@ -249,8 +249,10 @@ export class Cannon extends ShapePart {
     body.ApplyImpulse(forceVector, body.GetWorldCenter());
     forceVector = forceVector.Negative();
     this.m_body!.ApplyImpulse(forceVector, positionVector);
-    if (ControllerGameGlobals.cannonballs) ControllerGameGlobals.cannonballs.push(body);
-    if (ControllerGameGlobals.mainMenuCannonballs) ControllerGameGlobals.mainMenuCannonballs.push(body);
+    const sink = getCannonballs();
+    if (sink) sink.push(body);
+    const mainMenuSink = getMainMenuCannonballs();
+    if (mainMenuSink) mainMenuSink.push(body);
 
     this.cannonballCounters.push(5);
 }
