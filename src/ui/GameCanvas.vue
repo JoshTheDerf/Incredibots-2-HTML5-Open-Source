@@ -741,11 +741,11 @@ function drawFrame(): void {
 		sky.update(camera, state.sandbox.bounds, w, h, state.sim.phase === "paused");
 	}
 
-	// Static terrain visual (sGround port): build for the current sandbox settings
+	// Sandbox terrain visual (sGround port): build for the current sandbox settings
 	// (cheap no-op unless terrainType/size/theme changed) then rescale/reposition to
-	// the world each frame. This replaces drawing the raw collision bodies — the
-	// core's terrain parts stay invisible (drawStatic=false below), exactly as the
-	// legacy game drew the ground via sGround and passed drawStatic=false.
+	// the world each frame. The sandbox ground's collision bodies (isSandbox) are
+	// excluded from DrawWorld below so they don't double-draw over this; CUSTOM
+	// challenge/tutorial terrain (not isSandbox) IS drawn by DrawWorld.
 	if (ground) {
 		ground.build(state.sandbox);
 		ground.update(camera, w, h);
@@ -756,19 +756,29 @@ function drawFrame(): void {
 	const selectedParts: Part[] = state.parts.filter((p) => selected.has(p.id));
 
 	const notStarted = state.sim.phase !== "running";
+	// The SANDBOX procedural ground (isSandbox=true) is painted by GroundRenderer
+	// (a port of sGround), so it is excluded from DrawWorld here. CUSTOM challenge/
+	// tutorial terrain (isSandbox=false, static, non-editable, drawAnyway=false) has
+	// NO dedicated renderer — in the legacy each controller drew its own bespoke
+	// sGround visual (e.g. ControllerCar.sGround3). Rather than port hundreds of
+	// per-level pixel rects, we draw that terrain's actual collision geometry, which
+	// already carries the correct terrain colours (tutorialTerrain/challenge bake
+	// red/green/blue). So: pass drawStatic=true (so static terrain is drawn) but feed
+	// DrawWorld the non-sandbox parts only. We deliberately do NOT flip drawAnyway on
+	// terrain — encodeRobot keys robot membership off drawAnyway (robotSerialization
+	// :60), so that would leak terrain into exported bots.
+	const drawParts = (state.parts as Part[]).filter((p) => !p.isSandbox);
 	// DrawWorld(allParts, selectedParts, world, notStarted, drawStatic,
 	//           showJoints, showOutlines, challenge)  — see Draw.ts:75.
 	draw.DrawWorld(
-		state.parts as Part[],
+		drawParts,
 		selectedParts,
 		state.world,
 		notStarted,
-		// drawStatic=false — faithful to ControllerGame.ts:640. Non-editable static
-		// terrain bodies are NOT drawn by DrawWorld; the visible ground is the
-		// GroundRenderer (sGround) painted above. Editable static parts (isEditable)
-		// still draw, per the `!isStatic || isEditable || drawStatic || drawAnyway`
-		// gate in Draw.DrawWorld.
-		/* drawStatic */ false,
+		// drawStatic=true so static custom-terrain bodies render (their geometry IS
+		// the visible terrain); the sandbox ground is already excluded above and
+		// drawn by GroundRenderer, so it won't double-draw.
+		/* drawStatic */ true,
 		// View-menu flags (ControllerGame.ts:641-642 pass showJoints/showOutlines).
 		/* showJoints */ state.edit.showJoints,
 		/* showOutlines */ state.edit.showOutlines,
