@@ -3,10 +3,10 @@ import { keyCodeToLabel } from "../src/ui/keyLabel";
 
 describe("keyCodeToLabel", () => {
 	it("maps arrow keys to glyphs", () => {
-		expect(keyCodeToLabel(37)).toBe("◀");
-		expect(keyCodeToLabel(38)).toBe("▲");
-		expect(keyCodeToLabel(39)).toBe("▶");
-		expect(keyCodeToLabel(40)).toBe("▼");
+		expect(keyCodeToLabel(37)).toBe("←");
+		expect(keyCodeToLabel(38)).toBe("↑");
+		expect(keyCodeToLabel(39)).toBe("→");
+		expect(keyCodeToLabel(40)).toBe("↓");
 	});
 
 	it("maps named keys", () => {

@@ -88,6 +88,19 @@ const activePanel = ref<PanelKey | null>(null);
 // (the inspector is always shown as the fixed left panel).
 const inspectorOpen = ref(false);
 
+// Discoverability: on mobile the part-properties sheet is closed by default, so
+// selecting a part on desktop shows its editor but on mobile nothing appeared
+// (users couldn't find how to open properties). Auto-open the sheet when a part
+// becomes selected, and auto-close it when the selection is cleared, so tapping a
+// part reveals its properties — mirroring the desktop "select → inspector shows".
+watch(
+	() => game.edit.selection.length,
+	(count) => {
+		if (!isMobile.value) return;
+		inspectorOpen.value = count > 0;
+	},
+);
+
 function openPanel(panel: PanelKey): void {
 	activePanel.value = panel;
 }

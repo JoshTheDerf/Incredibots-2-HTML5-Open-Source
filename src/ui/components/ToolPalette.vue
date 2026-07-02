@@ -96,7 +96,7 @@ function reset(): void {
 </script>
 
 <template>
-	<div class="tool-palette ib-panel" :style="panelStyle">
+	<div class="tool-palette ib-panel" :class="{ 'is-mobile': isMobile }" :style="panelStyle">
 		<!-- Two build-tool rows (shapes over joints), matching the legacy
 		     MainEditPanel two-row layout. -->
 		<div class="tool-grid">
@@ -302,5 +302,28 @@ function reset(): void {
 .tool-icon {
 	width: 22px;
 	height: 22px;
+}
+
+/* On mobile the palette WRAPS onto multiple rows so every tool stays on-screen
+   (it previously ran off the right edge / relied on non-obvious horizontal
+   scroll). Drop the flex spacer that pushed the transport to the far right, and
+   let the tool groups + transport flow and wrap within the viewport width. */
+.tool-palette.is-mobile {
+	flex-wrap: wrap;
+	gap: 6px;
+	justify-content: center;
+}
+
+.tool-palette.is-mobile .spacer {
+	display: none;
+}
+
+.tool-palette.is-mobile .divider {
+	display: none;
+}
+
+.tool-palette.is-mobile .transport {
+	flex-wrap: wrap;
+	justify-content: center;
 }
 </style>

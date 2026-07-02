@@ -16,6 +16,7 @@
 import { computed } from "vue";
 import { useGameStore } from "../gameStore";
 import { keyCodeToLabel } from "../keyLabel";
+import IbButton from "./IbButton.vue";
 
 const game = useGameStore();
 
@@ -111,84 +112,79 @@ function release(control: Control): void {
 
 <template>
 	<div v-if="controls.length" class="mobile-control-pad" aria-label="Robot controls">
-		<button
-			v-for="c in controls"
-			:key="c.key"
-			type="button"
-			class="pad-btn"
-			@pointerdown="press(c, $event)"
-			@pointerup="release(c)"
-			@pointerleave="release(c)"
-			@pointercancel="release(c)"
-			@contextmenu.prevent
-		>
-			<span class="pad-key">{{ c.label }}</span>
+		<div v-for="c in controls" :key="c.key" class="pad-item">
+			<!-- Reuse the standard IbButton pill so the pad matches every other
+			     button. pointerdown/up drive keyInput (press-and-hold); the key glyph
+			     is the button label so the player sees WHICH keyboard key it maps to. -->
+			<IbButton
+				family="blue"
+				class="pad-btn"
+				:title="`${c.label} — ${c.hint}`"
+				:aria-label="`${c.hint} (key ${c.label})`"
+				@pointerdown="press(c, $event)"
+				@pointerup="release(c)"
+				@pointerleave="release(c)"
+				@pointercancel="release(c)"
+				@contextmenu.prevent
+			>
+				{{ c.label }}
+			</IbButton>
 			<span class="pad-hint">{{ c.hint }}</span>
-		</button>
+		</div>
 	</div>
 </template>
 
 <style scoped>
-/* Gamepad cluster pinned to the bottom-right, overlaying the canvas. Buttons
-   wrap right-to-left so the newest keys sit near the thumb. Semi-transparent so
-   the play area stays visible behind it. */
+/* Gamepad cluster in the bottom-right, overlaying the canvas. Raised off the
+   bottom edge so it clears the mobile browser chrome (it was previously flush to
+   the bottom and got cut off). Semi-transparent gaps so the play area stays
+   visible; the buttons themselves capture their own touches. */
 .mobile-control-pad {
 	position: absolute;
-	right: 10px;
-	bottom: 14px;
+	right: 12px;
+	bottom: 72px;
 	z-index: 25;
 	display: flex;
 	flex-wrap: wrap-reverse;
 	flex-direction: row-reverse;
+	align-items: flex-end;
 	gap: 10px;
-	max-width: 60vw;
+	max-width: 62vw;
 	justify-content: flex-start;
-	/* The buttons capture their own touches; the gaps shouldn't block canvas
-	   panning behind the cluster. */
 	pointer-events: none;
 }
 
-.pad-btn {
-	/* Finger-sized tap target (>= 44px). */
-	min-width: 56px;
-	min-height: 56px;
-	padding: 4px 8px;
+/* One control = the standard IbButton pill (matching every other button) + a
+   small action caption underneath. */
+.pad-item {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
 	gap: 2px;
-	border: 2px solid rgba(183, 170, 227, 0.7);
-	border-radius: 12px;
-	background: rgba(36, 41, 48, 0.62);
-	color: #fdf9ea;
-	font-family: Arial, Helvetica, sans-serif;
-	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 	pointer-events: auto;
-	/* Kill the browser's touch gestures on the control itself so a press drives
-	   the robot instead of scrolling / zooming / selecting. */
-	touch-action: none;
 	-webkit-user-select: none;
 	user-select: none;
-	-webkit-tap-highlight-color: transparent;
-	cursor: pointer;
 }
 
-.pad-btn:active {
-	background: rgba(67, 54, 111, 0.85);
-	border-color: #fdf9ea;
-}
-
-.pad-key {
-	font-size: 20px;
+/* Size the IbButton to a finger-sized square and show the key glyph large; the
+   pill's own texture/colour supplies the styling (consistent with the toolbar). */
+.pad-btn {
+	min-width: 54px;
+	min-height: 54px;
+	font-size: 22px;
 	font-weight: bold;
-	line-height: 1;
+	touch-action: none;
+	-webkit-tap-highlight-color: transparent;
 }
 
+/* Action caption ("thrust", "spin →", ...) — a legible chip under each key. */
 .pad-hint {
 	font-size: 10px;
-	opacity: 0.85;
 	line-height: 1;
+	color: #fdf9ea;
+	background: rgba(36, 41, 48, 0.72);
+	padding: 2px 5px;
+	border-radius: 6px;
 	white-space: nowrap;
 }
 </style>

@@ -14,15 +14,15 @@ const NAMED: Record<number, string> = {
 	18: "Alt",
 	27: "Esc",
 	32: "Space",
-	37: "◀", // ArrowLeft
-	38: "▲", // ArrowUp
-	39: "▶", // ArrowRight
-	40: "▼", // ArrowDown
+	37: "←", // ArrowLeft
+	38: "↑", // ArrowUp
+	39: "→", // ArrowRight
+	40: "↓", // ArrowDown
 };
 
 /**
  * Map a raw JS keyCode to a short label suitable for a compact button.
- * - Arrows -> triangle glyphs (◀ ▲ ▶ ▼)
+ * - Arrows -> arrow glyphs (← ↑ → ↓)
  * - Space/Enter/etc -> word
  * - A-Z (65-90) -> the uppercase letter
  * - 0-9 (48-57) and numpad 0-9 (96-105) -> the digit
