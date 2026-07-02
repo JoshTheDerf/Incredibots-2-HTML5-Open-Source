@@ -26,6 +26,7 @@ import { screenToWorld, worldToScreen, hitTestPart, partsInBox } from "./rendere
 import { SkyRenderer } from "./renderer/skyRenderer";
 import { GroundRenderer } from "./renderer/groundRenderer";
 import { TutorialGroundRenderer } from "./renderer/tutorialGroundRenderer";
+import { ChallengeGroundRenderer } from "./renderer/challengeGroundRenderer";
 import type { ToolMode } from "../core";
 import type { Part } from "../Parts/Part";
 
@@ -81,6 +82,7 @@ let ground: GroundRenderer | null = null;
 // ground but BELOW the Draw sprite. Only visible when a base-terrain tutorial
 // (Tank/Shapes/Car/Jumpbot/Dumpbot/Catapult, levelIndex 0-5) is active.
 let tutorialGround: TutorialGroundRenderer | null = null;
+let challengeGround: ChallengeGroundRenderer | null = null;
 // Lightweight overlay Graphics for the marquee rectangle — kept separate from
 // the Draw sprite so it never fights Draw.ts's per-frame clear/repaint.
 let overlay: Graphics | null = null;
@@ -770,6 +772,17 @@ function drawFrame(): void {
 		tutorialGround.view.visible = !!tut && tut.active && tut.levelIndex >= 0 && tut.levelIndex <= 5;
 	}
 
+	// Built-in challenge terrain visual (Climb / Monkey Bars sGround port): built
+	// once per active built-in (rebuilt when it changes), repositioned each frame.
+	// Only shown for the two hardcoded challenges with bespoke sGround geometry;
+	// Race/Spaceship draw their terrain via the sandbox GroundRenderer above.
+	if (challengeGround) {
+		const builtIn = state.challenge?.builtIn ?? null;
+		challengeGround.build(builtIn);
+		challengeGround.update(camera, w, h);
+		challengeGround.view.visible = builtIn === "climb" || builtIn === "monkeyBars";
+	}
+
 	// Map selection ids -> live Part instances for highlight.
 	const selected = new Set(state.edit.selection);
 	const selectedParts: Part[] = state.parts.filter((p) => selected.has(p.id));
@@ -910,6 +923,11 @@ onMounted(async () => {
 	tutorialGround = new TutorialGroundRenderer();
 	app.stage.addChild(tutorialGround.view);
 
+	// Built-in challenge terrain visual (Climb / Monkey Bars), same layer as the
+	// tutorial ground: above the sandbox ground, below the world Draw sprite.
+	challengeGround = new ChallengeGroundRenderer();
+	app.stage.addChild(challengeGround.view);
+
 	drawSprite = new Graphics();
 	app.stage.addChild(drawSprite);
 	draw = new Draw();
@@ -975,6 +993,8 @@ onBeforeUnmount(() => {
 	ground = null;
 	tutorialGround?.destroy();
 	tutorialGround = null;
+	challengeGround?.destroy();
+	challengeGround = null;
 	if (app) {
 		app.destroy(true, { children: true });
 		app = null;

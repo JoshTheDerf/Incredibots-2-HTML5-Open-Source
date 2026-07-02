@@ -100,6 +100,16 @@ export interface RestrictionState {
 export type ChallengeOutcome = "playing" | "won" | "failed" | null;
 
 /**
+ * Which hardcoded built-in challenge is loaded, if any. Drives the renderer's
+ * per-challenge decorative terrain (the Climb / Monkey Bars sGround graphics,
+ * which are renderer-only and NOT in the headless part list). null for an
+ * authoring challenge or a plain sandbox session. Race/Spaceship are decoded
+ * blobs whose terrain lives in their parts + sandbox settings, so they carry
+ * their own tag purely for completeness (no bespoke sGround visual).
+ */
+export type BuiltInChallengeId = "climb" | "monkeyBars" | "race" | "spaceship" | null;
+
+/**
  * Plain-data challenge read-model mirrored into GameState for the renderer +
  * Vue panels. Derived from the live `Challenge` each notify; nothing outside the
  * core mutates it.
@@ -121,6 +131,8 @@ export interface ChallengeState {
 	outcome: ChallengeOutcome;
 	/** 10000 - frame at win; null until a win. */
 	score: number | null;
+	/** Which built-in challenge is loaded (drives the renderer's terrain visual). */
+	builtIn: BuiltInChallengeId;
 }
 
 // --- Challenge factory ---------------------------------------------------
@@ -135,6 +147,8 @@ export interface ChallengeSession {
 	partsFit: boolean;
 	outcome: ChallengeOutcome;
 	score: number | null;
+	/** Which built-in challenge is loaded (null for authoring challenges). */
+	builtIn: BuiltInChallengeId;
 }
 
 /** A fresh, empty challenge session (default restrictions from Challenge.ts). */
@@ -151,6 +165,7 @@ export function createChallengeSession(): ChallengeSession {
 		partsFit: true,
 		outcome: null,
 		score: null,
+		builtIn: null,
 	};
 }
 
@@ -162,7 +177,10 @@ export function createChallengeSession(): ChallengeSession {
  * author robot the caller seeds into the parts graph). Conditions/restrictions/
  * build areas are already populated by ExtractChallengeFromByteArray.
  */
-export function challengeSessionFromChallenge(challenge: Challenge): ChallengeSession {
+export function challengeSessionFromChallenge(
+	challenge: Challenge,
+	builtIn: BuiltInChallengeId = null,
+): ChallengeSession {
 	return {
 		challenge,
 		playMode: true,
@@ -171,6 +189,7 @@ export function challengeSessionFromChallenge(challenge: Challenge): ChallengeSe
 		partsFit: true,
 		outcome: null,
 		score: null,
+		builtIn,
 	};
 }
 
@@ -238,6 +257,7 @@ export function toChallengeState(session: ChallengeSession): ChallengeState {
 		partsFit: session.partsFit,
 		outcome: session.outcome,
 		score: session.score,
+		builtIn: session.builtIn,
 	};
 }
 
@@ -610,5 +630,6 @@ export type BuiltInChallenge = "climb" | "monkeyBars";
  * core does not own the camera pan the renderer uses).
  */
 export function buildBuiltInChallenge(name: BuiltInChallenge, session: ChallengeSession): Part[] {
+	session.builtIn = name;
 	return name === "climb" ? buildClimbChallenge(session) : buildMonkeyBarsChallenge(session);
 }

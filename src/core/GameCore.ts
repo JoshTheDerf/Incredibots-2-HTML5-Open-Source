@@ -455,7 +455,7 @@ export class GameCore {
 	 */
 	async loadBuiltInChallengeBlob(name: "race" | "spaceship", blob: ArrayBuffer | Uint8Array): Promise<void> {
 		const challenge = await decodeChallengeBlob(blob);
-		this.challenge = challengeSessionFromChallenge(challenge);
+		this.challenge = challengeSessionFromChallenge(challenge, name);
 
 		// The decoded parts (terrain + author robot) become the live parts graph,
 		// with fresh ids from our monotonic source (ControllerRace assigns them via
@@ -464,11 +464,31 @@ export class GameCore {
 		const parts = challenge.allParts as Part[];
 		for (const p of parts) p.id = ++this.nextId;
 
+		// Seed state.sandbox from the challenge's SandboxSettings so the sandbox
+		// GroundRenderer + Sky draw the challenge's terrain/theme/background — the
+		// legacy ControllerRace/Spaceship do this via ControllerGameGlobals.settings
+		// = challenge.settings, and ControllerSandbox.BuildGround(true) then builds
+		// the ground from those settings (ControllerRace.ts:23; ControllerSandbox
+		// ctor). The terrain COLLISION bodies still ride in `parts` from the blob.
+		const s = challenge.settings;
+		const sandbox = {
+			gravity: s.gravity,
+			size: s.size,
+			terrainType: s.terrainType,
+			terrainTheme: s.terrainTheme,
+			background: s.background,
+			backgroundR: s.backgroundR,
+			backgroundG: s.backgroundG,
+			backgroundB: s.backgroundB,
+			bounds: computeBounds({ size: s.size, terrainType: s.terrainType }),
+		};
+
 		this.notifyDepth++;
 		try {
 			this.state = {
 				...this.state,
 				parts,
+				sandbox,
 				sim: { phase: "editing", frame: 0 },
 				edit: { ...this.state.edit, selection: [], selectedPart: null },
 			};

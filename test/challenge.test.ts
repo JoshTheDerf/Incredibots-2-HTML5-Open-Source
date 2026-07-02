@@ -749,3 +749,27 @@ describe("cannonball conditions — subject 4 vs a shape (obj 5 touching / obj 6
 		expect(touched.isSatisfied).toBe(true);
 	});
 });
+
+describe("loadBuiltInChallenge tags state.challenge.builtIn", () => {
+	function loadedCore(name: "climb" | "monkeyBars"): GameCore {
+		const core = new GameCore(createInitialState());
+		core.dispatch({ type: "loadBuiltInChallenge", name });
+		return core;
+	}
+
+	it("climb sets state.challenge.builtIn = 'climb'", () => {
+		const core = loadedCore("climb");
+		expect(core.getState().challenge?.builtIn).toBe("climb");
+	});
+
+	it("monkeyBars sets state.challenge.builtIn = 'monkeyBars'", () => {
+		const core = loadedCore("monkeyBars");
+		expect(core.getState().challenge?.builtIn).toBe("monkeyBars");
+	});
+
+	it("a fresh authoring challenge has builtIn = null", () => {
+		const core = new GameCore(createInitialState());
+		core.dispatch({ type: "newChallenge" });
+		expect(core.getState().challenge?.builtIn).toBe(null);
+	});
+});

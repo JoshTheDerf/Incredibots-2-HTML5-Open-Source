@@ -42,3 +42,4 @@ export {
 	BACKGROUND_SOLID_COLOUR,
 } from "./sandboxEnvironment";
 export type { Command, CommandType, ToolMode, ShapeKind } from "./Command";
+export type { ChallengeState, BuiltInChallengeId } from "./challenge";
