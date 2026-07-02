@@ -97,6 +97,14 @@ let overlay: Graphics | null = null;
 let resizeObserver: ResizeObserver | null = null;
 let tickerFn: (() => void) | null = null;
 
+// The sim advances at a FIXED 30 steps/sec — IncrediBots' native stage rate. Each
+// `step` runs two 1/60s Box2D sub-steps (= 1/30s of simulation), so it must be
+// dispatched 30x/sec for real-time physics. The pixi ticker fires at the DISPLAY
+// refresh rate (60/120/144Hz), so stepping once per tick ran the sim 2x+ too fast;
+// we accumulate elapsed ticker time and step at 30Hz regardless of refresh rate.
+const SIM_FRAME_MS = 1000 / 30;
+let simAccMs = 0;
+
 // --- interaction state -----------------------------------------------------
 // A gesture begins on pointer-down and ends on pointer-up. Exactly one of
 // `dragging` / `marquee` is active at a time.
@@ -963,10 +971,21 @@ function drawFrame(): void {
 	if (!app || !draw) return;
 	const state = game.state;
 
-	// While running, advance the physics world one frame before drawing so the
-	// bodies Draw reads are up to date. Capped at the ticker's ~60fps.
+	// While running, advance the physics at a FIXED 30 steps/sec (the legacy stage
+	// rate) via a wall-time accumulator, so playback speed is independent of the
+	// monitor's refresh rate — stepping once per render frame ran the sim 2x+ too
+	// fast on 60Hz+ displays. Catch up at most a few steps per frame after a hitch.
 	if (state.sim.phase === "running") {
-		game.dispatch({ type: "step" });
+		simAccMs += app.ticker.deltaMS;
+		let steps = 0;
+		while (simAccMs >= SIM_FRAME_MS && steps < 4) {
+			game.dispatch({ type: "step" });
+			simAccMs -= SIM_FRAME_MS;
+			steps++;
+		}
+	} else {
+		// Not running: drop any accumulated time so the next play starts fresh.
+		simAccMs = 0;
 	}
 
 	// Use the container's CSS-pixel size as the single source of truth for the
