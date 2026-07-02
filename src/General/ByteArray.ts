@@ -90,6 +90,11 @@ export class ByteArray {
   stringTable = [];
   objectTable = [];
   traitTable = [];
+  // AMF reference tables are scoped to ONE top-level readObject (an AMF "message"),
+  // matching AS3's native ByteArray which resets its reference context per
+  // read/writeObject. readObject recurses for nested values, so this depth counter
+  // lets us reset the three tables only at the OUTERMOST call. See readObject().
+  private _amfReadDepth = 0;
 
   public buffer: Buffer;
 
@@ -534,10 +539,29 @@ export class ByteArray {
    * @returns {Object}
    */
   readObject() {
-    if (this._objectEncoding == ObjectEncoding.AMF0) {
-      return this.readAMF0Object();
-    } else if (this._objectEncoding == ObjectEncoding.AMF3) {
-      return this.readAMF3Object();
+    // Reset the AMF reference tables at the START of each TOP-LEVEL read. The
+    // writer emits a fresh reference table per writeObject (AMF_3.writeObject),
+    // so each top-level readObject must start with empty tables — otherwise a
+    // reference index in a later object resolves against stale objects/strings/
+    // traits from a previous readObject, corrupting any buffer built from several
+    // writeObject calls (e.g. a challenge's parts + each build area). Only the
+    // outermost call resets; nested reads (depth > 0) share the same context so
+    // in-object references still resolve. This mirrors AS3's per-message reset.
+    if (this._amfReadDepth === 0) {
+      this.stringTable = [];
+      this.objectTable = [];
+      this.traitTable = [];
+    }
+    this._amfReadDepth++;
+    try {
+      if (this._objectEncoding == ObjectEncoding.AMF0) {
+        return this.readAMF0Object();
+      } else if (this._objectEncoding == ObjectEncoding.AMF3) {
+        return this.readAMF3Object();
+      }
+      return undefined;
+    } finally {
+      this._amfReadDepth--;
     }
   }
 

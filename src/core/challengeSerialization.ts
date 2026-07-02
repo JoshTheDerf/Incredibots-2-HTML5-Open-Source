@@ -53,26 +53,12 @@ import { Triangle } from "../Parts/Triangle";
 // (Kept as its own copy rather than imported from robotSerialization to keep the
 // two serializers independently faithful to their Database source functions.)
 
-// The ByteArray AMF3 reader keeps its object/string/trait reference tables on the
-// ByteArray instance and does NOT reset them between top-level readObject() calls
-// — but the WRITER emits a fresh reference table per writeObject() call (each uses
-// a new amf3.Writer, so its object-reference indices restart at 0). AS3's native
-// ByteArray resets the read tables at each top-level AMF message; this JS port
-// does not, so a later readObject() resolves an in-message reference index (e.g. a
-// b2AABB's second b2Vec2) against objects left over from EARLIER readObject calls,
-// returning the wrong (stale) object. PutChallengeIntoByteArray writes the parts,
-// settings, buildAreas and each condition list as SEPARATE writeObject() calls, so
-// the challenge decode must reset the reader tables before each readObject() to
-// match the per-message writer semantics. (Cannot be fixed in ByteArray itself —
-// out of this task's file scope; reset locally instead.)
-function resetAmfReadTables(b: ByteArray): void {
-	b.stringTable = [];
-	b.objectTable = [];
-	b.traitTable = [];
-}
-
+// The challenge blob is a sequence of independent top-level writeObject() sections
+// (parts, settings, buildAreas, each condition list). ByteArray.readObject now
+// resets its AMF reference tables per top-level read (matching AS3's per-message
+// reset + the writer's fresh-table-per-writeObject), so each readObject() below
+// starts with a clean reference context automatically — no manual reset needed.
 function extractPartsFromByteArray(b: ByteArray): Part[] {
-	resetAmfReadTables(b);
 	const objectData = b.readObject() as any[];
 	const partData: Part[] = [];
 
@@ -275,7 +261,6 @@ function isShape(p: Part): boolean {
 
 function extractChallengeFromByteArray(data: ByteArray): Challenge {
 	const partData = extractPartsFromByteArray(data);
-	resetAmfReadTables(data);
 	const settings = data.readObject() as any;
 	const c = new Challenge(
 		new SandboxSettings(
@@ -308,7 +293,6 @@ function extractChallengeFromByteArray(data: ByteArray): Challenge {
 	c.maxSJSpeed = data.readDouble();
 	c.maxThrusterStrength = data.readDouble();
 
-	resetAmfReadTables(data);
 	const buildAreas = data.readObject() as any[];
 	c.buildAreas = [];
 	for (let i = 0; i < buildAreas.length; i++) {
@@ -320,7 +304,6 @@ function extractChallengeFromByteArray(data: ByteArray): Challenge {
 
 	const allShapes = partData.filter(isShape);
 
-	resetAmfReadTables(data);
 	let conditions = data.readObject() as any[];
 	for (let i = 0; i < conditions.length; i++) {
 		const cond = new WinCondition(conditions[i].name, conditions[i].subject, conditions[i].object);
@@ -333,7 +316,6 @@ function extractChallengeFromByteArray(data: ByteArray): Challenge {
 		c.winConditions.push(cond);
 	}
 
-	resetAmfReadTables(data);
 	conditions = data.readObject() as any[];
 	for (let i = 0; i < conditions.length; i++) {
 		const con = new LossCondition(
