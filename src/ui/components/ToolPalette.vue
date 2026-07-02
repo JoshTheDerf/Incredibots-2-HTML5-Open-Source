@@ -290,18 +290,34 @@ function reset(): void {
 .icon-btn.ib-btn,
 .tool-row :deep(.icon-btn.ib-btn),
 .transport-secondary :deep(.icon-btn.ib-btn) {
-	min-width: 44px;
-	min-height: 44px;
-	height: 44px;
-	padding: 0 8px;
+	min-width: 38px;
+	min-height: 38px;
+	height: 38px;
+	padding: 0 4px;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 }
 
 .tool-icon {
-	width: 22px;
-	height: 22px;
+	width: 20px;
+	height: 20px;
+}
+
+/* Mobile toolbar tightened so the shape/joint bar takes minimal vertical space:
+   compact panel padding + gaps between the wrapped icon rows. */
+.tool-palette.is-mobile {
+	padding: 2px 4px;
+	gap: 4px;
+}
+
+.tool-palette.is-mobile .tool-grid,
+.tool-palette.is-mobile .transport-secondary {
+	gap: 3px;
+}
+
+.tool-palette.is-mobile .tool-row {
+	gap: 3px;
 }
 
 /* On mobile the palette WRAPS onto multiple rows so every tool stays on-screen

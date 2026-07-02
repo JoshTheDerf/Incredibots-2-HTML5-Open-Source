@@ -423,7 +423,9 @@ onBeforeUnmount(() => {
 	left: 0;
 	right: 0;
 	bottom: 0;
-	max-height: 55vh;
+	/* Keep the properties sheet low — it should cover roughly the bottom third,
+	   not rise into the play area (dvh so it tracks the visible mobile viewport). */
+	max-height: 40dvh;
 	transform: translateY(100%);
 	transition: transform 0.2s ease;
 	overflow-y: auto;
