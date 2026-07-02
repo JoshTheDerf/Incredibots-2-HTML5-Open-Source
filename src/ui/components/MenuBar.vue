@@ -15,6 +15,7 @@
 import { computed } from "vue";
 import { useGameStore } from "../gameStore";
 import { frameTextures } from "../assets";
+import { soundService } from "../sound";
 import type { DropdownMenuItem } from "@nuxt/ui";
 
 const logoSrc = frameTextures.logo;
@@ -41,7 +42,15 @@ function open(panel: PanelKey): void {
 // File menu — legacy BuildFileMenu (Main Menu / Save / Load* / Log In / High
 // Scores / Report / Sound). We wire the items that have real commands or ported
 // panels; New Robot maps to the "New" flow.
-const fileMenu: DropdownMenuItem[][] = [
+//
+// The Sound toggle mirrors the legacy File-menu "Enable/Disable Sound" item
+// (ControllerMainMenu sets Main.enableSound; the in-game menu offered the same
+// switch). This is the ONLY place sound is reachable once the user is in the
+// editor — the MainMenu toggle is out of reach in Sandbox mode. The click is a
+// user gesture, so browser autoplay policy is satisfied. Label + icon reflect
+// soundService.enabled reactively (the service state is a Vue ref), so it stays
+// in sync with the MainMenu toggle. Computed for that reactivity.
+const fileMenu = computed<DropdownMenuItem[][]>(() => [
 	[{ label: "New Robot", icon: "i-lucide-file-plus", onSelect: () => game.dispatch({ type: "newRobot" }) }],
 	[
 		{ label: "Save...", icon: "i-lucide-share", onSelect: () => open("export") },
@@ -50,8 +59,15 @@ const fileMenu: DropdownMenuItem[][] = [
 	// Replay transport (legacy BuildFileMenu Load Replay / Import Replay). Load
 	// Replay opens ImportPanel in replay mode; importReplay decodes + plays back.
 	[{ label: "Load Replay...", icon: "i-lucide-clapperboard", onSelect: () => open("importReplay") }],
+	[
+		{
+			label: soundService.enabled ? "Disable Sound" : "Enable Sound",
+			icon: soundService.enabled ? "i-lucide-volume-2" : "i-lucide-volume-x",
+			onSelect: () => soundService.setEnabled(!soundService.enabled),
+		},
+	],
 	[{ label: "Main Menu", icon: "i-lucide-home", onSelect: () => game.goToMenu() }],
-];
+]);
 
 // Edit menu — legacy BuildEditMenu (Change Settings / Clear All / Undo / Redo /
 // Cut / Copy / Paste / Delete / Move to Front / Move to Back).

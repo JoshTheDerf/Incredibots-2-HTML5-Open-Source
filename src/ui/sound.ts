@@ -32,6 +32,8 @@ import cIntro from "../../resource/Incredibots_Intro.mp3";
 import cWin from "../../resource/Incredibots_Win_r1.mp3";
 import cLose from "../../resource/Incredibots_Lose_r2.mp3";
 
+import { ref } from "vue";
+
 // A minimal Sound handle we care about — matches the @pixi/sound surface used.
 interface PixiSoundLike {
 	play: (opts?: unknown) => unknown;
@@ -97,20 +99,23 @@ const introClip = new LazyClip(cIntro, /* loop */ true);
  * disabled and offers an "Enable Sound" toggle (ControllerMainMenu).
  */
 class SoundService {
-	private _enabled = false;
+	// Vue-reactive so UI that reflects the on/off state (the MainMenu toggle AND
+	// the editor MenuBar item) updates live and stays consistent across both.
+	// Defaults OFF — see class doc / legacy Main.enableSound.
+	private readonly _enabled = ref(false);
 
 	get enabled(): boolean {
-		return this._enabled;
+		return this._enabled.value;
 	}
 	setEnabled(v: boolean): void {
-		this._enabled = v;
+		this._enabled.value = v;
 		if (!v) introClip.stop();
 	}
 
 	/** Play a one-shot SFX for a core or UI event. Random-of-5 for create sounds
 	 *  (ControllerGame.PlayShapeSound :469 / PlayJointSound :486). */
 	play(event: SoundEvent): void {
-		if (!this._enabled) return;
+		if (!this._enabled.value) return;
 		switch (event) {
 			case "shapeCreated":
 				shapeClips[Math.floor(Math.random() * shapeClips.length)].play();
@@ -136,7 +141,7 @@ class SoundService {
 	/** Main-menu intro track (ControllerMainMenu.ts:112-116). Looped; no-op when
 	 *  sound is disabled. */
 	playIntro(): void {
-		if (!this._enabled) return;
+		if (!this._enabled.value) return;
 		introClip.play();
 	}
 	stopIntro(): void {
