@@ -667,6 +667,109 @@ export class GameCore {
 		}
 	}
 
+	/**
+	 * Construct a WinCondition and push it onto the live challenge. Shared by the
+	 * addWinCondition command and the interactive-pick finalize path so the
+	 * condition-construction lives in ONE place (ConditionsWindow pushed a fresh
+	 * WinCondition in both FinishDrawingCondition :272-290 and
+	 * FinishSelectingForCondition :323-327). Fires the tutorial milestone.
+	 */
+	private pushWinCondition(
+		name: string,
+		subject: number,
+		object: number,
+		region: { minX: number; maxX: number; minY: number; maxY: number } | null,
+		shape1Id: number | null | undefined,
+		shape2Id: number | null | undefined,
+	): void {
+		if (!this.challenge) return;
+		const cond = new WinCondition(name, subject, object);
+		if (region) {
+			cond.minX = region.minX;
+			cond.maxX = region.maxX;
+			cond.minY = region.minY;
+			cond.maxY = region.maxY;
+		}
+		this.applyConditionShapes(cond, shape1Id, shape2Id);
+		this.challenge.challenge.winConditions.push(cond);
+		// Tutorial milestone (ControllerChallengeEditor -> 97 "addedWinCondition").
+		if (this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "addedWinCondition" });
+	}
+
+	/** Construct + push a LossCondition; shared by the command and pick paths. */
+	private pushLossCondition(
+		name: string,
+		subject: number,
+		object: number,
+		immediate: boolean,
+		region: { minX: number; maxX: number; minY: number; maxY: number } | null,
+		shape1Id: number | null | undefined,
+		shape2Id: number | null | undefined,
+	): void {
+		if (!this.challenge) return;
+		const cond = new LossCondition(name, subject, object, immediate);
+		if (region) {
+			cond.minX = region.minX;
+			cond.maxX = region.maxX;
+			cond.minY = region.minY;
+			cond.maxY = region.maxY;
+		}
+		this.applyConditionShapes(cond, shape1Id, shape2Id);
+		this.challenge.challenge.lossConditions.push(cond);
+		// Tutorial milestones (ControllerChallengeEditor): first loss condition
+		// -> 100 "addedLoss1"; second -> 102 "addedLoss2".
+		if (this.tutorialMachine) {
+			const n = this.challenge.challenge.lossConditions.length;
+			if (n === 1) this.notifyTutorial({ type: "progress", key: "addedLoss1" });
+			else if (n === 2) this.notifyTutorial({ type: "progress", key: "addedLoss2" });
+		}
+	}
+
+	// --- Interactive condition stage-picking -------------------------------
+	//
+	// Faithful port of ConditionsWindow.addWin/LossButtonPressed (:226-268) +
+	// GetBox/HLine/VLine/ShapeForConditions (ControllerGame :1088-1114) +
+	// FinishDrawingCondition / FinishSelectingForCondition (:270-336).
+
+	/** Compute what pick a draft's OBJECT needs (after any shape1 pick is done). */
+	private awaitForObject(object: number): "box" | "hline" | "vline" | "shape2" {
+		// ConditionsWindow: obj 0 -> box; obj <3 (1,2) -> horizontal line; obj <5
+		// (3,4) -> vertical line; else (5,6) -> a second shape (:234-243).
+		if (object === 0) return "box";
+		if (object < 3) return "hline";
+		if (object < 5) return "vline";
+		return "shape2";
+	}
+
+	/** Push the currently-drafted condition (region already applied) + clear the draft. */
+	private finalizeConditionDraft(
+		region: { minX: number; maxX: number; minY: number; maxY: number } | null,
+	): void {
+		const draft = this.state.conditionDraft;
+		if (!draft || !this.challenge) return;
+		if (draft.kind === "win") {
+			this.pushWinCondition(draft.name, draft.subject, draft.object, region, draft.shape1Id, draft.shape2Id);
+		} else {
+			this.pushLossCondition(
+				draft.name,
+				draft.subject,
+				draft.object,
+				draft.immediate,
+				region,
+				draft.shape1Id,
+				draft.shape2Id,
+			);
+		}
+		this.setConditionDraft(null);
+		this.syncChallenge();
+	}
+
+	/** Set (or clear) the picking draft on state + notify. */
+	private setConditionDraft(draft: import("./GameState").ConditionDraft | null): void {
+		this.state = { ...this.state, conditionDraft: draft };
+		this.markChanged();
+	}
+
 	// --- Undo / redo history -----------------------------------------------
 	//
 	// Snapshot-based history: before any mutating command we deep-clone the
@@ -2003,6 +2106,10 @@ export class GameCore {
 				case "removeWinCondition":
 				case "removeLossCondition":
 				case "setWinConditionsAnded":
+				case "startConditionPick":
+				case "conditionPickBox":
+				case "conditionPickShape":
+				case "cancelConditionPick":
 				case "setAllowedParts":
 				case "setBuildPermissions":
 				case "setPartLimits":
@@ -2592,44 +2699,29 @@ export class GameCore {
 			}
 			case "addWinCondition": {
 				if (!this.challenge) return;
-				const cond = new WinCondition(command.name ?? "Condition", command.subject, command.object);
-				if (command.region) {
-					cond.minX = command.region.minX;
-					cond.maxX = command.region.maxX;
-					cond.minY = command.region.minY;
-					cond.maxY = command.region.maxY;
-				}
-				this.applyConditionShapes(cond, command.shape1Id, command.shape2Id);
-				this.challenge.challenge.winConditions.push(cond);
+				this.pushWinCondition(
+					command.name ?? "Condition",
+					command.subject,
+					command.object,
+					command.region ?? null,
+					command.shape1Id,
+					command.shape2Id,
+				);
 				this.syncChallenge();
-				// Tutorial milestone (ControllerChallengeEditor -> 97 "addedWinCondition").
-				if (this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "addedWinCondition" });
 				return;
 			}
 			case "addLossCondition": {
 				if (!this.challenge) return;
-				const cond = new LossCondition(
+				this.pushLossCondition(
 					command.name ?? "Condition",
 					command.subject,
 					command.object,
 					command.immediate,
+					command.region ?? null,
+					command.shape1Id,
+					command.shape2Id,
 				);
-				if (command.region) {
-					cond.minX = command.region.minX;
-					cond.maxX = command.region.maxX;
-					cond.minY = command.region.minY;
-					cond.maxY = command.region.maxY;
-				}
-				this.applyConditionShapes(cond, command.shape1Id, command.shape2Id);
-				this.challenge.challenge.lossConditions.push(cond);
 				this.syncChallenge();
-				// Tutorial milestones (ControllerChallengeEditor): first loss condition
-				// -> 100 "addedLoss1"; second -> 102 "addedLoss2".
-				if (this.tutorialMachine) {
-					const n = this.challenge.challenge.lossConditions.length;
-					if (n === 1) this.notifyTutorial({ type: "progress", key: "addedLoss1" });
-					else if (n === 2) this.notifyTutorial({ type: "progress", key: "addedLoss2" });
-				}
 				return;
 			}
 			case "removeWinCondition": {
@@ -2648,6 +2740,71 @@ export class GameCore {
 				if (!this.challenge) return;
 				this.challenge.challenge.winConditionsAnded = command.value;
 				this.syncChallenge();
+				return;
+			}
+			case "startConditionPick": {
+				// ConditionsWindow.addWin/LossButtonPressed (:226-268): subject-0
+				// picks shape1 FIRST (selectingForShape1), then the object pick;
+				// otherwise go straight to the object's box/line/shape2 pick.
+				if (!this.challenge) return;
+				const awaiting = command.subject === 0 ? "shape1" : this.awaitForObject(command.object);
+				this.setConditionDraft({
+					kind: command.kind,
+					name: command.name,
+					subject: command.subject,
+					object: command.object,
+					immediate: command.immediate,
+					shape1Id: null,
+					shape2Id: null,
+					awaiting,
+					firstClick: null,
+				});
+				return;
+			}
+			case "conditionPickBox": {
+				// FinishDrawingCondition index math (ConditionsWindow :270-314):
+				//   obj 0 (box):   min/max of the two corners.
+				//   obj <3 (hline): (x1,y1)-(x2,y1)  — horizontal span at y1.
+				//   else  (vline): (x1,y1)-(x1,y2)  — vertical span at x1.
+				const draft = this.state.conditionDraft;
+				if (!draft || draft.awaiting === "shape1" || draft.awaiting === "shape2" || draft.awaiting === null) return;
+				const { x1, y1, x2, y2 } = command;
+				let region: { minX: number; maxX: number; minY: number; maxY: number };
+				if (draft.object === 0) {
+					region = { minX: Math.min(x1, x2), minY: Math.min(y1, y2), maxX: Math.max(x1, x2), maxY: Math.max(y1, y2) };
+				} else if (draft.object < 3) {
+					region = { minX: x1, minY: y1, maxX: x2, maxY: y1 };
+				} else {
+					region = { minX: x1, minY: y1, maxX: x1, maxY: y2 };
+				}
+				this.finalizeConditionDraft(region);
+				return;
+			}
+			case "conditionPickShape": {
+				// FinishSelectingForCondition (:316-334). shape1 pick (subject-0):
+				// store shape1, then continue the add flow — either the object needs
+				// a region/shape2 (advance awaiting) or it's obj<5 (finalize now with
+				// no region, matching addWinButtonPressed(false) falling through the
+				// object branches with obj not in 0..4 handled — but subject-0 always
+				// has an object, so we route through awaitForObject). shape2 pick
+				// (obj-5/6): store shape2 + finalize.
+				const draft = this.state.conditionDraft;
+				if (!draft || (draft.awaiting !== "shape1" && draft.awaiting !== "shape2")) return;
+				const part = this.findPart(command.shapeId);
+				if (!(part instanceof ShapePart)) return;
+				if (draft.awaiting === "shape1") {
+					const next = this.awaitForObject(draft.object);
+					this.setConditionDraft({ ...draft, shape1Id: command.shapeId, awaiting: next, firstClick: null });
+				} else {
+					// shape2: FinishSelectingForCondition else-branch — set shape2 (+
+					// existing shape1) and push (:322-333). No region.
+					this.setConditionDraft({ ...draft, shape2Id: command.shapeId });
+					this.finalizeConditionDraft(null);
+				}
+				return;
+			}
+			case "cancelConditionPick": {
+				this.setConditionDraft(null);
 				return;
 			}
 			case "setAllowedParts": {

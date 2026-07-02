@@ -6,11 +6,12 @@
 // Wired to GameCore: the condition lists come from the live challenge read-model
 // (game.challenge.winConditions / lossConditions), and add/remove/AND dispatch
 // addWinCondition / addLossCondition / removeWinCondition / removeLossCondition /
-// setWinConditionsAnded (see src/core/challenge.ts). SIMPLIFICATION: the legacy
-// "pick a shape / box / line on the stage" flow (subject-0 and obj-5/6 shape
-// picks, box/line region picks) is not yet ported — this editor adds conditions
-// with a default region, matching the subset the built-in challenges need
-// (subject-2 line conditions). Shape/region picking is a documented follow-up.
+// setWinConditionsAnded (see src/core/challenge.ts). "Add Condition" now starts
+// the interactive stage-picking flow (startConditionPick): the panel hides so the
+// author can draw the box/line region or click the subject/object shape on the
+// canvas, exactly like the legacy ConditionsWindow (which set `visible=false` and
+// showed a boxText/horizLineText/vertLineText/shapeText hint). When the pick
+// finalizes in the core, the draft clears and the condition appears in the list.
 import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
@@ -81,27 +82,53 @@ function describe(row: ConditionRow): string {
 	return `${row.name}:  ${SUBJECTS[row.subject]} ${verb} ${OBJECTS[row.object]}`;
 }
 
+// The in-progress stage-picking draft (null when not picking). While set, the
+// panel hides itself + shows the pick hint, mirroring the legacy dialog going
+// invisible while boxText/shapeText prompts on the stage.
+const conditionDraft = computed(() => game.conditionDraft);
+
+// Pick prompt strings, faithful to ConditionsWindow's boxText / horizLineText /
+// vertLineText / shapeText.
+const HINTS: Record<string, string> = {
+	box: "Draw a box on the stage (click one corner, then the opposite corner).",
+	hline: "Draw a horizontal line on the stage (click a start point, then an end point).",
+	vline: "Draw a vertical line on the stage (click a start point, then an end point).",
+	shape1: "Click the specific shape this condition applies to.",
+	shape2: "Click the other shape this condition refers to.",
+};
+const pickHint = computed(() => {
+	const a = conditionDraft.value?.awaiting;
+	return a ? (HINTS[a] ?? "") : "";
+});
+
 function addWinCondition(): void {
+	// Start the interactive pick; GameCore computes which pick(s) are needed from
+	// subject/object and finalizes the condition when the last pick lands.
 	game.dispatch({
-		type: "addWinCondition",
+		type: "startConditionPick",
+		kind: "win",
 		name: winName.value,
 		subject: winSubject.value,
 		object: winObject.value,
-		region: { minX: 0, maxX: 0, minY: 0, maxY: 0 },
+		immediate: false,
 	});
 	winName.value = `Condition ${winConditions.value.length + 1}`;
 }
 
 function addLossCondition(): void {
 	game.dispatch({
-		type: "addLossCondition",
+		type: "startConditionPick",
+		kind: "loss",
 		name: lossName.value,
 		subject: lossSubject.value,
 		object: lossObject.value,
 		immediate: immediateLoss.value,
-		region: { minX: 0, maxX: 0, minY: 0, maxY: 0 },
 	});
 	lossName.value = `Condition ${lossConditions.value.length + 1}`;
+}
+
+function cancelPick(): void {
+	game.dispatch({ type: "cancelConditionPick" });
 }
 
 function removeSelectedWin(): void {
@@ -124,7 +151,14 @@ function close(): void {
 </script>
 
 <template>
-	<div v-if="visible !== false" class="conditions-panel ib-panel" :style="panelStyle">
+	<!-- While a stage pick is awaited the full editor hides and a hint banner
+	     prompts the author to draw/click on the canvas (legacy boxText/shapeText). -->
+	<div v-if="visible !== false && conditionDraft" class="conditions-pick-hint ib-panel" :style="panelStyle">
+		<p class="pick-hint-text">{{ pickHint }}</p>
+		<IbButton family="red" label="Cancel" @click="cancelPick" />
+	</div>
+
+	<div v-else-if="visible !== false" class="conditions-panel ib-panel" :style="panelStyle">
 		<header class="header-row">
 			<h2 class="title">Win / Loss Conditions</h2>
 			<IbButton family="purple" label="Close" class="close-btn" @click="close" />
@@ -383,5 +417,24 @@ function close(): void {
 	display: flex;
 	justify-content: center;
 	padding-top: 4px;
+}
+
+.conditions-pick-hint {
+	width: 420px;
+	max-width: 100%;
+	box-sizing: border-box;
+	font-family: Arial, Helvetica, sans-serif;
+	color: var(--ib-dark);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+	text-align: center;
+}
+
+.pick-hint-text {
+	margin: 0;
+	font-size: 14px;
+	font-weight: bold;
 }
 </style>

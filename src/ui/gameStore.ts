@@ -32,6 +32,10 @@ export const useGameStore = defineStore("game", () => {
 	// Plain-data challenge read-model (null for a plain sandbox). The Vue panels
 	// read this for the condition/restriction editors + the score.
 	const challenge = computed(() => state.value.challenge);
+	// In-progress condition stage-picking draft (null when not picking). The
+	// ConditionsPanel reads it to hide itself + show the pick hint; GameCanvas
+	// reads `conditionDraft.awaiting` to gate its picking gesture.
+	const conditionDraft = computed(() => state.value.conditionDraft);
 
 	/**
 	 * The live legacy `Challenge` domain object for the renderer to feed straight
@@ -119,6 +123,7 @@ export const useGameStore = defineStore("game", () => {
 		edit,
 		parts,
 		challenge,
+		conditionDraft,
 		tutorial,
 		replay,
 		liveChallenge,

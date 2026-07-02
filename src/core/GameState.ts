@@ -13,6 +13,38 @@ import { buildTerrainParts, createDefaultSandboxState } from "./sandboxEnvironme
 export type SimPhase = "editing" | "running" | "paused";
 
 /**
+ * In-progress challenge-condition picking draft (faithful port of the legacy
+ * ConditionsWindow stage-picking flow, src/Gui/ConditionsWindow.ts +
+ * ControllerGame GetBox/HLine/VLine/ShapeForConditions :1088-1114). While the
+ * author is drawing a condition's box/line region or clicking its subject/object
+ * shape on the stage, this holds the drafted condition and what pick is awaited.
+ * null when not picking. Plain-serializable (no Pixi / no class instances).
+ *
+ * `awaiting` is the next required pick:
+ *   "box"   — DRAWING_BOX (obj-0): two clicks give opposite corners.
+ *   "hline" — DRAWING_HORIZONTAL_LINE (obj-1/2): two clicks give the line span.
+ *   "vline" — DRAWING_VERTICAL_LINE (obj-3/4): two clicks give the line span.
+ *   "shape1"— SELECTING_SHAPE for subject-0: click the specific subject shape.
+ *   "shape2"— SELECTING_SHAPE for obj-5/6: click the "other" shape.
+ * `firstClick` holds the first of the two box/line clicks (physics/world units),
+ * null until the first click lands; the renderer draws a live preview from it to
+ * the cursor.
+ */
+export interface ConditionDraft {
+	kind: "win" | "loss";
+	name: string;
+	subject: number;
+	object: number;
+	/** loss conditions only. */
+	immediate: boolean;
+	shape1Id: number | null;
+	shape2Id: number | null;
+	awaiting: "box" | "hline" | "vline" | "shape1" | "shape2" | null;
+	/** First recorded corner for a box/line gesture (world units); null until set. */
+	firstClick: { x: number; y: number } | null;
+}
+
+/**
  * A plain-data projection of a single Part for the view layer to read. Carries
  * no class instances or Pixi types so it can cross a worker boundary. `kind` is
  * the Part's `type` string (e.g. "Circle", "Rectangle", "Triangle", "TextPart").
@@ -235,6 +267,15 @@ export interface GameState {
 	 * src/core/tutorials.ts.
 	 */
 	tutorial: TutorialState | null;
+	/**
+	 * In-progress challenge-condition stage-picking draft, or null when not
+	 * picking. Set by startConditionPick, advanced by the pointer picks, cleared
+	 * on finalize / cancel. The Vue ConditionsPanel reads it to hide itself + show
+	 * the "Draw a box / Click a shape" hint; GameCanvas reads `awaiting` to gate
+	 * the picking gesture. See ConditionsWindow.FinishDrawingCondition /
+	 * FinishSelectingForCondition (:270-336).
+	 */
+	conditionDraft: ConditionDraft | null;
 }
 
 export function createInitialState(): GameState {
@@ -258,5 +299,6 @@ export function createInitialState(): GameState {
 		challenge: null,
 		replay: { recording: false, playing: false, frame: 0, numFrames: null, canSave: true, finished: false },
 		tutorial: null,
+		conditionDraft: null,
 	};
 }

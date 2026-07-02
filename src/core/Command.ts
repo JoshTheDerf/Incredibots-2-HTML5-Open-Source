@@ -169,6 +169,33 @@ export type Command =
 	| { type: "removeWinCondition"; index: number }
 	| { type: "removeLossCondition"; index: number }
 	| { type: "setWinConditionsAnded"; value: boolean }
+	// --- interactive condition stage-picking (ConditionsWindow addWin/LossButtonPressed
+	// + ControllerGame GetBox/HLine/VLine/ShapeForConditions :1088-1114) ---
+	// The panel gathers the drafted condition (name/subject/object/immediate) and
+	// dispatches `startConditionPick`; GameCore stores the draft on
+	// state.conditionDraft and computes what pick to await from subject/object
+	// (subject-0 needs shape1 FIRST, then the region/shape2; obj-0 box; obj-1/2
+	// horizontal line; obj-3/4 vertical line; obj-5/6 a second shape). The canvas
+	// then feeds the picks: `conditionPickBox` on the two-click box/line gesture
+	// (two world points → FinishDrawingCondition index math), `conditionPickShape`
+	// on a shape click (→ FinishSelectingForCondition). `cancelConditionPick`
+	// aborts (re-shows the panel). Each pick either advances `awaiting` (subject-0
+	// shape1 then the object pick) or finalizes the condition via the SAME add
+	// path addWin/LossCondition uses.
+	| {
+			type: "startConditionPick";
+			kind: "win" | "loss";
+			name: string;
+			subject: number;
+			object: number;
+			immediate: boolean;
+	  }
+	// Two-click box/line result (world/physics units). GameCore applies the
+	// FinishDrawingCondition index rule for the drafted object and finalizes.
+	| { type: "conditionPickBox"; x1: number; y1: number; x2: number; y2: number }
+	// A shape was clicked during a shape1/shape2 pick.
+	| { type: "conditionPickShape"; shapeId: number }
+	| { type: "cancelConditionPick" }
 	// Restrictions (RestrictionsWindow okButtonPressed). Panel stores "allowed"
 	// (already un-inverted from the editor's "exclude" checkboxes).
 	| {

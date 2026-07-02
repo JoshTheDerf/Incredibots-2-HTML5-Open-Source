@@ -19,6 +19,7 @@ export type {
 	PartSnapshot,
 	ReplayState,
 	TutorialState,
+	ConditionDraft,
 } from "./GameState";
 export { createInitialState } from "./GameState";
 export type { ReplayData, CameraMovement, KeyPress, ReplaySyncPoint } from "./replay";

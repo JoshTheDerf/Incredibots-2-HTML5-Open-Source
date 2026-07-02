@@ -41,6 +41,17 @@ const shapeKindToCreatingItem: Record<ShapeKind, number> = {
 
 const game = useGameStore();
 
+// Reset the condition pick's first-click + preview whenever a pick starts,
+// finalizes, or is cancelled (the draft's awaiting field changes). Prevents a
+// stale first corner from leaking between picks.
+watch(
+	() => game.conditionDraft?.awaiting ?? null,
+	() => {
+		conditionFirstClick = null;
+		overlay?.clear();
+	},
+);
+
 // Cancel an in-progress triangle (base committed, apex not yet placed) whenever
 // the tool changes or the sim leaves editing — mirrors ControllerGame resetting
 // curAction/actionStep when a new tool button is pressed.
@@ -116,6 +127,18 @@ let triangleBase: { v1: { x: number; y: number }; v2: { x: number; y: number } }
 // while `triangleBase` is set (the cursor moves with no button held down).
 let pointerWorld: { x: number; y: number } | null = null;
 
+// --- Challenge-condition stage picking (self-contained) --------------------
+// When game.conditionDraft.awaiting is a box/hline/vline, the author draws the
+// region as a TWO-CLICK gesture (faithful to ControllerGame :2079-2118): the
+// first click records a corner (conditionFirstClick), the cursor then previews
+// the box/line, and the second click (if moved > 0.1 world units, matching the
+// legacy threshold) dispatches conditionPickBox. When awaiting shape1/shape2, a
+// single click hit-tests a shape and dispatches conditionPickShape
+// (FinishSelectingForCondition :316-336). These are gated entirely behind the
+// `game.conditionDraft?.awaiting` check at the TOP of each pointer handler so
+// they never interfere with the select/create/rotate/resize gestures.
+let conditionFirstClick: { x: number; y: number } | null = null;
+
 const toolToShapeKind: Partial<Record<ToolMode, "circle" | "rect" | "triangle">> = {
 	newCircle: "circle",
 	newRect: "rect",
@@ -161,6 +184,39 @@ function onPointerDown(event: PointerEvent): void {
 	const s = screenOf(event);
 	const camera = game.camera;
 	const world = screenToWorld(s.x, s.y, camera, s.w, s.h);
+
+	// --- Condition stage-picking (gated; runs only while a pick is awaited) ---
+	// Faithful to ControllerGame :2079-2118 / :1537-1550. Takes priority over and
+	// short-circuits the normal select/create gestures. Only active while editing.
+	const awaiting = game.conditionDraft?.awaiting;
+	if (awaiting && game.sim.phase === "editing") {
+		if (awaiting === "shape1" || awaiting === "shape2") {
+			// Single click: hit-test a shape, feed its id (:1537-1549).
+			const hit = hitTestPart(game.parts, world.x, world.y, camera.scale);
+			if (hit) game.dispatch({ type: "conditionPickShape", shapeId: hit.id });
+			return;
+		}
+		// Box / line: TWO clicks. First records the corner; second finalizes if the
+		// cursor moved > 0.1 world units (:2100-2103).
+		if (!conditionFirstClick) {
+			conditionFirstClick = { x: world.x, y: world.y };
+		} else {
+			const moved =
+				Math.abs(conditionFirstClick.x - world.x) > 0.1 || Math.abs(conditionFirstClick.y - world.y) > 0.1;
+			if (moved) {
+				game.dispatch({
+					type: "conditionPickBox",
+					x1: conditionFirstClick.x,
+					y1: conditionFirstClick.y,
+					x2: world.x,
+					y2: world.y,
+				});
+				conditionFirstClick = null;
+				overlay?.clear();
+			}
+		}
+		return;
+	}
 
 	// During the running sim, a pointer-down grabs a body with a b2MouseJoint
 	// (ControllerGame.MouseDrag play-mode block, :1782-1794): editing is disabled,
@@ -296,6 +352,16 @@ function onPointerDown(event: PointerEvent): void {
 
 function onPointerMove(event: PointerEvent): void {
 	if (!app || !container.value) return;
+
+	// --- Condition box/line live preview (gated) ---
+	// After the first corner click, paint the box/line being drawn to the cursor
+	// (faithful to the legacy redrawRobot preview while DRAWING_BOX/LINE).
+	if (game.conditionDraft?.awaiting && conditionFirstClick) {
+		const s = screenOf(event);
+		const world = screenToWorld(s.x, s.y, game.camera, s.w, s.h);
+		drawConditionPreview(conditionFirstClick, world);
+		return;
+	}
 
 	// Running-sim mouse-joint drag: retarget the grabbed body to the cursor
 	// (ControllerGame.MouseDrag :1798-1801).
@@ -480,6 +546,37 @@ function drawMarquee(): void {
 
 function clearMarquee(): void {
 	overlay?.clear();
+}
+
+/**
+ * Paint the condition box/line being drawn into the overlay (world → screen).
+ * Faithful to the FinishDrawingCondition geometry the pick will commit: obj-0
+ * draws the full box; obj-1/2 a horizontal segment at the first-click Y; obj-3/4
+ * a vertical segment at the first-click X.
+ */
+function drawConditionPreview(first: { x: number; y: number }, cur: { x: number; y: number }): void {
+	if (!overlay || !app || !container.value) return;
+	const awaiting = game.conditionDraft?.awaiting;
+	const rect = container.value.getBoundingClientRect();
+	const cam = game.camera;
+	const a = worldToScreen(first.x, first.y, cam, rect.width, rect.height);
+	const b = worldToScreen(cur.x, cur.y, cam, rect.width, rect.height);
+	overlay.clear();
+	if (awaiting === "box") {
+		const x = Math.min(a.x, b.x);
+		const y = Math.min(a.y, b.y);
+		overlay.rect(x, y, Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+		overlay.fill({ color: 0x33cc33, alpha: 0.12 });
+		overlay.stroke({ width: 2, color: 0x33cc33, alpha: 0.9 });
+	} else if (awaiting === "hline") {
+		overlay.moveTo(a.x, a.y);
+		overlay.lineTo(b.x, a.y);
+		overlay.stroke({ width: 2, color: 0x33cc33, alpha: 0.9 });
+	} else if (awaiting === "vline") {
+		overlay.moveTo(a.x, a.y);
+		overlay.lineTo(a.x, b.y);
+		overlay.stroke({ width: 2, color: 0x33cc33, alpha: 0.9 });
+	}
 }
 
 /** Draw a single frame via the original Draw renderer. */
