@@ -1484,6 +1484,13 @@ export class GameCore {
 	 */
 	private handleMouseJointStart(worldX: number, worldY: number): void {
 		if (this.state.sim.phase !== "running" || this.replaySession) return;
+		// ControllerGame.ts:1776-1780 — during the running sim, mouse-dragging bodies
+		// is permitted ONLY in the sandbox, or in a challenge whose author set
+		// mouseDragAllowed. Tutorials (legacy controllerType "game") and drag-locked
+		// challenges (e.g. Climb, which sets mouseDragAllowed=false) permit no dragging.
+		// Per-part `undragable` is enforced separately below by bodyAtMouse.
+		if (this.tutorialMachine) return;
+		if (this.challenge && !this.challenge.challenge.mouseDragAllowed) return;
 		const world = this.state.world;
 		if (!world || this.mouseJoint) return;
 		const body = this.bodyAtMouse(worldX, worldY);

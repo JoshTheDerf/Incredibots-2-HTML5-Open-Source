@@ -190,3 +190,64 @@ describe("mouse joint (grab/drag a body during play, MouseDrag :1782-1809)", () 
 		expect(() => core.dispatch({ type: "mouseJointStart", worldX: 0, worldY: 0 })).not.toThrow();
 	});
 });
+
+/**
+ * Grab a body at its centre, drag the target +10 in X for 20 frames, and report
+ * how far it actually moved. A grabbed body is dragged toward the cursor (large
+ * +X); an ungrabbed body only falls (X ~ unchanged).
+ */
+function dragDeltaX(core: GameCore, body: import("../src/Box2D").b2Body): number {
+	const c = body.GetWorldCenter();
+	const x0 = body.GetPosition().x;
+	core.dispatch({ type: "mouseJointStart", worldX: c.x, worldY: c.y });
+	core.dispatch({ type: "mouseJointMove", worldX: c.x + 10, worldY: c.y });
+	core.dispatch({ type: "step", frames: 20 });
+	const d = body.GetPosition().x - x0;
+	core.dispatch({ type: "mouseJointEnd" });
+	return d;
+}
+
+describe("drag permission gate (MouseDrag :1776-1780 / GetBodyAtMouse :6979)", () => {
+	it("a part flagged undragable cannot be grabbed, even in the sandbox", () => {
+		const rect = new Rectangle(-1, -1, 2, 2);
+		rect.undragable = true; // ShapePart.undragable -> fixture userData.undragable
+		const core = coreWith([rect]);
+		core.dispatch({ type: "play" });
+		core.dispatch({ type: "step", frames: 1 });
+		expect(dragDeltaX(core, rect.GetBody()!)).toBeCloseTo(0, 4);
+	});
+
+	it("in a challenge, a normal part is NOT draggable while mouseDragAllowed is false", () => {
+		const rect = new Rectangle(-1, -1, 2, 2);
+		const core = coreWith([rect]);
+		core.dispatch({ type: "newChallenge" }); // Challenge.mouseDragAllowed defaults false
+		core.dispatch({ type: "play" });
+		core.dispatch({ type: "step", frames: 1 });
+		expect(dragDeltaX(core, rect.GetBody()!)).toBeCloseTo(0, 4);
+	});
+
+	it("in a challenge that sets mouseDragAllowed, the same part drags to the cursor", () => {
+		const rect = new Rectangle(-1, -1, 2, 2);
+		const core = coreWith([rect]);
+		core.dispatch({ type: "newChallenge" });
+		core.dispatch({
+			type: "setBuildPermissions",
+			mouseDrag: true,
+			botControl: true,
+			fixate: true,
+			nonColliding: true,
+			showConditions: false,
+		});
+		core.dispatch({ type: "play" });
+		core.dispatch({ type: "step", frames: 1 });
+		expect(dragDeltaX(core, rect.GetBody()!)).toBeGreaterThan(1);
+	});
+
+	it("the sandbox always permits dragging a normal part (no challenge session)", () => {
+		const rect = new Rectangle(-1, -1, 2, 2);
+		const core = coreWith([rect]);
+		core.dispatch({ type: "play" });
+		core.dispatch({ type: "step", frames: 1 });
+		expect(dragDeltaX(core, rect.GetBody()!)).toBeGreaterThan(1);
+	});
+});
