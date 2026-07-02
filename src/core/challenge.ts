@@ -21,9 +21,11 @@
 // the subtle obj-5-resets-each-frame vs obj-6-latches distinction (Condition.ts
 // :65-66/:130-131/:179-181/:224-225 vs ContactAdded :254-284) and the inverted
 // subject-2 "all user shapes" start-true logic (:133-181) — are byte-identical
-// to the original. Cannonballs are not spawned by the headless core (no cannon
-// firing / key handling in GameCore.step), so subject-4/cannonball conditions
-// evaluate against an empty cannonball list; shape-based conditions are exact.
+// to the original. Cannonballs now fire live in the headless core: Cannon.Update
+// runs each frame and Cannon.CreateCannonball pushes the spawned b2Body into the
+// partGlobals cannonball sink, which GameCore points at its live cannonball list
+// on play — so subject-4 (any cannonball) and obj-5/6 (touching/touched a
+// cannonball) conditions are exact too.
 
 import { b2AABB } from "../Box2D";
 import { Challenge } from "../Game/Challenge";
@@ -145,6 +147,26 @@ export function createChallengeSession(): ChallengeSession {
 		challenge,
 		playMode: false,
 		playOnly: false,
+		savedRobot: [],
+		partsFit: true,
+		outcome: null,
+		score: null,
+	};
+}
+
+/**
+ * Wrap an already-decoded `Challenge` (from the Race / Spaceship blob) in a
+ * play-only session, mirroring the ControllerRace / ControllerSpaceship ctors
+ * (ControllerRace.ts:15-24): playChallengeMode = playOnlyMode = true, and the
+ * decoded challenge becomes the live challenge (its allParts are the terrain +
+ * author robot the caller seeds into the parts graph). Conditions/restrictions/
+ * build areas are already populated by ExtractChallengeFromByteArray.
+ */
+export function challengeSessionFromChallenge(challenge: Challenge): ChallengeSession {
+	return {
+		challenge,
+		playMode: true,
+		playOnly: true,
 		savedRobot: [],
 		partsFit: true,
 		outcome: null,

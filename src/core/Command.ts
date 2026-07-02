@@ -136,6 +136,12 @@ export type Command =
 	// Start a new empty authoring challenge (creates ChallengeState) or load a
 	// built-in one (Climb / MonkeyBars) with its baked terrain + conditions.
 	| { type: "newChallenge" }
+	// The two in-code challenges (Climb / MonkeyBars) bake their terrain + conditions
+	// synchronously here. The two blob-loaded challenges (Race / Spaceship) instead
+	// decode a compressed asset blob and are loaded via the async
+	// GameCore.loadBuiltInChallengeBlob(name, bytes) method (like importRobot) — the
+	// UI fetches resource/race.dat|spaceship.dat and hands the bytes in, keeping the
+	// core node-clean (it never imports the pixi-bound Resource).
 	| { type: "loadBuiltInChallenge"; name: "climb" | "monkeyBars" }
 	| { type: "exitChallenge" }
 	// Conditions (ConditionsWindow add/remove + AND flag). subject 0-4, object 0-6

@@ -13,8 +13,11 @@
 //   - ControllerClimb / ControllerMonkeyBars ctor setup (Challenges/*.ts).
 
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { GameCore } from "../src/core/GameCore";
 import { createInitialState } from "../src/core/GameState";
+import { decodeChallengeBlob } from "../src/core/challengeSerialization";
+import { Cannon } from "../src/Parts/Cannon";
 import {
 	ChallengeSession,
 	buildClimbChallenge,
@@ -536,5 +539,213 @@ describe("End-to-end: Play -> win detected + score, and Play -> immediate loss",
 		expect(ch.outcome).toBe(null);
 		expect(ch.score).toBe(null);
 		expect(core.getState().sim.phase).toBe("editing");
+	});
+});
+
+// --- Built-in blob challenges: Race / Spaceship decode -------------------
+//
+// Pin the packed race.dat / spaceship.dat blobs against the decoder
+// (challengeSerialization.decodeChallengeBlob, a faithful port of
+// Database.ExtractChallengeFromByteArray :1814-1912). These counts are read back
+// from the actual assets — if the byte format or a Part decode drifts, they move.
+
+describe("decodeChallengeBlob — Race (resource/race.dat)", () => {
+	it("decodes to the expected part count, conditions, restrictions, and camera", async () => {
+		const c = await decodeChallengeBlob(readFileSync("resource/race.dat"));
+		expect(c.allParts.length).toBe(201);
+		// Part-type breakdown (proves the shape/joint/thruster decode + prismatic
+		// re-seat all round-trip).
+		const types: Record<string, number> = {};
+		for (const p of c.allParts) types[(p as { type: string }).type] = (types[(p as { type: string }).type] ?? 0) + 1;
+		expect(types).toEqual({
+			Rectangle: 102,
+			Triangle: 30,
+			Circle: 25,
+			FixedJoint: 25,
+			RevoluteJoint: 12,
+			Thrusters: 4,
+			PrismaticJoint: 1,
+			TextPart: 2,
+		});
+		// One win + one immediate loss, both subject-0 obj-0 (a specific shape within
+		// a box) bound to shape1. anded.
+		expect(c.winConditions.length).toBe(1);
+		expect(c.lossConditions.length).toBe(1);
+		expect(c.winConditionsAnded).toBe(true);
+		expect(c.winConditions[0].subject).toBe(0);
+		expect(c.winConditions[0].object).toBe(0);
+		expect(c.winConditions[0].shape1).toBeTruthy();
+		expect(c.lossConditions[0].subject).toBe(0);
+		expect(c.lossConditions[0].object).toBe(0);
+		expect((c.lossConditions[0] as LossCondition).immediate).toBe(true);
+		expect(c.lossConditions[0].shape1).toBeTruthy();
+		// Restrictions: everything locked down (a play-only authored challenge).
+		expect(c.circlesAllowed).toBe(false);
+		expect(c.cannonsAllowed).toBe(false);
+		expect(c.mouseDragAllowed).toBe(false);
+		// Camera/zoom carried from the blob.
+		expect(c.zoomLevel).toBeCloseTo(21.3333, 3);
+		expect(c.buildAreas.length).toBe(0);
+	});
+});
+
+describe("decodeChallengeBlob — Spaceship (resource/spaceship.dat)", () => {
+	it("decodes to the expected part count and a subject-1 obj-6 'touched' win", async () => {
+		const c = await decodeChallengeBlob(readFileSync("resource/spaceship.dat"));
+		expect(c.allParts.length).toBe(141);
+		const types: Record<string, number> = {};
+		for (const p of c.allParts) types[(p as { type: string }).type] = (types[(p as { type: string }).type] ?? 0) + 1;
+		expect(types).toEqual({
+			Rectangle: 54,
+			FixedJoint: 39,
+			Circle: 26,
+			Thrusters: 9,
+			TextPart: 7,
+			Triangle: 4,
+			Cannon: 1,
+			PrismaticJoint: 1,
+		});
+		// One win: subject 1 (any shape) obj 6 (touched shape2), shape2 bound.
+		expect(c.winConditions.length).toBe(1);
+		expect(c.lossConditions.length).toBe(0);
+		expect(c.winConditions[0].subject).toBe(1);
+		expect(c.winConditions[0].object).toBe(6);
+		expect(c.winConditions[0].shape2).toBeTruthy();
+		expect(c.zoomLevel).toBeCloseTo(31.6406, 3);
+	});
+});
+
+describe("GameCore.loadBuiltInChallengeBlob — Race / Spaceship setup", () => {
+	it("Race: seeds the terrain+robot parts, marks play-only, exposes the conditions", async () => {
+		const core = new GameCore(createInitialState());
+		await core.loadBuiltInChallengeBlob("race", readFileSync("resource/race.dat"));
+		const st = core.getState();
+		expect(st.parts.length).toBe(201);
+		expect(st.challenge).not.toBeNull();
+		expect(st.challenge!.playMode).toBe(true);
+		expect(st.challenge!.playOnly).toBe(true);
+		expect(st.challenge!.winConditions.length).toBe(1);
+		expect(st.challenge!.lossConditions.length).toBe(1);
+		// zoom applied to the camera scale.
+		expect(st.camera.scale).toBeCloseTo(21.3333, 3);
+	});
+
+	it("Spaceship: seeds parts and the single subject-1 obj-6 win condition", async () => {
+		const core = new GameCore(createInitialState());
+		await core.loadBuiltInChallengeBlob("spaceship", readFileSync("resource/spaceship.dat"));
+		const st = core.getState();
+		expect(st.parts.length).toBe(141);
+		expect(st.challenge!.playOnly).toBe(true);
+		expect(st.challenge!.winConditions.length).toBe(1);
+		expect(st.challenge!.winConditions[0].subject).toBe(1);
+		expect(st.challenge!.winConditions[0].object).toBe(6);
+	});
+});
+
+// --- Cannonball conditions (subject 4 / obj 5-6 vs cannonballs) -----------
+//
+// Cannons now fire live: Cannon.Update runs each sim frame and CreateCannonball
+// pushes the spawned b2Body into the partGlobals cannonball sink, which GameCore
+// points at its live cannonball list on play. So subject-4 (any cannonball) and
+// obj-5/6 (a cannonball touching/touched a shape) conditions evaluate against the
+// real fired bodies (Condition.ts:110-129/227-251/274-281).
+
+/** A static, non-editable cannon aimed +x (angle 0) that fires on key `fireKey`. */
+function firingCannon(fireKey = 40, strength = 30): Cannon {
+	const cannon = new Cannon(0, 0, 2);
+	cannon.isStatic = true;
+	cannon.isEditable = false;
+	cannon.fireKey = fireKey;
+	cannon.strength = strength;
+	return cannon;
+}
+
+describe("cannonball conditions — subject 4 (any cannonball)", () => {
+	it("no cannonball fired ⇒ subject-4 condition never satisfies (stays playing)", () => {
+		const core = coreWith([firingCannon()]);
+		core.dispatch({ type: "newChallenge" });
+		// subject 4, obj 4 "right of a line" at x=10.
+		core.dispatch({ type: "addWinCondition", subject: 4, object: 4, region: { minX: 10, maxX: 10, minY: -50, maxY: 50 } });
+		core.dispatch({ type: "play" });
+		core.dispatch({ type: "step", frames: 30 });
+		expect(core.getState().challenge!.outcome).toBe("playing");
+	});
+
+	it("a fired cannonball entering the region satisfies the subject-4 condition ⇒ win", () => {
+		const core = coreWith([firingCannon()]);
+		core.dispatch({ type: "newChallenge" });
+		core.dispatch({ type: "addWinCondition", subject: 4, object: 4, region: { minX: 4, maxX: 4, minY: -50, maxY: 50 } });
+		core.dispatch({ type: "play" });
+		// Fire (key-up sets createCannonball; next frame's Cannon.Update spawns it).
+		core.dispatch({ type: "keyInput", key: 40, up: true });
+		let won = false;
+		for (let i = 0; i < 90; i++) {
+			core.dispatch({ type: "step", frames: 1 });
+			if (core.getState().challenge!.outcome === "won") {
+				won = true;
+				break;
+			}
+		}
+		expect(won).toBe(true);
+		expect(core.getState().challenge!.score).toBeGreaterThan(0);
+	});
+});
+
+describe("cannonball conditions — subject 4 vs a shape (obj 5 touching / obj 6 touched)", () => {
+	it("obj 6 'touched' latches when a fired cannonball hits the target shape ⇒ win", () => {
+		const target = new Circle(8, 0, 1);
+		target.isStatic = true;
+		target.isEditable = false;
+		const core = coreWith([firingCannon(), target]);
+		core.dispatch({ type: "newChallenge" });
+		core.dispatch({ type: "addWinCondition", subject: 4, object: 6, shape2Id: target.id });
+		core.dispatch({ type: "play" });
+		core.dispatch({ type: "keyInput", key: 40, up: true });
+		let won = false;
+		for (let i = 0; i < 120; i++) {
+			core.dispatch({ type: "step", frames: 1 });
+			if (core.getState().challenge!.outcome === "won") {
+				won = true;
+				break;
+			}
+		}
+		expect(won).toBe(true);
+	});
+
+	it("subject-1 obj 5 'touching' resets each frame while obj 6 'touched' latches (direct Condition.Update/ContactAdded)", () => {
+		// The reset-vs-latch distinction (the whole obj-5/obj-6 semantic difference,
+		// spec §2.5) lives in Condition.Update: for subjects 0-3, obj-5 is reset to
+		// false at the top of Update (subject-1 at Condition.ts:130-131), while obj-6
+		// is never touched by Update so it stays latched once ContactAdded set it.
+		// (Fire a real cannonball to have a live body in the list; then run Update
+		// with NO contacts and confirm obj-5 clears, obj-6 holds.)
+		const cannon = firingCannon();
+		const target = new Circle(8, 0, 1); // non-static "any shape" for subject 1
+		target.isEditable = true;
+		const core = coreWith([cannon, target]);
+
+		const session = createChallengeSession();
+		const touching = new WinCondition("touching", 1, 5);
+		touching.shape2 = target;
+		const touched = new WinCondition("touched", 1, 6);
+		touched.shape2 = target;
+		session.challenge.winConditions.push(touching, touched);
+
+		core.dispatch({ type: "play" });
+		const parts = core.getState().parts as Part[];
+
+		// Simulate a contact between the target shape and itself's shape (stand-in for
+		// "any shape touched shape2"): both obj-5 and obj-6 latch true via ContactAdded.
+		const tShape = target.GetShape();
+		const point = { shape1: tShape, shape2: tShape };
+		for (const c of session.challenge.winConditions) c.ContactAdded(point, parts, []);
+		expect(touching.isSatisfied).toBe(true);
+		expect(touched.isSatisfied).toBe(true);
+
+		// A frame with NO contact: Update resets obj-5 'touching' to false (there is
+		// no shape currently within/touching), but obj-6 'touched' stays latched.
+		updateConditions(session, parts, []);
+		expect(touching.isSatisfied).toBe(false);
+		expect(touched.isSatisfied).toBe(true);
 	});
 });

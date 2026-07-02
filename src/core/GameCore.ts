@@ -12,6 +12,7 @@
 import { b2AABB, b2MouseJointDef, b2Vec2, b2World } from "../Box2D";
 import type { b2Joint } from "../Box2D";
 import { ContactFilter } from "../Game/ContactFilter";
+import { setCannonballs } from "../Parts/partGlobals";
 import { Util } from "../General/Util";
 import { Cannon } from "../Parts/Cannon";
 import { Circle } from "../Parts/Circle";
@@ -29,6 +30,7 @@ import { Triangle } from "../Parts/Triangle";
 import type { Command, ShapeKind } from "./Command";
 import { GameState, PartSnapshot, createInitialState } from "./GameState";
 import { decodeRobot, encodeRobot } from "./robotSerialization";
+import { decodeChallengeBlob } from "./challengeSerialization";
 import { buildTerrainParts, computeBounds } from "./sandboxEnvironment";
 import {
 	ChallengeSession,
@@ -36,6 +38,7 @@ import {
 	NO_LIMIT_MAX,
 	NO_LIMIT_MIN,
 	buildBuiltInChallenge,
+	challengeSessionFromChallenge,
 	challengeOver,
 	checkIfPartsFit,
 	clampDensity,
@@ -171,10 +174,14 @@ export class GameCore {
 	 */
 	private challenge: ChallengeSession | null = null;
 	/**
-	 * Live cannonballs the running world spawns — fed to condition evaluation
-	 * (subject 4 / obj 5-6). Empty in the headless core (no cannon firing / key
-	 * handling), so shape-based conditions are exact; cannonball conditions are
-	 * a documented follow-up.
+	 * Live cannonball bodies the running world spawns. Cannon.CreateCannonball
+	 * pushes each spawned b2Body into the partGlobals cannonball sink
+	 * (Cannon.ts:252-253); we point that sink at THIS array on play (setCannonballs
+	 * below), so fired cannonballs land here and feed condition evaluation
+	 * (subject 4 / obj 5-6, Condition.ts:110-129/227-251/274-281) exactly as the
+	 * legacy ControllerGameGlobals.cannonballs did (ControllerChallenge.Update :25/28,
+	 * ContactAdded :209/212). Reset to a fresh array each play
+	 * (ControllerGame.ts:2736).
 	 */
 	private cannonballs: unknown[] = [];
 	/**
@@ -297,6 +304,54 @@ export class GameCore {
 				},
 			};
 			this.markChanged();
+		} finally {
+			this.notifyDepth--;
+			if (this.notifyDepth === 0 && this.dirty) {
+				this.dirty = false;
+				const snapshot = this.state;
+				for (const l of this.listeners) l(snapshot);
+			}
+		}
+	}
+
+	/**
+	 * Load a blob-backed built-in challenge (Race / Spaceship) from its compressed
+	 * asset bytes. Faithful port of the ControllerRace / ControllerSpaceship ctor
+	 * path (ControllerRace.ts:18-24): uncompress the blob, decode the Challenge
+	 * (parts + conditions + restrictions + build areas + camera/zoom), make it the
+	 * live challenge (playChallengeMode = playOnlyMode = true), and seed its
+	 * `allParts` (terrain + the author's robot) into the parts graph so they
+	 * simulate + draw. `blob` is the raw race.dat / spaceship.dat bytes the UI
+	 * fetches — the core never imports the pixi-bound Resource, staying node-clean.
+	 * async because ByteArray.uncompress() is async.
+	 */
+	async loadBuiltInChallengeBlob(name: "race" | "spaceship", blob: ArrayBuffer | Uint8Array): Promise<void> {
+		const challenge = await decodeChallengeBlob(blob);
+		this.challenge = challengeSessionFromChallenge(challenge);
+
+		// The decoded parts (terrain + author robot) become the live parts graph,
+		// with fresh ids from our monotonic source (ControllerRace assigns them via
+		// loadedParts -> the base loader). Keep the parts' own isEditable/isStatic
+		// flags from the blob so play-only conditions evaluate against them exactly.
+		const parts = challenge.allParts as Part[];
+		for (const p of parts) p.id = ++this.nextId;
+
+		this.notifyDepth++;
+		try {
+			this.state = {
+				...this.state,
+				parts,
+				sim: { phase: "editing", frame: 0 },
+				edit: { ...this.state.edit, selection: [], selectedPart: null },
+			};
+			// Camera zoom comes from the challenge (ControllerRace.ts:28-29 sets
+			// initZoom = challenge.zoomLevel; Spaceship pins physScale=24). Apply the
+			// decoded zoom when present (MAX_VALUE == unset) so the scene frames.
+			if (challenge.zoomLevel !== Number.MAX_VALUE) {
+				this.state = { ...this.state, camera: { ...this.state.camera, scale: challenge.zoomLevel } };
+			}
+			this.markChanged();
+			this.syncChallenge();
 		} finally {
 			this.notifyDepth--;
 			if (this.notifyDepth === 0 && this.dirty) {
@@ -1136,13 +1191,19 @@ export class GameCore {
 			return;
 		}
 
+		// Fresh cannonball list for this run (ControllerGame.ts:2736), and point the
+		// partGlobals cannonball sink at it so Cannon.CreateCannonball pushes the
+		// spawned bodies into THIS array (Cannon.ts:252-253). Done for every play,
+		// not just challenges, matching the legacy unconditional reset.
+		this.cannonballs = [];
+		setCannonballs(this.cannonballs as unknown[]);
+
 		// Challenge: reset every condition's isSatisfied before a fresh run and
 		// clear any prior outcome/score (ControllerChallenge.playButton :52-59).
 		if (this.challenge) {
 			resetConditions(this.challenge);
 			this.challenge.outcome = "playing";
 			this.challenge.score = null;
-			this.cannonballs = [];
 		}
 
 		const world = this.createWorld();
