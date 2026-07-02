@@ -37,7 +37,7 @@ const autoOn = computed({
 			</div>
 		</UFormField>
 
-		<UFormField label="Activate key" class="field">
+		<UFormField label="Activate:" class="field">
 			<UInput v-model="thrustKey" size="xs" class="key-input" />
 		</UFormField>
 

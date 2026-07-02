@@ -6,6 +6,7 @@
 import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
+import IbTodo from "../IbTodo.vue";
 import { keyToLabel, labelToKey } from "../../keyLabels";
 
 const game = useGameStore();
@@ -86,6 +87,9 @@ function applyColour(): void {
 			<UCheckbox v-model="collides" label="Collides" />
 		</div>
 		<div class="checkboxes">
+			<UCheckbox v-model="undragable" label="Undraggable" />
+		</div>
+		<div class="checkboxes">
 			<UCheckbox v-model="fixate" label="Fixate" />
 		</div>
 
@@ -99,25 +103,28 @@ function applyColour(): void {
 			<IbButton family="blue" label="Change Color" class="colour-apply" @click="applyColour" />
 		</UFormField>
 
+		<div class="order-buttons">
+			<IbButton family="pink" label="Move to Front" class="order-btn" disabled />
+			<IbButton family="pink" label="Move to Back" class="order-btn" disabled />
+			<IbTodo label="no command" />
+		</div>
+
 		<div class="checkboxes">
 			<UCheckbox v-model="outline" label="Show Outlines" />
 		</div>
 		<div class="checkboxes">
 			<UCheckbox v-model="outlineBehind" label="Outlines Behind" />
 		</div>
-		<div class="checkboxes">
-			<UCheckbox v-model="undragable" label="Undraggable" />
-		</div>
+
+		<UFormField label="Fire:" class="field">
+			<UInput v-model="fireKey" size="xs" class="key-input" />
+		</UFormField>
 
 		<UFormField label="Cannon Strength" class="field">
 			<div class="slider-row">
 				<USlider v-model="cannonStrength" :min="1" :max="30" :step="1" size="sm" class="slider" />
 				<UInput v-model.number="cannonStrength" type="number" size="xs" class="num-input" />
 			</div>
-		</UFormField>
-
-		<UFormField label="Fire key" class="field">
-			<UInput v-model="fireKey" size="xs" class="key-input" />
 		</UFormField>
 	</div>
 </template>
@@ -181,5 +188,15 @@ function applyColour(): void {
 .colour-apply {
 	margin-top: 4px;
 	align-self: flex-start;
+}
+
+.order-buttons {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.order-buttons :deep(.ib-btn) {
+	width: 100%;
 }
 </style>

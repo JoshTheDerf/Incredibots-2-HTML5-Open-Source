@@ -7,25 +7,12 @@
 import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
+import IbTodo from "../IbTodo.vue";
 
 const game = useGameStore();
 
 const sel = computed(() => game.edit.selectedPart);
 const ids = computed(() => game.edit.selection);
-
-// Header mirrors m_shapeHeader.text; derived from the live part kind.
-const shapeLabel = computed(() => {
-	switch (sel.value?.kind) {
-		case "Circle":
-			return "Circle";
-		case "Rectangle":
-			return "Rectangle";
-		case "Triangle":
-			return "Triangle";
-		default:
-			return sel.value?.kind ?? "Shape";
-	}
-});
 
 // Density (m_densitySlider / m_densityArea) — 1..30, ControllerGame.densitySlider.
 const density = computed({
@@ -83,16 +70,25 @@ function applyColour(): void {
 
 <template>
 	<div class="shape-props">
-		<div class="header-row">
-			<span class="shape-label">{{ shapeLabel }}</span>
-		</div>
-
 		<UFormField label="Density" class="field">
 			<div class="slider-row">
 				<USlider v-model="density" :min="1" :max="30" :step="1" size="sm" class="slider" />
 				<UInput v-model.number="density" type="number" size="xs" class="num-input" />
 			</div>
 		</UFormField>
+
+		<div class="checkboxes">
+			<UCheckbox v-model="collides" label="Collides" />
+		</div>
+		<div class="checkboxes">
+			<UCheckbox v-model="cameraFocus" label="Camera Focus" />
+		</div>
+		<div class="checkboxes">
+			<UCheckbox v-model="undragable" label="Undraggable" />
+		</div>
+		<div class="checkboxes">
+			<UCheckbox v-model="fixate" label="Fixate" />
+		</div>
 
 		<UFormField label="Color" class="field">
 			<div class="colour-row">
@@ -104,23 +100,17 @@ function applyColour(): void {
 			<IbButton family="blue" label="Change Color" class="colour-apply" @click="applyColour" />
 		</UFormField>
 
-		<div class="checkboxes">
-			<UCheckbox v-model="collides" label="Collides" />
+		<div class="order-buttons">
+			<IbButton family="pink" label="Move to Front" class="order-btn" disabled />
+			<IbButton family="pink" label="Move to Back" class="order-btn" disabled />
+			<IbTodo label="no command" />
 		</div>
-		<div class="checkboxes">
-			<UCheckbox v-model="cameraFocus" label="Camera Focus" />
-		</div>
-		<div class="checkboxes">
-			<UCheckbox v-model="fixate" label="Fixate" />
-		</div>
+
 		<div class="checkboxes">
 			<UCheckbox v-model="outline" label="Show Outlines" />
 		</div>
 		<div class="checkboxes">
 			<UCheckbox v-model="outlineBehind" label="Outlines Behind" />
-		</div>
-		<div class="checkboxes">
-			<UCheckbox v-model="undragable" label="Undraggable" />
 		</div>
 	</div>
 </template>
@@ -131,18 +121,6 @@ function applyColour(): void {
 	flex-direction: column;
 	gap: 10px;
 	padding: 4px 8px 10px;
-}
-
-.header-row {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-}
-
-.shape-label {
-	font-size: 13px;
-	font-weight: bold;
-	color: var(--ib-purple);
 }
 
 .field {
@@ -195,5 +173,15 @@ function applyColour(): void {
 	display: flex;
 	align-items: center;
 	gap: 8px;
+}
+
+.order-buttons {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.order-buttons :deep(.ib-btn) {
+	width: 100%;
 }
 </style>

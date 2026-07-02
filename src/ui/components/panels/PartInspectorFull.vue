@@ -12,6 +12,7 @@
 import { computed } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
+import IbTodo from "../IbTodo.vue";
 import { frameTextures } from "../../assets";
 import ShapeProps from "./ShapeProps.vue";
 import JointProps from "./JointProps.vue";
@@ -51,6 +52,40 @@ const panelKind = computed<PanelKind>(() => {
 	}
 });
 
+// Header text mirrors the legacy m_shapeHeader/m_jointHeader/etc — the
+// selected part's type name shown at the top of the panel.
+const headerTitle = computed(() => {
+	const k = game.edit.selectedPart?.kind;
+	switch (k) {
+		case "Circle":
+			return "Circle";
+		case "Rectangle":
+			return "Rectangle";
+		case "Triangle":
+			return "Triangle";
+		case "Cannon":
+			return "Cannon";
+		case "RevoluteJoint":
+			return "Rotating Joint";
+		case "PrismaticJoint":
+			return "Sliding Joint";
+		case "Thrusters":
+			return "Thrusters";
+		case "TextPart":
+			return "Text";
+		default:
+			return k ? "Object" : "Part Editor";
+	}
+});
+
+// Legacy per-panel action-button set (PartEditWindow constructor):
+//  - Text panel: Delete only
+//  - Cannon panel: Delete/Cut/Copy/Rotate (no Paste)
+//  - all others: Delete/Cut/Copy/Paste/Rotate
+const showClipboardActions = computed(() => panelKind.value !== "text");
+const showPaste = computed(() => panelKind.value !== "cannon" && panelKind.value !== "text");
+const showRotate = computed(() => panelKind.value !== "text");
+
 function deleteSelected(): void {
 	if (!hasSelection.value) return;
 	game.dispatch({ type: "deleteParts", partIds: game.edit.selection });
@@ -65,7 +100,7 @@ function clearSelection(): void {
 	<aside class="inspector">
 		<div class="inspector-panel ib-panel" :style="panelStyle">
 			<div class="inspector-header">
-				<span class="title">Part Editor</span>
+				<span class="title">{{ headerTitle }}</span>
 				<span v-if="hasSelection" class="badge">{{ selectionCount }}</span>
 			</div>
 
@@ -75,6 +110,18 @@ function clearSelection(): void {
 				</template>
 
 				<template v-else>
+					<!-- Legacy top action group (Delete/Cut/Copy/Paste/Rotate). -->
+					<div class="top-actions">
+						<IbButton family="orange" label="Delete" class="action-btn" @click="deleteSelected" />
+						<template v-if="showClipboardActions">
+							<IbButton family="orange" label="Cut" class="action-btn" disabled />
+							<IbButton family="orange" label="Copy" class="action-btn" disabled />
+							<IbButton v-if="showPaste" family="orange" label="Paste" class="action-btn" disabled />
+						</template>
+						<IbButton v-if="showRotate" family="blue" label="Rotate" class="action-btn" disabled />
+						<IbTodo label="no command" />
+					</div>
+
 					<ShapeProps v-if="panelKind === 'shape'" />
 					<JointProps v-else-if="panelKind === 'joint'" />
 					<ThrusterProps v-else-if="panelKind === 'thruster'" />
@@ -82,7 +129,6 @@ function clearSelection(): void {
 					<TextProps v-else-if="panelKind === 'text'" />
 
 					<div class="actions">
-						<IbButton family="orange" label="Delete" class="action-btn" @click="deleteSelected" />
 						<IbButton family="purple" label="Clear Selection" class="action-btn" @click="clearSelection" />
 					</div>
 				</template>
@@ -156,6 +202,18 @@ function clearSelection(): void {
 	line-height: 1.5;
 	padding: 6px 8px;
 	margin: 0;
+}
+
+.top-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin: 4px 8px 10px;
+	flex-shrink: 0;
+}
+
+.top-actions :deep(.ib-btn) {
+	width: 100%;
 }
 
 .actions {

@@ -7,6 +7,7 @@
 import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
+import IbTodo from "../IbTodo.vue";
 import { keyToLabel, labelToKey } from "../../keyLabels";
 
 const game = useGameStore();
@@ -64,11 +65,11 @@ function applyColour(): void {
 
 <template>
 	<div class="text-props">
-		<UFormField label="Text" class="field">
+		<UFormField label="Text:" class="field">
 			<UTextarea v-model="text" :rows="3" size="xs" class="text-area" @blur="commitText" />
 		</UFormField>
 
-		<UFormField label="Text Size" class="field">
+		<UFormField label="Text Size:" class="field">
 			<UInput v-model.number="size" type="number" size="xs" class="num-input" />
 		</UFormField>
 
@@ -79,7 +80,7 @@ function applyColour(): void {
 			<UCheckbox v-model="alwaysVisible" label="Always Display" />
 		</div>
 
-		<UFormField label="Display Text Key" class="field">
+		<UFormField label="Display Text Key:" class="field">
 			<UInput v-model="displayKey" size="xs" :disabled="alwaysVisible" class="key-input" />
 		</UFormField>
 
@@ -89,6 +90,12 @@ function applyColour(): void {
 			</div>
 			<IbButton family="blue" label="Change Color" class="colour-apply" @click="applyColour" />
 		</UFormField>
+
+		<div class="order-buttons">
+			<IbButton family="pink" label="Move to Front" class="order-btn" disabled />
+			<IbButton family="pink" label="Move to Back" class="order-btn" disabled />
+			<IbTodo label="no command" />
+		</div>
 	</div>
 </template>
 
@@ -141,5 +148,15 @@ function applyColour(): void {
 .colour-apply {
 	margin-top: 4px;
 	align-self: flex-start;
+}
+
+.order-buttons {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.order-buttons :deep(.ib-btn) {
+	width: 100%;
 }
 </style>

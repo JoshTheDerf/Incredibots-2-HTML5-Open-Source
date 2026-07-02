@@ -7,6 +7,7 @@
 import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
+import IbTodo from "../IbTodo.vue";
 import { keyToLabel, labelToKey } from "../../keyLabels";
 
 const game = useGameStore();
@@ -14,7 +15,6 @@ const sel = computed(() => game.edit.selectedPart);
 const ids = computed(() => game.edit.selection);
 
 const isRevolute = computed(() => sel.value?.kind === "RevoluteJoint");
-const jointLabel = computed(() => (isRevolute.value ? "Rotating Joint" : "Sliding Joint"));
 
 // -- Motor / piston enable (JointCheckboxAction ENABLE_TYPE) --
 const motorEnabled = computed({
@@ -86,10 +86,6 @@ const contractKey = computed({
 	get: () => keyToLabel(sel.value?.keyDown),
 	set: (v: string) => setKey("down", v),
 });
-const initialLength = computed({
-	get: () => sel.value?.initialLength ?? 0,
-	set: (v: number) => game.dispatch({ type: "setJointInitialLength", partIds: ids.value, value: Number(v) }),
-});
 const autoOscillate = computed({
 	get: () => sel.value?.autoOscillate ?? false,
 	set: (v: boolean) => game.dispatch({ type: "setJointAutoOn", partIds: ids.value, which: "oscillate", value: v }),
@@ -137,10 +133,6 @@ function applyColour(): void {
 
 <template>
 	<div class="joint-props">
-		<div class="header-row">
-			<span class="kind-label">{{ jointLabel }}</span>
-		</div>
-
 		<div class="checkboxes">
 			<UCheckbox v-model="motorEnabled" :label="isRevolute ? 'Enable Motor' : 'Enable Piston'" />
 		</div>
@@ -159,18 +151,16 @@ function applyColour(): void {
 			</div>
 		</UFormField>
 
+		<div class="checkboxes">
+			<UCheckbox v-model="floppyJoint" label="Floppy Joint" :disabled="!motorEnabled" />
+		</div>
+
 		<template v-if="isRevolute">
-			<UFormField label="Rotate CW key" class="field">
+			<UFormField label="Rotate CW:" class="field">
 				<UInput v-model="rotateCWKey" size="xs" :disabled="!motorEnabled" class="key-input" />
 			</UFormField>
-			<UFormField label="Rotate CCW key" class="field">
+			<UFormField label="Rotate CCW:" class="field">
 				<UInput v-model="rotateCCWKey" size="xs" :disabled="!motorEnabled" class="key-input" />
-			</UFormField>
-			<UFormField label="Lower Limit (degrees)" class="field">
-				<UInput v-model="lowerLimit" size="xs" class="key-input" @blur="commitLimits" @keyup.enter="commitLimits" />
-			</UFormField>
-			<UFormField label="Upper Limit (degrees)" class="field">
-				<UInput v-model="upperLimit" size="xs" class="key-input" @blur="commitLimits" @keyup.enter="commitLimits" />
 			</UFormField>
 			<div class="checkboxes">
 				<UCheckbox v-model="autoOnCW" label="Auto-On CW" :disabled="!motorEnabled" />
@@ -178,23 +168,23 @@ function applyColour(): void {
 			<div class="checkboxes">
 				<UCheckbox v-model="autoOnCCW" label="Auto-On CCW" :disabled="!motorEnabled" />
 			</div>
+			<UFormField label="Lower Limit (degrees)" class="field">
+				<UInput v-model="lowerLimit" size="xs" class="key-input" @blur="commitLimits" @keyup.enter="commitLimits" />
+			</UFormField>
+			<UFormField label="Upper Limit (degrees)" class="field">
+				<UInput v-model="upperLimit" size="xs" class="key-input" @blur="commitLimits" @keyup.enter="commitLimits" />
+			</UFormField>
 		</template>
 
 		<template v-else>
-			<UFormField label="Expand key" class="field">
+			<UFormField label="Expand:" class="field">
 				<UInput v-model="expandKey" size="xs" :disabled="!motorEnabled" class="key-input" />
 			</UFormField>
-			<UFormField label="Contract key" class="field">
+			<UFormField label="Contract:" class="field">
 				<UInput v-model="contractKey" size="xs" :disabled="!motorEnabled" class="key-input" />
-			</UFormField>
-			<UFormField label="Initial Length" class="field">
-				<UInput v-model.number="initialLength" type="number" size="xs" class="key-input" />
 			</UFormField>
 			<div class="checkboxes">
 				<UCheckbox v-model="autoOscillate" label="Auto Oscillate" :disabled="!motorEnabled" />
-			</div>
-			<div class="checkboxes">
-				<UCheckbox v-model="outline" label="Show Outlines" />
 			</div>
 			<div class="checkboxes">
 				<UCheckbox v-model="collides" label="Collides" />
@@ -203,11 +193,15 @@ function applyColour(): void {
 				<input v-model="localColour" type="color" class="colour-swatch" />
 				<IbButton family="blue" label="Change Color" class="colour-apply" @click="applyColour" />
 			</div>
+			<div class="order-buttons">
+				<IbButton family="pink" label="Move to Front" class="order-btn" disabled />
+				<IbButton family="pink" label="Move to Back" class="order-btn" disabled />
+				<IbTodo label="no command" />
+			</div>
+			<div class="checkboxes">
+				<UCheckbox v-model="outline" label="Show Outlines" />
+			</div>
 		</template>
-
-		<div class="checkboxes">
-			<UCheckbox v-model="floppyJoint" label="Floppy Joint" :disabled="!motorEnabled" />
-		</div>
 	</div>
 </template>
 
@@ -217,18 +211,6 @@ function applyColour(): void {
 	flex-direction: column;
 	gap: 10px;
 	padding: 4px 8px 10px;
-}
-
-.header-row {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-}
-
-.kind-label {
-	font-size: 13px;
-	font-weight: bold;
-	color: var(--ib-purple);
 }
 
 .field {
@@ -277,5 +259,15 @@ function applyColour(): void {
 
 .colour-apply {
 	align-self: flex-start;
+}
+
+.order-buttons {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.order-buttons :deep(.ib-btn) {
+	width: 100%;
 }
 </style>
