@@ -22,6 +22,8 @@ import StagePlaceholder from "./components/StagePlaceholder.vue";
 import PartInspectorFull from "./components/panels/PartInspectorFull.vue";
 import HintOverlay from "./components/HintOverlay.vue";
 import StatusBar from "./components/StatusBar.vue";
+import MobileControlPad from "./components/MobileControlPad.vue";
+import { useIsMobile } from "./useIsMobile";
 import ImportPanel from "./components/panels/ImportPanel.vue";
 import ExportPanel from "./components/panels/ExportPanel.vue";
 import SandboxSettingsPanel from "./components/panels/SandboxSettingsPanel.vue";
@@ -38,6 +40,20 @@ import { storeToRefs } from "pinia";
 // chrome below. Boots to 'menu', matching the original ControllerMainMenu flow.
 const game = useGameStore();
 const { replay, challenge } = storeToRefs(game);
+
+// Mobile gate for all layout/behaviour tweaks below the breakpoint. Desktop is
+// untouched (isMobile === false).
+const isMobile = useIsMobile();
+
+// The on-screen key pad shows only on mobile while the sim is running (there is
+// nothing to drive while editing). phase lives in the store's sim state.
+const showControlPad = computed(() => isMobile.value && game.sim.phase === "running");
+
+// The part-properties inspector is an EDIT-time control; the legacy PartEditWindow
+// hid once the simulation started (simStarted). Show it only during the editing
+// phase — a correctness fix that applies on desktop too (editing controls must
+// not linger mid-simulation).
+const editing = computed(() => game.sim.phase === "editing");
 
 // The editor chrome renders for both the plain sandbox ("editor") and the
 // challenge editor ("challengeEditor") — same canvas + toolbar + inspector. The
@@ -66,6 +82,11 @@ watch(
 // Exactly one panel is open at a time; `null` means all modals closed. The
 // MenuBar emits which panel to open.
 const activePanel = ref<PanelKey | null>(null);
+
+// On mobile the left inspector is a collapsible bottom-sheet so it doesn't
+// cover the canvas; this tracks whether that sheet is open. Desktop ignores it
+// (the inspector is always shown as the fixed left panel).
+const inspectorOpen = ref(false);
 
 function openPanel(panel: PanelKey): void {
 	activePanel.value = panel;
@@ -115,7 +136,7 @@ onBeforeUnmount(() => {
 	<UApp>
 		<MainMenu v-if="game.appMode === 'menu'" />
 
-		<div v-else-if="inEditor" class="editor-shell">
+		<div v-else-if="inEditor" class="editor-shell" :class="{ 'is-mobile': isMobile }">
 			<!-- Thin top menu strip (legacy DropDownMenu, 21px). -->
 			<MenuBar @open="openPanel" />
 
@@ -134,10 +155,27 @@ onBeforeUnmount(() => {
 				</div>
 
 				<!-- Part-edit panel pinned to the LEFT, under the toolbar,
-				     overlaying the canvas (legacy PartEditWindow at x=0,y=90). -->
-				<div class="inspector-overlay">
+				     overlaying the canvas (legacy PartEditWindow at x=0,y=90). On
+				     mobile it becomes a collapsible bottom-sheet (see .is-mobile
+				     styles) toggled by the button below, so it doesn't cover the
+				     canvas; desktop keeps the fixed left panel unchanged. -->
+				<div v-if="editing" class="inspector-overlay" :class="{ open: !isMobile || inspectorOpen }">
 					<PartInspectorFull />
 				</div>
+
+				<!-- Mobile-only toggle for the inspector bottom-sheet. -->
+				<button
+					v-if="isMobile && editing"
+					type="button"
+					class="inspector-toggle"
+					:aria-expanded="inspectorOpen"
+					@click="inspectorOpen = !inspectorOpen"
+				>
+					{{ inspectorOpen ? "Close Part Editor ▾" : "Part Editor ▴" }}
+				</button>
+
+				<!-- On-screen key controls (mobile + sim running only). -->
+				<MobileControlPad v-if="showControlPad" />
 
 				<!-- Tutorial dialog bubble (self-hides when no active message) and
 				     the post-replay window (shown once a replay playback finishes).
@@ -324,6 +362,70 @@ onBeforeUnmount(() => {
 	left: 50%;
 	transform: translate(-50%, -50%);
 	z-index: 31;
+}
+
+/* ---- Mobile (<=768px / coarse pointer) — desktop above is unchanged ---- */
+
+/* The toolbar overlay can be wide; on mobile let it scroll horizontally and hug
+   the top edge without spilling under the menu. */
+.editor-shell.is-mobile .toolbar-overlay {
+	top: 2px;
+	left: 2px;
+	right: 2px;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+}
+
+/* Inspector becomes a bottom-sheet that slides up from the bottom edge, so it
+   overlays the lower canvas instead of the tall left strip. Closed = slid off
+   screen. Toggled via .open. */
+.editor-shell.is-mobile .inspector-overlay {
+	top: auto;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	max-height: 55vh;
+	transform: translateY(100%);
+	transition: transform 0.2s ease;
+	overflow-y: auto;
+	-webkit-overflow-scrolling: touch;
+	background: rgba(36, 41, 48, 0.35);
+}
+
+.editor-shell.is-mobile .inspector-overlay.open {
+	transform: translateY(0);
+}
+
+/* On mobile the inspector aside should span the sheet width rather than the
+   fixed 150px left strip. */
+.editor-shell.is-mobile .inspector-overlay :deep(.inspector) {
+	width: 100%;
+}
+
+/* Toggle button for the bottom-sheet — a small tab pinned bottom-left. */
+.inspector-toggle {
+	position: absolute;
+	left: 8px;
+	bottom: 8px;
+	z-index: 26;
+	min-height: 40px;
+	padding: 0 14px;
+	border: 2px solid rgba(183, 170, 227, 0.7);
+	border-radius: 10px;
+	background: rgba(36, 41, 48, 0.85);
+	color: #fdf9ea;
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: 13px;
+	font-weight: bold;
+	touch-action: manipulation;
+	-webkit-tap-highlight-color: transparent;
+}
+
+/* Move the tutorial bubble in from the desktop 170px left offset when narrow. */
+.editor-shell.is-mobile .tutorial-overlay {
+	left: 8px;
+	right: 8px;
+	top: 60px;
 }
 </style>
 

@@ -713,4 +713,54 @@ onBeforeUnmount(() => {
 	height: 42px;
 	font-size: 14px;
 }
+
+/* ---- Mobile (<=768px) — narrow-screen reflow. Desktop above is unchanged.
+   Only the HTML/CSS layout is adjusted; the pixi background demo (bgContainer /
+   bgApp / sky / ground / demo bot) is untouched. The boxes stack full-width and
+   the fixed-width buttons become fluid so nothing overflows the viewport. ---- */
+@media (max-width: 768px) {
+	.level-select {
+		gap: 14px;
+		max-width: 100%;
+		width: 100%;
+	}
+
+	.box {
+		width: 100%;
+		max-width: 420px;
+		padding: 14px;
+	}
+
+	/* Modes: single column so the 2x2 grid doesn't demand 2x210px. */
+	.modes-grid {
+		grid-template-columns: 1fr;
+		width: 100%;
+	}
+
+	/* Load/save: stack the two columns vertically. */
+	.loadsave-cols {
+		flex-direction: column;
+	}
+	.loadsave-col {
+		width: 100%;
+	}
+
+	/* Every fixed-width button becomes fluid within its (now full-width) box. */
+	.mode-btn,
+	.ls-btn,
+	.info-btn {
+		width: 100%;
+	}
+
+	.box-info {
+		width: 100%;
+		max-width: 420px;
+	}
+
+	/* Keep the logo from crowding the boxes on short screens. */
+	.menu-logo {
+		width: min(320px, 80vw);
+		margin: 6px 0 12px;
+	}
+}
 </style>

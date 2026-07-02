@@ -16,11 +16,17 @@ import { computed } from "vue";
 import { useGameStore } from "../gameStore";
 import { frameTextures } from "../assets";
 import { soundService } from "../sound";
+import { useIsMobile } from "../useIsMobile";
 import type { DropdownMenuItem } from "@nuxt/ui";
 
 const logoSrc = frameTextures.logo;
 
 const game = useGameStore();
+
+// On mobile the six text menu triggers won't fit a narrow strip, so they
+// collapse into a single ⋯ button opening one grouped dropdown that preserves
+// every item + its emit/dispatch. Desktop keeps the individual triggers.
+const isMobile = useIsMobile();
 
 /** Panel keys App.vue knows how to open as modals. */
 export type PanelKey =
@@ -205,12 +211,46 @@ const aboutMenu: DropdownMenuItem[][] = [
 		{ label: "GrubbyGames.com", icon: "i-lucide-external-link" },
 	],
 ];
+
+// Mobile — collapse all six menus (plus About) into ONE dropdown whose top-level
+// entries are the menu names, each carrying the original groups as submenu
+// `children`. Same item objects (same onSelect/emit wiring) are reused, so no
+// behaviour changes; only the presentation is compacted. Nuxt UI expects
+// children as a flat array, so we flatten each menu's group array.
+const mobileMenu = computed<DropdownMenuItem[][]>(() => [
+	[
+		{ label: "File", icon: "i-lucide-file", children: fileMenu.value.flat() },
+		{ label: "Edit", icon: "i-lucide-pencil", children: editMenu.flat() },
+		{ label: "View", icon: "i-lucide-eye", children: viewMenu.value.flat() },
+		{ label: "Share!", icon: "i-lucide-share-2", children: shareMenu.flat() },
+		{ label: "Help", icon: "i-lucide-life-buoy", children: helpMenu.flat() },
+		{ label: "Extras", icon: "i-lucide-sparkles", children: extrasMenu.value.flat() },
+		{ label: "About", icon: "i-lucide-info", children: aboutMenu.flat() },
+	],
+]);
 </script>
 
 <template>
 	<div class="menu-bar">
 		<img :src="logoSrc" alt="Incredibots 2" class="logo" />
 
+		<!-- Mobile: one compact ⋯ button opening the grouped menu. -->
+		<template v-if="isMobile">
+			<div class="spacer" />
+			<UDropdownMenu :items="mobileMenu" :content="{ align: 'end' }">
+				<UButton
+					icon="i-lucide-menu"
+					color="neutral"
+					variant="ghost"
+					size="md"
+					class="menu-trigger hamburger"
+					aria-label="Menu"
+				/>
+			</UDropdownMenu>
+		</template>
+
+		<!-- Desktop: the original individual text triggers (unchanged). -->
+		<template v-else>
 		<div class="menu-items">
 			<UDropdownMenu :items="fileMenu" :content="{ align: 'start' }">
 				<UButton label="File" color="neutral" variant="ghost" size="xs" class="menu-trigger" />
@@ -237,6 +277,7 @@ const aboutMenu: DropdownMenuItem[][] = [
 		<UDropdownMenu :items="aboutMenu" :content="{ align: 'end' }">
 			<UButton label="About" color="neutral" variant="ghost" size="xs" class="menu-trigger" />
 		</UDropdownMenu>
+		</template>
 	</div>
 </template>
 
@@ -278,5 +319,16 @@ const aboutMenu: DropdownMenuItem[][] = [
 
 .spacer {
 	flex: 1;
+}
+
+/* Mobile hamburger — a finger-sized tap target. The bar grows to fit it. */
+.menu-bar:has(.hamburger) {
+	height: 48px;
+}
+
+.hamburger {
+	min-width: 44px;
+	min-height: 44px;
+	justify-content: center;
 }
 </style>

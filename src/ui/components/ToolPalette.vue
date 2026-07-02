@@ -19,10 +19,15 @@ import { computed } from "vue";
 import { useGameStore } from "../gameStore";
 import IbButton from "./IbButton.vue";
 import { frameTextures } from "../assets";
+import { useIsMobile } from "../useIsMobile";
 import type { ToolMode } from "../../core";
 import type { ButtonFamily } from "../assets";
 
 const game = useGameStore();
+
+// On mobile the build tools collapse to icon-only buttons (with ≥44px tap
+// targets) to fit a narrow screen. Desktop keeps the text labels unchanged.
+const isMobile = useIsMobile();
 
 // Save Replay lives on the running/paused sim panels in the legacy game
 // (MainEditPanel.ts:270-290). App owns the modal state, so surface it via an
@@ -36,24 +41,26 @@ interface ToolDef {
 	tool: ToolMode;
 	label: string;
 	family: ButtonFamily;
+	// Nuxt UI icon shown INSTEAD of the label on mobile (desktop shows label).
+	icon: string;
 }
 
 // Row 1 — shape build tools (legacy: Circle / Rectangle / Triangle, BLUE),
 // preceded by the Select pointer.
 const row1Tools: ToolDef[] = [
-	{ tool: "select", label: "Select", family: "blue" },
-	{ tool: "newCircle", label: "Circle", family: "blue" },
-	{ tool: "newRect", label: "Rectangle", family: "blue" },
-	{ tool: "newTriangle", label: "Triangle", family: "blue" },
+	{ tool: "select", label: "Select", family: "blue", icon: "i-lucide-mouse-pointer-2" },
+	{ tool: "newCircle", label: "Circle", family: "blue", icon: "i-lucide-circle" },
+	{ tool: "newRect", label: "Rectangle", family: "blue", icon: "i-lucide-square" },
+	{ tool: "newTriangle", label: "Triangle", family: "blue", icon: "i-lucide-triangle" },
 ];
 
 // Row 2 — joint build tools (legacy: Fixed / Rotating / Sliding Joint, BLUE),
 // then Text (legacy row 2 also carries Text).
 const row2Tools: ToolDef[] = [
-	{ tool: "newFixedJoint", label: "Fixed Joint", family: "blue" },
-	{ tool: "newRevoluteJoint", label: "Rotating Joint", family: "blue" },
-	{ tool: "newPrismaticJoint", label: "Sliding Joint", family: "blue" },
-	{ tool: "newText", label: "Text", family: "blue" },
+	{ tool: "newFixedJoint", label: "Fixed Joint", family: "blue", icon: "i-lucide-dot" },
+	{ tool: "newRevoluteJoint", label: "Rotating Joint", family: "blue", icon: "i-lucide-rotate-cw" },
+	{ tool: "newPrismaticJoint", label: "Sliding Joint", family: "blue", icon: "i-lucide-move-horizontal" },
+	{ tool: "newText", label: "Text", family: "blue", icon: "i-lucide-type" },
 ];
 
 // Parts/transform tools that the legacy game reaches through the Extras menu
@@ -61,12 +68,12 @@ const row2Tools: ToolDef[] = [
 // in the new stack, so keep them in a compact trailing group (one per row) to
 // preserve wiring without disturbing the two build rows.
 const partsRow1: ToolDef[] = [
-	{ tool: "newThrusters", label: "Thrusters", family: "blue" },
-	{ tool: "rotate", label: "Rotate", family: "pink" },
+	{ tool: "newThrusters", label: "Thrusters", family: "blue", icon: "i-lucide-flame" },
+	{ tool: "rotate", label: "Rotate", family: "pink", icon: "i-lucide-rotate-3d" },
 ];
 const partsRow2: ToolDef[] = [
-	{ tool: "newCannon", label: "Cannon", family: "blue" },
-	{ tool: "resize", label: "Resize", family: "pink" },
+	{ tool: "newCannon", label: "Cannon", family: "blue", icon: "i-lucide-crosshair" },
+	{ tool: "resize", label: "Resize", family: "pink", icon: "i-lucide-scaling" },
 ];
 
 const currentTool = computed(() => game.edit.tool);
@@ -98,20 +105,30 @@ function reset(): void {
 					v-for="t in row1Tools"
 					:key="t.tool"
 					:family="t.family"
-					:label="t.label"
 					:pressed="currentTool === t.tool"
+					:class="{ 'icon-btn': isMobile }"
+					:title="t.label"
+					:aria-label="t.label"
 					@click="selectTool(t.tool)"
-				/>
+				>
+					<UIcon v-if="isMobile" :name="t.icon" class="tool-icon" />
+					<template v-else>{{ t.label }}</template>
+				</IbButton>
 			</div>
 			<div class="tool-row">
 				<IbButton
 					v-for="t in row2Tools"
 					:key="t.tool"
 					:family="t.family"
-					:label="t.label"
 					:pressed="currentTool === t.tool"
+					:class="{ 'icon-btn': isMobile }"
+					:title="t.label"
+					:aria-label="t.label"
 					@click="selectTool(t.tool)"
-				/>
+				>
+					<UIcon v-if="isMobile" :name="t.icon" class="tool-icon" />
+					<template v-else>{{ t.label }}</template>
+				</IbButton>
 			</div>
 		</div>
 
@@ -124,20 +141,30 @@ function reset(): void {
 					v-for="t in partsRow1"
 					:key="t.tool"
 					:family="t.family"
-					:label="t.label"
 					:pressed="currentTool === t.tool"
+					:class="{ 'icon-btn': isMobile }"
+					:title="t.label"
+					:aria-label="t.label"
 					@click="selectTool(t.tool)"
-				/>
+				>
+					<UIcon v-if="isMobile" :name="t.icon" class="tool-icon" />
+					<template v-else>{{ t.label }}</template>
+				</IbButton>
 			</div>
 			<div class="tool-row">
 				<IbButton
 					v-for="t in partsRow2"
 					:key="t.tool"
 					:family="t.family"
-					:label="t.label"
 					:pressed="currentTool === t.tool"
+					:class="{ 'icon-btn': isMobile }"
+					:title="t.label"
+					:aria-label="t.label"
 					@click="selectTool(t.tool)"
-				/>
+				>
+					<UIcon v-if="isMobile" :name="t.icon" class="tool-icon" />
+					<template v-else>{{ t.label }}</template>
+				</IbButton>
 			</div>
 		</div>
 
@@ -146,18 +173,53 @@ function reset(): void {
 		<!-- Sim transport, pinned to the far right like the legacy tall Play!
 		     button (Pause/Reset stack beside it). -->
 		<div class="transport">
-			<IbButton family="play" play label="Play!" :disabled="phase === 'running'" @click="play" />
+			<IbButton
+				family="play"
+				play
+				:disabled="phase === 'running'"
+				:class="{ 'icon-btn': isMobile }"
+				title="Play!"
+				aria-label="Play!"
+				@click="play"
+			>
+				<UIcon v-if="isMobile" name="i-lucide-play" class="tool-icon" />
+				<template v-else>Play!</template>
+			</IbButton>
 			<div class="transport-secondary">
-				<IbButton family="red" label="Pause" :disabled="phase !== 'running'" @click="pause" />
-				<IbButton family="red" label="Reset" @click="reset" />
+				<IbButton
+					family="red"
+					:disabled="phase !== 'running'"
+					:class="{ 'icon-btn': isMobile }"
+					title="Pause"
+					aria-label="Pause"
+					@click="pause"
+				>
+					<UIcon v-if="isMobile" name="i-lucide-pause" class="tool-icon" />
+					<template v-else>Pause</template>
+				</IbButton>
+				<IbButton
+					family="red"
+					:class="{ 'icon-btn': isMobile }"
+					title="Reset"
+					aria-label="Reset"
+					@click="reset"
+				>
+					<UIcon v-if="isMobile" name="i-lucide-rotate-ccw" class="tool-icon" />
+					<template v-else>Reset</template>
+				</IbButton>
 				<!-- Save Replay — shown while the sim is running/paused (legacy
 				     MainEditPanel save-replay button on both sim panels). -->
 				<IbButton
 					v-if="phase !== 'editing'"
 					family="blue"
-					label="Save Replay"
+					:class="{ 'icon-btn': isMobile }"
+					title="Save Replay"
+					aria-label="Save Replay"
 					@click="emit('saveReplay')"
-				/>
+				>
+					<UIcon v-if="isMobile" name="i-lucide-save" class="tool-icon" />
+					<template v-else>Save Replay</template>
+				</IbButton>
 			</div>
 		</div>
 	</div>
@@ -221,5 +283,24 @@ function reset(): void {
 	height: 30px;
 	font-size: 11px;
 	padding: 0 12px;
+}
+
+/* ---- Mobile: icon-only build tools with finger-sized tap targets ----
+   Desktop (no .icon-btn class) is unchanged. */
+.icon-btn.ib-btn,
+.tool-row :deep(.icon-btn.ib-btn),
+.transport-secondary :deep(.icon-btn.ib-btn) {
+	min-width: 44px;
+	min-height: 44px;
+	height: 44px;
+	padding: 0 8px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.tool-icon {
+	width: 22px;
+	height: 22px;
 }
 </style>

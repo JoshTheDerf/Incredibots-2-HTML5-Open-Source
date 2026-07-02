@@ -3,8 +3,13 @@
 // the store. Read-only.
 import { computed } from "vue";
 import { useGameStore } from "../gameStore";
+import { useIsMobile } from "../useIsMobile";
 
 const game = useGameStore();
+
+// On mobile the status line drops the lower-priority items (frame counter, the
+// sim-status phrase) and wraps so it fits a narrow screen. Desktop is unchanged.
+const isMobile = useIsMobile();
 
 const currentTool = computed(() => game.edit.tool);
 const selectionCount = computed(() => game.edit.selection.length);
@@ -35,17 +40,23 @@ const simStatus = computed(() => {
 </script>
 
 <template>
-	<div class="status-bar">
+	<div class="status-bar" :class="{ 'is-mobile': isMobile }">
 		<span>Tool: <strong id="current-tool-value">{{ currentTool }}</strong></span>
 		<span class="sep">|</span>
 		<span>Selected: <strong id="selection-count-value">{{ selectionCount }}</strong></span>
 		<span class="sep">|</span>
 		<span>Phase: <strong id="sim-phase-value">{{ phase }}</strong></span>
-		<span class="sep">|</span>
-		<span>Frame: <strong>{{ game.sim.frame }}</strong></span>
-		<template v-if="running">
+		<!-- Frame counter is desktop-only detail; hidden on mobile to save room. -->
+		<template v-if="!isMobile">
 			<span class="sep">|</span>
-			<span class="sim-status"><strong>{{ simStatus }}</strong></span>
+			<span>Frame: <strong>{{ game.sim.frame }}</strong></span>
+		</template>
+		<template v-if="running">
+			<!-- The verbose sim-status phrase is dropped on mobile; the timer stays. -->
+			<template v-if="!isMobile">
+				<span class="sep">|</span>
+				<span class="sim-status"><strong>{{ simStatus }}</strong></span>
+			</template>
 			<span class="sep">|</span>
 			<span>Time: <strong id="sim-timer-value">{{ timer }}</strong></span>
 		</template>
@@ -75,5 +86,15 @@ const simStatus = computed(() => {
 
 .sep {
 	color: #4c3d57;
+}
+
+/* Mobile: smaller text, tighter gaps, wrap so it never overflows the strip. */
+.status-bar.is-mobile {
+	height: auto;
+	min-height: 28px;
+	flex-wrap: wrap;
+	gap: 4px 6px;
+	padding: 3px 8px;
+	font-size: 10px;
 }
 </style>
