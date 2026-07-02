@@ -12,17 +12,57 @@
 // This module is Pixi-free / DOM-free so the headless core owns tutorial logic.
 
 import type { Part } from "../Parts/Part";
+import {
+	buildBaseTerrain,
+	buildTankScene,
+	buildCarScene,
+	buildJumpbotScene,
+	buildDumpbotScene,
+	buildCatapultScene,
+	buildHomeMoviesScene,
+	buildRubeGoldbergScene,
+	buildNewFeaturesScene,
+	buildChallengeEditorScene,
+} from "./tutorialTerrain";
 
 /**
  * The prebuilt scene a tutorial loads: its baked terrain + any prefab bot the
- * player drives (e.g. ControllerTank's tank, ControllerTutorial's static props).
+ * player drives (e.g. ControllerTank's tank, ControllerCatapult's catapult).
  * GameCore.handleLoadTutorial calls this on load and, if non-empty, replaces the
- * scene with these parts (assigning ids). Returns [] for tutorials with no
- * prebuilt scene. Faithful port target: each subclass's constructor-built parts.
- * (Stub — filled in per subclass; see docs/PORT-SPEC-tutorials-replays.md.)
+ * scene with these parts (assigning ids). Faithful port of each subclass's
+ * constructor-built parts (see src/core/tutorialTerrain.ts).
+ *
+ * Tank/Shapes/Car/Jumpbot/Dumpbot/Catapult extend ControllerTutorial and share
+ * its baked landscape (buildBaseTerrain); each adds its own prefab parts on top,
+ * in constructor order (base terrain first, then the subclass parts). HomeMovies/
+ * RubeGoldberg/NewFeatures extend ControllerSandbox and ChallengeEditor extends
+ * ControllerChallenge, so those four have NO base terrain — only their prefab.
  */
-export function getTutorialSetup(_levelIndex: number): Part[] {
-	return [];
+export function getTutorialSetup(levelIndex: number): Part[] {
+	switch (levelIndex) {
+		case 0: // Tank
+			return [...buildBaseTerrain(), ...buildTankScene()];
+		case 1: // Shapes — base terrain only (adds no parts of its own)
+			return buildBaseTerrain();
+		case 2: // Car
+			return [...buildBaseTerrain(), ...buildCarScene()];
+		case 3: // Jumpbot
+			return [...buildBaseTerrain(), ...buildJumpbotScene()];
+		case 4: // Dumpbot
+			return [...buildBaseTerrain(), ...buildDumpbotScene()];
+		case 5: // Catapult
+			return [...buildBaseTerrain(), ...buildCatapultScene()];
+		case 6: // Home Movies (ControllerSandbox — no base terrain)
+			return buildHomeMoviesScene();
+		case 7: // Rube Goldberg (ControllerSandbox)
+			return buildRubeGoldbergScene();
+		case 8: // New in IB2 (ControllerSandbox)
+			return buildNewFeaturesScene();
+		case 9: // Challenge Editor (ControllerChallenge)
+			return buildChallengeEditorScene();
+		default:
+			return [];
+	}
 }
 
 /**
@@ -277,7 +317,13 @@ export function levelDoneIndexForControllerType(controllerType: number): number 
  */
 export type TutorialEvent =
 	| { type: "partCreated"; partKind: string }
-	| { type: "won" };
+	| { type: "won" }
+	// A named subclass milestone the edit/sim layer reports (replaces the richer
+	// subclass Update()/hook conditions that aren't a plain part-created/won:
+	// e.g. "motorEnabled", "reset", "limitLower", "fixated"). `key` names the
+	// milestone; a machine advances its chain when it sees the key it expects
+	// next. See each machine's chain for the exact key order.
+	| { type: "progress"; key: string };
 
 /**
  * A dialog-show instruction the machine emits: show message `id` at (x,y) with
@@ -425,9 +471,515 @@ function shapesMachine(): TutorialMachine {
 	};
 }
 
+// --- Shared chain helper for the game-event-driven subclasses ----------------
+//
+// Most tutorials (Car/Jumpbot/Dumpbot + the sandbox ones) advance through an
+// ORDERED list of dialogs, each unlocked by one gameplay milestone (a created
+// part, an enabled motor, a set limit, a reset, ...). We model that as a chain
+// of steps; the machine advances its cursor when the incoming event matches the
+// next step's trigger. `part` matches a `partCreated` of that kind; `key`
+// matches a `progress` event with that key. This preserves the exact dialog-id
+// order (the load-bearing faithful behaviour) from each subclass's Update().
+
+interface ChainStep {
+	/** partCreated.partKind that unlocks this step, if part-driven. */
+	part?: string;
+	/** progress.key that unlocks this step, if milestone-driven. */
+	key?: string;
+	/** dialog id to show. */
+	id: number;
+	/** "More..." vs "OK" button. */
+	hasMore?: boolean;
+}
+
+function stepMatches(step: ChainStep, event: TutorialEvent): boolean {
+	if (step.part && event.type === "partCreated") return event.partKind === step.part;
+	if (step.key && event.type === "progress") return event.key === step.key;
+	return false;
+}
+
 /**
- * Build the hand-coded machine for a tutorial level, or null if that level's
- * machine hasn't been ported yet (see the deferred list in the report).
+ * ControllerCar (src/Game/Tutorials/ControllerCar.ts) — "Car Creation" (level 2).
+ * Prebuilt car body + 2 wheels; the player joints them.
+ *   Init -> ShowTutorialDialog(8, More)                          (:87)
+ *   CloseTutorialDialog: 8 -> 9                                  (:90-96)
+ *   Update part-created chain (:102-115):
+ *     first RevoluteJoint            -> 10
+ *     second RevoluteJoint           -> 12
+ *     both motors enabled            -> 13   (progress "motorsEnabled")
+ *   centerBox (after first joint)    -> 11   (progress "snapToCenter")  (:118-124)
+ *   HideDialog (robot-didn't-fit)    -> 14   (progress "didntFit")      (:126-132)
+ * All anchored at world (15, -1) (:134-136).
+ */
+function carMachine(): TutorialMachine {
+	const anchor = { x: 15, y: -1 };
+	// Ordered chain matching ControllerCar.Update; centerBox(11)/HideDialog(14)
+	// are out-of-band branches handled by explicit progress keys.
+	const chain: ChainStep[] = [
+		{ part: "RevoluteJoint", id: 10 },
+		{ part: "RevoluteJoint", id: 12 },
+		{ key: "motorsEnabled", id: 13 },
+	];
+	let cursor = 0;
+	return {
+		levelIndex: 2,
+		initialCamera: { drawXOff: 360, drawYOff: -220 },
+		init() {
+			return { kind: "show", id: 8, hasMore: true };
+		},
+		close(num) {
+			if (num === 8) return { kind: "show", id: 9, hasMore: false };
+			return { kind: "dismiss" };
+		},
+		onEvent(event) {
+			// Out-of-band single-shot branches.
+			if (event.type === "progress" && event.key === "snapToCenter")
+				return { kind: "show", id: 11, hasMore: false };
+			if (event.type === "progress" && event.key === "didntFit")
+				return { kind: "show", id: 14, hasMore: false };
+			if (cursor < chain.length && stepMatches(chain[cursor], event)) {
+				const step = chain[cursor++];
+				return { kind: "show", id: step.id, hasMore: step.hasMore ?? false };
+			}
+			return null;
+		},
+		worldAnchorFor() {
+			return anchor;
+		},
+		screenAnchorFor() {
+			return { x: 400, y: 200 };
+		},
+	};
+}
+
+/**
+ * ControllerJumpbot (src/Game/Tutorials/ControllerJumpbot.ts) — "JumpBot"
+ * (level 3). Prebuilt car+wheels+trigger-triangle; player adds a piston.
+ *   Init -> ShowTutorialDialog(15)                               (:88)
+ *   Update chain (:95-111):
+ *     PrismaticJoint created         -> 16   (part "PrismaticJoint")
+ *     piston enabled                 -> 17   (progress "pistonEnabled")
+ *     (after reset) power increased  -> 19   (progress "powerIncreased")
+ *     density decreased              -> 20   (progress "densityDecreased")
+ *   resetButton (after enabling)     -> 18   (progress "reset")          (:119-125)
+ * Anchored at world (-48, -1) (:127-129). (No CloseTutorialDialog override.)
+ */
+function jumpbotMachine(): TutorialMachine {
+	const anchor = { x: -48, y: -1 };
+	const chain: ChainStep[] = [
+		{ part: "PrismaticJoint", id: 16 },
+		{ key: "pistonEnabled", id: 17 },
+		{ key: "powerIncreased", id: 19 },
+		{ key: "densityDecreased", id: 20 },
+	];
+	let cursor = 0;
+	return {
+		levelIndex: 3,
+		initialCamera: { drawXOff: -1880, drawYOff: -220 },
+		init() {
+			return { kind: "show", id: 15, hasMore: false };
+		},
+		close() {
+			return { kind: "dismiss" };
+		},
+		onEvent(event) {
+			if (event.type === "progress" && event.key === "reset")
+				return { kind: "show", id: 18, hasMore: false };
+			if (cursor < chain.length && stepMatches(chain[cursor], event)) {
+				const step = chain[cursor++];
+				return { kind: "show", id: step.id, hasMore: step.hasMore ?? false };
+			}
+			return null;
+		},
+		worldAnchorFor() {
+			return anchor;
+		},
+		screenAnchorFor() {
+			return { x: 400, y: 200 };
+		},
+	};
+}
+
+/**
+ * ControllerDumpbot (src/Game/Tutorials/ControllerDumpbot.ts) — "DumpBot"
+ * (level 4). Prebuilt objects to dump + a hint rectangle; the whole bot is
+ * player-built. Long ordered Update chain (:109-231):
+ *   Rectangle (body)    -> 22
+ *   two wheels (Circle) -> 23   (key "wheels")
+ *   two motored joints  -> 24   (key "wheelJoints")
+ *   arm Rectangle       -> 25   (key "arm")
+ *   clicked RJ tool     -> 58   (key "clickedJoint")
+ *   arm joint made      -> 26   (key "armJoint")
+ *   arm joint stiff     -> 57   (key "solidified")
+ *   control keys set    -> 27   (key "controlKeys")
+ *   bucket (2 rects)    -> 28   (key "bucket")
+ *   first fixed joint   -> 29   (key "fixed1")
+ *   second fixed joint  -> 30   (key "fixed2")
+ *   motor adjusted      -> 31   (key "motorAdjusted")
+ * Init -> 21 (:100-103). Anchored at world (14.5, 0.5) (:235-237). No close override.
+ */
+function dumpbotMachine(): TutorialMachine {
+	const anchor = { x: 14.5, y: 0.5 };
+	const chain: ChainStep[] = [
+		{ part: "Rectangle", id: 22 },
+		{ key: "wheels", id: 23 },
+		{ key: "wheelJoints", id: 24 },
+		{ key: "arm", id: 25 },
+		{ key: "clickedJoint", id: 58 },
+		{ key: "armJoint", id: 26 },
+		{ key: "solidified", id: 57 },
+		{ key: "controlKeys", id: 27 },
+		{ key: "bucket", id: 28 },
+		{ key: "fixed1", id: 29 },
+		{ key: "fixed2", id: 30 },
+		{ key: "motorAdjusted", id: 31 },
+	];
+	let cursor = 0;
+	return {
+		levelIndex: 4,
+		initialCamera: { drawXOff: 360, drawYOff: -220 },
+		init() {
+			return { kind: "show", id: 21, hasMore: false };
+		},
+		close() {
+			return { kind: "dismiss" };
+		},
+		onEvent(event) {
+			if (cursor < chain.length && stepMatches(chain[cursor], event)) {
+				const step = chain[cursor++];
+				return { kind: "show", id: step.id, hasMore: step.hasMore ?? false };
+			}
+			return null;
+		},
+		worldAnchorFor() {
+			return anchor;
+		},
+		screenAnchorFor() {
+			return { x: 400, y: 200 };
+		},
+	};
+}
+
+/**
+ * ControllerCatapult (src/Game/Tutorials/ControllerCatapult.ts) — "Catapult"
+ * (level 5). Prebuilt catapult; player tweaks its motor limits + camera focus.
+ *   Init -> ShowTutorialDialog(32, More)                         (:90)
+ *   CloseTutorialDialog: 32 -> 33 (More); 33 -> 34               (:93-101)
+ *   Update: lower limit == -10 -> 35 (key "limitLower");
+ *           upper limit == 50  -> 36 (key "limitUpper")          (:107-116)
+ *   resetButton (after limits) -> 37 (key "reset")               (:119-132)
+ * Anchored at world (-48, -1) (:134-136).
+ */
+function catapultMachine(): TutorialMachine {
+	const anchor = { x: -48, y: -1 };
+	const chain: ChainStep[] = [
+		{ key: "limitLower", id: 35 },
+		{ key: "limitUpper", id: 36 },
+	];
+	let cursor = 0;
+	return {
+		levelIndex: 5,
+		initialCamera: { drawXOff: -1880, drawYOff: -220 },
+		init() {
+			return { kind: "show", id: 32, hasMore: true };
+		},
+		close(num) {
+			if (num === 32) return { kind: "show", id: 33, hasMore: true };
+			if (num === 33) return { kind: "show", id: 34, hasMore: false };
+			return { kind: "dismiss" };
+		},
+		onEvent(event) {
+			if (event.type === "progress" && event.key === "reset")
+				return { kind: "show", id: 37, hasMore: false };
+			if (cursor < chain.length && stepMatches(chain[cursor], event)) {
+				const step = chain[cursor++];
+				return { kind: "show", id: step.id, hasMore: step.hasMore ?? false };
+			}
+			return null;
+		},
+		worldAnchorFor() {
+			return anchor;
+		},
+		screenAnchorFor() {
+			return { x: 400, y: 200 };
+		},
+	};
+}
+
+/**
+ * ControllerHomeMovies (src/Game/Tutorials/ControllerHomeMovies.ts) — "Home
+ * Movies" (level 6, ControllerSandbox). Prebuilt ragdoll; the player styles +
+ * copies + adds text.
+ *   Init -> ShowTutorialDialog(38, More)                         (:321)
+ *   CloseTutorialDialog: 38 -> 39 (More); 39 -> 40;              (:324-353)
+ *     50 -> dismiss (login); 51 -> dismiss (new user);
+ *     52 -> 54; 54 -> win (SetLevelDone(6) + score window)
+ *   Update chain (:359-427):
+ *     face coloured beige      -> 41 (key "colouredFace")
+ *     hair un-outlined         -> 42 (key "unoutlined")
+ *     legs moved back          -> 56 (key "movedLegsBack")
+ *     support rect + fixed joint -> 59 (key "createdRect")
+ *     rect fixated             -> 60 (key "fixated")
+ *     rect invisible           -> 43 (key "invisiblised")
+ *     shoulder motor enabled   -> 44 (key "shoulderEnabled")
+ *     pasted ragdoll           -> 46 (key "pasted")
+ *     text created             -> 47 (part "TextPart")
+ *     text entered/resized     -> 48 (key "enteredText")
+ *     "Always Display" off     -> 52 (More) (key "uncheckedAlwaysDisplay")
+ *   copyButton (whole ragdoll) -> 45 (key "copied")              (:433-439)
+ * Anchored at world (18, 0.5) (:441-443).
+ */
+function homeMoviesMachine(): TutorialMachine {
+	const anchor = { x: 18, y: 0.5 };
+	const chain: ChainStep[] = [
+		{ key: "colouredFace", id: 41 },
+		{ key: "unoutlined", id: 42 },
+		{ key: "movedLegsBack", id: 56 },
+		{ key: "createdRect", id: 59 },
+		{ key: "fixated", id: 60 },
+		{ key: "invisiblised", id: 43 },
+		{ key: "shoulderEnabled", id: 44 },
+		{ key: "pasted", id: 46 },
+		{ part: "TextPart", id: 47 },
+		{ key: "enteredText", id: 48 },
+		{ key: "uncheckedAlwaysDisplay", id: 52, hasMore: true },
+	];
+	let cursor = 0;
+	return {
+		levelIndex: 6,
+		initialCamera: { drawXOff: 100, drawYOff: -150 },
+		init() {
+			return { kind: "show", id: 38, hasMore: true };
+		},
+		close(num) {
+			if (num === 38) return { kind: "show", id: 39, hasMore: true };
+			if (num === 39) return { kind: "show", id: 40, hasMore: false };
+			if (num === 50) return { kind: "dismiss" };
+			if (num === 51) return { kind: "dismiss" };
+			if (num === 52) return { kind: "show", id: 54, hasMore: false };
+			// num == 54 completes the level (win: SetLevelDone(6) + score window).
+			return { kind: "dismiss" };
+		},
+		onEvent(event) {
+			if (event.type === "progress" && event.key === "copied")
+				return { kind: "show", id: 45, hasMore: false };
+			if (cursor < chain.length && stepMatches(chain[cursor], event)) {
+				const step = chain[cursor++];
+				return { kind: "show", id: step.id, hasMore: step.hasMore ?? false };
+			}
+			return null;
+		},
+		worldAnchorFor() {
+			return anchor;
+		},
+		screenAnchorFor() {
+			return { x: 400, y: 200 };
+		},
+	};
+}
+
+/**
+ * ControllerRubeGoldberg (src/Game/Tutorials/ControllerRubeGoldberg.ts) — "Rube
+ * Goldberg" (level 7, ControllerSandbox). Prebuilt machine; player completes a
+ * ramp + tweaks.
+ *   Init -> ShowTutorialDialog(70, More)                         (:656)
+ *   CloseTutorialDialog: 70 -> 71 (More); 71 -> 72;              (:659-680)
+ *     81 -> win (SetLevelDone(7) + score window)
+ *   Update chain (:684-721):
+ *     straightRect selected -> 73  (key "rectSelected", world (2,-4))
+ *     rect rotated          -> 74  (key "rotated", world (2,-4))
+ *     rect dragged          -> 75  (key "draggedRect")
+ *     both rects selected   -> 76  (key "selectedRects")
+ *     rects dragged in      -> 77  (key "draggedRects")
+ *     rects fixated         -> 78  (key "fixated")
+ *     wheel auto-CCW        -> 79  (key "autoWheel")
+ *     End uncollided        -> 80  (key "endUncollided")
+ *     ball reached End      -> 81  (key "reachedEnd")
+ * Default anchor world (-10, -10); ids 73/74 use world (2, -4) (:687,691,728-730).
+ */
+function rubeGoldbergMachine(): TutorialMachine {
+	const defaultAnchor = { x: -10, y: -10 };
+	const anchor73_74 = { x: 2, y: -4 };
+	const chain: ChainStep[] = [
+		{ key: "rectSelected", id: 73 },
+		{ key: "rotated", id: 74 },
+		{ key: "draggedRect", id: 75 },
+		{ key: "selectedRects", id: 76 },
+		{ key: "draggedRects", id: 77 },
+		{ key: "fixated", id: 78 },
+		{ key: "autoWheel", id: 79 },
+		{ key: "endUncollided", id: 80 },
+		{ key: "reachedEnd", id: 81 },
+	];
+	let cursor = 0;
+	return {
+		levelIndex: 7,
+		initialCamera: { drawXOff: -100, drawYOff: -290 },
+		init() {
+			return { kind: "show", id: 70, hasMore: true };
+		},
+		close(num) {
+			if (num === 70) return { kind: "show", id: 71, hasMore: true };
+			if (num === 71) return { kind: "show", id: 72, hasMore: false };
+			// num == 81 completes the level (win: SetLevelDone(7) + score window).
+			return { kind: "dismiss" };
+		},
+		onEvent(event) {
+			if (cursor < chain.length && stepMatches(chain[cursor], event)) {
+				const step = chain[cursor++];
+				return { kind: "show", id: step.id, hasMore: step.hasMore ?? false };
+			}
+			return null;
+		},
+		worldAnchorFor(id) {
+			if (id === 73 || id === 74) return anchor73_74;
+			return defaultAnchor;
+		},
+		screenAnchorFor() {
+			return { x: 400, y: 200 };
+		},
+	};
+}
+
+/**
+ * ControllerNewFeatures (src/Game/Tutorials/ControllerNewFeatures.ts) — "New in
+ * IB2" (level 8, ControllerSandbox). Prebuilt balloon-animal shapes + a box; the
+ * player assembles + drags it.
+ *   Init -> ShowTutorialDialog(82, More)                         (:275)
+ *   CloseTutorialDialog: 82 -> 83 (More); 83 -> 84;              (:278-300)
+ *     89 -> win (SetLevelDone(8) + score window)
+ *   Update chain (:304-325):
+ *     parts connected     -> 85  (key "partsConnected")
+ *     outlines behind     -> 86  (key "outlinesBehind")
+ *     sim stopped         -> 87  (key "simStopped")
+ *     shapes undraggable  -> 88  (key "undraggable")
+ *     bot in box          -> 89  (key "botInBox")
+ * Anchored at world (-10, -10) (:332-334).
+ */
+function newFeaturesMachine(): TutorialMachine {
+	const anchor = { x: -10, y: -10 };
+	const chain: ChainStep[] = [
+		{ key: "partsConnected", id: 85 },
+		{ key: "outlinesBehind", id: 86 },
+		{ key: "simStopped", id: 87 },
+		{ key: "undraggable", id: 88 },
+		{ key: "botInBox", id: 89 },
+	];
+	let cursor = 0;
+	return {
+		levelIndex: 8,
+		initialCamera: { drawXOff: -100, drawYOff: -290 },
+		init() {
+			return { kind: "show", id: 82, hasMore: true };
+		},
+		close(num) {
+			if (num === 82) return { kind: "show", id: 83, hasMore: true };
+			if (num === 83) return { kind: "show", id: 84, hasMore: false };
+			// num == 89 completes the level (win: SetLevelDone(8) + score window).
+			return { kind: "dismiss" };
+		},
+		onEvent(event) {
+			if (cursor < chain.length && stepMatches(chain[cursor], event)) {
+				const step = chain[cursor++];
+				return { kind: "show", id: step.id, hasMore: step.hasMore ?? false };
+			}
+			return null;
+		},
+		worldAnchorFor() {
+			return anchor;
+		},
+		screenAnchorFor() {
+			return { x: 400, y: 200 };
+		},
+	};
+}
+
+/**
+ * ControllerChallengeEditor (src/Game/Tutorials/ControllerChallengeEditor.ts) —
+ * "Challenges" (level 9, ControllerChallenge). Prebuilt car+garage+balloons; the
+ * player builds a challenge (build box, win/loss conditions, restrictions).
+ *   Init -> ShowTutorialDialog(90, More)                         (:324)
+ *   CloseTutorialDialog: 90 -> 91 (More); 91 -> 92;              (:327-353)
+ *     97 -> 98 (screen 0,160); 103 -> 104 (screen 0,220);
+ *     106 -> win (SetLevelDone(9) + score window)
+ *   Update if/else-if chain (:357-394) — each step gated on the previous:
+ *     clicked build box   -> 93   (key "clickedBuildBox")
+ *     built build box     -> 94   (key "builtBuildBox")
+ *     conditions dialog   -> 95   (key "clickedConditions", screen 276,130)
+ *     selecting shape     -> 96   (key "addingCondition")
+ *     win condition added -> 97   (key "addedWinCondition", screen 0,160, More)
+ *     drawing loss line   -> 99   (key "addingLoss1")
+ *     loss 1 added        -> 100  (key "addedLoss1", screen 276,130)
+ *     selecting shape 2   -> 101  (key "addingLoss2")
+ *     loss 2 added        -> 102  (key "addedLoss2", screen 276,130)
+ *     restrictions dialog -> 103  (key "clickedRestrictions", screen 0,220, More)
+ *     excluded stuff      -> 105  (key "excludedStuff", screen 0,220)
+ *     control disallowed  -> 106  (key "disallowedControl", screen 276,180)
+ * Default anchor world (-10, -10) (:422-424); several ids use fixed screen coords.
+ */
+function challengeEditorMachine(): TutorialMachine {
+	const worldAnchor = { x: -10, y: -10 };
+	// Fixed screen anchors keyed by dialog id (ShowTutorialWindow x,y overrides).
+	const screenAnchors: Record<number, { x: number; y: number }> = {
+		95: { x: 276, y: 130 },
+		97: { x: 0, y: 160 },
+		98: { x: 0, y: 160 },
+		100: { x: 276, y: 130 },
+		102: { x: 276, y: 130 },
+		103: { x: 0, y: 220 },
+		104: { x: 0, y: 220 },
+		105: { x: 0, y: 220 },
+		106: { x: 276, y: 180 },
+	};
+	const chain: ChainStep[] = [
+		{ key: "clickedBuildBox", id: 93 },
+		{ key: "builtBuildBox", id: 94 },
+		{ key: "clickedConditions", id: 95 },
+		{ key: "addingCondition", id: 96 },
+		{ key: "addedWinCondition", id: 97, hasMore: true },
+		{ key: "addingLoss1", id: 99 },
+		{ key: "addedLoss1", id: 100 },
+		{ key: "addingLoss2", id: 101 },
+		{ key: "addedLoss2", id: 102 },
+		{ key: "clickedRestrictions", id: 103, hasMore: true },
+		{ key: "excludedStuff", id: 105 },
+		{ key: "disallowedControl", id: 106 },
+	];
+	let cursor = 0;
+	return {
+		levelIndex: 9,
+		initialCamera: { drawXOff: -480, drawYOff: -200 },
+		init() {
+			return { kind: "show", id: 90, hasMore: true };
+		},
+		close(num) {
+			if (num === 90) return { kind: "show", id: 91, hasMore: true };
+			if (num === 91) return { kind: "show", id: 92, hasMore: false };
+			if (num === 97) return { kind: "show", id: 98, hasMore: false };
+			if (num === 103) return { kind: "show", id: 104, hasMore: false };
+			// num == 106 completes the level (win: SetLevelDone(9) + score window).
+			return { kind: "dismiss" };
+		},
+		onEvent(event) {
+			if (cursor < chain.length && stepMatches(chain[cursor], event)) {
+				const step = chain[cursor++];
+				return { kind: "show", id: step.id, hasMore: step.hasMore ?? false };
+			}
+			return null;
+		},
+		worldAnchorFor(id) {
+			// Ids with a fixed screen anchor are NOT world-anchored.
+			return id in screenAnchors ? null : worldAnchor;
+		},
+		screenAnchorFor(id) {
+			return screenAnchors[id] ?? { x: 276, y: 200 };
+		},
+	};
+}
+
+/**
+ * Build the hand-coded machine for a tutorial level, or null for the built-in
+ * challenges (levels 10-13, which are not dialog tutorials).
  */
 export function createTutorialMachine(levelIndex: number): TutorialMachine | null {
 	switch (levelIndex) {
@@ -435,6 +987,22 @@ export function createTutorialMachine(levelIndex: number): TutorialMachine | nul
 			return tankMachine();
 		case 1:
 			return shapesMachine();
+		case 2:
+			return carMachine();
+		case 3:
+			return jumpbotMachine();
+		case 4:
+			return dumpbotMachine();
+		case 5:
+			return catapultMachine();
+		case 6:
+			return homeMoviesMachine();
+		case 7:
+			return rubeGoldbergMachine();
+		case 8:
+			return newFeaturesMachine();
+		case 9:
+			return challengeEditorMachine();
 		default:
 			return null;
 	}
