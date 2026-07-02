@@ -34,6 +34,7 @@ export type PanelKey =
 	| "export"
 	| "importReplay"
 	| "exportReplay"
+	| "exportChallenge"
 	| "sandboxSettings"
 	| "conditions"
 	| "restrictions"
@@ -199,6 +200,7 @@ const extrasMenu = computed<DropdownMenuItem[][]>(() => {
 		groups.push([
 			{ label: "Set Conditions...", icon: "i-lucide-flag", onSelect: () => open("conditions") },
 			{ label: "Restrictions...", icon: "i-lucide-ban", onSelect: () => open("restrictions") },
+			{ label: "Export Challenge...", icon: "i-lucide-share", onSelect: () => open("exportChallenge") },
 		]);
 	}
 	return groups;

@@ -105,6 +105,14 @@ function openPanel(panel: PanelKey): void {
 	activePanel.value = panel;
 }
 
+// "Advanced Sandbox" (MainMenu): enter a fresh sandbox editor AND open the
+// Sandbox Settings panel immediately, so the player configures gravity/size/
+// terrain up front — the role of the legacy AdvancedSandboxWindow.
+function onAdvancedSandbox(): void {
+	game.goToEditor(true);
+	openPanel("sandboxSettings");
+}
+
 function closePanel(): void {
 	activePanel.value = null;
 }
@@ -147,7 +155,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<UApp>
-		<MainMenu v-if="game.appMode === 'menu'" />
+		<MainMenu v-if="game.appMode === 'menu'" @advanced-sandbox="onAdvancedSandbox" />
 
 		<div v-else-if="inEditor" class="editor-shell" :class="{ 'is-mobile': isMobile }">
 			<!-- Thin top menu strip (legacy DropDownMenu, 21px). -->
@@ -261,6 +269,19 @@ onBeforeUnmount(() => {
 		>
 			<template #content>
 				<ExportPanel robot-str="replay" @close="closePanel" />
+			</template>
+		</UModal>
+
+		<!-- Export Challenge — ExportPanel in challenge mode (robot-str "challenge"
+		     encodes the authored challenge via game.exportChallengeString). Opened
+		     from Extras when a challenge is active. -->
+		<UModal
+			:open="activePanel === 'exportChallenge'"
+			:ui="{ content: 'ib-modal-content' }"
+			@update:open="(v: boolean) => !v && closePanel()"
+		>
+			<template #content>
+				<ExportPanel robot-str="challenge" @close="closePanel" />
 			</template>
 		</UModal>
 

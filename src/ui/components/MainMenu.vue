@@ -46,6 +46,10 @@ import ImportPanel from "./panels/ImportPanel.vue";
 
 const game = useGameStore();
 
+// "Advanced Sandbox" needs App (which owns the modal-panel state) to enter the
+// editor AND open the Sandbox Settings panel, so we bubble it up.
+const emit = defineEmits<{ advancedSandbox: [] }>();
+
 // --- Animated background (faithful to ControllerMainMenu's sSky + sGround) ----
 // The legacy menu drew the SPACE sky (Sky type 1) over a SMALL "LAND" ground in
 // the MARS palette (terrainTheme 6) — its gradient1/gradient2 literals are
@@ -140,7 +144,7 @@ const logoSrc = frameTextures.logo;
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
 
 // Which secondary screen (if any) is open on top of the menu.
-type MenuModal = "tutorials" | "importRobot" | "importReplay" | "importChallenge" | "loadChallenge" | null;
+type MenuModal = "tutorials" | "importRobot" | "importReplay" | "importChallenge" | "loadChallenge" | "credits" | null;
 const modal = ref<MenuModal>(null);
 function closeModal(): void {
 	modal.value = null;
@@ -409,9 +413,7 @@ onBeforeUnmount(() => {
 					</IbButton>
 					<IbButton family="pink" class="mode-btn" label="Sandbox Mode" @click="enterEditor" />
 					<IbButton family="pink" class="mode-btn" label="Challenge Editor" @click="enterChallengeEditor" />
-					<IbButton family="pink" class="mode-btn" disabled>
-						Advanced Sandbox <IbTodo label="not wired" />
-					</IbButton>
+					<IbButton family="pink" class="mode-btn" label="Advanced Sandbox" @click="emit('advancedSandbox')" />
 				</div>
 			</div>
 
@@ -419,9 +421,7 @@ onBeforeUnmount(() => {
 			<div class="ib-panel box box-loadsave" :style="panelStyle">
 				<div class="loadsave-cols">
 					<div class="loadsave-col">
-						<IbButton family="orange" class="ls-btn" disabled>
-							Import Challenge <IbTodo label="no challenges" />
-						</IbButton>
+						<IbButton family="orange" class="ls-btn" label="Import Challenge" @click="modal = 'importChallenge'" />
 						<IbButton family="orange" class="ls-btn" label="Import Replay" @click="modal = 'importReplay'" />
 						<IbButton family="orange" class="ls-btn" label="Import Bot" @click="modal = 'importRobot'" />
 					</div>
@@ -442,14 +442,12 @@ onBeforeUnmount(() => {
 
 			<!-- OTHER BOX — info buttons (BLUE). Enabled in the original. -->
 			<div class="ib-panel box box-info" :style="panelStyle">
+				<!-- Instructions -> the in-game tutorials, which teach the mechanics
+				     (the legacy Instructions link went to the now-dead site). -->
+				<IbButton family="blue" class="info-btn" label="Instructions" @click="modal = 'tutorials'" />
+				<IbButton family="blue" class="info-btn" label="Credits" @click="modal = 'credits'" />
 				<IbButton family="blue" class="info-btn" disabled>
-					Instructions <IbTodo label="not wired" />
-				</IbButton>
-				<IbButton family="blue" class="info-btn" disabled>
-					Credits <IbTodo label="not wired" />
-				</IbButton>
-				<IbButton family="blue" class="info-btn" disabled>
-					Suggestions? <IbTodo label="not wired" />
+					Suggestions? <IbTodo label="external link gone" />
 				</IbButton>
 			</div>
 		</div>
@@ -497,6 +495,38 @@ onBeforeUnmount(() => {
 		>
 			<template #content>
 				<ImportPanel import-type="replay" @imported="onImported" @close="closeModal" />
+			</template>
+		</UModal>
+
+		<!-- Import Challenge — paste an exported challenge string (game.importChallenge
+		     loads its parts + conditions). Enters the challenge editor on success. -->
+		<UModal
+			:open="modal === 'importChallenge'"
+			:ui="{ content: 'ib-modal-content' }"
+			@update:open="(v: boolean) => !v && closeModal()"
+		>
+			<template #content>
+				<ImportPanel import-type="challenge" @imported="onImported" @close="closeModal" />
+			</template>
+		</UModal>
+
+		<!-- Credits — the legacy Credits button linked to the (now dead) grubbygames
+		     site; surface a short static credit instead. -->
+		<UModal
+			:open="modal === 'credits'"
+			:ui="{ content: 'ib-modal-content' }"
+			@update:open="(v: boolean) => !v && closeModal()"
+		>
+			<template #content>
+				<div class="ib-panel credits-panel" :style="panelStyle">
+					<h2 class="picker-title">Credits</h2>
+					<p class="credits-text">
+						IncrediBots 2 was originally created by Grubby Games. This is an
+						open-source HTML5 / TypeScript port of the game, faithfully rebuilt
+						on Vite, Vue and pixi.js.
+					</p>
+					<IbButton family="purple" class="picker-btn" label="Close" @click="closeModal" />
+				</div>
 			</template>
 		</UModal>
 
@@ -712,6 +742,26 @@ onBeforeUnmount(() => {
 	width: 180px;
 	height: 42px;
 	font-size: 14px;
+}
+
+/* Credits modal reuses the picker frame; just widen slightly for the paragraph. */
+.credits-panel {
+	box-sizing: border-box;
+	width: 300px;
+	padding: 18px 20px 20px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	font-family: Arial, Helvetica, sans-serif;
+}
+
+.credits-text {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.5;
+	text-align: center;
+	color: var(--ib-dark);
 }
 
 /* ---- Mobile (<=768px) — narrow-screen reflow. Desktop above is unchanged.
