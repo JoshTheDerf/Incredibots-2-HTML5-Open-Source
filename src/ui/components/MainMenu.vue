@@ -84,6 +84,40 @@ let bgResizeObserver: ResizeObserver | null = null;
 let demoCore: GameCore | null = null;
 let demoDraw: Draw | null = null;
 let demoSprite: Graphics | null = null;
+// Fixed step rate so playback speed is independent of the display refresh rate
+// (the pixi ticker runs at the monitor's Hz — 120/144 on high-refresh displays —
+// which made the recorded-at-60fps replay play too fast). We accumulate elapsed
+// ticker time and advance the replay at a fixed 60 steps/sec.
+const DEMO_FRAME_MS = 1000 / 60;
+let demoAccMs = 0;
+
+/**
+ * The shared menu-background camera. The legacy ControllerMainMenu follows the
+ * demo's cameraPart (the isCameraFocus ShapePart) at a fixed scale and IGNORES the
+ * replay's camera stream (MoveCameraForReplay is empty; HandleCamera :1540-1548).
+ * We reproduce that: centre the camera on the cameraPart's world position so the
+ * sky, ground, AND the demo robot all render through ONE camera and stay aligned.
+ * Falls back to the static hill framing before the demo has loaded. Follow
+ * convention matches the core (offset = worldCentre * scale; screen = canvas/2 +
+ * world*scale - offset).
+ */
+const DEMO_SCALE = 23.73; // ControllerMainMenu.ts:407 fixed menu draw scale.
+function demoCamera(w: number, h: number): CameraState {
+	const parts = demoCore?.getState().parts;
+	if (parts) {
+		for (const p of parts) {
+			const sp = p as unknown as { isCameraFocus?: boolean; GetBody?: () => { GetWorldCenter: () => { x: number; y: number } } | null };
+			if (sp.isCameraFocus && sp.GetBody) {
+				const body = sp.GetBody();
+				if (body) {
+					const wc = body.GetWorldCenter();
+					return { scale: DEMO_SCALE, offsetX: wc.x * DEMO_SCALE, offsetY: wc.y * DEMO_SCALE };
+				}
+			}
+		}
+	}
+	return menuCamera(w, h);
+}
 
 /**
  * Frame the mars hill along the bottom-centre of the (responsive) viewport.
@@ -186,25 +220,30 @@ async function loadDemo(): Promise<void> {
  * and dispatch `viewReplayAgain` to loop when playback finishes (the legacy
  * ControllerMainMenu.Update loop-on-end).
  */
-function drawDemoFrame(w: number, h: number): void {
+function drawDemoFrame(w: number, h: number, camera: CameraState): void {
 	if (!demoCore || !demoDraw) return;
-	const state = demoCore.getState();
 
-	// Advance sim-free playback one frame (like GameCanvas' running-phase step).
-	if (state.sim.phase === "running") demoCore.dispatch({ type: "step" });
-	// Loop: restart once the recorded motion ends (ControllerMainMenu.Update).
-	if (demoCore.getState().replay.finished) {
-		demoCore.dispatch({ type: "viewReplayAgain" });
+	// Advance sim-free playback at a FIXED 60fps (accumulate ticker time), so the
+	// recorded-at-60fps replay plays at real speed regardless of the monitor's
+	// refresh rate. Loop when the recorded motion ends (ControllerMainMenu.Update).
+	demoAccMs += bgApp?.ticker.deltaMS ?? DEMO_FRAME_MS;
+	let steps = 0;
+	while (demoAccMs >= DEMO_FRAME_MS && steps < 4) {
+		if (demoCore.getState().sim.phase === "running") demoCore.dispatch({ type: "step" });
+		if (demoCore.getState().replay.finished) demoCore.dispatch({ type: "viewReplayAgain" });
+		demoAccMs -= DEMO_FRAME_MS;
+		steps++;
 	}
 
-	const after = demoCore.getState();
-	const camera = after.camera;
-	// Same transform GameCanvas uses: screen = canvas/2 + world*scale - offset.
+	// Draw through the SHARED follow camera (same one the sky/ground use), so the
+	// robot stays aligned with the ground. screen = canvas/2 + world*scale - offset.
 	demoDraw.m_drawScale = camera.scale;
 	demoDraw.m_drawXOff = camera.offsetX - w / 2;
 	demoDraw.m_drawYOff = camera.offsetY - h / 2;
 	demoDraw.m_screenWidth = w;
 	demoDraw.m_screenHeight = h;
+
+	const after = demoCore.getState();
 
 	// drawStatic=false (as GameCanvas / ControllerGame): the demo terrain is the
 	// decorative ground; the dynamic robot draws. notStarted=false (playing).
@@ -266,7 +305,10 @@ onMounted(async () => {
 		if (!bgApp || !bgContainer.value) return;
 		const w = bgContainer.value.clientWidth || 1;
 		const h = bgContainer.value.clientHeight || 1;
-		const cam = menuCamera(w, h);
+		// One shared camera that follows the demo robot's cameraPart (falls back to
+		// the static hill framing before the demo loads). Sky, ground, and the demo
+		// robot all render through it, so they pan together and stay aligned.
+		const cam = demoCamera(w, h);
 		if (bgSky) {
 			bgSky.build(MENU_SANDBOX);
 			// Clouds don't drift on the menu (space background has none); paused=true.
@@ -276,7 +318,7 @@ onMounted(async () => {
 			bgGround.build(MENU_SANDBOX);
 			bgGround.update(cam, w, h);
 		}
-		drawDemoFrame(w, h);
+		drawDemoFrame(w, h, cam);
 	};
 	app.ticker.add(bgTicker);
 
