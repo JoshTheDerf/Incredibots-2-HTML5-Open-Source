@@ -11,6 +11,7 @@
 // selection data.
 import { computed } from "vue";
 import { useGameStore } from "../../gameStore";
+import { useIsMobile } from "../../useIsMobile";
 import IbButton from "../IbButton.vue";
 import { frameTextures } from "../../assets";
 import ShapeProps from "./ShapeProps.vue";
@@ -22,6 +23,11 @@ import TextProps from "./TextProps.vue";
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
 
 const game = useGameStore();
+
+// Mobile gate for the density pass. Desktop layout is unchanged; on mobile the
+// bottom-sheet inspector must not dominate the screen, so the top action row
+// collapses to a compact wrapping row and container paddings tighten.
+const isMobile = useIsMobile();
 
 const hasSelection = computed(() => game.edit.selection.length > 0);
 const selectionCount = computed(() => game.edit.selection.length);
@@ -120,7 +126,7 @@ function clearSelection(): void {
 </script>
 
 <template>
-	<aside class="inspector">
+	<aside class="inspector" :class="{ 'is-mobile': isMobile }">
 		<div class="inspector-panel ib-panel" :style="panelStyle">
 			<div class="inspector-header">
 				<span class="title">{{ headerTitle }}</span>
@@ -249,5 +255,59 @@ function clearSelection(): void {
 
 .actions :deep(.ib-btn) {
 	width: 100%;
+}
+
+/* ---- Mobile (<=768px / coarse pointer) — desktop above is unchanged ----
+   The inspector is a bottom-sheet on mobile (see App.vue), so vertical space
+   is precious. Pull in the container paddings, and lay the top action row out
+   horizontally so Delete/Cut/Copy/Paste/Rotate wrap into one or two compact
+   rows of auto-width pills instead of five full-width stacked buttons. */
+.inspector.is-mobile .inspector-header {
+	padding: 2px 4px 3px;
+}
+
+.inspector.is-mobile .inspector-body {
+	padding: 0 2px 2px;
+}
+
+/* Top action row: horizontal + wrapping, tight gaps, buttons hug their labels
+   (auto width) instead of spanning the full sheet width. */
+.inspector.is-mobile .top-actions {
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin: 2px 4px 6px;
+}
+
+.inspector.is-mobile .top-actions :deep(.ib-btn) {
+	width: auto;
+	flex: 1 1 auto;
+	min-width: 0;
+	height: 30px;
+	padding: 0 8px;
+	font-size: 10px;
+}
+
+/* Clear Selection stays full-width but sits in a tighter block. */
+.inspector.is-mobile .actions {
+	margin: 6px 6px 6px;
+	padding-top: 4px;
+	gap: 6px;
+}
+
+/* Sub-panels (ShapeProps/JointProps/…) render inside the body; on mobile pull
+   in their generous 10px field gap + padding so more fits in the sheet. These
+   class names are shared verbatim across all five sub-panels. */
+.inspector.is-mobile :deep(.shape-props),
+.inspector.is-mobile :deep(.joint-props),
+.inspector.is-mobile :deep(.thruster-props),
+.inspector.is-mobile :deep(.cannon-props),
+.inspector.is-mobile :deep(.text-props) {
+	gap: 6px;
+	padding: 2px 6px 6px;
+}
+
+.inspector.is-mobile :deep(.checkboxes) {
+	gap: 6px;
 }
 </style>

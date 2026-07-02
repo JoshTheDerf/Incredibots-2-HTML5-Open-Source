@@ -76,7 +76,13 @@ function cancel(): void {
 		<p class="message">{{ message }}</p>
 
 		<div class="link-area-wrap">
-			<UTextarea v-model="linkText" class="link-area" :rows="12" placeholder="Paste encoded string here..." />
+			<UTextarea
+				v-model="linkText"
+				class="link-area"
+				:ui="{ root: 'w-full', base: 'w-full' }"
+				:rows="12"
+				placeholder="Paste encoded string here..."
+			/>
 		</div>
 
 		<p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
@@ -111,7 +117,7 @@ function cancel(): void {
 
 .link-area-wrap {
 	position: relative;
-	width: 265px;
+	width: 100%;
 	margin-bottom: 12px;
 }
 

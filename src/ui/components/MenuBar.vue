@@ -319,6 +319,15 @@ const mobileMenu = computed<DropdownMenuItem[][]>(() => [
 	padding: 2px 10px;
 }
 
+/* The global theme paints `neutral`/`ghost` hover with the cream `bg-elevated`
+   token, which reads wrong on the dark menu strip. Keep the trigger text light
+   and give it a purple-tinted hover instead so it belongs to the dark chrome. */
+.menu-trigger:hover,
+.menu-trigger:focus-visible {
+	color: #fff;
+	background-color: rgba(160, 142, 210, 0.22) !important;
+}
+
 .spacer {
 	flex: 1;
 }

@@ -86,7 +86,14 @@ function ok(): void {
 		</p>
 
 		<div class="link-area-wrap">
-			<UTextarea ref="textareaRef" v-model="linkText" class="link-area" :rows="9" readonly />
+			<UTextarea
+				ref="textareaRef"
+				v-model="linkText"
+				class="link-area"
+				:ui="{ root: 'w-full', base: 'w-full' }"
+				:rows="9"
+				readonly
+			/>
 		</div>
 
 		<div class="actions">
@@ -119,7 +126,7 @@ function ok(): void {
 
 .link-area-wrap {
 	position: relative;
-	width: 265px;
+	width: 100%;
 	margin-bottom: 12px;
 }
 

@@ -331,7 +331,12 @@ onBeforeUnmount(() => {
 .editor-shell {
 	display: flex;
 	flex-direction: column;
+	/* Dynamic viewport height so the shell fits the *visible* area on mobile
+	   (100vh includes the space behind the browser's dynamic address bar, which
+	   overflows and forces page scroll). 100vh is kept as a fallback for
+	   browsers without dvh support. */
 	height: 100vh;
+	height: 100dvh;
 	background: #686d77;
 	color: #fdf9ea;
 	font-family: Arial, Helvetica, sans-serif;

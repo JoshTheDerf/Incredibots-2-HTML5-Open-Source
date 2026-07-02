@@ -555,7 +555,11 @@ onBeforeUnmount(() => {
 <style scoped>
 .main-menu {
 	position: relative;
+	/* Dynamic viewport height so the menu fills the *visible* area on mobile
+	   without overflowing behind the browser's dynamic chrome (see App.vue).
+	   100vh stays as a fallback for browsers without dvh support. */
 	height: 100vh;
+	height: 100dvh;
 	width: 100%;
 	display: flex;
 	flex-direction: column;
