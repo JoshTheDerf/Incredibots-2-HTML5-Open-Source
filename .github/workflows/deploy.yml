@@ -1,0 +1,51 @@
+name: Deploy to GitHub Pages
+
+# Builds the Vite site (Vue app at the root, the original Pixi build at /legacy/)
+# and publishes dist/ to GitHub Pages.
+#
+# ONE-TIME SETUP: in the repo Settings -> Pages, set "Build and deployment" ->
+# "Source" to "GitHub Actions" for this workflow's deploy step to publish.
+on:
+  push:
+    branches: [master, modernization]
+  workflow_dispatch:
+
+# Least-privilege perms the Pages deploy needs.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One in-flight Pages deploy at a time; let a newer push supersede an older run.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Vite build uses a RELATIVE base, so the output works at the project-page
+      # subpath without knowing the repo name. Produces dist/index.html (Vue) +
+      # dist/legacy/index.html (legacy Pixi).
+      - run: npm run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

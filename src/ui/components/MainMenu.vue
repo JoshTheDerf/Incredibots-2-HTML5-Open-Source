@@ -461,7 +461,12 @@ onBeforeUnmount(() => {
 				:label="soundEnabled ? 'Disable Sound' : 'Enable Sound'"
 				@click="toggleSound"
 			/>
-			<div class="version">IncrediBots 2 — Vue edition</div>
+			<div class="version">
+				IncrediBots 2 — Vue edition
+				<!-- Link to the original Pixi build deployed at /legacy/ (relative so it
+				     works at any GitHub Pages base). -->
+				· <a class="legacy-link" href="legacy/">legacy version</a>
+			</div>
 		</div>
 
 		<!-- Tutorial select (ported Gui/TutorialSelectWindow.ts). -->
@@ -721,6 +726,11 @@ onBeforeUnmount(() => {
 	font-size: 12px;
 	color: var(--ib-cream);
 	opacity: 0.7;
+}
+
+.legacy-link {
+	color: var(--ib-cream);
+	text-decoration: underline;
 }
 
 /* Built-in challenge picker — a compact cream panel with the challenge choices. */

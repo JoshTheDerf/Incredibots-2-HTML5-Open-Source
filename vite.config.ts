@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import vue from '@vitejs/plugin-vue';
@@ -6,11 +7,14 @@ import ui from '@nuxt/ui/vite';
 // The game was ported from ActionScript; ByteArray.ts relies on Node's `zlib`
 // and `Buffer` (via iconv-lite). Parcel used to polyfill these automatically;
 // Vite does not, so we pull them in explicitly for the browser bundle.
-export default defineConfig({
-    // Served under /ib2/ on thederf.com (Caddy reverse-proxies this dev server;
-    // see ../compose/caddy/Caddyfile). The prefix is NOT stripped, so Vite must
-    // own the full /ib2/ path for its assets, HMR socket, and dep pre-bundles.
-    base: '/ib2/',
+export default defineConfig(({ command }) => ({
+    // DEV: served under /ib2/ on thederf.com (Caddy reverse-proxies this dev
+    // server; see ../compose/caddy/Caddyfile). The prefix is NOT stripped, so Vite
+    // must own the full /ib2/ path for its assets, HMR socket, and dep pre-bundles.
+    // BUILD (GitHub Pages): a RELATIVE base so the site works at any deploy path
+    // (project-page subpath, custom domain, or /legacy) without hardcoding the repo
+    // name — each entry's assets are referenced relative to its own HTML.
+    base: command === 'serve' ? '/ib2/' : './',
     plugins: [
         nodePolyfills({
             include: ['zlib', 'buffer', 'util', 'stream'],
@@ -46,5 +50,14 @@ export default defineConfig({
         outDir: 'dist',
         // These assets are large binary blobs; don't inline any of them.
         assetsInlineLimit: 0,
+        // Two deployed entries: the Vue app at the site root (index.html) and the
+        // original Pixi build at /legacy/ (legacy/index.html). ui-gallery.html is a
+        // dev-only tool and is intentionally excluded from the production build.
+        rollupOptions: {
+            input: {
+                main: fileURLToPath(new URL('./index.html', import.meta.url)),
+                legacy: fileURLToPath(new URL('./legacy/index.html', import.meta.url)),
+            },
+        },
     },
-});
+}));
