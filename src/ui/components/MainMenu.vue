@@ -29,6 +29,7 @@ import { useGameStore } from "../gameStore";
 import { frameTextures } from "../assets";
 import { SkyRenderer } from "../renderer/skyRenderer";
 import { GroundRenderer } from "../renderer/groundRenderer";
+import { soundService } from "../sound";
 import type { CameraState, SandboxState } from "../../core";
 import IbButton from "./IbButton.vue";
 import IbTodo from "./IbTodo.vue";
@@ -90,9 +91,16 @@ function closeModal(): void {
 	modal.value = null;
 }
 
-// Sound toggle — the original tracked Main.enableSound and swapped
-// Enable/Disable buttons. UI-only mirror here (no audio in the new stack yet).
-const soundEnabled = ref(false);
+// Sound toggle — the original tracked Main.enableSound and swapped Enable/Disable
+// buttons, starting/stopping the intro track (ControllerMainMenu.ts:112-116).
+// Wired to the real UI sound service; enabling starts the looped intro music.
+const soundEnabled = ref(soundService.enabled);
+function toggleSound(): void {
+	soundEnabled.value = !soundEnabled.value;
+	soundService.setEnabled(soundEnabled.value);
+	if (soundEnabled.value) soundService.playIntro();
+	else soundService.stopIntro();
+}
 
 // sandboxButton()/editorButton(): jump into the build controller with a fresh
 // robot. Both enter the editor in the new stack (no separate challenge-editor
@@ -164,6 +172,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+	soundService.stopIntro();
 	bgResizeObserver?.disconnect();
 	bgResizeObserver = null;
 	if (bgApp && bgTicker) bgApp.ticker.remove(bgTicker);
@@ -264,7 +273,7 @@ onBeforeUnmount(() => {
 				family="blue"
 				class="corner-btn sound"
 				:label="soundEnabled ? 'Disable Sound' : 'Enable Sound'"
-				@click="soundEnabled = !soundEnabled"
+				@click="toggleSound"
 			/>
 			<div class="version">IncrediBots 2 — Vue edition</div>
 		</div>

@@ -10,3 +10,10 @@ declare module "*.png" {
 	export default src;
 }
 
+// Sound assets (the sound service + legacy Resource.ts import these). Vite
+// resolves them to a URL string at build time.
+declare module "*.mp3" {
+	const src: string;
+	export default src;
+}
+
