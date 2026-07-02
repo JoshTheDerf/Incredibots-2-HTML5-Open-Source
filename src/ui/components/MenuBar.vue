@@ -25,6 +25,8 @@ const game = useGameStore();
 export type PanelKey =
 	| "import"
 	| "export"
+	| "importReplay"
+	| "exportReplay"
 	| "sandboxSettings"
 	| "conditions"
 	| "restrictions"
@@ -45,6 +47,9 @@ const fileMenu: DropdownMenuItem[][] = [
 		{ label: "Save...", icon: "i-lucide-share", onSelect: () => open("export") },
 		{ label: "Load Robot...", icon: "i-lucide-clipboard-paste", onSelect: () => open("import") },
 	],
+	// Replay transport (legacy BuildFileMenu Load Replay / Import Replay). Load
+	// Replay opens ImportPanel in replay mode; importReplay decodes + plays back.
+	[{ label: "Load Replay...", icon: "i-lucide-clapperboard", onSelect: () => open("importReplay") }],
 	[{ label: "Main Menu", icon: "i-lucide-home", onSelect: () => game.goToMenu() }],
 ];
 
@@ -114,6 +119,14 @@ const viewMenu = computed<DropdownMenuItem[][]>(() => {
 			{ label: "Show Colors", icon: check(e.showColours), onSelect: () => game.dispatch({ type: "toggleShowColours" }) },
 			{ label: "Show Outlines", icon: check(e.showOutlines), onSelect: () => game.dispatch({ type: "toggleShowOutlines" }) },
 		],
+		// Center on Selection (legacy DropDownMenu.ts:277-286 → centerOnSelectedBox).
+		[
+			{
+				label: "Center on Selection",
+				icon: "i-lucide-crosshair",
+				onSelect: () => game.dispatch({ type: "centerOnSelection" }),
+			},
+		],
 	];
 });
 
@@ -139,25 +152,35 @@ const helpMenu: DropdownMenuItem[][] = [
 // Cannon). Mirror/Scale aren't migrated; Conditions/Restrictions are ported
 // panels folded in here (they belong to the challenge flow the sandbox extras
 // menu shares).
-const extrasMenu: DropdownMenuItem[][] = [
-	[
-		{
-			label: "Mirror Horizontal",
-			icon: "i-lucide-flip-horizontal",
-			onSelect: () => game.dispatch({ type: "mirrorParts", partIds: game.edit.selection, axis: "horizontal" }),
-		},
-		{
-			label: "Mirror Vertical",
-			icon: "i-lucide-flip-vertical",
-			onSelect: () => game.dispatch({ type: "mirrorParts", partIds: game.edit.selection, axis: "vertical" }),
-		},
-		{ label: "Scale...", icon: "i-lucide-scaling" },
-	],
-	[
-		{ label: "Set Conditions...", icon: "i-lucide-flag", onSelect: () => open("conditions") },
-		{ label: "Restrictions...", icon: "i-lucide-ban", onSelect: () => open("restrictions") },
-	],
-];
+// The Conditions/Restrictions items are challenge-authoring only: in the legacy
+// app they lived on the ControllerChallenge controller, not the plain sandbox.
+// Here their core handlers early-return when `game.challenge` is null, so we
+// only SHOW them when a challenge is active (challengeEditor mode / a loaded
+// challenge). Computed so the gate stays reactive to appMode/challenge changes.
+const extrasMenu = computed<DropdownMenuItem[][]>(() => {
+	const groups: DropdownMenuItem[][] = [
+		[
+			{
+				label: "Mirror Horizontal",
+				icon: "i-lucide-flip-horizontal",
+				onSelect: () => game.dispatch({ type: "mirrorParts", partIds: game.edit.selection, axis: "horizontal" }),
+			},
+			{
+				label: "Mirror Vertical",
+				icon: "i-lucide-flip-vertical",
+				onSelect: () => game.dispatch({ type: "mirrorParts", partIds: game.edit.selection, axis: "vertical" }),
+			},
+			{ label: "Scale...", icon: "i-lucide-scaling" },
+		],
+	];
+	if (game.challenge != null) {
+		groups.push([
+			{ label: "Set Conditions...", icon: "i-lucide-flag", onSelect: () => open("conditions") },
+			{ label: "Restrictions...", icon: "i-lucide-ban", onSelect: () => open("restrictions") },
+		]);
+	}
+	return groups;
+});
 
 // About menu — legacy BuildAboutMenu (Credits / GrubbyGames.com), pinned right.
 const aboutMenu: DropdownMenuItem[][] = [

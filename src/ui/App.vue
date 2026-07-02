@@ -12,7 +12,7 @@
 // mount each ported panel inside a Nuxt UI UModal (parchment .ib-panel look is
 // preserved because the panels are rendered bare in the modal `#content` slot,
 // not editing the panel internals).
-import { onMounted, onBeforeUnmount, ref } from "vue";
+import { onMounted, onBeforeUnmount, ref, computed, watch } from "vue";
 import { useGameStore } from "./gameStore";
 import MainMenu from "./components/MainMenu.vue";
 import MenuBar from "./components/MenuBar.vue";
@@ -30,13 +30,38 @@ import RestrictionsPanel from "./components/panels/RestrictionsPanel.vue";
 import ColorPickerPanel from "./components/panels/ColorPickerPanel.vue";
 import TutorialPanel from "./components/panels/TutorialPanel.vue";
 import PostReplayPanel from "./components/panels/PostReplayPanel.vue";
+import ScorePanel from "./components/panels/ScorePanel.vue";
 import { storeToRefs } from "pinia";
 
 // Top-level screen switch. `appMode` is a UI-only ref in gameStore (NOT part of
 // GameCore) — 'menu' shows the ported MainMenu, 'editor' shows the editor
 // chrome below. Boots to 'menu', matching the original ControllerMainMenu flow.
 const game = useGameStore();
-const { replay } = storeToRefs(game);
+const { replay, challenge } = storeToRefs(game);
+
+// The editor chrome renders for both the plain sandbox ("editor") and the
+// challenge editor ("challengeEditor") — same canvas + toolbar + inspector. The
+// only difference is that the challenge-authoring menus/panels light up when a
+// challenge is active (gated in MenuBar on game.challenge). goToMenu/exitChallenge
+// return to "menu"/"editor" cleanly (appMode is a plain UI ref in the store).
+const inEditor = computed(() => game.appMode === "editor" || game.appMode === "challengeEditor");
+
+// Score panel: shown when a challenge/tutorial run finishes (challenge.outcome
+// is "won"/"failed"; ChallengeState.outcome in src/core/challenge.ts). Legacy
+// ScoreWindow popped up on ControllerChallenge win/loss. `scoreDismissed` lets the
+// panel's Close/Main-Menu/Retry buttons hide the overlay even in the modes where
+// they don't dispatch a state change (HomeMovies/ChallengeEditor); it resets when
+// a new run starts so the next win/loss shows the panel again.
+const scoreDismissed = ref(false);
+const showScore = computed(
+	() => !scoreDismissed.value && (challenge.value?.outcome === "won" || challenge.value?.outcome === "failed"),
+);
+watch(
+	() => challenge.value?.outcome,
+	(o) => {
+		if (o !== "won" && o !== "failed") scoreDismissed.value = false;
+	},
+);
 
 // Exactly one panel is open at a time; `null` means all modals closed. The
 // MenuBar emits which panel to open.
@@ -84,7 +109,7 @@ onBeforeUnmount(() => {
 	<UApp>
 		<MainMenu v-if="game.appMode === 'menu'" />
 
-		<div v-else class="editor-shell">
+		<div v-else-if="inEditor" class="editor-shell">
 			<!-- Thin top menu strip (legacy DropDownMenu, 21px). -->
 			<MenuBar @open="openPanel" />
 
@@ -95,9 +120,11 @@ onBeforeUnmount(() => {
 			<div class="workspace">
 				<StagePlaceholder />
 
-				<!-- Toolbar pinned to the top, overlaying the canvas. -->
+				<!-- Toolbar pinned to the top, overlaying the canvas. Save Replay
+				     (running/paused) surfaces here; App opens ExportPanel in replay
+				     mode. -->
 				<div class="toolbar-overlay">
-					<ToolPalette />
+					<ToolPalette @save-replay="openPanel('exportReplay')" />
 				</div>
 
 				<!-- Part-edit panel pinned to the LEFT, under the toolbar,
@@ -114,6 +141,13 @@ onBeforeUnmount(() => {
 				</div>
 				<div v-if="replay.finished" class="post-replay-overlay">
 					<PostReplayPanel @close="game.dispatch({ type: 'stopReplay' })" />
+				</div>
+
+				<!-- Score / results panel — shown once a challenge or tutorial run
+				     finishes (challenge.outcome won/failed). ScorePanel reads the
+				     score off game.challenge itself (no props); we only mount it. -->
+				<div v-if="showScore" class="score-overlay">
+					<ScorePanel @close="scoreDismissed = true" />
 				</div>
 
 				<!-- Hint-text banners (rotate/resize/condition prompts) + the core
@@ -146,6 +180,30 @@ onBeforeUnmount(() => {
 		>
 			<template #content>
 				<ExportPanel @close="closePanel" />
+			</template>
+		</UModal>
+
+		<!-- Import Replay — ImportPanel in replay mode (paste an exported replay;
+		     the panel decodes + starts playback via game.importReplay). -->
+		<UModal
+			:open="activePanel === 'importReplay'"
+			:ui="{ content: 'ib-modal-content' }"
+			@update:open="(v: boolean) => !v && closePanel()"
+		>
+			<template #content>
+				<ImportPanel import-type="replay" @close="closePanel" />
+			</template>
+		</UModal>
+
+		<!-- Save Replay — ExportPanel in replay mode (robot-str "replay" makes it
+		     encode the recorded replay via game.exportReplayString). -->
+		<UModal
+			:open="activePanel === 'exportReplay'"
+			:ui="{ content: 'ib-modal-content' }"
+			@update:open="(v: boolean) => !v && closePanel()"
+		>
+			<template #content>
+				<ExportPanel robot-str="replay" @close="closePanel" />
 			</template>
 		</UModal>
 
@@ -252,6 +310,14 @@ onBeforeUnmount(() => {
 	left: 50%;
 	transform: translate(-50%, -50%);
 	z-index: 30;
+}
+
+.score-overlay {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 31;
 }
 </style>
 

@@ -85,10 +85,27 @@ const logoSrc = frameTextures.logo;
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
 
 // Which secondary screen (if any) is open on top of the menu.
-type MenuModal = "tutorials" | "importRobot" | "importReplay" | "importChallenge" | null;
+type MenuModal = "tutorials" | "importRobot" | "importReplay" | "importChallenge" | "loadChallenge" | null;
 const modal = ref<MenuModal>(null);
 function closeModal(): void {
 	modal.value = null;
+}
+
+// Challenge Editor (legacy editorButton → straightToChallengeEditor): start a
+// fresh authoring challenge and enter the challenge-editor screen.
+function enterChallengeEditor(): void {
+	game.goToChallengeEditor();
+}
+
+// Load a built-in challenge (Climb / Monkey Bars). loadBuiltInChallenge bakes
+// the terrain + conditions and marks the session play-only; we then switch to
+// the challengeEditor screen so the editor chrome + challenge panels are live.
+// (The legacy Load Challenge picker had far more entries via the server; only
+// the two in-code challenges exist here.)
+function loadBuiltIn(name: "climb" | "monkeyBars"): void {
+	game.dispatch({ type: "loadBuiltInChallenge", name });
+	game.appMode = "challengeEditor";
+	closeModal();
 }
 
 // Sound toggle — the original tracked Main.enableSound and swapped Enable/Disable
@@ -214,9 +231,7 @@ onBeforeUnmount(() => {
 						Tutorial Levels <IbTodo label="preview" />
 					</IbButton>
 					<IbButton family="pink" class="mode-btn" label="Sandbox Mode" @click="enterEditor" />
-					<IbButton family="pink" class="mode-btn" disabled>
-						Challenge Editor <IbTodo label="no challenge mode" />
-					</IbButton>
+					<IbButton family="pink" class="mode-btn" label="Challenge Editor" @click="enterChallengeEditor" />
 					<IbButton family="pink" class="mode-btn" disabled>
 						Advanced Sandbox <IbTodo label="not wired" />
 					</IbButton>
@@ -236,9 +251,7 @@ onBeforeUnmount(() => {
 						<IbButton family="orange" class="ls-btn" label="Import Bot" @click="modal = 'importRobot'" />
 					</div>
 					<div class="loadsave-col">
-						<IbButton family="blue" class="ls-btn" disabled>
-							Load Challenge <IbTodo label="no online" />
-						</IbButton>
+						<IbButton family="blue" class="ls-btn" label="Load Challenge" @click="modal = 'loadChallenge'" />
 						<IbButton family="blue" class="ls-btn" disabled>
 							Load Replay <IbTodo label="no online" />
 						</IbButton>
@@ -297,6 +310,24 @@ onBeforeUnmount(() => {
 		>
 			<template #content>
 				<ImportPanel import-type="robot" @close="closeModal" />
+			</template>
+		</UModal>
+
+		<!-- Load Challenge — a small picker of the two in-code built-in challenges
+		     (Climb / Monkey Bars). Server-hosted challenges are gone, so this is the
+		     full list. Selecting one bakes it + enters the challenge editor. -->
+		<UModal
+			:open="modal === 'loadChallenge'"
+			:ui="{ content: 'ib-modal-content' }"
+			@update:open="(v: boolean) => !v && closeModal()"
+		>
+			<template #content>
+				<div class="ib-panel challenge-picker" :style="panelStyle">
+					<h2 class="picker-title">Load Challenge</h2>
+					<IbButton family="blue" class="picker-btn" label="Climb" @click="loadBuiltIn('climb')" />
+					<IbButton family="blue" class="picker-btn" label="Monkey Bars" @click="loadBuiltIn('monkeyBars')" />
+					<IbButton family="purple" class="picker-btn" label="Cancel" @click="closeModal" />
+				</div>
 			</template>
 		</UModal>
 	</div>
@@ -467,5 +498,30 @@ onBeforeUnmount(() => {
 	font-size: 12px;
 	color: var(--ib-cream);
 	opacity: 0.7;
+}
+
+/* Built-in challenge picker — a compact cream panel with the challenge choices. */
+.challenge-picker {
+	box-sizing: border-box;
+	width: 260px;
+	padding: 18px 20px 20px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	font-family: Arial, Helvetica, sans-serif;
+}
+
+.picker-title {
+	margin: 0 0 6px;
+	font-size: 18px;
+	font-weight: bold;
+	color: var(--ib-dark);
+}
+
+.picker-btn {
+	width: 180px;
+	height: 42px;
+	font-size: 14px;
 }
 </style>

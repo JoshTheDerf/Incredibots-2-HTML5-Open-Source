@@ -8,9 +8,11 @@
 // appears in the tutorial-like modes.
 //
 // The score comes from the live challenge read-model (game.challenge.score =
-// 10000 - frame at win; ControllerChallenge.GetScore). The replay / submit /
-// next-level buttons remain unwired (dead cloud path + no replay model yet) and
-// are flagged with <IbTodo/>.
+// 10000 - frame at win; ControllerChallenge.GetScore). The outcome (won/failed)
+// is game.challenge.outcome. "Main Menu" (ScoreWindow.m_mainMenuButton ->
+// cont.newButton :60) and "Retry" (cancelButton -> cont.resetButton :62/78) are
+// wired to goToMenu() / reset. The replay / submit / next-level buttons remain
+// unwired (dead cloud path + no replay-session model here) and stay flagged.
 import { computed, ref } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
@@ -20,20 +22,43 @@ import congratsHeader from "../../../../resource/Incredibots_Congratulations_1.p
 
 const game = useGameStore();
 
+const emit = defineEmits<{ close: [] }>();
+
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
 
-// Real score from the core (null until a win). Sandbox scores a flat 10000.
+// Live challenge outcome + score. Score is null until a win (ScoreWindow hides
+// the score line for tutorial-like modes and when there is no score).
+const outcome = computed(() => game.challenge?.outcome ?? null);
 const score = computed<number | null>(() => game.challenge?.score ?? null);
 const hidesScoreField = computed(() => score.value === null);
 
 const isTutorialLikeMode = ref(false); // Tutorial/HomeMovies/RubeGoldberg/NewFeatures
 const isHomeMoviesOrChallengeEditor = ref(false); // affects the close/retry label
 const viewingUnsavedReplay = ref(false); // affects the view-replay label
+
+// ScoreWindow always shows the "Congratulations" header (it's the win/completion
+// window; loss is surfaced elsewhere). When the outcome is a failure we still
+// render the panel but adjust the heading text accordingly.
+const didWin = computed(() => outcome.value !== "failed");
+
+// "Main Menu" -> cont.newButton (return to the menu screen).
+function mainMenu(): void {
+	game.goToMenu();
+	emit("close");
+}
+
+// "Retry" (or "Close" for HomeMovies/ChallengeEditor) -> cancelButton, which
+// calls cont.resetButton() except in those two modes (:78).
+function retryOrClose(): void {
+	if (!isHomeMoviesOrChallengeEditor.value) game.dispatch({ type: "reset" });
+	emit("close");
+}
 </script>
 
 <template>
 	<div class="score-panel ib-panel" :style="panelStyle">
-		<img class="header" :src="congratsHeader" alt="Congratulations!" />
+		<img v-if="didWin" class="header" :src="congratsHeader" alt="Congratulations!" />
+		<p v-else class="fail-header">Challenge Failed</p>
 
 		<p v-if="!hidesScoreField" class="score-line">Your score is: {{ score }}</p>
 
@@ -45,16 +70,17 @@ const viewingUnsavedReplay = ref(false); // affects the view-replay label
 			/>
 			<IbButton family="purple" label="Save Replay" class="action-btn ib-todo" />
 			<IbButton family="purple" label="Submit Score" class="action-btn ib-todo" />
-			<IbButton family="purple" label="Main Menu" class="action-btn ib-todo" />
+			<IbButton family="purple" label="Main Menu" class="action-btn" @click="mainMenu" />
 			<IbButton
 				family="purple"
 				:label="isHomeMoviesOrChallengeEditor ? 'Close' : 'Retry'"
-				class="action-btn ib-todo"
+				class="action-btn"
+				@click="retryOrClose"
 			/>
 			<IbButton v-if="isTutorialLikeMode" family="blue" label="Next Level" class="action-btn ib-todo" />
 		</div>
 
-		<IbTodo label="score/replay/challenge state not wired" class="footer-flag" />
+		<IbTodo label="replay/submit-score not wired" class="footer-flag" />
 	</div>
 </template>
 
@@ -75,6 +101,14 @@ const viewingUnsavedReplay = ref(false); // affects the view-replay label
 	height: auto;
 	align-self: center;
 	display: block;
+}
+
+.fail-header {
+	margin: 0;
+	text-align: center;
+	font-size: 18px;
+	font-weight: bold;
+	color: var(--ib-dark);
 }
 
 .score-line {

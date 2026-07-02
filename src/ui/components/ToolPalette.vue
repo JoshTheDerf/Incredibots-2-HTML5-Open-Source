@@ -24,6 +24,11 @@ import type { ButtonFamily } from "../assets";
 
 const game = useGameStore();
 
+// Save Replay lives on the running/paused sim panels in the legacy game
+// (MainEditPanel.ts:270-290). App owns the modal state, so surface it via an
+// event; App opens ExportPanel in replay mode.
+const emit = defineEmits<{ saveReplay: [] }>();
+
 // Original PIXI window frame (nine-patch) as this panel's background.
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrame})` };
 
@@ -145,6 +150,14 @@ function reset(): void {
 			<div class="transport-secondary">
 				<IbButton family="red" label="Pause" :disabled="phase !== 'running'" @click="pause" />
 				<IbButton family="red" label="Reset" @click="reset" />
+				<!-- Save Replay — shown while the sim is running/paused (legacy
+				     MainEditPanel save-replay button on both sim panels). -->
+				<IbButton
+					v-if="phase !== 'editing'"
+					family="blue"
+					label="Save Replay"
+					@click="emit('saveReplay')"
+				/>
 			</div>
 		</div>
 	</div>

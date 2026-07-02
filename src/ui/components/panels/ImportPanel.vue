@@ -3,10 +3,13 @@
 // Original: a message describing what to paste, a big text area for the
 // encoded string, then "Import" (orange) / "Cancel" (purple) buttons.
 //
-// This is a LIVE feature — for robots, the pasted string is decoded by
-// GameCore (via the store) which replaces the current parts with the imported
-// robot (undoable). Replay/challenge import isn't modelled in the new core yet,
-// so only "robot" is wired.
+// This is a LIVE feature — the pasted string is decoded by GameCore (via the
+// store). Faithful to ImportWindow.doImport (src/Gui/ImportWindow.ts:64-75),
+// which branches on the window type: robot -> Database.ImportRobot,
+// replay -> Database.ImportReplay, challenge -> Database.ImportChallenge. Here
+// robot and replay are wired to game.importRobot / game.importReplay. Challenge
+// STRING import has no backing GameCore command yet (only loadBuiltInChallenge
+// / the blob loader exist), so it is flagged as an IbTodo gap.
 import { ref, computed } from "vue";
 import IbButton from "../IbButton.vue";
 import { frameTextures } from "../../assets";
@@ -39,18 +42,25 @@ const message = computed(
 async function doImport(): Promise<void> {
 	if (linkText.value.trim().length === 0 || importing.value) return;
 	errorMsg.value = "";
-	if (props.importType !== "robot") {
-		errorMsg.value = "Only robot import is supported.";
+	// Challenge string-import has no GameCore command (only loadBuiltInChallenge
+	// + the async blob loader exist) — flag the gap faithfully instead of
+	// inventing a dispatch.
+	if (props.importType === "challenge") {
+		errorMsg.value = "Challenge import is not available yet.";
 		return;
 	}
 	importing.value = true;
 	try {
-		await game.importRobot(linkText.value.trim());
+		if (props.importType === "replay") {
+			await game.importReplay(linkText.value.trim());
+		} else {
+			await game.importRobot(linkText.value.trim());
+		}
 		emit("close");
 	} catch (err) {
 		// Decode failures (bad/corrupt string) surface here instead of crashing.
-		console.warn("[ImportPanel] importRobot failed:", err);
-		errorMsg.value = "Could not import that robot — the text may be invalid or corrupt.";
+		console.warn(`[ImportPanel] import ${props.importType} failed:`, err);
+		errorMsg.value = `Could not import that ${typeLabel.value} — the text may be invalid or corrupt.`;
 	} finally {
 		importing.value = false;
 	}

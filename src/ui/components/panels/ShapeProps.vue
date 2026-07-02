@@ -13,7 +13,13 @@ const game = useGameStore();
 const sel = computed(() => game.edit.selectedPart);
 const ids = computed(() => game.edit.selection);
 
-// Density (m_densitySlider / m_densityArea) — 1..30, ControllerGame.densitySlider.
+// Density slider range from the active challenge restrictions (PartEditWindow
+// :1050-1051: minValue = minDensity, maxValue = maxDensity). Falls back to the
+// sandbox default 1..30 when no challenge / limit unset (null).
+const densityMin = computed(() => game.challenge?.restrictions.minDensity ?? 1);
+const densityMax = computed(() => game.challenge?.restrictions.maxDensity ?? 30);
+
+// Density (m_densitySlider / m_densityArea) — ControllerGame.densitySlider.
 const density = computed({
 	get: () => sel.value?.density ?? 15,
 	set: (v: number) => game.dispatch({ type: "setDensity", partIds: ids.value, value: Number(v) }),
@@ -71,7 +77,7 @@ function applyColour(): void {
 	<div class="shape-props">
 		<UFormField label="Density" class="field">
 			<div class="slider-row">
-				<USlider v-model="density" :min="1" :max="30" :step="1" size="sm" class="slider" />
+				<USlider v-model="density" :min="densityMin" :max="densityMax" :step="1" size="sm" class="slider" />
 				<UInput v-model.number="density" type="number" size="xs" class="num-input" />
 			</div>
 		</UFormField>

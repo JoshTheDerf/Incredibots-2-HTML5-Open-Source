@@ -126,13 +126,34 @@ function seedFromChallenge(): void {
 
 onMounted(seedFromChallenge);
 
+// Inline validation message (min > max density guard). Faithful to
+// RestrictionsWindow.backButtonPressed (:430-437) which pops ShowDialog2 with
+// this exact string and blocks the apply.
+const errorMsg = ref("");
+
 function close(): void {
 	emit("close");
 }
 
-function okay(): void {
-	// okButtonPressed (RestrictionsWindow.ts:347-411): write all flags back. The
-	// editor stores "exclude" (disallow); un-invert to the "allowed" flags.
+/**
+ * Apply all restriction state (setAllowedParts / setBuildPermissions /
+ * setPartLimits) and return whether the apply succeeded. Both "Okay!" and
+ * "Back" run this — mirrors RestrictionsWindow.backButtonPressed being the
+ * shared writer that okButtonPressed calls first (:341/347). Returns false
+ * (blocking) when minDensity > maxDensity, matching the legacy guard.
+ */
+function applyRestrictions(): boolean {
+	// Guard: min density must be < max density (RestrictionsWindow.ts:430-445).
+	// Only checked when both are actual limits (neither is "No Limit").
+	if (!minDensityNoLimit.value && !maxDensityNoLimit.value) {
+		const minD = Number(clampLimit(minDensity.value));
+		const maxD = Number(clampLimit(maxDensity.value));
+		if (minD > maxD) {
+			errorMsg.value = "The minimum density must be less than the maximum density.";
+			return false;
+		}
+	}
+	errorMsg.value = "";
 	game.dispatch({
 		type: "setAllowedParts",
 		circles: !excludeCircles.value,
@@ -162,7 +183,18 @@ function okay(): void {
 		maxSJSpeed: limitValue(maxSJSpeedNoLimit.value, maxSJSpeed.value),
 		maxThrusterStrength: limitValue(maxThrusterNoLimit.value, maxThruster.value),
 	});
-	close();
+	return true;
+}
+
+function okay(): void {
+	if (applyRestrictions()) close();
+}
+
+// "Back" applies the same edits then closes (RestrictionsWindow.backButtonPressed
+// :341/347 writes all state before hiding) — NOT a discard. Blocked (kept open)
+// if the min>max density guard fails.
+function back(): void {
+	if (applyRestrictions()) close();
 }
 </script>
 
@@ -291,9 +323,11 @@ function okay(): void {
 			<span class="grid-spacer" />
 		</section>
 
+		<p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
+
 		<footer class="footer-row">
 			<div class="footer-buttons">
-				<IbButton family="purple" label="Back" @click="close" />
+				<IbButton family="purple" label="Back" @click="back" />
 				<IbButton family="blue" label="Okay!" @click="okay" />
 			</div>
 		</footer>
@@ -362,6 +396,14 @@ function okay(): void {
 
 .limit-input {
 	width: 60px;
+}
+
+.error-msg {
+	margin: 0;
+	font-size: 12px;
+	font-weight: bold;
+	text-align: center;
+	color: #a11;
 }
 
 .footer-row {

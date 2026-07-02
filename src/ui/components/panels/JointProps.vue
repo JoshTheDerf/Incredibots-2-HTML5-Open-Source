@@ -15,6 +15,18 @@ const ids = computed(() => game.edit.selection);
 
 const isRevolute = computed(() => sel.value?.kind === "RevoluteJoint");
 
+// Strength / speed slider maxima from the active challenge restrictions
+// (PartEditWindow: RJ strength :1196 = maxRJStrength, RJ speed :1201 = maxRJSpeed;
+// SJ strength :1259 = maxSJStrength, SJ speed :1264 = maxSJSpeed). Min stays 1
+// (:806/:816). Falls back to 30 with no challenge / unset.
+const r = computed(() => game.challenge?.restrictions);
+const strengthMax = computed(() =>
+	(isRevolute.value ? r.value?.maxRJStrength : r.value?.maxSJStrength) ?? 30,
+);
+const speedMax = computed(() =>
+	(isRevolute.value ? r.value?.maxRJSpeed : r.value?.maxSJSpeed) ?? 30,
+);
+
 // -- Motor / piston enable (JointCheckboxAction ENABLE_TYPE) --
 const motorEnabled = computed({
 	get: () => sel.value?.motorOn ?? false,
@@ -138,14 +150,14 @@ function applyColour(): void {
 
 		<UFormField :label="strengthLabel" class="field">
 			<div class="slider-row">
-				<USlider v-model="strength" :min="1" :max="30" :step="1" size="sm" :disabled="!motorEnabled" class="slider" />
+				<USlider v-model="strength" :min="1" :max="strengthMax" :step="1" size="sm" :disabled="!motorEnabled" class="slider" />
 				<UInput v-model.number="strength" type="number" size="xs" :disabled="!motorEnabled" class="num-input" />
 			</div>
 		</UFormField>
 
 		<UFormField :label="speedLabel" class="field">
 			<div class="slider-row">
-				<USlider v-model="speed" :min="1" :max="30" :step="1" size="sm" :disabled="!motorEnabled" class="slider" />
+				<USlider v-model="speed" :min="1" :max="speedMax" :step="1" size="sm" :disabled="!motorEnabled" class="slider" />
 				<UInput v-model.number="speed" type="number" size="xs" :disabled="!motorEnabled" class="num-input" />
 			</div>
 		</UFormField>

@@ -11,6 +11,11 @@ const game = useGameStore();
 const sel = computed(() => game.edit.selectedPart);
 const ids = computed(() => game.edit.selection);
 
+// Thruster strength max from the active challenge restriction (PartEditWindow
+// :1370: maxValue = maxThrusterStrength). Min stays 1 (m_thrustSlider.minValue
+// :654); falls back to 1..30 with no challenge / unset.
+const strengthMax = computed(() => game.challenge?.restrictions.maxThrusterStrength ?? 30);
+
 const strength = computed({
 	get: () => sel.value?.strength ?? 15,
 	set: (v: number) => game.dispatch({ type: "setThrusterStrength", partIds: ids.value, value: Number(v) }),
@@ -32,7 +37,7 @@ const autoOn = computed({
 	<div class="thruster-props">
 		<UFormField label="Thruster Strength" class="field">
 			<div class="slider-row">
-				<USlider v-model="strength" :min="1" :max="30" :step="1" size="sm" class="slider" />
+				<USlider v-model="strength" :min="1" :max="strengthMax" :step="1" size="sm" class="slider" />
 				<UInput v-model.number="strength" type="number" size="xs" class="num-input" />
 			</div>
 		</UFormField>

@@ -9,6 +9,29 @@ const game = useGameStore();
 const currentTool = computed(() => game.edit.tool);
 const selectionCount = computed(() => game.edit.selection.length);
 const phase = computed(() => game.sim.phase);
+
+// mm:ss elapsed timer, faithful to MainEditPanel.SetTimer (:657-676): the sim
+// runs at 30 fps, so minutes = floor(frame / 1800), seconds = floor(rem / 30),
+// clamped to 59:59 at 108000 frames. Shown only while running/paused.
+const running = computed(() => phase.value !== "editing");
+const timer = computed(() => {
+	let f = game.sim.frame;
+	if (f >= 108000) return "59:59";
+	const mins = Math.floor(f / 1800);
+	f %= 1800;
+	const secs = Math.floor(f / 30);
+	return `${mins}:${secs < 10 ? "0" + secs : secs}`;
+});
+
+// Sim-status header, matching the legacy strings (MainEditPanel.ts:297-302):
+// "Replay in Progress"/"Replay Paused" when playing a replay, else
+// "Simulation in Progress"/"Simulation Paused".
+const simStatus = computed(() => {
+	const isReplay = game.replay.playing;
+	if (phase.value === "running") return isReplay ? "Replay in Progress" : "Simulation in Progress";
+	if (phase.value === "paused") return isReplay ? "Replay Paused" : "Simulation Paused";
+	return null;
+});
 </script>
 
 <template>
@@ -20,6 +43,12 @@ const phase = computed(() => game.sim.phase);
 		<span>Phase: <strong id="sim-phase-value">{{ phase }}</strong></span>
 		<span class="sep">|</span>
 		<span>Frame: <strong>{{ game.sim.frame }}</strong></span>
+		<template v-if="running">
+			<span class="sep">|</span>
+			<span class="sim-status"><strong>{{ simStatus }}</strong></span>
+			<span class="sep">|</span>
+			<span>Time: <strong id="sim-timer-value">{{ timer }}</strong></span>
+		</template>
 	</div>
 </template>
 

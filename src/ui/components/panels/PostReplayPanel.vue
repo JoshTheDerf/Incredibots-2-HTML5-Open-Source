@@ -65,6 +65,14 @@ async function loadReplay(): Promise<void> {
 	emit("loadReplay");
 }
 
+// "Main Menu" returns to the menu screen (PostReplayWindow.mainMenuButton :76-80
+// -> cont.newButton). goToMenu flips the UI app mode back to the main menu.
+function mainMenu(): void {
+	store.dispatch({ type: "stopReplay" });
+	store.goToMenu();
+	emit("mainMenu");
+}
+
 const panelHeight = computed(() => (props.hasReplayId ? 240 : 210));
 </script>
 
@@ -83,7 +91,7 @@ const panelHeight = computed(() => (props.hasReplayId ? 240 : 210));
 				class="action-btn ib-todo"
 				@click="emit('rate')"
 			/>
-			<IbButton family="purple" label="Main Menu" class="action-btn ib-todo" @click="emit('mainMenu')" />
+			<IbButton family="purple" label="Main Menu" class="action-btn" @click="mainMenu" />
 			<IbButton family="purple" label="Close" class="action-btn" @click="emit('close')" />
 		</div>
 

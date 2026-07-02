@@ -7,15 +7,15 @@
 //
 // Live-wired: R/G/B/Opacity sliders + the named-colour preset dropdown all
 // drive local state and repaint the swatch exactly like the original
-// redrawBox()/colourBox() logic. "Apply" (renamed from the legacy "OK")
-// dispatches the real `setColour` command against the current selection.
-// "Make Default" has no GameCore command/read-model yet, so it stays local
-// and is flagged with <IbTodo/> (matches PartInspector's precedent for
-// not-yet-migrated fields).
-import { computed, ref } from "vue";
+// redrawBox()/colourBox() logic. Additionally, every R/G/B change live-previews
+// on the canvas by dispatching setColour immediately (faithful to
+// ColourChangeWindow.redText/greenText/blueText -> cont.textEntered :221-243).
+// "Apply" (legacy "OK") dispatches setColour with `makeDefault` set from the
+// checkbox (setColour now supports makeDefault -> ControllerGame.colourButton's
+// defaultColour flag).
+import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
-import IbTodo from "../IbTodo.vue";
 import { frameTextures } from "../../assets";
 
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
@@ -82,6 +82,27 @@ function clamp255(n: number): number {
 	return Math.max(0, Math.min(255, Math.round(n)));
 }
 
+// Live preview: dispatch setColour (no makeDefault) on every R/G/B/opacity
+// change so the canvas repaints as the sliders move, exactly like the legacy
+// redText/greenText/blueText/opacityText each calling cont.textEntered()
+// (:221-243). No-op when nothing is selected. Debounced lightly to coalesce
+// rapid slider drags into one dispatch per tick (still per-change, faithful).
+let previewTimer: ReturnType<typeof setTimeout> | null = null;
+watch([red, green, blue, opacity], () => {
+	if (!hasSelection.value) return;
+	if (previewTimer) clearTimeout(previewTimer);
+	previewTimer = setTimeout(() => {
+		game.dispatch({
+			type: "setColour",
+			partIds: game.edit.selection,
+			r: clamp255(red.value),
+			g: clamp255(green.value),
+			b: clamp255(blue.value),
+			opacity: clamp255(opacity.value),
+		});
+	}, 0);
+});
+
 function apply(): void {
 	game.dispatch({
 		type: "setColour",
@@ -90,6 +111,7 @@ function apply(): void {
 		g: clamp255(green.value),
 		b: clamp255(blue.value),
 		opacity: clamp255(opacity.value),
+		makeDefault: makeDefault.value,
 	});
 }
 
@@ -141,7 +163,6 @@ const emit = defineEmits<{ cancel: [] }>();
 
 		<div class="default-row">
 			<UCheckbox v-model="makeDefault" label="Make Default" />
-			<IbTodo label="no command" />
 		</div>
 
 		<div class="actions">

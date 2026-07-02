@@ -16,6 +16,7 @@ import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
 import { frameTextures } from "../../assets";
+import { ShapePart } from "../../../Parts/ShapePart";
 
 defineProps<{ visible?: boolean }>();
 const emit = defineEmits<{ close: [] }>();
@@ -101,7 +102,36 @@ const pickHint = computed(() => {
 	return a ? (HINTS[a] ?? "") : "";
 });
 
+// Inline validation message for the not-enough-shapes guard (ConditionsWindow
+// CheckWinShapes / CheckLossShapes :338-366 pop ShowDialog2 with these strings).
+const errorMsg = ref("");
+
+/** Count of editable ShapeParts currently in the world (mirrors the legacy loop
+ * over cont.allParts filtering `instanceof ShapePart && isEditable`). */
+function editableShapeCount(): number {
+	let n = 0;
+	for (const p of game.parts) {
+		if (p instanceof ShapePart && (p as ShapePart).isEditable) n++;
+	}
+	return n;
+}
+
+/** Faithful port of CheckWinShapes/CheckLossShapes: subject 0 ("A specific
+ * shape") needs 1 shape; object >= 5 ("touching/touched another shape") needs 1
+ * more. Blocks + shows the exact dialog string when there aren't enough. */
+function checkShapes(subject: number, object: number, kind: "win" | "loss"): boolean {
+	const required = (subject === 0 ? 1 : 0) + (object >= 5 ? 1 : 0);
+	if (required === 0) return true;
+	if (editableShapeCount() >= required) {
+		errorMsg.value = "";
+		return true;
+	}
+	errorMsg.value = `There aren't enough shapes in the world to use with that ${kind} condition.`;
+	return false;
+}
+
 function addWinCondition(): void {
+	if (!checkShapes(winSubject.value, winObject.value, "win")) return;
 	// Start the interactive pick; GameCore computes which pick(s) are needed from
 	// subject/object and finalizes the condition when the last pick lands.
 	game.dispatch({
@@ -116,6 +146,7 @@ function addWinCondition(): void {
 }
 
 function addLossCondition(): void {
+	if (!checkShapes(lossSubject.value, lossObject.value, "loss")) return;
 	game.dispatch({
 		type: "startConditionPick",
 		kind: "loss",
@@ -163,6 +194,8 @@ function close(): void {
 			<h2 class="title">Win / Loss Conditions</h2>
 			<IbButton family="purple" label="Close" class="close-btn" @click="close" />
 		</header>
+
+		<p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
 
 		<div class="columns">
 			<!-- WIN CONDITIONS -->
@@ -305,6 +338,14 @@ function close(): void {
 
 .close-btn {
 	flex-shrink: 0;
+}
+
+.error-msg {
+	margin: 0;
+	font-size: 12px;
+	font-weight: bold;
+	text-align: center;
+	color: #a11;
 }
 
 .columns {

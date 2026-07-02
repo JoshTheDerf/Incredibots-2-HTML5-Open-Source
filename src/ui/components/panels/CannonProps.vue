@@ -12,6 +12,12 @@ const game = useGameStore();
 const sel = computed(() => game.edit.selectedPart);
 const ids = computed(() => game.edit.selection);
 
+// Density range from the active challenge restrictions (min/maxDensity), same
+// as the shape density slider; falls back to 1..30 with no challenge / unset.
+// (No restriction field exists for cannon strength, so that slider stays 1..30.)
+const densityMin = computed(() => game.challenge?.restrictions.minDensity ?? 1);
+const densityMax = computed(() => game.challenge?.restrictions.maxDensity ?? 30);
+
 const density = computed({
 	get: () => sel.value?.density ?? 15,
 	set: (v: number) => game.dispatch({ type: "setDensity", partIds: ids.value, value: Number(v) }),
@@ -77,7 +83,7 @@ function applyColour(): void {
 	<div class="cannon-props">
 		<UFormField label="Density" class="field">
 			<div class="slider-row">
-				<USlider v-model="density" :min="1" :max="30" :step="1" size="sm" class="slider" />
+				<USlider v-model="density" :min="densityMin" :max="densityMax" :step="1" size="sm" class="slider" />
 				<UInput v-model.number="density" type="number" size="xs" class="num-input" />
 			</div>
 		</UFormField>
