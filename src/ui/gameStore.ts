@@ -11,6 +11,7 @@ import { defineStore } from "pinia";
 import { GameCore } from "../core/GameCore";
 import type { Command, EditState, SimState, CameraState } from "../core";
 import type { Part } from "../Parts/Part";
+import { soundService } from "./sound";
 
 const core = new GameCore();
 
@@ -20,6 +21,9 @@ export const useGameStore = defineStore("game", () => {
 	core.subscribe((next) => {
 		state.value = next;
 	});
+	// Core emits game sound events (shapeCreated/jointCreated/won/lost); the UI
+	// sound service plays them (gated by its own enabled flag). See src/ui/sound.ts.
+	core.onSound((e) => soundService.play(e));
 
 	const sim = computed<Readonly<SimState>>(() => state.value.sim);
 	const camera = computed<Readonly<CameraState>>(() => state.value.camera);
@@ -46,17 +50,20 @@ export const useGameStore = defineStore("game", () => {
 		return core.getLiveChallenge();
 	}
 
-	// Safe dispatch wrapper: many commands (play/pause/createShape/etc.) are
-	// not yet migrated into GameCore and THROW "not yet migrated" there. The
-	// UI frame needs to be clickable well before those handlers land, so we
-	// swallow the error and warn instead of letting it crash the app.
-	// `setTool`, `select`, and `clearSelection` are implemented in GameCore
-	// and always take effect for real.
+	// Defensive dispatch wrapper: a handler throw must NOT crash the whole app
+	// (the UI frame stays usable), but it must be LOUD so broken commands are
+	// visible — previously a silent console.warn masked real bugs like the
+	// un-migrated newRobot throw (Bug 4). We log at console.error and re-throw on
+	// the next tick, surfacing the error in the console / dev overlay without
+	// unwinding the caller's click handler.
 	function dispatch(command: Command): void {
 		try {
 			core.dispatch(command);
 		} catch (err) {
-			console.warn(`[gameStore] dispatch("${command.type}") failed:`, err);
+			console.error(`[gameStore] dispatch("${command.type}") failed:`, err);
+			setTimeout(() => {
+				throw err;
+			}, 0);
 		}
 	}
 

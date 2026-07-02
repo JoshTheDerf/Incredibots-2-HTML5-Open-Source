@@ -159,12 +159,32 @@ const DEFAULT_TEXT_H = 2.0;
 // partDefaults). Kept as a single constant since they're identical.
 const MAX_JOINT_VALUE = 30;
 
+// Zoom factor + clamps, ported from ControllerGame.Zoom (:6705) and
+// ControllerGameGlobals MIN/MAX_ZOOM_VAL (:33-34). Zoom in multiplies the scale
+// by 4/3, out by 3/4, clamped to [12, 75]; the view centre is held fixed.
+const ZOOM_IN_FACTOR = 4.0 / 3.0;
+const ZOOM_OUT_FACTOR = 3.0 / 4.0;
+const MIN_ZOOM_VAL = 12;
+const MAX_ZOOM_VAL = 75;
+
 export type Unsubscribe = () => void;
 export type StateListener = (state: Readonly<GameState>) => void;
+
+/**
+ * Game sound events the core emits for the UI sound service to play. A plain
+ * string union — the core carries NO asset paths / no pixi (src/ui/sound.ts owns
+ * the actual playback + the random-of-5 clip selection). Mirrors the legacy sound
+ * trigger sites in the Controller layer: PlayShapeSound / PlayJointSound and the
+ * win/lose plays (ControllerGame.ts:469/:486/:751/:770).
+ */
+export type SoundEvent = "shapeCreated" | "jointCreated" | "won" | "lost";
+export type SoundListener = (event: SoundEvent) => void;
 
 export class GameCore {
 	private state: GameState;
 	private listeners = new Set<StateListener>();
+	/** Sound-event subscribers (parallel to `listeners`; see onSound/emitSound). */
+	private soundListeners = new Set<SoundListener>();
 	/** batching depth so a compound command notifies subscribers once. */
 	private notifyDepth = 0;
 	private dirty = false;
@@ -246,6 +266,21 @@ export class GameCore {
 	subscribe(listener: StateListener): Unsubscribe {
 		this.listeners.add(listener);
 		return () => this.listeners.delete(listener);
+	}
+
+	/**
+	 * Subscribe to game sound events (shapeCreated / jointCreated / won / lost).
+	 * Parallel to `subscribe`; returns an unsubscribe function. The UI sound
+	 * service binds this and plays the corresponding clip.
+	 */
+	onSound(listener: SoundListener): Unsubscribe {
+		this.soundListeners.add(listener);
+		return () => this.soundListeners.delete(listener);
+	}
+
+	/** Notify sound subscribers of a game sound event (fired after the mutation). */
+	private emitSound(event: SoundEvent): void {
+		for (const l of this.soundListeners) l(event);
 	}
 
 	/** The single entry point for all mutations. */
@@ -1701,9 +1736,13 @@ export class GameCore {
 					if (wonChallenge(this.challenge)) {
 						this.challenge.outcome = "won";
 						this.challenge.score = getScore(frame);
+						// Win SFX (ControllerGame.ts:751 winSound).
+						this.emitSound("won");
 					} else {
 						this.challenge.outcome = "failed";
 						this.challenge.score = null;
+						// Loss SFX (ControllerGame.ts:770 loseSound).
+						this.emitSound("lost");
 					}
 					ended = true;
 					break;
@@ -1975,6 +2014,67 @@ export class GameCore {
 	}
 
 	/**
+	 * Drop all editable robot parts, keeping the sandbox terrain, and reset the
+	 * editor to a clean slate. Shared by the newRobot and clearAll commands —
+	 * a faithful port of ControllerGame.clearButton (:4845): delete every editable
+	 * ShapePart/TextPart (and their joints/thrusters), leaving the static terrain.
+	 * Selection -> [], tool -> "select", and the undo/redo history is cleared
+	 * (a fresh robot has no history). The terrain is rebuilt from the current
+	 * sandbox settings (as setSandboxSettings does) so the ground stays consistent.
+	 */
+	private clearRobot(): void {
+		// Rebuild the sandbox terrain bodies fresh (same as setSandboxSettings), so
+		// no stale robot parts survive and terrain ids stay from our monotonic source.
+		const terrainParts = buildTerrainParts(this.state.sandbox);
+		for (const p of terrainParts) p.id = ++this.nextId;
+
+		// A new robot has no history.
+		this.undoStack = [];
+		this.redoStack = [];
+
+		this.state = {
+			...this.state,
+			parts: terrainParts,
+			edit: {
+				...this.state.edit,
+				selection: [],
+				selectedPart: null,
+				tool: "select",
+				...this.undoRedoFlags(),
+			},
+		};
+		this.markChanged();
+		// A cleared robot changes whether parts fit the challenge build area.
+		if (this.challenge) this.syncChallenge();
+	}
+
+	/**
+	 * Adjust camera.scale by `factor` (4/3 zoom-in, 3/4 zoom-out — ControllerGame
+	 * .Zoom :6705), clamped to [MIN_ZOOM_VAL, MAX_ZOOM_VAL]. Keeps the view centre
+	 * fixed: in the responsive-canvas convention screen = canvas/2 + world*scale -
+	 * offset, so the world point at the view centre is offset/scale; holding it
+	 * fixed while scaling means offset scales by the same ratio (matching Zoom's
+	 * centerX/Y = (drawXOff)/scale round-trip, ControllerGame.ts:6706-6716).
+	 */
+	private handleZoom(factor: number): void {
+		const oldScale = this.state.camera.scale;
+		let newScale = oldScale * factor;
+		if (newScale > MAX_ZOOM_VAL) newScale = MAX_ZOOM_VAL;
+		if (newScale < MIN_ZOOM_VAL) newScale = MIN_ZOOM_VAL;
+		if (newScale === oldScale) return;
+		const ratio = newScale / oldScale;
+		this.state = {
+			...this.state,
+			camera: {
+				scale: newScale,
+				offsetX: this.state.camera.offsetX * ratio,
+				offsetY: this.state.camera.offsetY * ratio,
+			},
+		};
+		this.markChanged();
+	}
+
+	/**
 	 * Whether a command mutates the parts graph and should therefore push an
 	 * undo snapshot before it applies. Excludes selection (select/clearSelection),
 	 * tool changes (setTool), sim controls (play/pause/reset/step), undo/redo
@@ -2097,6 +2197,7 @@ export class GameCore {
 				case "redo":
 				case "loadRobot":
 				case "newRobot":
+				case "clearAll":
 				case "setSandboxSettings":
 				case "newChallenge":
 				case "loadBuiltInChallenge":
@@ -2184,9 +2285,13 @@ export class GameCore {
 				this.state = {
 					...this.state,
 					parts: [...this.state.parts, part],
-					edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(part) },
+					// A SUCCESSFUL create reverts to the Select tool (curAction = -1 inline,
+					// ControllerGame Circle :2203 / Rectangle :2227 / Triangle apex :2361).
+					edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(part), tool: "select" },
 				};
 				this.markChanged();
+				// Play the shape-create SFX (ControllerGame.PlayShapeSound call sites).
+				this.emitSound("shapeCreated");
 				if (this.tutorialMachine) this.notifyTutorial({ type: "partCreated", partKind: createdKind });
 				return;
 			}
@@ -2199,7 +2304,8 @@ export class GameCore {
 				this.state = {
 					...this.state,
 					parts: [...this.state.parts, part],
-					edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(part) },
+					// Successful create reverts to Select (ControllerGame Text :2500).
+					edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(part), tool: "select" },
 				};
 				this.markChanged();
 				return;
@@ -2602,9 +2708,12 @@ export class GameCore {
 				this.state = {
 					...this.state,
 					parts: [...this.state.parts, t],
-					edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(t) },
+					// Successful create reverts to Select (ControllerGame thrusters :6825).
+					edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(t), tool: "select" },
 				};
 				this.markChanged();
+				// Thrusters use the joint-create SFX (ControllerGame PlayJointSound :6825).
+				this.emitSound("jointCreated");
 				return;
 			}
 			case "createCannon": {
@@ -2618,7 +2727,8 @@ export class GameCore {
 				this.state = {
 					...this.state,
 					parts: [...this.state.parts, cannon],
-					edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(cannon) },
+					// Successful create reverts to Select (ControllerGame Cannon :2256).
+					edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(cannon), tool: "select" },
 				};
 				this.markChanged();
 				return;
@@ -2652,9 +2762,12 @@ export class GameCore {
 				this.state = {
 					...this.state,
 					parts: [...this.state.parts, joint],
-					edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(joint) },
+					// Successful create reverts to Select (ControllerGame joints :6760/:6770/:6919).
+					edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(joint), tool: "select" },
 				};
 				this.markChanged();
+				// Play the joint-create SFX (ControllerGame.PlayJointSound call sites).
+				this.emitSound("jointCreated");
 				// Tutorial part-created trigger for joints (Car/Jumpbot/Dumpbot Update
 				// watch for the new RevoluteJoint/PrismaticJoint/FixedJoint).
 				if (this.tutorialMachine) this.notifyTutorial({ type: "partCreated", partKind: createdJointKind });
@@ -2665,6 +2778,34 @@ export class GameCore {
 				return;
 			case "redo":
 				this.handleRedo();
+				return;
+
+			// --- View menu (ControllerGame BuildViewMenu) ---
+			case "toggleShowJoints":
+				// jointBox (:5261): flip showJoints.
+				this.state = { ...this.state, edit: { ...this.state.edit, showJoints: !this.state.edit.showJoints } };
+				this.markChanged();
+				return;
+			case "toggleShowColours":
+				// colourBox (:5271): flip showColours (the renderer maps this to Draw.drawColours).
+				this.state = { ...this.state, edit: { ...this.state.edit, showColours: !this.state.edit.showColours } };
+				this.markChanged();
+				return;
+			case "toggleShowOutlines":
+				// globalOutlineBox (:5266): flip showOutlines.
+				this.state = { ...this.state, edit: { ...this.state.edit, showOutlines: !this.state.edit.showOutlines } };
+				this.markChanged();
+				return;
+			case "toggleSnapToCenter":
+				// centerBox (:5257): flip snapToCenter.
+				this.state = { ...this.state, edit: { ...this.state.edit, snapToCenter: !this.state.edit.snapToCenter } };
+				this.markChanged();
+				return;
+			case "zoomIn":
+				this.handleZoom(ZOOM_IN_FACTOR);
+				return;
+			case "zoomOut":
+				this.handleZoom(ZOOM_OUT_FACTOR);
 				return;
 			// --- Challenge mode -------------------------------------------------
 			case "newChallenge": {
@@ -2900,8 +3041,15 @@ export class GameCore {
 				return;
 			}
 
-			case "loadRobot":
 			case "newRobot":
+			case "clearAll":
+				// File -> New Robot / Edit -> Clear All: drop editable robot parts, keep
+				// terrain (ControllerGame.clearButton :4845). Editing-phase only (gated
+				// by the no-op-during-sim switch above).
+				this.clearRobot();
+				return;
+
+			case "loadRobot":
 				throw new Error(`GameCore: command "${command.type}" not yet migrated from ControllerGame`);
 			default: {
 				// Exhaustiveness guard: adding a Command variant without a case here is a compile error.

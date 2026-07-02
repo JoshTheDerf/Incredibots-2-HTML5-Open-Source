@@ -5,7 +5,7 @@
 // god-barrel, this exposes only the core's contract, not its internals.)
 
 export { GameCore } from "./GameCore";
-export type { Unsubscribe, StateListener } from "./GameCore";
+export type { Unsubscribe, StateListener, SoundEvent, SoundListener } from "./GameCore";
 export { encodeRobot, decodeRobot } from "./robotSerialization";
 export type { DecodedRobot } from "./robotSerialization";
 export { decodeChallengeBlob } from "./challengeSerialization";

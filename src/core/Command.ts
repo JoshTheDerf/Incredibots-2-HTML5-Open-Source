@@ -123,6 +123,18 @@ export type Command =
 			backgroundG: number;
 			backgroundB: number;
 	  }
+	// --- view menu (ControllerGame BuildViewMenu) ---
+	// Display toggles + zoom, ported faithfully. The toggles flip the edit-view
+	// flags (jointBox :5261 / colourBox :5271 / globalOutlineBox :5266 / centerBox
+	// :5257 -> ControllerGameGlobals.showJoints/showColours/showOutlines/snapToCenter);
+	// zoom adjusts camera.scale by the Zoom() factor (4/3 in, 3/4 out :6705) about
+	// the view centre, clamped to [MIN_ZOOM_VAL, MAX_ZOOM_VAL] = [12, 75].
+	| { type: "toggleShowJoints" }
+	| { type: "toggleShowColours" }
+	| { type: "toggleShowOutlines" }
+	| { type: "toggleSnapToCenter" }
+	| { type: "zoomIn" }
+	| { type: "zoomOut" }
 	// --- selection (view state, but routed through the core so it stays authoritative) ---
 	| { type: "select"; partIds: number[]; additive?: boolean }
 	| { type: "clearSelection" }
@@ -132,6 +144,9 @@ export type Command =
 	// --- persistence (ByteArray under the hood; no network) ---
 	| { type: "loadRobot"; data: Uint8Array }
 	| { type: "newRobot" }
+	// Clear All (Edit menu) — same effect as New Robot: drop all editable robot
+	// parts, keep the sandbox terrain (ControllerGame.clearButton :4845).
+	| { type: "clearAll" }
 	// --- challenge mode (ported from ControllerChallenge + Conditions/RestrictionsWindow) ---
 	// Start a new empty authoring challenge (creates ChallengeState) or load a
 	// built-in one (Climb / MonkeyBars) with its baked terrain + conditions.

@@ -12,6 +12,7 @@
 // ported panel emit an `open` event carrying the panel key; App.vue owns the
 // modal state and mounts the panels. Everything else stays a placeholder click
 // (no-op) — mirroring the legacy items that were browser redirects.
+import { computed } from "vue";
 import { useGameStore } from "../gameStore";
 import { frameTextures } from "../assets";
 import type { DropdownMenuItem } from "@nuxt/ui";
@@ -51,6 +52,7 @@ const fileMenu: DropdownMenuItem[][] = [
 // Cut / Copy / Paste / Delete / Move to Front / Move to Back).
 const editMenu: DropdownMenuItem[][] = [
 	[{ label: "Change Settings...", icon: "i-lucide-sliders-horizontal", onSelect: () => open("sandboxSettings") }],
+	[{ label: "Clear All", icon: "i-lucide-eraser", onSelect: () => game.dispatch({ type: "clearAll" }) }],
 	[
 		{ label: "Undo", icon: "i-lucide-undo-2", onSelect: () => game.dispatch({ type: "undo" }) },
 		{ label: "Redo", icon: "i-lucide-redo-2", onSelect: () => game.dispatch({ type: "redo" }) },
@@ -65,22 +67,26 @@ const editMenu: DropdownMenuItem[][] = [
 	],
 ];
 
-// View menu — legacy BuildViewMenu (Zoom In/Out + display toggles). No zoom /
-// toggle commands are migrated yet, so the toggles are placeholders.
-const viewMenu: DropdownMenuItem[][] = [
-	[
-		// No zoom command is migrated to GameCore yet — placeholders, like the
-		// legacy items were before the pan/zoom controller landed.
-		{ label: "Zoom In", icon: "i-lucide-zoom-in" },
-		{ label: "Zoom Out", icon: "i-lucide-zoom-out" },
-	],
-	[
-		{ label: "Snap to Center", icon: "i-lucide-crosshair" },
-		{ label: "Show Joints", icon: "i-lucide-git-commit-horizontal" },
-		{ label: "Show Colors", icon: "i-lucide-palette" },
-		{ label: "Show Outlines", icon: "i-lucide-square-dashed" },
-	],
-];
+// View menu — legacy BuildViewMenu (Zoom In/Out + display toggles). Zoom adjusts
+// camera.scale (ControllerGame.Zoom); the toggles flip the edit-view flags
+// (jointBox/colourBox/globalOutlineBox/centerBox). Checkbox-style items reflect
+// the current flag via a leading check icon; computed so they stay reactive.
+const viewMenu = computed<DropdownMenuItem[][]>(() => {
+	const check = (on: boolean) => (on ? "i-lucide-check" : "i-lucide-square");
+	const e = game.edit;
+	return [
+		[
+			{ label: "Zoom In", icon: "i-lucide-zoom-in", onSelect: () => game.dispatch({ type: "zoomIn" }) },
+			{ label: "Zoom Out", icon: "i-lucide-zoom-out", onSelect: () => game.dispatch({ type: "zoomOut" }) },
+		],
+		[
+			{ label: "Snap to Center", icon: check(e.snapToCenter), onSelect: () => game.dispatch({ type: "toggleSnapToCenter" }) },
+			{ label: "Show Joints", icon: check(e.showJoints), onSelect: () => game.dispatch({ type: "toggleShowJoints" }) },
+			{ label: "Show Colors", icon: check(e.showColours), onSelect: () => game.dispatch({ type: "toggleShowColours" }) },
+			{ label: "Show Outlines", icon: check(e.showOutlines), onSelect: () => game.dispatch({ type: "toggleShowOutlines" }) },
+		],
+	];
+});
 
 // Share! menu — legacy BuildCommentMenu (Comment / Link / Embed). No sharing
 // backend in the new stack; placeholders like the original redirects.

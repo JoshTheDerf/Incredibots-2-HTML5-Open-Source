@@ -220,6 +220,18 @@ export interface EditState {
 	canRedo: boolean;
 	/** plain-data projection of the FIRST selected part; null when none selected. */
 	selectedPart: PartSnapshot | null;
+	// --- View-menu display flags (ControllerGameGlobals.show* / snapToCenter,
+	// defaults from ControllerGameGlobals.ts:112-116, all true). The renderer reads
+	// showJoints/showColours/showOutlines each frame; snapToCenter gates the
+	// camera-follow snap.
+	/** draw joint markers (ControllerGameGlobals.showJoints). */
+	showJoints: boolean;
+	/** fill shapes with colour vs. outline-only (ControllerGameGlobals.showColours). */
+	showColours: boolean;
+	/** draw part outlines (ControllerGameGlobals.showOutlines). */
+	showOutlines: boolean;
+	/** snap the camera to the focused part (ControllerGameGlobals.snapToCenter). */
+	snapToCenter: boolean;
 }
 
 /**
@@ -293,7 +305,19 @@ export function createInitialState(): GameState {
 		// area above the ground. offsetY is in screen px (screen = canvas/2 +
 		// world*scale - offset), so a positive offset pans the view downward.
 		camera: { scale: 30, offsetX: 0, offsetY: 250 },
-		edit: { selection: [], tool: "select", editable: true, canUndo: false, canRedo: false, selectedPart: null },
+		edit: {
+			selection: [],
+			tool: "select",
+			editable: true,
+			canUndo: false,
+			canRedo: false,
+			selectedPart: null,
+			// View-menu display flags default on (ControllerGameGlobals.ts:112-116).
+			showJoints: true,
+			showColours: true,
+			showOutlines: true,
+			snapToCenter: true,
+		},
 		sandbox,
 		world: null,
 		challenge: null,

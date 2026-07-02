@@ -616,7 +616,8 @@ function drawFrame(): void {
 	// the whole responsive canvas is drawable, not just the top-left 800x600.
 	draw.m_screenWidth = w;
 	draw.m_screenHeight = h;
-	draw.drawColours = true;
+	// View-menu flag: colourBox -> Draw.drawColours (ControllerGame.ts:590).
+	draw.drawColours = state.edit.showColours;
 
 	// Sky/background: build for the current sandbox settings (cheap no-op unless
 	// they changed) then reposition/drift each frame. Cloud drift is gated on the
@@ -654,8 +655,9 @@ function drawFrame(): void {
 		// still draw, per the `!isStatic || isEditable || drawStatic || drawAnyway`
 		// gate in Draw.DrawWorld.
 		/* drawStatic */ false,
-		/* showJoints */ true,
-		/* showOutlines */ true,
+		// View-menu flags (ControllerGame.ts:641-642 pass showJoints/showOutlines).
+		/* showJoints */ state.edit.showJoints,
+		/* showOutlines */ state.edit.showOutlines,
 		// Live Challenge (or null): Draw paints win/loss condition zones when the
 		// sim is not started, or always if showConditions is set (Draw.ts:129-164).
 		/* challenge */ game.liveChallenge() as any
