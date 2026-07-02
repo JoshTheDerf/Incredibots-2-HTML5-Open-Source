@@ -12,7 +12,6 @@
 import { computed } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
-import IbTodo from "../IbTodo.vue";
 import { frameTextures } from "../../assets";
 import ShapeProps from "./ShapeProps.vue";
 import JointProps from "./JointProps.vue";
@@ -91,6 +90,20 @@ function deleteSelected(): void {
 	game.dispatch({ type: "deleteParts", partIds: game.edit.selection });
 }
 
+function cutSelected(): void {
+	if (!hasSelection.value) return;
+	game.dispatch({ type: "cutParts", partIds: game.edit.selection });
+}
+
+function copySelected(): void {
+	if (!hasSelection.value) return;
+	game.dispatch({ type: "copyParts", partIds: game.edit.selection });
+}
+
+function pasteClipboard(): void {
+	game.dispatch({ type: "pasteParts" });
+}
+
 function clearSelection(): void {
 	game.dispatch({ type: "clearSelection" });
 }
@@ -114,12 +127,11 @@ function clearSelection(): void {
 					<div class="top-actions">
 						<IbButton family="orange" label="Delete" class="action-btn" @click="deleteSelected" />
 						<template v-if="showClipboardActions">
-							<IbButton family="orange" label="Cut" class="action-btn" disabled />
-							<IbButton family="orange" label="Copy" class="action-btn" disabled />
-							<IbButton v-if="showPaste" family="orange" label="Paste" class="action-btn" disabled />
+							<IbButton family="orange" label="Cut" class="action-btn" @click="cutSelected" />
+							<IbButton family="orange" label="Copy" class="action-btn" @click="copySelected" />
+							<IbButton v-if="showPaste" family="orange" label="Paste" class="action-btn" @click="pasteClipboard" />
 						</template>
 						<IbButton v-if="showRotate" family="blue" label="Rotate" class="action-btn" disabled />
-						<IbTodo label="no command" />
 					</div>
 
 					<ShapeProps v-if="panelKind === 'shape'" />

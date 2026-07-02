@@ -81,6 +81,20 @@ export type Command =
 	// mirrorVertical :3732). DEVIATION: the legacy begins a PASTE mouse-drag of the
 	// clones; the port places them at their mirrored positions and selects them.
 	| { type: "mirrorParts"; partIds: number[]; axis: "horizontal" | "vertical" }
+	// --- clipboard (ControllerGame.copyButton :4966 / cutButton :4892 / pasteButton
+	// :5023). copyParts snapshots the selected shapes + the joints/thrusters BETWEEN
+	// them into GameCore's clipboard field (NOT render state). cutParts = copy +
+	// delete. pasteParts clones the clipboard, offsets the clones, assigns fresh ids,
+	// appends them and selects them. `dx`/`dy` optionally offset the paste (world
+	// units); when omitted the port applies a fixed faithful delta.
+	| { type: "copyParts"; partIds: number[] }
+	| { type: "cutParts"; partIds: number[] }
+	| { type: "pasteParts"; dx?: number; dy?: number }
+	// --- z-order (ControllerGame.frontButton :4351 / backButton :4375). Reorder the
+	// selected parts within the parts array: front = drawn last (on top), back =
+	// drawn first (behind).
+	| { type: "movePartsToFront"; partIds: number[] }
+	| { type: "movePartsToBack"; partIds: number[] }
 	| { type: "setColour"; partIds: number[]; r: number; g: number; b: number; opacity: number }
 	// --- per-property part edits (ported from ControllerGame + src/Actions/*) ---
 	// Shape (ShapePart: Circle/Rectangle/Triangle/Cannon). Values are absolute

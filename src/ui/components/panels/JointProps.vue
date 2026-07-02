@@ -7,7 +7,6 @@
 import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
-import IbTodo from "../IbTodo.vue";
 import { keyToLabel, labelToKey } from "../../keyLabels";
 
 const game = useGameStore();
@@ -194,9 +193,18 @@ function applyColour(): void {
 				<IbButton family="blue" label="Change Color" class="colour-apply" @click="applyColour" />
 			</div>
 			<div class="order-buttons">
-				<IbButton family="pink" label="Move to Front" class="order-btn" disabled />
-				<IbButton family="pink" label="Move to Back" class="order-btn" disabled />
-				<IbTodo label="no command" />
+				<IbButton
+					family="pink"
+					label="Move to Front"
+					class="order-btn"
+					@click="game.dispatch({ type: 'movePartsToFront', partIds: ids })"
+				/>
+				<IbButton
+					family="pink"
+					label="Move to Back"
+					class="order-btn"
+					@click="game.dispatch({ type: 'movePartsToBack', partIds: ids })"
+				/>
 			</div>
 			<div class="checkboxes">
 				<UCheckbox v-model="outline" label="Show Outlines" />

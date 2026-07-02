@@ -59,11 +59,40 @@ const editMenu: DropdownMenuItem[][] = [
 	],
 	[
 		{
+			label: "Cut",
+			icon: "i-lucide-scissors",
+			onSelect: () => game.dispatch({ type: "cutParts", partIds: game.edit.selection }),
+		},
+		{
+			label: "Copy",
+			icon: "i-lucide-copy",
+			onSelect: () => game.dispatch({ type: "copyParts", partIds: game.edit.selection }),
+		},
+		{
+			label: "Paste",
+			icon: "i-lucide-clipboard-paste",
+			onSelect: () => game.dispatch({ type: "pasteParts" }),
+		},
+	],
+	[
+		{
 			label: "Delete",
 			icon: "i-lucide-trash-2",
 			onSelect: () => game.dispatch({ type: "deleteParts", partIds: game.edit.selection }),
 		},
 		{ label: "Change Color...", icon: "i-lucide-palette", onSelect: () => open("colour") },
+	],
+	[
+		{
+			label: "Move to Front",
+			icon: "i-lucide-bring-to-front",
+			onSelect: () => game.dispatch({ type: "movePartsToFront", partIds: game.edit.selection }),
+		},
+		{
+			label: "Move to Back",
+			icon: "i-lucide-send-to-back",
+			onSelect: () => game.dispatch({ type: "movePartsToBack", partIds: game.edit.selection }),
+		},
 	],
 ];
 
