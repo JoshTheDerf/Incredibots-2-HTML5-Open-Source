@@ -86,9 +86,10 @@ let demoDraw: Draw | null = null;
 let demoSprite: Graphics | null = null;
 // Fixed step rate so playback speed is independent of the display refresh rate
 // (the pixi ticker runs at the monitor's Hz — 120/144 on high-refresh displays —
-// which made the recorded-at-60fps replay play too fast). We accumulate elapsed
-// ticker time and advance the replay at a fixed 60 steps/sec.
-const DEMO_FRAME_MS = 1000 / 60;
+// which made the replay play too fast). We accumulate elapsed ticker time and
+// advance the replay at IncrediBots' native 30 steps/sec (the legacy stage/timer
+// rate — MainEditPanel.SetTimer uses 30fps), not the display rate.
+const DEMO_FRAME_MS = 1000 / 30;
 let demoAccMs = 0;
 
 /**
