@@ -20,7 +20,7 @@ import { FixedJoint } from "../Parts/FixedJoint";
 import { JointPart } from "../Parts/JointPart";
 import type { Part } from "../Parts/Part";
 import { PrismaticJoint } from "../Parts/PrismaticJoint";
-import { MAX_DENSITY, MIN_DENSITY } from "../Parts/partDefaults";
+import { DEFAULT_B, DEFAULT_G, DEFAULT_O, DEFAULT_R, MAX_DENSITY, MIN_DENSITY } from "../Parts/partDefaults";
 import { Rectangle } from "../Parts/Rectangle";
 import { RevoluteJoint } from "../Parts/RevoluteJoint";
 import { ShapePart } from "../Parts/ShapePart";
@@ -29,6 +29,7 @@ import { Thrusters } from "../Parts/Thrusters";
 import { Triangle } from "../Parts/Triangle";
 import type { Command, ShapeKind } from "./Command";
 import { GameState, PartSnapshot, createInitialState } from "./GameState";
+import type { CameraState } from "./GameState";
 import { decodeRobot, encodeRobot } from "./robotSerialization";
 import { decodeChallengeBlob } from "./challengeSerialization";
 import { encodeReplay, decodeReplay } from "./replaySerialization";
@@ -166,6 +167,10 @@ const MAX_JOINT_VALUE = 30;
 // DEVIATION) so the paste is visibly offset from the original.
 const PASTE_OFFSET = 1.0;
 
+// Max physical shapes a robot may have before play is refused
+// (ControllerGame.TooManyShapes: `... .length > 500`).
+const MAX_SHAPES = 500;
+
 // Zoom factor + clamps, ported from ControllerGame.Zoom (:6705) and
 // ControllerGameGlobals MIN/MAX_ZOOM_VAL (:33-34). Zoom in multiplies the scale
 // by 4/3, out by 3/4, clamped to [12, 75]; the view centre is held fixed.
@@ -187,11 +192,31 @@ export type StateListener = (state: Readonly<GameState>) => void;
 export type SoundEvent = "shapeCreated" | "jointCreated" | "won" | "lost";
 export type SoundListener = (event: SoundEvent) => void;
 
+/**
+ * A user-facing message the core surfaces for the UI to show in a dialog/notice
+ * (parallel to the sound channel; a plain string, no pixi). Mirrors the legacy
+ * ShowDialog3 refuse dialogs in playButton (ControllerGame.ts:2781-2782). The UI
+ * (gameStore.notice) binds onMessage and renders it.
+ */
+export type MessageListener = (message: string) => void;
+
 export class GameCore {
 	private state: GameState;
 	private listeners = new Set<StateListener>();
 	/** Sound-event subscribers (parallel to `listeners`; see onSound/emitSound). */
 	private soundListeners = new Set<SoundListener>();
+	/** User-message subscribers (parallel to `soundListeners`; see onMessage/emitMessage). */
+	private messageListeners = new Set<MessageListener>();
+	/**
+	 * Default colour for newly-created shapes (ControllerGameGlobals.defaultR/G/B/O,
+	 * set by colourButton(..., makeDefault) — ControllerGame.ts:4454-4461). New
+	 * ShapeParts adopt this in the create handlers. Seeded from the legacy shape
+	 * colour defaults (partDefaults DEFAULT_R/G/B/O).
+	 */
+	private defaultRed = DEFAULT_R;
+	private defaultGreen = DEFAULT_G;
+	private defaultBlue = DEFAULT_B;
+	private defaultOpacity = DEFAULT_O;
 	/** batching depth so a compound command notifies subscribers once. */
 	private notifyDepth = 0;
 	private dirty = false;
@@ -199,6 +224,15 @@ export class GameCore {
 	private nextId = 0;
 	/** Per-part pre-play edit transforms, captured on play, restored on reset. */
 	private editSnapshots: EditTransform[] = [];
+	/**
+	 * Pre-play camera snapshot (offsetX/offsetY/scale), captured on play and
+	 * restored on reset so a run that auto-panned/followed the robot returns the
+	 * view to where the user left it (ControllerGame.playButton snapshots
+	 * savedDrawXOff/YOff :2776-2777; resetButton restores them :2813-2814). null
+	 * until the first play. Port note: the legacy stores the pre-transform focus in
+	 * its own draw-offset units; we snapshot the whole camera and restore it verbatim.
+	 */
+	private cameraSnapshot: CameraState | null = null;
 	/** Undo / redo stacks of editable-state snapshots (see HistorySnapshot). */
 	private undoStack: HistorySnapshot[] = [];
 	private redoStack: HistorySnapshot[] = [];
@@ -313,6 +347,21 @@ export class GameCore {
 	/** Notify sound subscribers of a game sound event (fired after the mutation). */
 	private emitSound(event: SoundEvent): void {
 		for (const l of this.soundListeners) l(event);
+	}
+
+	/**
+	 * Subscribe to user-facing messages (e.g. the play-refuse dialogs). Parallel to
+	 * `onSound`; returns an unsubscribe function. The UI binds this and shows the
+	 * message (gameStore.notice).
+	 */
+	onMessage(listener: MessageListener): Unsubscribe {
+		this.messageListeners.add(listener);
+		return () => this.messageListeners.delete(listener);
+	}
+
+	/** Notify message subscribers of a user-facing message. */
+	private emitMessage(message: string): void {
+		for (const l of this.messageListeners) l(message);
 	}
 
 	/** The single entry point for all mutations. */
@@ -1983,6 +2032,27 @@ export class GameCore {
 			return;
 		}
 
+		// Refuse the start when the robot is invalid, mirroring playButton's guard
+		// (ControllerGame.ts:2719-2721,2781-2782): CheckIfPartsFit() then
+		// TooManyShapes(), starting only when `(partsFit && !tooManyShapes) ||
+		// playingReplay`. The fit-check is a no-op outside challenge play mode
+		// (checkIfPartsFit returns true unless session.playMode + build areas). A
+		// replay playback bypasses both checks. The refuse path shows the exact
+		// legacy dialog string and does NOT transition to running.
+		if (!this.replaySession) {
+			// partsFit only applies in a challenge (checkIfPartsFit no-ops otherwise).
+			const partsFit = this.challenge ? checkIfPartsFit(this.challenge, this.state.parts) : true;
+			const tooManyShapes = this.tooManyShapes();
+			if (!partsFit) {
+				this.emitMessage("You must fit your robot inside the starting box first!");
+				return;
+			}
+			if (tooManyShapes) {
+				this.emitMessage("Your robot contains too many shapes!  (Limit 500)");
+				return;
+			}
+		}
+
 		// Fresh cannonball list for this run (ControllerGame.ts:2736), and point the
 		// partGlobals cannonball sink at it so Cannon.CreateCannonball pushes the
 		// spawned bodies into THIS array (Cannon.ts:252-253). Done for every play,
@@ -1999,6 +2069,10 @@ export class GameCore {
 		}
 
 		const world = this.createWorld();
+
+		// Snapshot the pre-play camera so reset can restore the view after a run that
+		// auto-panned/followed the robot (ControllerGame.playButton :2776-2777).
+		this.cameraSnapshot = { ...this.state.camera };
 
 		// Snapshot pre-play transforms so reset can restore them exactly.
 		this.editSnapshots = this.state.parts.map((p) => {
@@ -2082,9 +2156,14 @@ export class GameCore {
 		// Replay: reset recording buffers; playback ends only via stopReplay (reset
 		// during editing is a no-op there), so leave replaySession alone here.
 		this.recording = null;
+		// Restore the pre-play camera so an auto-panned/followed run returns the view
+		// to where the user left it (ControllerGame.resetButton :2813-2814).
+		const camera = this.cameraSnapshot ?? this.state.camera;
+		this.cameraSnapshot = null;
 		this.state = {
 			...this.state,
 			parts: [...this.state.parts],
+			camera,
 			world: null,
 			sim: { phase: "editing", frame: 0 },
 			replay: this.replayStateSnapshot(),
@@ -2118,6 +2197,19 @@ export class GameCore {
 	 * with no focus flag the camera stays where the user left it (the fallback is
 	 * only used by CenterOnLoadedRobot for the initial editor framing).
 	 */
+	/**
+	 * TooManyShapes (ControllerGame.ts:TooManyShapes → `allParts.filter(PartIsPhysical).length > 500`).
+	 * PartIsPhysical counts ShapePart OR PrismaticJoint instances only (NOT text,
+	 * NOT other joint types, NOT thrusters). The legacy limit is 500.
+	 */
+	private tooManyShapes(): boolean {
+		let count = 0;
+		for (const p of this.state.parts) {
+			if (p instanceof ShapePart || p instanceof PrismaticJoint) count++;
+		}
+		return count > MAX_SHAPES;
+	}
+
 	private cameraFocusPart(): ShapePart | null {
 		let part: ShapePart | null = null;
 		for (const p of this.state.parts) {
@@ -2677,6 +2769,43 @@ export class GameCore {
 	}
 
 	/**
+	 * centerOnSelection — ControllerGame.CenterOnSelected (:2542-2564). Centre the
+	 * camera on the selection's bounding-box centroid. The legacy pins the selection
+	 * centre at ZOOM_FOCUS in its own draw-offset units; in the port's camera model
+	 * (screen = canvas/2 + world*scale - offset) pinning the centroid to the canvas
+	 * centre means offset = centroid*scale — the same convention handleCamera uses
+	 * to follow the focus part. No-op when the selection is empty.
+	 */
+	private handleCenterOnSelection(): void {
+		const selection = this.state.edit.selection;
+		if (selection.length === 0) return;
+		let minX = Number.MAX_VALUE;
+		let minY = Number.MAX_VALUE;
+		let maxX = -Number.MAX_VALUE;
+		let maxY = -Number.MAX_VALUE;
+		let found = false;
+		for (const id of selection) {
+			const p = this.findPart(id);
+			if (!p) continue;
+			const { x, y } = this.currentXY(p);
+			minX = Math.min(minX, x);
+			minY = Math.min(minY, y);
+			maxX = Math.max(maxX, x);
+			maxY = Math.max(maxY, y);
+			found = true;
+		}
+		if (!found) return;
+		const centerX = (minX + maxX) / 2;
+		const centerY = (minY + maxY) / 2;
+		const scale = this.state.camera.scale;
+		this.state = {
+			...this.state,
+			camera: { ...this.state.camera, offsetX: centerX * scale, offsetY: centerY * scale },
+		};
+		this.markChanged();
+	}
+
+	/**
 	 * Whether a command mutates the parts graph and should therefore push an
 	 * undo snapshot before it applies. Excludes selection (select/clearSelection),
 	 * tool changes (setTool), sim controls (play/pause/reset/step), undo/redo
@@ -2897,6 +3026,15 @@ export class GameCore {
 				// end != start :2288). pushHistory already ran, but with no state
 				// change undo just restores the identical graph, which is harmless.
 				if (!part) return;
+				// New shapes adopt the current default colour (ControllerGameGlobals.
+				// defaultR/G/B/O, settable via colourButton makeDefault). The ShapePart
+				// ctor seeds partDefaults; override with the live default here.
+				if (part instanceof ShapePart) {
+					part.red = this.defaultRed;
+					part.green = this.defaultGreen;
+					part.blue = this.defaultBlue;
+					part.opacity = this.defaultOpacity;
+				}
 				// Tutorial part-created trigger (ControllerShapes.Update :28-40): the
 				// new editable part type is Rectangle/Triangle/Circle.
 				const createdKind = part.type;
@@ -2960,6 +3098,15 @@ export class GameCore {
 				return;
 			}
 			case "setColour": {
+				// makeDefault: also set the default colour used by new parts
+				// (ControllerGame.colourButton defaultColour → defaultR/G/B/O :4454-4461).
+				// Stored in ShapePart units: r/g/b are 0-255, opacity 0-255.
+				if (command.makeDefault) {
+					this.defaultRed = command.r;
+					this.defaultGreen = command.g;
+					this.defaultBlue = command.b;
+					this.defaultOpacity = command.opacity * 255;
+				}
 				const target = new Set(command.partIds);
 				for (const p of this.state.parts) {
 					if (!target.has(p.id)) continue;
@@ -3363,6 +3510,11 @@ export class GameCore {
 				// A Cannon is a free-standing ShapePart (NEW_CANNON flow :2274); the
 				// legacy drag sizes its width, the click-to-create core uses a default.
 				const cannon = new Cannon(command.x, command.y, DEFAULT_RECT_SIZE);
+				// New parts adopt the current default colour (see createShape).
+				cannon.red = this.defaultRed;
+				cannon.green = this.defaultGreen;
+				cannon.blue = this.defaultBlue;
+				cannon.opacity = this.defaultOpacity;
 				cannon.id = ++this.nextId;
 				const selection = [cannon.id];
 				this.state = {
@@ -3447,6 +3599,9 @@ export class GameCore {
 				return;
 			case "zoomOut":
 				this.handleZoom(ZOOM_OUT_FACTOR);
+				return;
+			case "centerOnSelection":
+				this.handleCenterOnSelection();
 				return;
 			// --- Challenge mode -------------------------------------------------
 			case "newChallenge": {

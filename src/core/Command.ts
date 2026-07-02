@@ -95,7 +95,9 @@ export type Command =
 	// drawn first (behind).
 	| { type: "movePartsToFront"; partIds: number[] }
 	| { type: "movePartsToBack"; partIds: number[] }
-	| { type: "setColour"; partIds: number[]; r: number; g: number; b: number; opacity: number }
+	// When `makeDefault` is set, the colour also becomes the default for newly
+	// created parts (ControllerGame.colourButton's `defaultColour` flag, :4454-4461).
+	| { type: "setColour"; partIds: number[]; r: number; g: number; b: number; opacity: number; makeDefault?: boolean }
 	// --- per-property part edits (ported from ControllerGame + src/Actions/*) ---
 	// Shape (ShapePart: Circle/Rectangle/Triangle/Cannon). Values are absolute
 	// (the legacy sliders set the field directly; the Action only recorded a
@@ -164,6 +166,10 @@ export type Command =
 	| { type: "toggleSnapToCenter" }
 	| { type: "zoomIn" }
 	| { type: "zoomOut" }
+	// Center the camera on the current selection's bounding-box centroid (View menu
+	// "Center on Selection" → ControllerGame.CenterOnSelected :2542-2564). No-op when
+	// nothing is selected.
+	| { type: "centerOnSelection" }
 	// --- selection (view state, but routed through the core so it stays authoritative) ---
 	| { type: "select"; partIds: number[]; additive?: boolean }
 	| { type: "clearSelection" }

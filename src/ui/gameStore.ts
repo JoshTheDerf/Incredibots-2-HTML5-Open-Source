@@ -24,6 +24,17 @@ export const useGameStore = defineStore("game", () => {
 	// Core emits game sound events (shapeCreated/jointCreated/won/lost); the UI
 	// sound service plays them (gated by its own enabled flag). See src/ui/sound.ts.
 	core.onSound((e) => soundService.play(e));
+	// Core emits user-facing messages (e.g. the play-refuse dialogs); mirror the
+	// latest into `notice` for the UI to show. dismissNotice() clears it.
+	const notice = ref<string | null>(null);
+	core.onMessage((m) => {
+		notice.value = m;
+	});
+
+	/** Clear the current notice (dialog dismissed / OK). */
+	function dismissNotice(): void {
+		notice.value = null;
+	}
 
 	const sim = computed<Readonly<SimState>>(() => state.value.sim);
 	const camera = computed<Readonly<CameraState>>(() => state.value.camera);
@@ -105,7 +116,10 @@ export const useGameStore = defineStore("game", () => {
 	// The original app had a ControllerMainMenu that swapped in the editor
 	// controller; here that top-level screen switch lives purely in the Vue
 	// layer. Defaults to the main menu (matches the original boot flow).
-	type AppMode = "menu" | "editor";
+	// "challengeEditor" is the sandbox editor with challenge commands active (the
+	// author builds the challenge's win/loss conditions + build areas). A later
+	// agent wires the App shell + menus to it.
+	type AppMode = "menu" | "editor" | "challengeEditor";
 	const appMode = ref<AppMode>("menu");
 
 	/**
@@ -121,6 +135,17 @@ export const useGameStore = defineStore("game", () => {
 	/** Return to the main menu screen. */
 	function goToMenu(): void {
 		appMode.value = "menu";
+	}
+
+	/**
+	 * Enter the challenge editor: start a fresh challenge (`newChallenge` seeds the
+	 * challenge session with default conditions/build areas) then switch to the
+	 * challengeEditor screen. The challenge editor is the sandbox editor with the
+	 * challenge commands active; a later agent wires the App shell + menus to it.
+	 */
+	function goToChallengeEditor(): void {
+		dispatch({ type: "newChallenge" });
+		appMode.value = "challengeEditor";
 	}
 
 	return {
@@ -143,5 +168,8 @@ export const useGameStore = defineStore("game", () => {
 		appMode,
 		goToEditor,
 		goToMenu,
+		goToChallengeEditor,
+		notice,
+		dismissNotice,
 	};
 });
