@@ -7,7 +7,7 @@ name: Deploy to GitHub Pages
 # "Source" to "GitHub Actions" for this workflow's deploy step to publish.
 on:
   push:
-    branches: [master, modernization]
+    branches: [master]
   workflow_dispatch:
 
 # Least-privilege perms the Pages deploy needs.
