@@ -531,6 +531,15 @@ function onPointerUp(event: PointerEvent): void {
 // pressed set so a browser key-repeat only fires one keydown per physical press.
 const pressedKeys = new Set<number>();
 
+// True when the event originates from a text field, so global editor hotkeys
+// don't hijack typing (legacy gated on m_sidePanel.EnteringInput(), :1890).
+function isTypingTarget(event: KeyboardEvent): boolean {
+	const t = event.target as HTMLElement | null;
+	if (!t) return false;
+	const tag = t.tagName;
+	return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t.isContentEditable;
+}
+
 function onKeyDown(event: KeyboardEvent): void {
 	if (game.sim.phase !== "running") return;
 	// keyCode is the code space the legacy parts compare against (motorCWKey etc.).
@@ -545,8 +554,91 @@ function onKeyDown(event: KeyboardEvent): void {
 function onKeyUp(event: KeyboardEvent): void {
 	const key = event.keyCode;
 	pressedKeys.delete(key);
-	if (game.sim.phase !== "running") return;
-	game.dispatch({ type: "keyInput", key, up: true });
+	if (game.sim.phase === "running") {
+		game.dispatch({ type: "keyInput", key, up: true });
+		return;
+	}
+	// Editing-phase shortcuts. Faithful port of ControllerGame.keyPress's
+	// `!simStarted` block (ControllerGame.ts:1890-1927): the legacy fires these on
+	// key-UP, so we do too. Skipped while typing in a form field (legacy gated on
+	// m_sidePanel.EnteringInput()). Escape (key 27) is handled in App.vue, which
+	// owns the modal state + condition-pick cancel.
+	if (game.sim.phase !== "editing") return;
+	if (isTypingTarget(event)) return;
+	editingHotkey(key);
+}
+
+/**
+ * Dispatch the editing-phase action for a key-up, mirroring the legacy per-key
+ * cascade at ControllerGame.ts:1891-1926. keyCode values match the legacy.
+ */
+function editingHotkey(key: number): void {
+	const selection = [...game.edit.selection];
+	switch (key) {
+		// Tool hotkeys 1–7 → the same tools legacy's 1-7 buttons select
+		// (circle/rect/triangle/fixed/revolute/prismatic/text, :1891-1904).
+		case 49: // 1
+			game.dispatch({ type: "setTool", tool: "newCircle" });
+			return;
+		case 50: // 2
+			game.dispatch({ type: "setTool", tool: "newRect" });
+			return;
+		case 51: // 3
+			game.dispatch({ type: "setTool", tool: "newTriangle" });
+			return;
+		case 52: // 4
+			game.dispatch({ type: "setTool", tool: "newFixedJoint" });
+			return;
+		case 53: // 5
+			game.dispatch({ type: "setTool", tool: "newRevoluteJoint" });
+			return;
+		case 54: // 6
+			game.dispatch({ type: "setTool", tool: "newPrismaticJoint" });
+			return;
+		case 55: // 7
+			game.dispatch({ type: "setTool", tool: "newText" });
+			return;
+		// R → rotateButton, which enters ROTATE mode (:1905, ControllerGame:3434).
+		case 82: // R
+			if (selection.length > 0) game.dispatch({ type: "setTool", tool: "rotate" });
+			return;
+		// X / C / V → cut / copy / paste on the current selection (:1907-1912).
+		case 88: // X
+			if (selection.length > 0) game.dispatch({ type: "cutParts", partIds: selection });
+			return;
+		case 67: // C
+			if (selection.length > 0) game.dispatch({ type: "copyParts", partIds: selection });
+			return;
+		case 86: // V
+			game.dispatch({ type: "pasteParts" });
+			return;
+		// Backspace (8) / Delete (46) → delete the selection (:1913-1915).
+		case 8:
+		case 46:
+			if (selection.length > 0) game.dispatch({ type: "deleteParts", partIds: selection });
+			return;
+		// Y → redo, Z → undo (bare keys — no ctrl in legacy, :1916-1919).
+		case 89: // Y
+			game.dispatch({ type: "redo" });
+			return;
+		case 90: // Z
+			game.dispatch({ type: "undo" });
+			return;
+		// + / = (107 numpad-plus, 187 equals) → zoom in;
+		// - (109 numpad-minus, 189 dash) → zoom out (:1920-1923).
+		case 107:
+		case 187:
+			game.dispatch({ type: "zoomIn" });
+			return;
+		case 109:
+		case 189:
+			game.dispatch({ type: "zoomOut" });
+			return;
+		// P → play (:1924).
+		case 80:
+			game.dispatch({ type: "play" });
+			return;
+	}
 }
 
 /** Paint the marquee rectangle into the overlay (world -> screen each frame). */

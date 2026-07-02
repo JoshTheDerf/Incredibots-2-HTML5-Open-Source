@@ -12,7 +12,7 @@
 // mount each ported panel inside a Nuxt UI UModal (parchment .ib-panel look is
 // preserved because the panels are rendered bare in the modal `#content` slot,
 // not editing the panel internals).
-import { ref } from "vue";
+import { onMounted, onBeforeUnmount, ref } from "vue";
 import { useGameStore } from "./gameStore";
 import MainMenu from "./components/MainMenu.vue";
 import MenuBar from "./components/MenuBar.vue";
@@ -20,6 +20,7 @@ import type { PanelKey } from "./components/MenuBar.vue";
 import ToolPalette from "./components/ToolPalette.vue";
 import StagePlaceholder from "./components/StagePlaceholder.vue";
 import PartInspectorFull from "./components/panels/PartInspectorFull.vue";
+import HintOverlay from "./components/HintOverlay.vue";
 import StatusBar from "./components/StatusBar.vue";
 import ImportPanel from "./components/panels/ImportPanel.vue";
 import ExportPanel from "./components/panels/ExportPanel.vue";
@@ -48,6 +49,35 @@ function openPanel(panel: PanelKey): void {
 function closePanel(): void {
 	activePanel.value = null;
 }
+
+// Escape closes whatever modal/panel is open, mirroring ControllerGame.keyPress's
+// Escape cascade (ControllerGame.ts:1929-1976), which hid whichever dialog was
+// visible. Here App owns the single modal-panel state, so Escape closes it. If a
+// challenge condition-pick is in progress (game.conditionDraft), Escape cancels
+// it instead (dispatch cancelConditionPick), matching the legacy behaviour where
+// Escape also aborts the in-progress condition selection. Legacy fires on key-UP
+// (key 27), so we bind keyup.
+function onWindowKeyUp(event: KeyboardEvent): void {
+	if (event.keyCode !== 27) return; // Escape
+	if (game.conditionDraft) {
+		game.dispatch({ type: "cancelConditionPick" });
+		return;
+	}
+	if (activePanel.value !== null) {
+		closePanel();
+		return;
+	}
+	// Also dismiss a lingering core notice dialog on Escape.
+	if (game.notice) game.dismissNotice();
+}
+
+onMounted(() => {
+	window.addEventListener("keyup", onWindowKeyUp);
+});
+
+onBeforeUnmount(() => {
+	window.removeEventListener("keyup", onWindowKeyUp);
+});
 </script>
 
 <template>
@@ -85,6 +115,11 @@ function closePanel(): void {
 				<div v-if="replay.finished" class="post-replay-overlay">
 					<PostReplayPanel @close="game.dispatch({ type: 'stopReplay' })" />
 				</div>
+
+				<!-- Hint-text banners (rotate/resize/condition prompts) + the core
+				     notice dialog (play-refused / limit messages). Overlaid over the
+				     stage, non-interactive except the notice's OK button. -->
+				<HintOverlay />
 			</div>
 
 			<StatusBar />

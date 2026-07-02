@@ -104,6 +104,16 @@ function pasteClipboard(): void {
 	game.dispatch({ type: "pasteParts" });
 }
 
+// Legacy PartEditWindow Rotate button → ControllerGame.rotateButton
+// (ControllerGame.ts:3434), which ENTERS rotate mode (curAction = ROTATE) rather
+// than rotating by a fixed increment. In the port the rotate gesture lives on the
+// "rotate" tool (GameCanvas onPointerDown rotate branch), so we faithfully enter
+// that tool here — matching the `R` hotkey (key 82 → rotateButton, :1905).
+function rotateSelected(): void {
+	if (!hasSelection.value) return;
+	game.dispatch({ type: "setTool", tool: "rotate" });
+}
+
 function clearSelection(): void {
 	game.dispatch({ type: "clearSelection" });
 }
@@ -131,7 +141,7 @@ function clearSelection(): void {
 							<IbButton family="orange" label="Copy" class="action-btn" @click="copySelected" />
 							<IbButton v-if="showPaste" family="orange" label="Paste" class="action-btn" @click="pasteClipboard" />
 						</template>
-						<IbButton v-if="showRotate" family="blue" label="Rotate" class="action-btn" disabled />
+						<IbButton v-if="showRotate" family="blue" label="Rotate" class="action-btn" @click="rotateSelected" />
 					</div>
 
 					<ShapeProps v-if="panelKind === 'shape'" />
