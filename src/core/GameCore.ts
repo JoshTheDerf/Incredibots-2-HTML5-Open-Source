@@ -2153,7 +2153,21 @@ export class GameCore {
 		// Init shapes/text first (ControllerGame.ts:2764-2767), then joints and
 		// thrusters (:2769-2773) — a JointPart's Init requires both its shapes to
 		// already be initted (see FixedJoint.Init), so ordering matters.
-		for (const p of this.state.parts) {
+		//
+		// CRITICAL: the legacy play loop Inits ShapeParts in REVERSE allParts order
+		// (`for (i = this.allParts.length; i >= 0; i--)`, ControllerGame.ts:2759-2761).
+		// Order is load-bearing for fixed-joint groups: Circle/Rectangle/etc. Init
+		// recursively Inits their fixed-joint-welded partners onto the SAME b2Body
+		// (Circle.ts:104-109), so a group's shared body ORIGIN is whichever part is
+		// Init'd first — i.e. the LAST part of the group in parts order under the
+		// legacy reverse loop. Replay sync points were recorded against those
+		// legacy-origin bodies (GetPosition() of the reverse-first part), and are
+		// applied back by positional index via SetXForm. Iterating FORWARD here made
+		// the FORWARD-first part the origin instead, shifting every part in the group
+		// (visibly, the welded circles) by the delta between the two origin parts.
+		// Iterate in reverse to reproduce the legacy origins exactly.
+		for (let i = this.state.parts.length - 1; i >= 0; i--) {
+			const p = this.state.parts[i];
 			if (p instanceof ShapePart || p instanceof TextPart) p.Init(world);
 		}
 		for (const p of this.state.parts) {
