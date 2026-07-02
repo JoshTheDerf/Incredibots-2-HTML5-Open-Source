@@ -31,6 +31,7 @@ import type { Command, ShapeKind } from "./Command";
 import { GameState, PartSnapshot, createInitialState } from "./GameState";
 import { decodeRobot, encodeRobot } from "./robotSerialization";
 import { decodeChallengeBlob } from "./challengeSerialization";
+import { encodeReplay, decodeReplay } from "./replaySerialization";
 import { buildTerrainParts, computeBounds } from "./sandboxEnvironment";
 import {
 	ChallengeSession,
@@ -56,6 +57,7 @@ import {
 } from "./challenge";
 import { WinCondition } from "../Game/WinCondition";
 import { LossCondition } from "../Game/LossCondition";
+import { SandboxSettings } from "../Game/SandboxSettings";
 import { b2ContactListener } from "../Box2D";
 import {
 	REPLAY_SYNC_FRAMES,
@@ -114,6 +116,12 @@ const MOUSE_JOINT_TIME_STEP = 1.0 / 30.0;
 // (ControllerGame.GetBodyAtMouse :6968-6969).
 const MOUSE_PICK_HALF = 0.001;
 const MOUSE_PICK_MAX_COUNT = 10;
+
+// The fixed Flash stage the legacy per-tutorial camera offsets were authored for
+// (Draw.m_screenWidth/Height :44-45). Used to convert a tutorial's legacy
+// m_drawXOff/m_drawYOff into the responsive-canvas camera.offset convention.
+const LEGACY_STAGE_WIDTH = 800;
+const LEGACY_STAGE_HEIGHT = 600;
 
 /** Snapshot of a Part's pre-play edit transform, restored on reset. */
 interface EditTransform {
@@ -273,6 +281,8 @@ export class GameCore {
 	 * async because ByteArray.compress() is async. Ignores selection/sim state.
 	 */
 	async exportRobot(): Promise<string> {
+		// Tutorial milestone (ControllerHomeMovies.copyButton -> 45 "copied").
+		if (this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "copied" });
 		return encodeRobot(this.state.parts);
 	}
 
@@ -304,6 +314,8 @@ export class GameCore {
 				},
 			};
 			this.markChanged();
+			// Tutorial milestone (ControllerHomeMovies.Update paste -> 46 "pasted").
+			if (this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "pasted" });
 		} finally {
 			this.notifyDepth--;
 			if (this.notifyDepth === 0 && this.dirty) {
@@ -450,6 +462,46 @@ export class GameCore {
 	exportReplay(): ReplayData | null {
 		if (!this.recording) return null;
 		return finalizeReplay(this.recording, this.state.sim.frame);
+	}
+
+	/**
+	 * Encode the current replay recording to the legacy-compatible replay export
+	 * string (base64 of the zlib-compressed Database.ExportReplay byte format),
+	 * bundling the current robot parts + sandbox settings. Returns null when there
+	 * is no active recording. async because ByteArray.compress() is async. The
+	 * result interops with the legacy game (Database.ExportReplay / ImportReplay).
+	 */
+	async exportReplayString(): Promise<string | null> {
+		const data = this.exportReplay();
+		if (!data) return null;
+		// Bundle the current robot (non-sandbox parts) + sandbox settings, matching
+		// Database.ExportReplay which packs the replay AND the robot it was run with.
+		const robotParts = this.state.parts.filter((p) => !(p as { isSandbox?: boolean }).isSandbox);
+		const s = this.state.sandbox;
+		const settings = new SandboxSettings(
+			s.gravity,
+			s.size,
+			s.terrainType,
+			s.terrainTheme,
+			s.background,
+			s.backgroundR,
+			s.backgroundG,
+			s.backgroundB,
+		);
+		return encodeReplay(data, { parts: robotParts, settings });
+	}
+
+	/**
+	 * Decode a legacy replay export string and begin playing it back. Mirrors
+	 * Database.ImportReplay (split replay/robot, uncompress, extract) followed by
+	 * the play-a-replay flow: the decoded ReplayData drives sim-FREE playback.
+	 * Editing-phase only (like the legacy import-then-play path). Throws if the
+	 * string can't be decoded — callers should catch.
+	 */
+	async importReplay(replayStr: string): Promise<void> {
+		if (this.state.sim.phase !== "editing") return;
+		const { replay } = await decodeReplay(replayStr);
+		this.dispatch({ type: "playReplay", data: replay });
 	}
 
 	/**
@@ -1308,6 +1360,14 @@ export class GameCore {
 			this.cannonballs = [];
 			this.syncChallenge();
 		}
+
+		// Tutorial milestones tied to the reset button (ControllerJumpbot.resetButton
+		// -> 18 "reset"; ControllerCatapult.resetButton -> 37 "reset";
+		// ControllerNewFeatures.Update sim-stopped -> 87 "simStopped").
+		if (this.tutorialMachine) {
+			this.notifyTutorial({ type: "progress", key: "reset" });
+			this.notifyTutorial({ type: "progress", key: "simStopped" });
+		}
 	}
 
 	/**
@@ -1705,7 +1765,23 @@ export class GameCore {
 		}
 		if (this.tutorialMachine) {
 			const cam = this.tutorialMachine.initialCamera;
-			this.state = { ...this.state, camera: { ...this.state.camera, offsetX: cam.drawXOff, offsetY: cam.drawYOff } };
+			// The tutorial subclasses set draw.m_drawXOff/m_drawYOff directly, in the
+			// legacy `screen = world*scale - m_drawOff` convention on the fixed 800x600
+			// Flash stage (Draw.m_screenWidth/Height). The responsive canvas projects
+			// `screen = canvas/2 + world*scale - camera.offset`, and GameCanvas derives
+			// the legacy draw offset back out as `m_drawXOff = camera.offsetX - w/2`.
+			// So a legacy m_drawXOff renders identically iff camera.offsetX ==
+			// m_drawXOff + (stage width)/2. Convert with the authored stage half-size
+			// (400, 300) so Tank (1520,-300) and Catapult (-1880,-220) — and every
+			// other tutorial's framing — land on-screen exactly as the original did.
+			this.state = {
+				...this.state,
+				camera: {
+					...this.state.camera,
+					offsetX: cam.drawXOff + LEGACY_STAGE_WIDTH / 2,
+					offsetY: cam.drawYOff + LEGACY_STAGE_HEIGHT / 2,
+				},
+			};
 		}
 
 		// Load the tutorial's prebuilt scene (baked terrain + prefab bot). When the
@@ -2106,6 +2182,9 @@ export class GameCore {
 				this.editParts(command.partIds, (p) => {
 					if (p instanceof ShapePart) p.isStatic = command.value;
 				});
+				// Tutorial milestone: fixating a shape (ControllerHomeMovies -> 60,
+				// ControllerRubeGoldberg -> 78, both key "fixated").
+				if (command.value && this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "fixated" });
 				return;
 			// Outline lives on ShapePart AND PrismaticJoint (ShapeCheckboxAction OUTLINE_TYPE).
 			case "setOutline":
@@ -2119,11 +2198,15 @@ export class GameCore {
 				this.editParts(command.partIds, (p) => {
 					if (p instanceof ShapePart) p.terrain = command.value;
 				});
+				// Tutorial milestone (ControllerNewFeatures -> 86 "outlinesBehind").
+				if (command.value && this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "outlinesBehind" });
 				return;
 			case "setUndragable":
 				this.editParts(command.partIds, (p) => {
 					if (p instanceof ShapePart) p.undragable = command.value;
 				});
+				// Tutorial milestone (ControllerNewFeatures -> 88 "undraggable").
+				if (command.value && this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "undraggable" });
 				return;
 
 			// --- Joint properties (RevoluteJoint / PrismaticJoint) ---
@@ -2134,6 +2217,20 @@ export class GameCore {
 					if (p instanceof RevoluteJoint) p.enableMotor = command.value;
 					else if (p instanceof PrismaticJoint) p.enablePiston = command.value;
 				});
+				// Tutorial milestones: a revolute motor enabled (ControllerCar -> 13
+				// "motorsEnabled"; ControllerHomeMovies shoulder -> 44 "shoulderEnabled"),
+				// a piston enabled (ControllerJumpbot -> 17 "pistonEnabled"). The
+				// cursor-based machines only advance on the key they expect next.
+				if (command.value && this.tutorialMachine) {
+					const ids = new Set(command.partIds);
+					const enabledRevolute = this.state.parts.some((p) => p instanceof RevoluteJoint && ids.has(p.id));
+					const enabledPrismatic = this.state.parts.some((p) => p instanceof PrismaticJoint && ids.has(p.id));
+					if (enabledRevolute) {
+						this.notifyTutorial({ type: "progress", key: "motorsEnabled" });
+						this.notifyTutorial({ type: "progress", key: "shoulderEnabled" });
+					}
+					if (enabledPrismatic) this.notifyTutorial({ type: "progress", key: "pistonEnabled" });
+				}
 				return;
 			// Strength: motorStrength / pistonStrength (ChangeSliderAction STRENGTH_TYPE;
 			// slider range 1..30 — MAX_RJ_STRENGTH / MAX_SJ_STRENGTH).
@@ -2172,6 +2269,13 @@ export class GameCore {
 						p.motorUpperLimit = upper;
 					}
 				});
+				// Tutorial milestones (ControllerCatapult.Update): lower == -10 -> 35
+				// "limitLower"; upper == 50 -> 36 "limitUpper" (the command carries the
+				// UI's degree values).
+				if (this.tutorialMachine) {
+					if (command.lower === -10) this.notifyTutorial({ type: "progress", key: "limitLower" });
+					if (command.upper === 50) this.notifyTutorial({ type: "progress", key: "limitUpper" });
+				}
 				return;
 			}
 			// Control keys (ControlKeyAction): cw/ccw -> revolute motorCW/CCWKey;
@@ -2430,12 +2534,16 @@ export class GameCore {
 				}
 				joint.id = ++this.nextId;
 				const selection = [joint.id];
+				const createdJointKind = joint.type;
 				this.state = {
 					...this.state,
 					parts: [...this.state.parts, joint],
 					edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(joint) },
 				};
 				this.markChanged();
+				// Tutorial part-created trigger for joints (Car/Jumpbot/Dumpbot Update
+				// watch for the new RevoluteJoint/PrismaticJoint/FixedJoint).
+				if (this.tutorialMachine) this.notifyTutorial({ type: "partCreated", partKind: createdJointKind });
 				return;
 			}
 			case "undo":
@@ -2487,6 +2595,8 @@ export class GameCore {
 				this.applyConditionShapes(cond, command.shape1Id, command.shape2Id);
 				this.challenge.challenge.winConditions.push(cond);
 				this.syncChallenge();
+				// Tutorial milestone (ControllerChallengeEditor -> 97 "addedWinCondition").
+				if (this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "addedWinCondition" });
 				return;
 			}
 			case "addLossCondition": {
@@ -2506,6 +2616,13 @@ export class GameCore {
 				this.applyConditionShapes(cond, command.shape1Id, command.shape2Id);
 				this.challenge.challenge.lossConditions.push(cond);
 				this.syncChallenge();
+				// Tutorial milestones (ControllerChallengeEditor): first loss condition
+				// -> 100 "addedLoss1"; second -> 102 "addedLoss2".
+				if (this.tutorialMachine) {
+					const n = this.challenge.challenge.lossConditions.length;
+					if (n === 1) this.notifyTutorial({ type: "progress", key: "addedLoss1" });
+					else if (n === 2) this.notifyTutorial({ type: "progress", key: "addedLoss2" });
+				}
 				return;
 			}
 			case "removeWinCondition": {

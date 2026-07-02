@@ -28,10 +28,15 @@ const textareaRef = ref<{ textareaRef?: HTMLTextAreaElement } | null>(null);
 
 onMounted(async () => {
 	try {
-		linkText.value = await game.exportRobot();
+		// "replay" exports the recorded replay (+ its robot); otherwise the robot.
+		if (props.robotStr === "replay") {
+			linkText.value = (await game.exportReplayString()) ?? "";
+		} else {
+			linkText.value = await game.exportRobot();
+		}
 	} catch (err) {
 		linkText.value = "";
-		console.warn("[ExportPanel] exportRobot failed:", err);
+		console.warn("[ExportPanel] export failed:", err);
 	}
 });
 

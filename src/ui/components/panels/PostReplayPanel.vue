@@ -48,6 +48,23 @@ function stop(): void {
 	emit("stopReplay");
 }
 
+// "Load Replay" imports a legacy-compatible replay export string and starts
+// playing it back (Database.ImportReplay -> play). We prompt for the pasted
+// string (the shutdown-era import flow) and hand it to GameCore.importReplay.
+async function loadReplay(): Promise<void> {
+	// stopReplay first so import (editing-phase only) is accepted.
+	store.dispatch({ type: "stopReplay" });
+	const str = typeof window !== "undefined" ? window.prompt("Paste replay export string:") : null;
+	if (str) {
+		try {
+			await store.importReplay(str.trim());
+		} catch (err) {
+			console.warn("[PostReplayPanel] importReplay failed:", err);
+		}
+	}
+	emit("loadReplay");
+}
+
 const panelHeight = computed(() => (props.hasReplayId ? 240 : 210));
 </script>
 
@@ -57,7 +74,7 @@ const panelHeight = computed(() => (props.hasReplayId ? 240 : 210));
 
 		<div class="actions">
 			<IbButton family="purple" label="View Again!" class="action-btn" @click="viewAgain" />
-			<IbButton family="purple" label="Load Replay" class="action-btn ib-todo" @click="emit('loadReplay')" />
+			<IbButton family="purple" label="Load Replay" class="action-btn" @click="loadReplay" />
 			<IbButton family="purple" label="Stop Replay" class="action-btn" @click="stop" />
 			<IbButton
 				v-if="hasReplayId"

@@ -23,6 +23,8 @@ export type {
 export { createInitialState } from "./GameState";
 export type { ReplayData, CameraMovement, KeyPress, ReplaySyncPoint } from "./replay";
 export { REPLAY_SYNC_FRAMES, VERSION_STRING_FOR_REPLAYS } from "./replay";
+export { encodeReplay, decodeReplay } from "./replaySerialization";
+export type { DecodedReplay, ReplayRobot } from "./replaySerialization";
 export { TUTORIAL_MESSAGES, TUTORIAL_LEVELS, tutorialLevel, resolveMessage, tutorialWindowHeight, clampTutorialPosition, levelDoneIndexForControllerType } from "./tutorials";
 export type { TutorialLevel } from "./tutorials";
 export {

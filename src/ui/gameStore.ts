@@ -75,6 +75,19 @@ export const useGameStore = defineStore("game", () => {
 		return core.exportReplay();
 	}
 
+	/**
+	 * Encode the current replay recording (+ its robot) to the legacy-compatible
+	 * export string, or null when nothing was recorded. async (compression).
+	 */
+	function exportReplayString(): Promise<string | null> {
+		return core.exportReplayString();
+	}
+
+	/** Decode a legacy replay export string and start playing it back. async. */
+	function importReplay(str: string): Promise<void> {
+		return core.importReplay(str);
+	}
+
 	// --- UI-only application mode (menu vs editor) ---------------------------
 	// This is deliberately NOT part of GameCore/GameState: the headless core
 	// knows only about robots/sim/edit, not about which screen the shell shows.
@@ -113,6 +126,8 @@ export const useGameStore = defineStore("game", () => {
 		exportRobot,
 		importRobot,
 		exportReplay,
+		exportReplayString,
+		importReplay,
 		appMode,
 		goToEditor,
 		goToMenu,
