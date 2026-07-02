@@ -83,7 +83,13 @@ describe("tutorial progress emission advances the dialog machine", () => {
 		// create the piston at their overlap. partCreated("PrismaticJoint") -> 16.
 		c.dispatch({ type: "createShape", kind: "rect", x1: -50, y1: 0, x2: -46, y2: 3 });
 		c.dispatch({ type: "createShape", kind: "rect", x1: -49, y1: 1, x2: -45, y2: 4 });
-		c.dispatch({ type: "createJoint", kind: "prismatic", x: -47.5, y: 2 });
+		// Prismatic is a two-click gesture (H4). To avoid the >1-overlap
+		// disambiguation, click 1 lands where ONLY rect A is (bottom-left corner)
+		// and click 2 where ONLY rect B is (top-right corner); the slide axis runs
+		// between them. snapToCenter off so the clicks aren't pulled to a centre.
+		c.dispatch({ type: "toggleSnapToCenter" });
+		c.dispatch({ type: "startPrismaticJoint", x: -49.5, y: 0.5 });
+		c.dispatch({ type: "finishPrismaticJoint", x: -45.5, y: 3.5 });
 		expect(c.getState().tutorial!.currentMessageId).toBe(16);
 		const piston = c.getState().parts.find((p) => p.constructor.name === "PrismaticJoint");
 		expect(piston).toBeTruthy();

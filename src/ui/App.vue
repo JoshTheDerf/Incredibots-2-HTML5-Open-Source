@@ -88,6 +88,12 @@ function onWindowKeyUp(event: KeyboardEvent): void {
 		game.dispatch({ type: "cancelConditionPick" });
 		return;
 	}
+	// Abort an in-progress joint/thruster gesture (prismatic two-click or >2-overlap
+	// disambiguation) — part of the legacy Escape cascade that reset curAction.
+	if (game.jointGesture) {
+		game.dispatch({ type: "cancelJointGesture" });
+		return;
+	}
 	if (activePanel.value !== null) {
 		closePanel();
 		return;

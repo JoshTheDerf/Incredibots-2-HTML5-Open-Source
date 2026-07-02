@@ -302,6 +302,34 @@ export class GameCore {
 		dragYOff: number[];
 	} | null = null;
 
+	/**
+	 * First-click state of the two-click PRISMATIC-joint gesture (ControllerGame
+	 * MaybeStartCreatingPrismaticJoint :6844 sets jointPart + firstClickX/Y, then
+	 * actionStep 1 waits for the second click). null when no prismatic is
+	 * mid-construction. Holds a live ShapePart ref for part1 and the axis-start
+	 * world point. `finishPrismaticJoint` consumes it. Cleared on tool change /
+	 * cancel via `cancelJointGesture`.
+	 */
+	private pendingPrismatic: { part1: ShapePart; x1: number; y1: number } | null = null;
+
+	/**
+	 * >2-overlap joint / thruster disambiguation state (ControllerGame
+	 * FINALIZING_JOINT, :6776-6785 / :6830-6837 / :6873-6881). When more shapes
+	 * overlap the click than a joint (2) / thruster (1) needs, the legacy enters a
+	 * cycle: each subsequent CLICK advances which candidate pair (or single, for
+	 * thrusters/prismatic-step-1) is highlighted (:2435-2473); a finalize commits
+	 * the current pick. Holds the candidate list + the current index pair + what is
+	 * being built. Highlighted parts carry highlightForJoint (drawn by Draw).
+	 */
+	private pendingJoint: {
+		kind: "fixed" | "revolute" | "thrusters" | "prismatic1" | "prismatic2";
+		candidates: ShapePart[];
+		i1: number;
+		i2: number;
+		x: number;
+		y: number;
+	} | null = null;
+
 	constructor(initial: GameState = createInitialState()) {
 		this.state = initial;
 		// Any parts seeded into the initial state (e.g. the sandbox terrain bodies
@@ -1961,9 +1989,48 @@ export class GameCore {
 		const scale = this.state.camera.scale;
 		for (let i = this.state.parts.length - 1; i >= 0; i--) {
 			const p = this.state.parts[i];
-			if (p instanceof ShapePart && p.InsideShape(x, y, scale)) hits.push(p);
+			// Legacy candidate filter: only EDITABLE + ENABLED shapes are joint /
+			// thruster attachment candidates (ControllerGame MaybeCreateJoint :6743 /
+			// MaybeCreateThrusters :6804 / MaybeStartCreatingPrismaticJoint :6856).
+			// This excludes non-editable terrain and disabled shapes.
+			if (p instanceof ShapePart && p.isEditable && p.isEnabled && p.InsideShape(x, y, scale)) hits.push(p);
 		}
 		return hits;
+	}
+
+	/**
+	 * The nearest EDITABLE shape's centre to (x,y), if within 12/scale world units;
+	 * else null. Faithful port of ControllerGame.FindPartToSnapTo (:6939-6962):
+	 * scans every ShapePart (excluding an optional part), keeps the closest by
+	 * centre distance, returns it only when inside DIST_THRESHHOLD = 12/physScale.
+	 */
+	private findPartToSnapTo(x: number, y: number, exclude: ShapePart | null = null): ShapePart | null {
+		let closest: ShapePart | null = null;
+		let closestDist = Number.MAX_VALUE;
+		for (const p of this.state.parts) {
+			if (p instanceof ShapePart && p !== exclude && p.isEditable) {
+				const dist = Util.GetDist(x, y, p.centerX, p.centerY);
+				if (dist < closestDist) {
+					closestDist = dist;
+					closest = p;
+				}
+			}
+		}
+		const DIST_THRESHHOLD = 12.0 / this.state.camera.scale;
+		return closestDist < DIST_THRESHHOLD ? closest : null;
+	}
+
+	/**
+	 * Apply snap-to-center to a joint/thruster click point when the snapToCenter
+	 * view flag is on (ControllerGame MaybeCreateJoint :6737-6740 /
+	 * MaybeCreateThrusters :6798-6801 / MaybeStart/FinishCreatingPrismaticJoint
+	 * :6850/:6890): if the nearest editable shape's centre is within 12/scale, the
+	 * point snaps to that centre. Returns the (possibly snapped) point.
+	 */
+	private snapJointPoint(x: number, y: number, exclude: ShapePart | null = null): { x: number; y: number } {
+		if (!this.state.edit.snapToCenter) return { x, y };
+		const snap = this.findPartToSnapTo(x, y, exclude);
+		return snap ? { x: snap.centerX, y: snap.centerY } : { x, y };
 	}
 
 	/**
@@ -2883,6 +2950,228 @@ export class GameCore {
 	}
 
 	/**
+	 * Push a freshly-created joint/thruster into the parts graph, select it, revert
+	 * to the Select tool, play the SFX + fire the tutorial trigger. Shared tail of
+	 * MaybeCreate* (:6755-6775 / :6820-6829 / :6914-6924). Also clears any pending
+	 * joint gesture state.
+	 */
+	private commitJoint(joint: Part): void {
+		this.clearJointHighlights();
+		this.pendingJoint = null;
+		this.pendingPrismatic = null;
+		this.syncJointGesture();
+		joint.id = ++this.nextId;
+		const selection = [joint.id];
+		const createdKind = joint.type;
+		this.state = {
+			...this.state,
+			parts: [...this.state.parts, joint],
+			// A successful create reverts to Select (ControllerGame :6760/:6770/:6825/:6919).
+			edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(joint), tool: "select" },
+		};
+		this.markChanged();
+		// PlayJointSound at every joint/thruster create site.
+		this.emitSound("jointCreated");
+		if (this.tutorialMachine) this.notifyTutorial({ type: "partCreated", partKind: createdKind });
+	}
+
+	private finalizeThrusters(part: ShapePart, x: number, y: number): void {
+		this.commitJoint(new Thrusters(part, x, y));
+	}
+
+	private finalizeFixedOrRevolute(kind: "fixed" | "revolute", p1: ShapePart, p2: ShapePart, x: number, y: number): void {
+		const joint =
+			kind === "revolute" ? new RevoluteJoint(p1, p2, x, y) : new FixedJoint(p1, p2, x, y);
+		this.commitJoint(joint);
+	}
+
+	private finalizePrismatic(p1: ShapePart, p2: ShapePart, x1: number, y1: number, x2: number, y2: number): void {
+		// PrismaticJoint(p1, p2, axisStart, axisEnd): the ctor derives anchor,
+		// normalized slide axis, and initLength = dist(start,end) (:56-80).
+		this.commitJoint(new PrismaticJoint(p1, p2, x1, y1, x2, y2));
+	}
+
+	/** Clear highlightForJoint on every currently-highlighted candidate. */
+	private clearJointHighlights(): void {
+		if (this.pendingJoint) for (const c of this.pendingJoint.candidates) c.highlightForJoint = false;
+		if (this.pendingPrismatic) this.pendingPrismatic.part1.highlightForJoint = false;
+	}
+
+	/**
+	 * Enter the >2-overlap disambiguation cycle (ControllerGame FINALIZING_JOINT,
+	 * :6776-6785 / :6830-6837 / :6873-6881). Highlights the initial pick (the top
+	 * pair for a two-shape joint, the top single otherwise) and stores the
+	 * candidate list; the UI cycles via cycleJointCandidate + commits via
+	 * finalizeJoint. `x`/`y` is the (already-snapped) joint point.
+	 */
+	private beginJointDisambiguation(
+		kind: "fixed" | "revolute" | "thrusters" | "prismatic1" | "prismatic2",
+		candidates: ShapePart[],
+		x: number,
+		y: number,
+	): void {
+		const twoShape = kind === "fixed" || kind === "revolute";
+		this.pendingJoint = { kind, candidates, i1: 0, i2: 1, x, y };
+		candidates[0].highlightForJoint = true;
+		if (twoShape) candidates[1].highlightForJoint = true;
+		this.syncJointGesture();
+		this.markChanged();
+	}
+
+	/**
+	 * Advance the highlighted candidate pick (ControllerGame FINALIZING_JOINT click
+	 * :2435-2473). For a single-shape gesture (thrusters / prismatic step) it steps
+	 * i1 through the candidates cyclically (:2441-2448). For a two-shape joint it
+	 * walks all ordered index pairs (i1<i2), wrapping back to (0,1) after the last
+	 * (:2452-2472). Toggles highlightForJoint accordingly.
+	 */
+	private cycleJointCandidate(): void {
+		const pj = this.pendingJoint;
+		if (!pj) return;
+		for (const c of pj.candidates) c.highlightForJoint = false;
+		const n = pj.candidates.length;
+		const twoShape = pj.kind === "fixed" || pj.kind === "revolute";
+		if (!twoShape) {
+			pj.i1 = (pj.i1 + 1) % n;
+			pj.candidates[pj.i1].highlightForJoint = true;
+		} else {
+			if (pj.i1 === n - 2 && pj.i2 === n - 1) {
+				pj.i1 = 0;
+				pj.i2 = 1;
+			} else {
+				pj.i2++;
+				if (pj.i2 === n) {
+					pj.i1++;
+					pj.i2 = pj.i1 + 1;
+				}
+			}
+			pj.candidates[pj.i1].highlightForJoint = true;
+			pj.candidates[pj.i2].highlightForJoint = true;
+		}
+		this.markChanged();
+	}
+
+	/**
+	 * Commit the currently-highlighted disambiguation pick (ControllerGame
+	 * FINALIZING_JOINT drag-to-finalize :1667-1765). `x`/`y` is the finalize point
+	 * (for prismatic step 2 it is the axis-END; for prismatic step 1 it seeds the
+	 * pending first-click, awaiting the second click).
+	 */
+	private finalizePendingJoint(x: number, y: number): void {
+		const pj = this.pendingJoint;
+		if (!pj) return;
+		const p1 = pj.candidates[pj.i1];
+		switch (pj.kind) {
+			case "revolute":
+			case "fixed":
+				this.finalizeFixedOrRevolute(pj.kind, p1, pj.candidates[pj.i2], pj.x, pj.y);
+				return;
+			case "thrusters":
+				this.finalizeThrusters(p1, pj.x, pj.y);
+				return;
+			case "prismatic1": {
+				// Step-1 disambiguation resolved (:1736-1742): record shape #1 + axis
+				// start, then await the second click.
+				for (const c of pj.candidates) c.highlightForJoint = false;
+				this.pendingJoint = null;
+				this.pendingPrismatic = { part1: p1, x1: pj.x, y1: pj.y };
+				this.syncJointGesture();
+				this.markChanged();
+				this.emitSound("jointCreated");
+				return;
+			}
+			case "prismatic2": {
+				// Step-2 disambiguation resolved (:1743-1764): bind shape #2 with the
+				// pending first click as the axis start and (x,y) as the axis end.
+				if (!this.pendingPrismatic) {
+					this.pendingJoint = null;
+					return;
+				}
+				this.finalizePrismatic(this.pendingPrismatic.part1, p1, this.pendingPrismatic.x1, this.pendingPrismatic.y1, x, y);
+				return;
+			}
+		}
+	}
+
+	/**
+	 * Abort the whole joint/thruster gesture (tool change, empty-space click, or an
+	 * explicit cancel). Clears highlights + both pending states. Mirrors the legacy
+	 * curAction = -1 resets in the MaybeCreate* else branches.
+	 */
+	private cancelJointGesture(): void {
+		if (!this.pendingJoint && !this.pendingPrismatic) return;
+		this.clearJointHighlights();
+		this.pendingJoint = null;
+		this.pendingPrismatic = null;
+		this.syncJointGesture();
+		this.markChanged();
+	}
+
+	/**
+	 * Project the private pendingJoint / pendingPrismatic gesture state into the
+	 * plain-data state.jointGesture read-model the UI reads. Called after any change
+	 * to either field. Does NOT markChanged itself (callers do).
+	 */
+	private syncJointGesture(): void {
+		let jg: GameState["jointGesture"] = null;
+		if (this.pendingJoint) jg = { phase: "disambiguate" };
+		else if (this.pendingPrismatic)
+			jg = { phase: "prismaticAxis", axisStart: { x: this.pendingPrismatic.x1, y: this.pendingPrismatic.y1 } };
+		if (jg === null && this.state.jointGesture === null) return;
+		this.state = { ...this.state, jointGesture: jg };
+	}
+
+	/**
+	 * panCamera — drag the editor view over empty world space with the Select tool
+	 * (ControllerGame MouseDrag "dragging the world around" :1834-1835 + the
+	 * boundary clamp :1846-1863). `dx`/`dy` are screen-pixel mouse deltas.
+	 *
+	 * Port camera model: screen = viewW/2 + world*scale - offset, so the world
+	 * coordinate at a screen pixel `sx` is (sx - viewW/2 + offsetX)/scale. The
+	 * legacy subtracts the screen-space mouse delta from the draw offset
+	 * (m_drawXOff -= dScreen); here m_drawXOff = offset - viewW/2, so we subtract
+	 * the delta from offset directly.
+	 *
+	 * Then clamp exactly as the legacy: compute the visible world edges and, if an
+	 * edge crosses a sandbox bound, push the offset back so the edge sits on the
+	 * bound. Faithful to GetMinX/MaxX/MinY/MaxY — the legacy's getters return
+	 * ±MAX_VALUE (an effective no-op), but the port has real sandbox bounds
+	 * (computeBounds ← ControllerSandbox.GetMinX/MaxX :680-714), so this clamp
+	 * actually confines the view to the sandbox.
+	 */
+	private handlePanCamera(dx: number, dy: number, viewW: number, viewH: number): void {
+		const { scale } = this.state.camera;
+		let offsetX = this.state.camera.offsetX - dx;
+		let offsetY = this.state.camera.offsetY - dy;
+		const { minX, maxX, minY, maxY } = this.state.sandbox.bounds;
+		const worldAt = (screen: number, view: number, off: number): number => (screen - view / 2 + off) / scale;
+
+		// X clamp (:1855-1862): if the left edge is past minX, push right; else if
+		// the right edge is past maxX, push left.
+		const minWorldX = worldAt(0, viewW, offsetX);
+		const maxWorldX = worldAt(viewW, viewW, offsetX);
+		if (minWorldX < minX) {
+			offsetX += (minX - minWorldX) * scale;
+		} else if (maxWorldX > maxX) {
+			offsetX -= (maxWorldX - maxX) * scale;
+		}
+
+		// Y clamp (:1847-1853): if the top edge is past minY, push down; else if the
+		// bottom edge is past maxY, push up.
+		const minWorldY = worldAt(0, viewH, offsetY);
+		const maxWorldY = worldAt(viewH, viewH, offsetY);
+		if (minWorldY < minY) {
+			offsetY += (minY - minWorldY) * scale;
+		} else if (maxWorldY > maxY) {
+			offsetY -= (maxWorldY - maxY) * scale;
+		}
+
+		if (offsetX === this.state.camera.offsetX && offsetY === this.state.camera.offsetY) return;
+		this.state = { ...this.state, camera: { ...this.state.camera, offsetX, offsetY } };
+		this.markChanged();
+	}
+
+	/**
 	 * Whether a command mutates the parts graph and should therefore push an
 	 * undo snapshot before it applies. Excludes selection (select/clearSelection),
 	 * tool changes (setTool), sim controls (play/pause/reset/step), undo/redo
@@ -2896,6 +3185,12 @@ export class GameCore {
 			case "createThrusters":
 			case "createCannon":
 			case "createJoint":
+			// finishPrismaticJoint / finalizeJoint create the actual joint part (the
+			// two-click + disambiguation commit sites). startPrismaticJoint,
+			// cycleJointCandidate and cancelJointGesture only touch transient gesture
+			// state / highlightForJoint, so they are NOT mutating.
+			case "finishPrismaticJoint":
+			case "finalizeJoint":
 			case "deleteParts":
 			case "moveParts":
 			case "rotateParts":
@@ -2980,6 +3275,11 @@ export class GameCore {
 				case "createThrusters":
 				case "createCannon":
 				case "createJoint":
+				case "startPrismaticJoint":
+				case "finishPrismaticJoint":
+				case "cycleJointCandidate":
+				case "finalizeJoint":
+				case "cancelJointGesture":
 				case "deleteParts":
 				case "moveParts":
 				case "rotateParts":
@@ -3065,8 +3365,19 @@ export class GameCore {
 			case "select": {
 				let selection: number[];
 				if (command.additive) {
+					// Additive select TOGGLES membership, faithful to the legacy shift-click:
+					// an already-selected part is REMOVED (Util.RemoveFromArray branch,
+					// ControllerGame :1292-1293), an unselected one is added (:1291). A
+					// marquee add (multiple ids) still unions — a shift-marquee never
+					// removes in the legacy (BOX_SELECTING pushes, :2407).
 					const merged = new Set(this.state.edit.selection);
-					for (const id of command.partIds) merged.add(id);
+					if (command.partIds.length === 1) {
+						const id = command.partIds[0];
+						if (merged.has(id)) merged.delete(id);
+						else merged.add(id);
+					} else {
+						for (const id of command.partIds) merged.add(id);
+					}
 					selection = [...merged];
 				} else {
 					selection = [...command.partIds];
@@ -3564,21 +3875,18 @@ export class GameCore {
 			case "createThrusters": {
 				// Restriction gate (ControllerChallenge.thrustersButton :158-167).
 				if (this.challenge && !partTypeAllowed(this.challenge, "thrusters")) return;
-				// Attach to the single top shape under the click (MaybeCreateThrusters :6817).
-				const hits = this.shapesAt(command.x, command.y);
+				// Snap the click to a shape centre when snapToCenter is on (MaybeCreate
+				// Thrusters :6798-6801), then collect overlapping candidates at that point.
+				const pt = this.snapJointPoint(command.x, command.y);
+				const hits = this.shapesAt(pt.x, pt.y);
 				if (hits.length === 0) return;
-				const t = new Thrusters(hits[0], command.x, command.y);
-				t.id = ++this.nextId;
-				const selection = [t.id];
-				this.state = {
-					...this.state,
-					parts: [...this.state.parts, t],
-					// Successful create reverts to Select (ControllerGame thrusters :6825).
-					edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(t), tool: "select" },
-				};
-				this.markChanged();
-				// Thrusters use the joint-create SFX (ControllerGame PlayJointSound :6825).
-				this.emitSound("jointCreated");
+				if (hits.length > 1) {
+					// >1-overlap disambiguation (MaybeCreateThrusters :6830-6837): enter the
+					// cycle; the UI advances the pick + finalizes.
+					this.beginJointDisambiguation("thrusters", hits, pt.x, pt.y);
+					return;
+				}
+				this.finalizeThrusters(hits[0], pt.x, pt.y);
 				return;
 			}
 			case "createCannon": {
@@ -3604,43 +3912,79 @@ export class GameCore {
 				return;
 			}
 			case "createJoint": {
-				// A joint attaches the two overlapping shapes under the click. We take
-				// the top two overlaps (MaybeCreateJoint candidateParts[0..1] :6756-6778);
-				// SIMPLIFICATION: the original's >2-overlap disambiguation click-cycle is
-				// collapsed. With fewer than two overlapping shapes, this is a no-op.
-				// Restriction gate (ControllerChallenge.fj/rj/pjButton :125-156).
+				// A fixed/revolute joint attaches the two overlapping shapes under the
+				// click (MaybeCreateJoint :6731). Restriction gate (ControllerChallenge.
+				// fj/rjButton :125-156).
 				if (this.challenge && !partTypeAllowed(this.challenge, command.kind)) return;
-				const hits = this.shapesAt(command.x, command.y);
-				if (hits.length < 2) return;
-				const p1 = hits[0];
-				const p2 = hits[1];
-				let joint: Part;
-				if (command.kind === "revolute") {
-					joint = new RevoluteJoint(p1, p2, command.x, command.y);
-				} else if (command.kind === "fixed") {
-					joint = new FixedJoint(p1, p2, command.x, command.y);
-				} else {
-					// The original's two-click gesture picks the slide axis; here we
-					// default to a short horizontal span centred on the click, giving a
-					// valid axis + initLength (PrismaticJoint ctor :57-81).
-					const half = DEFAULT_RECT_SIZE / 2;
-					joint = new PrismaticJoint(p1, p2, command.x - half, command.y, command.x + half, command.y);
+				// Snap the click to a shape centre when snapToCenter is on (:6737-6740),
+				// then collect candidates at the (snapped) point.
+				const pt = this.snapJointPoint(command.x, command.y);
+				const hits = this.shapesAt(pt.x, pt.y);
+				if (hits.length < 2) {
+					// <2 candidates: nothing to join (MaybeCreateJoint else :6786-6788).
+					return;
 				}
-				joint.id = ++this.nextId;
-				const selection = [joint.id];
-				const createdJointKind = joint.type;
-				this.state = {
-					...this.state,
-					parts: [...this.state.parts, joint],
-					// Successful create reverts to Select (ControllerGame joints :6760/:6770/:6919).
-					edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(joint), tool: "select" },
-				};
+				if (hits.length > 2) {
+					// >2-overlap disambiguation (MaybeCreateJoint :6776-6785): enter the
+					// cycle; the UI advances the pick + finalizes.
+					this.beginJointDisambiguation(command.kind, hits, pt.x, pt.y);
+					return;
+				}
+				// Exactly two: create immediately (MaybeCreateJoint :6751-6773).
+				this.finalizeFixedOrRevolute(command.kind, hits[0], hits[1], pt.x, pt.y);
+				return;
+			}
+			case "startPrismaticJoint": {
+				// Two-click prismatic, click 1 (MaybeStartCreatingPrismaticJoint :6844).
+				if (this.challenge && !partTypeAllowed(this.challenge, "prismatic")) return;
+				const pt = this.snapJointPoint(command.x, command.y);
+				const hits = this.shapesAt(pt.x, pt.y);
+				if (hits.length === 0) {
+					// No shape under click 1 — abort (:6864-6866).
+					this.cancelJointGesture();
+					return;
+				}
+				if (hits.length > 1) {
+					// >1-overlap: disambiguate which shape #1 binds (:6873-6881).
+					this.beginJointDisambiguation("prismatic1", hits, pt.x, pt.y);
+					return;
+				}
+				// Record shape #1 + axis-start point; await click 2 (:6867-6872).
+				this.pendingPrismatic = { part1: hits[0], x1: pt.x, y1: pt.y };
+				this.syncJointGesture();
 				this.markChanged();
-				// Play the joint-create SFX (ControllerGame.PlayJointSound call sites).
 				this.emitSound("jointCreated");
-				// Tutorial part-created trigger for joints (Car/Jumpbot/Dumpbot Update
-				// watch for the new RevoluteJoint/PrismaticJoint/FixedJoint).
-				if (this.tutorialMachine) this.notifyTutorial({ type: "partCreated", partKind: createdJointKind });
+				return;
+			}
+			case "finishPrismaticJoint": {
+				// Two-click prismatic, click 2 (MaybeFinishCreatingPrismaticJoint :6884).
+				if (!this.pendingPrismatic) return;
+				const pt = this.snapJointPoint(command.x, command.y, this.pendingPrismatic.part1);
+				// Candidates exclude shape #1 (:6896).
+				const hits = this.shapesAt(pt.x, pt.y).filter((p) => p !== this.pendingPrismatic!.part1);
+				if (hits.length === 0) {
+					// No second shape — abort (:6933-6935).
+					this.cancelJointGesture();
+					return;
+				}
+				if (hits.length > 1) {
+					// >1-overlap: disambiguate shape #2 (:6925-6932).
+					this.beginJointDisambiguation("prismatic2", hits, pt.x, pt.y);
+					return;
+				}
+				this.finalizePrismatic(this.pendingPrismatic.part1, hits[0], this.pendingPrismatic.x1, this.pendingPrismatic.y1, pt.x, pt.y);
+				return;
+			}
+			case "cycleJointCandidate": {
+				this.cycleJointCandidate();
+				return;
+			}
+			case "finalizeJoint": {
+				this.finalizePendingJoint(command.x, command.y);
+				return;
+			}
+			case "cancelJointGesture": {
+				this.cancelJointGesture();
 				return;
 			}
 			case "undo":
@@ -3679,6 +4023,9 @@ export class GameCore {
 				return;
 			case "centerOnSelection":
 				this.handleCenterOnSelection();
+				return;
+			case "panCamera":
+				this.handlePanCamera(command.dx, command.dy, command.viewW, command.viewH);
 				return;
 			// --- Challenge mode -------------------------------------------------
 			case "newChallenge": {

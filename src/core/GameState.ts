@@ -288,6 +288,20 @@ export interface GameState {
 	 * FinishSelectingForCondition (:270-336).
 	 */
 	conditionDraft: ConditionDraft | null;
+	/**
+	 * In-progress joint/thruster creation gesture read-model, or null when idle.
+	 * `phase` distinguishes the PRISMATIC two-click first-click wait (the UI draws
+	 * the axis preview line + a second click finalizes) from a >2-overlap
+	 * DISAMBIGUATION cycle (the UI cycles the pick on click, finalizes on drag).
+	 * A faithful projection of GameCore's private pendingPrismatic / pendingJoint
+	 * (ControllerGame MaybeStart/FinishCreatingPrismaticJoint + FINALIZING_JOINT).
+	 * The highlighted candidates themselves carry highlightForJoint (drawn by Draw).
+	 */
+	jointGesture: {
+		phase: "prismaticAxis" | "disambiguate";
+		/** prismaticAxis only: the world-space axis-START point (for the UI preview line). */
+		axisStart?: { x: number; y: number };
+	} | null;
 }
 
 export function createInitialState(): GameState {
@@ -324,5 +338,6 @@ export function createInitialState(): GameState {
 		replay: { recording: false, playing: false, frame: 0, numFrames: null, canSave: true, finished: false },
 		tutorial: null,
 		conditionDraft: null,
+		jointGesture: null,
 	};
 }

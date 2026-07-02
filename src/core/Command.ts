@@ -56,12 +56,35 @@ export type Command =
 	// createCannon places a free-standing Cannon ShapePart (NEW_CANNON flow :2251).
 	| { type: "createThrusters"; x: number; y: number }
 	| { type: "createCannon"; x: number; y: number }
-	// Create a joint at the click point, attaching the two overlapping shapes
-	// under (x,y). Mirrors ControllerGame.MaybeCreateJoint (:6736) /
-	// MaybeStart/FinishCreatingPrismaticJoint (:6849/:6889). SIMPLIFICATION: the
-	// single-click form takes the top two overlapping shapes — the original's
-	// >2-overlap disambiguation click-cycle is collapsed. Needs ≥2 overlapping shapes.
-	| { type: "createJoint"; kind: "fixed" | "revolute" | "prismatic"; x: number; y: number }
+	// Create a FIXED or REVOLUTE joint at the click point, attaching the two
+	// overlapping shapes under (x,y). Mirrors ControllerGame.MaybeCreateJoint
+	// (:6731). Needs ≥2 overlapping editable+enabled shapes. When exactly two
+	// overlap, the joint is created immediately; when MORE than two overlap, the
+	// core enters a >2-overlap DISAMBIGUATION cycle instead (pendingJoint) that the
+	// UI drives with cycleJointCandidate / finalizeJoint. When snapToCenter is on,
+	// (x,y) first snaps to the nearest editable shape centre (FindPartToSnapTo).
+	// PRISMATIC joints use the two-click startPrismaticJoint / finishPrismaticJoint
+	// gesture below, NOT this command.
+	| { type: "createJoint"; kind: "fixed" | "revolute"; x: number; y: number }
+	// Two-click PRISMATIC-joint gesture (ControllerGame
+	// MaybeStartCreatingPrismaticJoint :6844 / MaybeFinishCreatingPrismaticJoint
+	// :6884). Click 1 (startPrismaticJoint) picks shape #1 and the slide-axis START
+	// point; click 2 (finishPrismaticJoint) picks shape #2 and the axis END point.
+	// The slide axis + initLength derive from (p1→p2). Both snap to shape centres
+	// when snapToCenter is on. start no-ops without an overlapping shape; if >1
+	// shape overlaps start, it enters the disambiguation cycle (prismatic1). finish
+	// no-ops without a second shape (excluding shape #1); >1 overlap enters the
+	// cycle (prismatic2).
+	| { type: "startPrismaticJoint"; x: number; y: number }
+	| { type: "finishPrismaticJoint"; x: number; y: number }
+	// >2-overlap disambiguation cycle (ControllerGame FINALIZING_JOINT click-cycle
+	// :2435-2473 + drag-to-finalize :1668-1765). cycleJointCandidate advances which
+	// candidate pair/single is highlighted; finalizeJoint commits the current pick;
+	// cancelJointGesture aborts the whole joint gesture (also clears a pending
+	// prismatic first click). No-ops when no joint gesture is active.
+	| { type: "cycleJointCandidate" }
+	| { type: "finalizeJoint"; x: number; y: number }
+	| { type: "cancelJointGesture" }
 	| { type: "deleteParts"; partIds: number[] }
 	| { type: "moveParts"; partIds: number[]; dx: number; dy: number }
 	| { type: "rotateParts"; partIds: number[]; angle: number }
@@ -170,6 +193,14 @@ export type Command =
 	// "Center on Selection" → ControllerGame.CenterOnSelected :2542-2564). No-op when
 	// nothing is selected.
 	| { type: "centerOnSelection" }
+	// Pan the editor camera by dragging empty world space with the Select tool
+	// (ControllerGame MouseDrag "dragging the world around" :1834-1835). `dx`/`dy`
+	// are SCREEN-pixel deltas (the mouse move since the last event); the core
+	// subtracts them from camera.offsetX/offsetY, then CLAMPS so the visible world
+	// stays within state.sandbox.bounds (the legacy GetMinX/MaxX/MinY/MaxY clamp
+	// :1846-1863). `viewW`/`viewH` are the current canvas size in CSS px, needed to
+	// compute the visible world extent for the clamp. Not undoable (a view change).
+	| { type: "panCamera"; dx: number; dy: number; viewW: number; viewH: number }
 	// --- selection (view state, but routed through the core so it stays authoritative) ---
 	| { type: "select"; partIds: number[]; additive?: boolean }
 	| { type: "clearSelection" }

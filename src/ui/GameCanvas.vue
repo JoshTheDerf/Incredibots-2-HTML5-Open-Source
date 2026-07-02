@@ -61,6 +61,14 @@ watch(
 	() => [game.edit.tool, game.sim.phase],
 	() => {
 		triangleBase = null;
+		// Abort an in-progress prismatic two-click / joint disambiguation when the
+		// tool changes or the sim leaves editing (legacy resets curAction/actionStep
+		// + clears highlightForJoint on a new tool button).
+		if (game.jointGesture) {
+			game.dispatch({ type: "cancelJointGesture" });
+			jointDisambiguateStart = null;
+			overlay?.clear();
+		}
 	},
 );
 
@@ -113,6 +121,12 @@ type Gesture =
 	| { kind: "resize"; firstClickWorldX: number }
 	// Marquee box-select. `origin` is the world-space anchor (first corner).
 	| { kind: "marquee"; origin: { x: number; y: number }; current: { x: number; y: number } }
+	// Pan the editor camera by dragging empty world space with the Select tool
+	// (ControllerGame "dragging the world around" :1834-1835). `lastScreen` tracks
+	// the cursor's canvas-pixel position at the previous move so we dispatch
+	// panCamera with the incremental screen-pixel delta (the core subtracts it from
+	// camera.offset and clamps to the sandbox bounds).
+	| { kind: "pan"; lastScreen: { x: number; y: number } }
 	// Create a Circle/Rectangle/Triangle by dragging. `start` is the press point
 	// (world), `current` the live cursor point. Ports ControllerGame's
 	// NEW_CIRCLE/NEW_RECT/NEW_TRIANGLE press-drag-release (mouseClick :2190-2380);
@@ -136,6 +150,13 @@ let triangleBase: { v1: { x: number; y: number }; v2: { x: number; y: number } }
 // Last known cursor position in world units — drives the triangle apex preview
 // while `triangleBase` is set (the cursor moves with no button held down).
 let pointerWorld: { x: number; y: number } | null = null;
+
+// Pointer-down anchor of a >2-overlap joint/thruster DISAMBIGUATION interaction
+// (ControllerGame FINALIZING_JOINT). Set on pointer-down while the core's
+// jointGesture.phase === "disambiguate"; on pointer-up, a small move (< the legacy
+// 0.5*30/scale threshold) CYCLES the candidate pick (cycleJointCandidate) and a
+// larger drag FINALIZES it (finalizeJoint). Null when no such interaction is live.
+let jointDisambiguateStart: { x: number; y: number } | null = null;
 
 // --- Challenge-condition stage picking (self-contained) --------------------
 // When game.conditionDraft.awaiting is a box/hline/vline, the author draws the
@@ -282,10 +303,24 @@ function onPointerDown(event: PointerEvent): void {
 		return;
 	}
 
+	// --- >2-overlap joint/thruster DISAMBIGUATION cycle (ControllerGame
+	// FINALIZING_JOINT, :2435-2473 click-to-cycle + :1667-1765 drag-to-finalize).
+	// While the core is in a disambiguation gesture (jointGesture.phase ==
+	// "disambiguate"), the pointer-DOWN begins a small gesture: if it ends as a
+	// CLICK (no drag past the legacy 0.5*30/scale threshold) it cycles the pick; a
+	// DRAG past the threshold finalizes with the current highlighted pick. We
+	// capture the pointer and resolve on up/move in the disambiguation branch.
+	if (game.jointGesture?.phase === "disambiguate") {
+		jointDisambiguateStart = { x: world.x, y: world.y };
+		container.value.setPointerCapture(event.pointerId);
+		return;
+	}
+
 	// Creation tools that place a part at the click point. Joints/thrusters
 	// hit-test the shapes under the click inside the core (they no-op if the
 	// click misses; joints need two overlapping shapes). Mirrors
-	// ControllerGame.mouseClick's MaybeCreate* dispatch (:2389-2510).
+	// ControllerGame.mouseClick's MaybeCreate* dispatch (:2389-2510). When
+	// snapToCenter is on the core snaps the point to the nearest shape centre.
 	if (tool === "newThrusters") {
 		game.dispatch({ type: "createThrusters", x: world.x, y: world.y });
 		return;
@@ -294,9 +329,24 @@ function onPointerDown(event: PointerEvent): void {
 		game.dispatch({ type: "createCannon", x: world.x, y: world.y });
 		return;
 	}
-	if (tool === "newFixedJoint" || tool === "newRevoluteJoint" || tool === "newPrismaticJoint") {
-		const kind = tool === "newFixedJoint" ? "fixed" : tool === "newRevoluteJoint" ? "revolute" : "prismatic";
+	if (tool === "newFixedJoint" || tool === "newRevoluteJoint") {
+		const kind = tool === "newFixedJoint" ? "fixed" : "revolute";
 		game.dispatch({ type: "createJoint", kind, x: world.x, y: world.y });
+		return;
+	}
+	if (tool === "newPrismaticJoint") {
+		// Two-click gesture (ControllerGame MaybeStart/FinishCreatingPrismaticJoint
+		// :6844/:6884). Click 1 (no axis pending) records shape #1 + axis start; click
+		// 2 (axis pending) finalizes with shape #2 + axis end. The awaiting-second-
+		// click state is the core's jointGesture.phase === "prismaticAxis" (its
+		// axisStart drives the preview line); the >1-overlap first-click path is
+		// intercepted by the disambiguation branch above.
+		if (game.jointGesture?.phase === "prismaticAxis") {
+			game.dispatch({ type: "finishPrismaticJoint", x: world.x, y: world.y });
+			overlay?.clear();
+		} else {
+			game.dispatch({ type: "startPrismaticJoint", x: world.x, y: world.y });
+		}
 		return;
 	}
 	if (tool === "newText") {
@@ -344,10 +394,15 @@ function onPointerDown(event: PointerEvent): void {
 		// alone. Then begin a drag of the (now) selected parts.
 		const alreadySelected = selection.includes(hit.id);
 		if (additive) {
-			// Additive add. (De-selecting a shift-clicked selected part — the
-			// Util.RemoveFromArray branch at :1298 — needs a remove/toggle that
-			// the `select` command can't express additively; treated as add.)
+			// Additive shift-click TOGGLES membership (ControllerGame :1291-1293): an
+			// unselected part is added, an already-selected part is REMOVED
+			// (Util.RemoveFromArray). The core `select {additive}` now toggles for a
+			// single id, so we dispatch it either way.
 			game.dispatch({ type: "select", partIds: [hit.id], additive: true });
+			if (alreadySelected) {
+				// The part was just DESELECTED — don't begin a drag of it.
+				return;
+			}
 		} else if (!alreadySelected) {
 			game.dispatch({ type: "select", partIds: [hit.id] });
 		}
@@ -357,11 +412,17 @@ function onPointerDown(event: PointerEvent): void {
 		return;
 	}
 
-	// Pointer-down on empty space. ControllerGame.ts:1466-1486: clears the
-	// selection; a marquee box-select begins (the original gated this behind
-	// shift; here empty-drag always marquees, matching the spec).
-	if (!additive) game.dispatch({ type: "clearSelection" });
-	gesture = { kind: "marquee", origin: { x: world.x, y: world.y }, current: { x: world.x, y: world.y } };
+	// Pointer-down on empty space (ControllerGame.ts:1466-1486). The legacy splits
+	// on the shift key: with SHIFT held it begins a BOX_SELECTING marquee
+	// (:1466-1469); with NO modifier it PANS the world by dragging (:1471-1476).
+	// Either way the current selection is cleared (:1479). We mirror that split
+	// exactly — a plain empty-drag pans the camera; a shift empty-drag marquees.
+	game.dispatch({ type: "clearSelection" });
+	if (additive) {
+		gesture = { kind: "marquee", origin: { x: world.x, y: world.y }, current: { x: world.x, y: world.y } };
+	} else {
+		gesture = { kind: "pan", lastScreen: { x: s.x, y: s.y } };
+	}
 	container.value.setPointerCapture(event.pointerId);
 }
 
@@ -397,7 +458,29 @@ function onPointerMove(event: PointerEvent): void {
 	// base-edge and apex clicks, when no pointer button is held.
 	pointerWorld = { x: world.x, y: world.y };
 
+	// Prismatic axis preview: while awaiting the SECOND click (core jointGesture.
+	// phase === "prismaticAxis"), draw the slide-axis line from the recorded
+	// axis-start to the cursor (ControllerGame draws the in-progress prismatic axis
+	// while actionStep == 1). No button is held between the two clicks.
+	if (game.jointGesture?.phase === "prismaticAxis" && game.jointGesture.axisStart) {
+		drawPrismaticAxisPreview(game.jointGesture.axisStart, world);
+		return;
+	}
+
 	if (gesture.kind === "none") return;
+
+	if (gesture.kind === "pan") {
+		// Empty-space world drag (ControllerGame :1834-1835). Dispatch the incremental
+		// SCREEN-pixel delta; the core subtracts it from camera.offset and clamps to
+		// the sandbox bounds. viewW/viewH are the current canvas size.
+		const dx = s.x - gesture.lastScreen.x;
+		const dy = s.y - gesture.lastScreen.y;
+		if (dx !== 0 || dy !== 0) {
+			game.dispatch({ type: "panCamera", dx, dy, viewW: s.w, viewH: s.h });
+			gesture.lastScreen = { x: s.x, y: s.y };
+		}
+		return;
+	}
 
 	if (gesture.kind === "drag") {
 		// Incremental world-space delta since the last move. moveParts is
@@ -469,6 +552,30 @@ function onPointerUp(event: PointerEvent): void {
 			container.value.releasePointerCapture(event.pointerId);
 		} catch {
 			// pointer may not have been captured; ignore.
+		}
+		return;
+	}
+
+	// Resolve a >2-overlap DISAMBIGUATION interaction (ControllerGame
+	// FINALIZING_JOINT): a small move is a CLICK → cycle the candidate pick
+	// (:2435-2473); a drag past the legacy 0.5*30/scale threshold FINALIZES with the
+	// current pick (:1668-1676). The threshold is in world units, so scale it by the
+	// camera scale to compare against the screen-pixel move.
+	if (jointDisambiguateStart) {
+		const s = screenOf(event);
+		const world = screenToWorld(s.x, s.y, game.camera, s.w, s.h);
+		const dist = Math.hypot(world.x - jointDisambiguateStart.x, world.y - jointDisambiguateStart.y);
+		const threshold = (0.5 * 30) / game.camera.scale;
+		if (dist > threshold) {
+			game.dispatch({ type: "finalizeJoint", x: world.x, y: world.y });
+		} else {
+			game.dispatch({ type: "cycleJointCandidate" });
+		}
+		jointDisambiguateStart = null;
+		try {
+			container.value.releasePointerCapture(event.pointerId);
+		} catch {
+			// ignore
 		}
 		return;
 	}
@@ -668,6 +775,26 @@ function drawMarquee(): void {
 
 function clearMarquee(): void {
 	overlay?.clear();
+}
+
+/**
+ * Paint the in-progress PRISMATIC slide axis into the overlay (world → screen):
+ * a line from the recorded axis-start (first click) to the cursor. Faithful to
+ * ControllerGame drawing the prismatic axis while actionStep == 1 (between the
+ * two clicks of MaybeStart/FinishCreatingPrismaticJoint).
+ */
+function drawPrismaticAxisPreview(start: { x: number; y: number }, cur: { x: number; y: number }): void {
+	if (!overlay || !app || !container.value) return;
+	const rect = container.value.getBoundingClientRect();
+	const cam = game.camera;
+	const a = worldToScreen(start.x, start.y, cam, rect.width, rect.height);
+	const b = worldToScreen(cur.x, cur.y, cam, rect.width, rect.height);
+	overlay.clear();
+	overlay.moveTo(a.x, a.y);
+	overlay.lineTo(b.x, b.y);
+	overlay.stroke({ width: 2, color: 0xffaa00, alpha: 0.9 });
+	overlay.circle(a.x, a.y, 3);
+	overlay.fill({ color: 0xffaa00, alpha: 0.9 });
 }
 
 /**

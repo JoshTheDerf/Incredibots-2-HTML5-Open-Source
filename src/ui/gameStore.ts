@@ -51,6 +51,10 @@ export const useGameStore = defineStore("game", () => {
 	// ConditionsPanel reads it to hide itself + show the pick hint; GameCanvas
 	// reads `conditionDraft.awaiting` to gate its picking gesture.
 	const conditionDraft = computed(() => state.value.conditionDraft);
+	// In-progress joint/thruster creation gesture (null when idle). GameCanvas reads
+	// `phase` to drive the prismatic axis-preview + the >2-overlap disambiguation
+	// cycle. See GameState.jointGesture.
+	const jointGesture = computed(() => state.value.jointGesture);
 
 	/**
 	 * The live legacy `Challenge` domain object for the renderer to feed straight
@@ -164,6 +168,7 @@ export const useGameStore = defineStore("game", () => {
 		parts,
 		challenge,
 		conditionDraft,
+		jointGesture,
 		tutorial,
 		replay,
 		liveChallenge,
