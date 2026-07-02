@@ -80,6 +80,7 @@ import {
 	createTutorialMachine,
 	resolveMessage,
 	tutorialLevel,
+	getTutorialSetup,
 	TUTORIAL_LEVELS,
 } from "./tutorials";
 import type { TutorialState } from "./GameState";
@@ -1644,6 +1645,19 @@ export class GameCore {
 		if (this.tutorialMachine) {
 			const cam = this.tutorialMachine.initialCamera;
 			this.state = { ...this.state, camera: { ...this.state.camera, offsetX: cam.drawXOff, offsetY: cam.drawYOff } };
+		}
+
+		// Load the tutorial's prebuilt scene (baked terrain + prefab bot). When the
+		// tutorial provides one, it replaces the current parts (fresh ids); tutorials
+		// with no prebuilt scene return [] and leave the current scene untouched.
+		const setupParts = getTutorialSetup(levelIndex);
+		if (setupParts.length > 0) {
+			for (const p of setupParts) p.id = ++this.nextId;
+			this.state = {
+				...this.state,
+				parts: setupParts,
+				edit: { ...this.state.edit, selection: [], selectedPart: null },
+			};
 		}
 
 		// Init() -> first dialog.

@@ -11,6 +11,20 @@
 //
 // This module is Pixi-free / DOM-free so the headless core owns tutorial logic.
 
+import type { Part } from "../Parts/Part";
+
+/**
+ * The prebuilt scene a tutorial loads: its baked terrain + any prefab bot the
+ * player drives (e.g. ControllerTank's tank, ControllerTutorial's static props).
+ * GameCore.handleLoadTutorial calls this on load and, if non-empty, replaces the
+ * scene with these parts (assigning ids). Returns [] for tutorials with no
+ * prebuilt scene. Faithful port target: each subclass's constructor-built parts.
+ * (Stub — filled in per subclass; see docs/PORT-SPEC-tutorials-replays.md.)
+ */
+export function getTutorialSetup(_levelIndex: number): Part[] {
+	return [];
+}
+
 /**
  * TUTORIAL_MESSAGES (src/Gui/TutorialWindow.ts:115-224). Index == the message
  * id / phraseNum. 108 entries (0-107). Each is a \n-delimited string. Ported
