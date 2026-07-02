@@ -25,6 +25,7 @@ import { useGameStore } from "./gameStore";
 import { screenToWorld, worldToScreen, hitTestPart, partsInBox } from "./renderer/sceneRenderer";
 import { SkyRenderer } from "./renderer/skyRenderer";
 import { GroundRenderer } from "./renderer/groundRenderer";
+import { TutorialGroundRenderer } from "./renderer/tutorialGroundRenderer";
 import type { ToolMode } from "../core";
 import type { Part } from "../Parts/Part";
 
@@ -75,6 +76,11 @@ let sky: SkyRenderer | null = null;
 // ABOVE the sky but BELOW the Draw sprite, matching the legacy display order
 // (sSky behind, sGround over it, the world/robot on top).
 let ground: GroundRenderer | null = null;
+// Renderer-only static tutorial-terrain visual (grass/dirt/rock landscape), a
+// faithful port of ControllerTutorial's sGround1/2/3. Mounted ABOVE the sandbox
+// ground but BELOW the Draw sprite. Only visible when a base-terrain tutorial
+// (Tank/Shapes/Car/Jumpbot/Dumpbot/Catapult, levelIndex 0-5) is active.
+let tutorialGround: TutorialGroundRenderer | null = null;
 // Lightweight overlay Graphics for the marquee rectangle — kept separate from
 // the Draw sprite so it never fights Draw.ts's per-frame clear/repaint.
 let overlay: Graphics | null = null;
@@ -751,6 +757,19 @@ function drawFrame(): void {
 		ground.update(camera, w, h);
 	}
 
+	// Tutorial terrain visual (sGround1/2/3 port): built once, repositioned each
+	// frame. Only shown for the base-terrain tutorials — Tank/Shapes/Car/Jumpbot/
+	// Dumpbot/Catapult (levelIndex 0-5, which load buildBaseTerrain via
+	// getTutorialSetup in src/core/tutorials.ts). Hidden for the sandbox tutorials
+	// (6-8), the challenge-editor tutorial (9), the built-in challenges (10-13),
+	// and any non-tutorial session.
+	if (tutorialGround) {
+		tutorialGround.build();
+		tutorialGround.update(camera, w, h);
+		const tut = state.tutorial;
+		tutorialGround.view.visible = !!tut && tut.active && tut.levelIndex >= 0 && tut.levelIndex <= 5;
+	}
+
 	// Map selection ids -> live Part instances for highlight.
 	const selected = new Set(state.edit.selection);
 	const selectedParts: Part[] = state.parts.filter((p) => selected.has(p.id));
@@ -885,6 +904,12 @@ onMounted(async () => {
 	ground = new GroundRenderer();
 	app.stage.addChild(ground.view);
 
+	// Tutorial terrain visual, above the sandbox ground and below the world Draw
+	// sprite (so the world/robot draws over it). Its view.visible is toggled per
+	// frame in drawFrame based on the active tutorial level.
+	tutorialGround = new TutorialGroundRenderer();
+	app.stage.addChild(tutorialGround.view);
+
 	drawSprite = new Graphics();
 	app.stage.addChild(drawSprite);
 	draw = new Draw();
@@ -948,6 +973,8 @@ onBeforeUnmount(() => {
 	sky = null;
 	ground?.destroy();
 	ground = null;
+	tutorialGround?.destroy();
+	tutorialGround = null;
 	if (app) {
 		app.destroy(true, { children: true });
 		app = null;
