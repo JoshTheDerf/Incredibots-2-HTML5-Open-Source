@@ -3190,6 +3190,40 @@ export class GameCore {
 	}
 
 	/**
+	 * zoomCamera — pinch-zoom ABOUT a focal screen point (GameCanvas two-finger
+	 * gesture). Multiply camera.scale by `scaleFactor`, clamp to [MIN_ZOOM_VAL,
+	 * MAX_ZOOM_VAL], and adjust camera.offset so the WORLD point under the focal
+	 * screen point (focusX,focusY) stays under it after the zoom.
+	 *
+	 * From the transform `screen = view/2 + world*scale - offset` (so
+	 * `world = (screen - view/2 + offset)/scale`, matching sceneRenderer's
+	 * screenToWorld):
+	 *   worldUnderFocus = (focusX - viewW/2 + offsetX) / oldScale
+	 *   offsetX' = viewW/2 + worldUnderFocus*newScale - focusX      (and same for Y)
+	 * i.e. solve the transform for offset holding worldUnderFocus + focus fixed.
+	 * The CLAMPED newScale is used in the offset math so there's no focal drift at
+	 * the zoom limits. Unlike panCamera we do NOT bounds-clamp the offset — the
+	 * focal-point invariant must be exact.
+	 */
+	private handleZoomCamera(scaleFactor: number, focusX: number, focusY: number, viewW: number, viewH: number): void {
+		const cam = this.state.camera;
+		const oldScale = cam.scale;
+		let newScale = oldScale * scaleFactor;
+		if (newScale > MAX_ZOOM_VAL) newScale = MAX_ZOOM_VAL;
+		if (newScale < MIN_ZOOM_VAL) newScale = MIN_ZOOM_VAL;
+		if (newScale === oldScale) return;
+		const worldUnderFocusX = (focusX - viewW / 2 + cam.offsetX) / oldScale;
+		const worldUnderFocusY = (focusY - viewH / 2 + cam.offsetY) / oldScale;
+		const offsetX = viewW / 2 + worldUnderFocusX * newScale - focusX;
+		const offsetY = viewH / 2 + worldUnderFocusY * newScale - focusY;
+		this.state = {
+			...this.state,
+			camera: { scale: newScale, offsetX, offsetY },
+		};
+		this.markChanged();
+	}
+
+	/**
 	 * centerOnSelection — ControllerGame.CenterOnSelected (:2542-2564). Centre the
 	 * camera on the selection's bounding-box centroid. The legacy pins the selection
 	 * centre at ZOOM_FOCUS in its own draw-offset units; in the port's camera model
@@ -4436,6 +4470,9 @@ export class GameCore {
 				return;
 			case "panCamera":
 				this.handlePanCamera(command.dx, command.dy, command.viewW, command.viewH);
+				return;
+			case "zoomCamera":
+				this.handleZoomCamera(command.scaleFactor, command.focusX, command.focusY, command.viewW, command.viewH);
 				return;
 			// --- Challenge mode -------------------------------------------------
 			case "newChallenge": {

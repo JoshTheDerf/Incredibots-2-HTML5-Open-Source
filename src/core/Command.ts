@@ -201,6 +201,14 @@ export type Command =
 	// :1846-1863). `viewW`/`viewH` are the current canvas size in CSS px, needed to
 	// compute the visible world extent for the clamp. Not undoable (a view change).
 	| { type: "panCamera"; dx: number; dy: number; viewW: number; viewH: number }
+	// Pinch-zoom the editor/play camera ABOUT a focal screen point (two-finger
+	// gesture, GameCanvas). `scaleFactor` multiplies camera.scale (clamped to
+	// [MIN_ZOOM_VAL, MAX_ZOOM_VAL]); (focusX,focusY) is the focal point in canvas
+	// CSS px and (viewW,viewH) the current canvas size. GameCore adjusts
+	// camera.offsetX/offsetY so the WORLD point currently under the focal screen
+	// point stays under it after the zoom (pinch-about-focal-point) — unlike
+	// zoomIn/zoomOut which hold the view CENTRE fixed. Not undoable (a view change).
+	| { type: "zoomCamera"; scaleFactor: number; focusX: number; focusY: number; viewW: number; viewH: number }
 	// --- selection (view state, but routed through the core so it stays authoritative) ---
 	| { type: "select"; partIds: number[]; additive?: boolean }
 	| { type: "clearSelection" }

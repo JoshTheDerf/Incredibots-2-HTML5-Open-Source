@@ -170,6 +170,61 @@ let jointDisambiguateStart: { x: number; y: number } | null = null;
 // they never interfere with the select/create/rotate/resize gestures.
 let conditionFirstClick: { x: number; y: number } | null = null;
 
+// --- Two-finger pan + pinch-zoom (additive touch navigation) ----------------
+// Every live pointer's last canvas-relative position, keyed by pointerId. Kept
+// in sync on pointerdown/move/up/cancel. When exactly TWO pointers are down we
+// enter PINCH mode: a two-finger drag pans (midpoint screen delta) and pinch
+// zooms about the midpoint (zoomCamera). This is pure VIEW navigation, so it
+// works in both editing and running phases. Single-pointer behaviour is
+// unchanged — the onPointerDown gesture logic only runs when there is exactly
+// one active pointer and we're not in pinch mode.
+const activePointers = new Map<number, { x: number; y: number }>();
+// Non-null only while a two-finger pinch is in progress. Records the last
+// midpoint (canvas px) + finger distance so each move can dispatch the
+// incremental pan delta and the zoom scale ratio.
+let pinch: { lastMidX: number; lastMidY: number; lastDist: number } | null = null;
+
+/** Midpoint + distance of the two active pointers (assumes exactly 2). */
+function pinchMetrics(): { midX: number; midY: number; dist: number } {
+	const pts = [...activePointers.values()];
+	const [a, b] = pts;
+	const midX = (a.x + b.x) / 2;
+	const midY = (a.y + b.y) / 2;
+	const dist = Math.hypot(a.x - b.x, a.y - b.y);
+	return { midX, midY, dist };
+}
+
+/**
+ * Cleanly abort any in-progress single-pointer gesture when a second finger
+ * lands. Ends a running-sim mouse-joint grab (so the robot isn't dragged while
+ * pinching), clears the editing gesture + any overlay preview, and releases
+ * pointer capture for both pointers so subsequent moves reach the container.
+ */
+function abortSinglePointerGesture(): void {
+	if (mouseJointActive) {
+		game.dispatch({ type: "mouseJointEnd" });
+		mouseJointActive = false;
+	}
+	if (gesture.kind === "resize") {
+		// Commit/clear the core's resize baseline so it isn't left dangling.
+		game.dispatch({ type: "resizeEnd" });
+	}
+	gesture = { kind: "none" };
+	// Abort in-progress joint disambiguation / condition previews cleanly.
+	jointDisambiguateStart = null;
+	overlay?.clear();
+	// Release capture for whatever pointers were captured by the aborted gesture.
+	if (container.value) {
+		for (const id of activePointers.keys()) {
+			try {
+				container.value.releasePointerCapture(id);
+			} catch {
+				// not captured; ignore.
+			}
+		}
+	}
+}
+
 const toolToShapeKind: Partial<Record<ToolMode, "circle" | "rect" | "triangle">> = {
 	newCircle: "circle",
 	newRect: "rect",
@@ -213,6 +268,20 @@ function onPointerDown(event: PointerEvent): void {
 	if (!app || !container.value) return;
 
 	const s = screenOf(event);
+
+	// Track this pointer. When a SECOND pointer lands, ENTER pinch mode: abort
+	// any in-progress single-pointer gesture and seed the pinch midpoint/distance.
+	activePointers.set(event.pointerId, { x: s.x, y: s.y });
+	if (activePointers.size === 2) {
+		event.preventDefault();
+		abortSinglePointerGesture();
+		const m = pinchMetrics();
+		pinch = { lastMidX: m.midX, lastMidY: m.midY, lastDist: m.dist };
+		return;
+	}
+	// With more than 2 pointers we're already pinching — ignore extras.
+	if (activePointers.size !== 1 || pinch) return;
+
 	const camera = game.camera;
 	const world = screenToWorld(s.x, s.y, camera, s.w, s.h);
 
@@ -429,6 +498,45 @@ function onPointerDown(event: PointerEvent): void {
 function onPointerMove(event: PointerEvent): void {
 	if (!app || !container.value) return;
 
+	// --- Two-finger pinch: pan + zoom about the midpoint --------------------
+	// Update the moved pointer, then (while pinching) dispatch the incremental
+	// pan (midpoint screen delta) + zoom (distance ratio) about the midpoint.
+	if (activePointers.has(event.pointerId)) {
+		const sp = screenOf(event);
+		activePointers.set(event.pointerId, { x: sp.x, y: sp.y });
+	}
+	if (pinch && activePointers.size >= 2) {
+		event.preventDefault();
+		const s = screenOf(event);
+		const m = pinchMetrics();
+		// Pan by the midpoint delta since the last move — same sign convention as
+		// the single-finger pan (panCamera subtracts the screen delta from
+		// camera.offset, so content follows the fingers).
+		const dx = m.midX - pinch.lastMidX;
+		const dy = m.midY - pinch.lastMidY;
+		if (dx !== 0 || dy !== 0) {
+			game.dispatch({ type: "panCamera", dx, dy, viewW: s.w, viewH: s.h });
+		}
+		// Zoom about the midpoint. Guard against divide-by-zero (dist 0).
+		if (pinch.lastDist > 0 && m.dist > 0) {
+			const scaleFactor = m.dist / pinch.lastDist;
+			if (scaleFactor !== 1) {
+				game.dispatch({
+					type: "zoomCamera",
+					scaleFactor,
+					focusX: m.midX,
+					focusY: m.midY,
+					viewW: s.w,
+					viewH: s.h,
+				});
+			}
+		}
+		pinch.lastMidX = m.midX;
+		pinch.lastMidY = m.midY;
+		pinch.lastDist = m.dist;
+		return;
+	}
+
 	// --- Condition box/line live preview (gated) ---
 	// After the first corner click, paint the box/line being drawn to the cursor
 	// (faithful to the legacy redrawRobot preview while DRAWING_BOX/LINE).
@@ -543,6 +651,28 @@ function onPointerMove(event: PointerEvent): void {
 
 function onPointerUp(event: PointerEvent): void {
 	if (!container.value) return;
+
+	const wasActive = activePointers.delete(event.pointerId);
+
+	// --- Two-finger pinch teardown ------------------------------------------
+	// While pinching (or if a lifted finger drops the count below 2), do NOT run
+	// any single-pointer up logic. Exiting pinch requires a FRESH pointerdown to
+	// start a new single-pointer gesture, so a lingering finger can't suddenly
+	// begin dragging/creating.
+	if (pinch) {
+		event.preventDefault();
+		try {
+			container.value.releasePointerCapture(event.pointerId);
+		} catch {
+			// not captured; ignore.
+		}
+		if (activePointers.size < 2) pinch = null;
+		return;
+	}
+	// A stray pointer lifting while a single-pointer gesture ran (but we were not
+	// pinching) falls through to the normal gesture-end logic below only when it
+	// was one of the tracked pointers driving that gesture.
+	void wasActive;
 
 	// Release a running-sim mouse-joint grab (ControllerGame.MouseDrag :1804-1808).
 	if (mouseJointActive) {
