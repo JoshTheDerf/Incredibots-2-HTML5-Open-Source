@@ -110,6 +110,14 @@ export const useGameStore = defineStore("game", () => {
 		return core.importReplay(str);
 	}
 
+	// Load a blob-backed built-in challenge (Race / Spaceship) from its raw .dat
+	// bytes. A dispatch command can't carry the ArrayBuffer, so this is a direct
+	// passthrough to GameCore.loadBuiltInChallengeBlob (the MainMenu picker fetches
+	// the .dat and calls this).
+	function loadBuiltInChallengeBlob(name: "race" | "spaceship", blob: ArrayBuffer | Uint8Array): Promise<void> {
+		return core.loadBuiltInChallengeBlob(name, blob);
+	}
+
 	// --- UI-only application mode (menu vs editor) ---------------------------
 	// This is deliberately NOT part of GameCore/GameState: the headless core
 	// knows only about robots/sim/edit, not about which screen the shell shows.
@@ -165,6 +173,7 @@ export const useGameStore = defineStore("game", () => {
 		exportReplay,
 		exportReplayString,
 		importReplay,
+		loadBuiltInChallengeBlob,
 		appMode,
 		goToEditor,
 		goToMenu,

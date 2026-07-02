@@ -35,6 +35,8 @@ import { createInitialState } from "../../core/GameState";
 import { Draw } from "../../Game/Draw";
 import replayDatUrl from "../../../resource/replay.dat";
 import robotDatUrl from "../../../resource/robot.dat";
+import raceDatUrl from "../../../resource/race.dat";
+import spaceshipDatUrl from "../../../resource/spaceship.dat";
 import type { CameraState, SandboxState } from "../../core";
 import type { Part } from "../../Parts/Part";
 import IbButton from "./IbButton.vue";
@@ -168,6 +170,30 @@ function loadBuiltIn(name: "climb" | "monkeyBars"): void {
 	game.dispatch({ type: "loadBuiltInChallenge", name });
 	game.appMode = "challengeEditor";
 	closeModal();
+}
+
+// Race / Spaceship are the two BLOB-based built-in challenges: unlike Climb /
+// Monkey Bars (in-code, dispatched), their terrain + author robot live in the
+// resource/*.dat files the legacy client streamed from the server. We fetch the
+// raw .dat (Vite resolves the import to a URL), hand the bytes to the core's
+// loadBuiltInChallengeBlob (async — ByteArray.uncompress()), then enter the
+// challenge editor exactly like loadBuiltIn. A fetch/decode failure leaves the
+// menu intact (mirrors loadDemo's swallow-and-stay).
+const CHALLENGE_BLOBS: Record<"race" | "spaceship", string> = {
+	race: raceDatUrl,
+	spaceship: spaceshipDatUrl,
+};
+
+async function loadBuiltInBlob(name: "race" | "spaceship"): Promise<void> {
+	try {
+		const bytes = await fetch(CHALLENGE_BLOBS[name]).then((r) => r.arrayBuffer());
+		await game.loadBuiltInChallengeBlob(name, bytes);
+		game.appMode = "challengeEditor";
+	} catch (err) {
+		console.error(`[MainMenu] loadBuiltInBlob("${name}") failed:`, err);
+	} finally {
+		closeModal();
+	}
 }
 
 // Sound toggle — the original tracked Main.enableSound and swapped Enable/Disable
@@ -487,6 +513,8 @@ onBeforeUnmount(() => {
 					<h2 class="picker-title">Load Challenge</h2>
 					<IbButton family="blue" class="picker-btn" label="Climb" @click="loadBuiltIn('climb')" />
 					<IbButton family="blue" class="picker-btn" label="Monkey Bars" @click="loadBuiltIn('monkeyBars')" />
+					<IbButton family="blue" class="picker-btn" label="Race" @click="loadBuiltInBlob('race')" />
+					<IbButton family="blue" class="picker-btn" label="Spaceship" @click="loadBuiltInBlob('spaceship')" />
 					<IbButton family="purple" class="picker-btn" label="Cancel" @click="closeModal" />
 				</div>
 			</template>
