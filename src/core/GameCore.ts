@@ -31,7 +31,7 @@ import type { Command, ShapeKind } from "./Command";
 import { GameState, PartSnapshot, createInitialState } from "./GameState";
 import type { CameraState } from "./GameState";
 import { decodeRobot, encodeRobot } from "./robotSerialization";
-import { decodeChallengeBlob } from "./challengeSerialization";
+import { decodeChallengeBlob, decodeChallenge, encodeChallenge } from "./challengeSerialization";
 import { encodeReplay, decodeReplay, decodeDemoReplay } from "./replaySerialization";
 import { buildTerrainParts, computeBounds } from "./sandboxEnvironment";
 import {
@@ -536,6 +536,97 @@ export class GameCore {
 				for (const l of this.listeners) l(snapshot);
 			}
 		}
+	}
+
+	/**
+	 * Decode a challenge EXPORT STRING (Database.ExportChallenge output) and make it
+	 * the live challenge session — the string-import counterpart of the blob loader
+	 * loadBuiltInChallengeBlob. Faithful to Database.ImportChallenge followed by the
+	 * ControllerRace/Spaceship "become the live challenge" path: decode (parts +
+	 * conditions + restrictions + build areas + camera/zoom), build a play-only
+	 * challenge session (builtIn = null — it's a user challenge), seed its allParts
+	 * (terrain + author robot) into the parts graph, and seed the sandbox from its
+	 * SandboxSettings. Editing-phase only (like other imports). async because
+	 * ByteArray.uncompress() is async. Throws if the string can't be decoded.
+	 */
+	async importChallenge(challengeStr: string): Promise<void> {
+		if (this.state.sim.phase !== "editing") return;
+		const challenge = await decodeChallenge(challengeStr);
+		this.challenge = challengeSessionFromChallenge(challenge, null);
+
+		const parts = challenge.allParts as Part[];
+		for (const p of parts) p.id = ++this.nextId;
+
+		const s = challenge.settings;
+		const sandbox = {
+			gravity: s.gravity,
+			size: s.size,
+			terrainType: s.terrainType,
+			terrainTheme: s.terrainTheme,
+			background: s.background,
+			backgroundR: s.backgroundR,
+			backgroundG: s.backgroundG,
+			backgroundB: s.backgroundB,
+			bounds: computeBounds({ size: s.size, terrainType: s.terrainType }),
+		};
+
+		this.notifyDepth++;
+		try {
+			this.state = {
+				...this.state,
+				parts,
+				sandbox,
+				sim: { phase: "editing", frame: 0 },
+				edit: { ...this.state.edit, selection: [], selectedPart: null },
+			};
+			if (challenge.zoomLevel !== Number.MAX_VALUE) {
+				this.state = { ...this.state, camera: { ...this.state.camera, scale: challenge.zoomLevel } };
+			}
+			this.markChanged();
+			this.syncChallenge();
+		} finally {
+			this.notifyDepth--;
+			if (this.notifyDepth === 0 && this.dirty) {
+				this.dirty = false;
+				const snapshot = this.state;
+				for (const l of this.listeners) l(snapshot);
+			}
+		}
+	}
+
+	/**
+	 * Encode the live challenge session to the legacy export string (base64 of a
+	 * zlib-compressed ByteArray), byte-compatible with Database.ExportChallenge.
+	 * Returns null when no challenge session is active. async (compression).
+	 */
+	async exportChallengeString(): Promise<string | null> {
+		if (!this.challenge) return null;
+		// Legacy ExportChallenge encodes ControllerGameGlobals.challenge, whose
+		// allParts is the authored terrain + robot. In authoring (not-yet-played)
+		// mode allParts may lag the live edits, so snapshot the current parts graph
+		// into it first — mirroring enterChallengePlay's bake — so the export always
+		// captures what's on screen. (putChallengeIntoByteArray filters to drawAnyway
+		// parts, matching the legacy PutPartsIntoByteArray.)
+		this.challenge.challenge.allParts = [...this.state.parts];
+		// An authored challenge session carries `settings = null` (createChallengeSession
+		// keeps the sandbox config on GameState.sandbox, not on the Challenge); the
+		// encoder writes challenge.settings as an AMF object, so materialize a
+		// SandboxSettings from the live sandbox when absent. Blob-loaded / imported
+		// challenges already carry their own settings, so this only fires for authored ones.
+		if (!this.challenge.challenge.settings) {
+			const sb = this.state.sandbox;
+			this.challenge.challenge.settings = new SandboxSettings(
+				sb.gravity,
+				sb.size,
+				sb.terrainType,
+				sb.terrainTheme,
+				sb.background,
+				sb.backgroundR,
+				sb.backgroundG,
+				sb.backgroundB,
+			);
+		}
+		return encodeChallenge(this.challenge.challenge);
 	}
 
 	/** Look up a live Part by its stable id. */
@@ -1383,8 +1474,17 @@ export class GameCore {
 		return { id: part.id, kind, x: 0, y: 0, red: 0, green: 0, blue: 0, opacity: 1 };
 	}
 
-	/** Current move anchor of a Part in world units (center for shapes, x/y for text). */
+	/** Current move anchor of a Part in world units, matching what each type's Move() sets. */
 	private currentXY(part: Part): { x: number; y: number } {
+		// Return the value each part type's Move() sets, so the play->reset restore
+		// (handleReset: snap.part.Move(snap.x, snap.y)) is a no-op relative to the
+		// pre-play position. JointPart.Move sets anchorX/anchorY; Thrusters.Move sets
+		// centerX/centerY (Thrusters extends Part, NOT ShapePart, so check it before
+		// ShapePart); ShapePart.Move sets centerX/centerY; TextPart.Move sets x/y.
+		// Previously non-shape/text parts returned {0,0}, so reset dragged every
+		// joint and thruster to the origin.
+		if (part instanceof JointPart) return { x: part.anchorX, y: part.anchorY };
+		if (part instanceof Thrusters) return { x: part.centerX, y: part.centerY };
 		if (part instanceof ShapePart) return { x: part.centerX, y: part.centerY };
 		if (part instanceof TextPart) return { x: part.x, y: part.y };
 		return { x: 0, y: 0 };

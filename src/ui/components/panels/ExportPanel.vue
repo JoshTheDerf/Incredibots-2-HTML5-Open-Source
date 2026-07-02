@@ -28,9 +28,12 @@ const textareaRef = ref<{ textareaRef?: HTMLTextAreaElement } | null>(null);
 
 onMounted(async () => {
 	try {
-		// "replay" exports the recorded replay (+ its robot); otherwise the robot.
+		// "replay" exports the recorded replay (+ its robot); "challenge" exports the
+		// live challenge session; otherwise the robot.
 		if (props.robotStr === "replay") {
 			linkText.value = (await game.exportReplayString()) ?? "";
+		} else if (props.robotStr === "challenge") {
+			linkText.value = (await game.exportChallengeString()) ?? "";
 		} else {
 			linkText.value = await game.exportRobot();
 		}

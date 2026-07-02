@@ -7,9 +7,9 @@
 // store). Faithful to ImportWindow.doImport (src/Gui/ImportWindow.ts:64-75),
 // which branches on the window type: robot -> Database.ImportRobot,
 // replay -> Database.ImportReplay, challenge -> Database.ImportChallenge. Here
-// robot and replay are wired to game.importRobot / game.importReplay. Challenge
-// STRING import has no backing GameCore command yet (only loadBuiltInChallenge
-// / the blob loader exist), so it is flagged as an IbTodo gap.
+// robot, replay and challenge are wired to game.importRobot /
+// game.importReplay / game.importChallenge (the string-import counterpart of the
+// blob loader).
 import { ref, computed } from "vue";
 import IbButton from "../IbButton.vue";
 import { frameTextures } from "../../assets";
@@ -46,17 +46,12 @@ const message = computed(
 async function doImport(): Promise<void> {
 	if (linkText.value.trim().length === 0 || importing.value) return;
 	errorMsg.value = "";
-	// Challenge string-import has no GameCore command (only loadBuiltInChallenge
-	// + the async blob loader exist) — flag the gap faithfully instead of
-	// inventing a dispatch.
-	if (props.importType === "challenge") {
-		errorMsg.value = "Challenge import is not available yet.";
-		return;
-	}
 	importing.value = true;
 	try {
 		if (props.importType === "replay") {
 			await game.importReplay(linkText.value.trim());
+		} else if (props.importType === "challenge") {
+			await game.importChallenge(linkText.value.trim());
 		} else {
 			await game.importRobot(linkText.value.trim());
 		}

@@ -26,6 +26,7 @@
 
 import { b2AABB, b2Vec2 } from "../Box2D";
 import { ByteArray } from "../General/ByteArray";
+import { Base64Decoder } from "../mx/utils/Base64Decoder";
 import { Util } from "../General/Util";
 import { Challenge } from "../Game/Challenge";
 import { SandboxSettings } from "../Game/SandboxSettings";
@@ -52,7 +53,26 @@ import { Triangle } from "../Parts/Triangle";
 // (Kept as its own copy rather than imported from robotSerialization to keep the
 // two serializers independently faithful to their Database source functions.)
 
+// The ByteArray AMF3 reader keeps its object/string/trait reference tables on the
+// ByteArray instance and does NOT reset them between top-level readObject() calls
+// — but the WRITER emits a fresh reference table per writeObject() call (each uses
+// a new amf3.Writer, so its object-reference indices restart at 0). AS3's native
+// ByteArray resets the read tables at each top-level AMF message; this JS port
+// does not, so a later readObject() resolves an in-message reference index (e.g. a
+// b2AABB's second b2Vec2) against objects left over from EARLIER readObject calls,
+// returning the wrong (stale) object. PutChallengeIntoByteArray writes the parts,
+// settings, buildAreas and each condition list as SEPARATE writeObject() calls, so
+// the challenge decode must reset the reader tables before each readObject() to
+// match the per-message writer semantics. (Cannot be fixed in ByteArray itself —
+// out of this task's file scope; reset locally instead.)
+function resetAmfReadTables(b: ByteArray): void {
+	b.stringTable = [];
+	b.objectTable = [];
+	b.traitTable = [];
+}
+
 function extractPartsFromByteArray(b: ByteArray): Part[] {
+	resetAmfReadTables(b);
 	const objectData = b.readObject() as any[];
 	const partData: Part[] = [];
 
@@ -184,6 +204,60 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 	return partData;
 }
 
+// --- Part array -> ByteArray (AMF3 object graph) --------------------------
+//
+// Verbatim port of Database.PutPartsIntoByteArray (Database.ts:1914-1954), the
+// inverse of extractPartsFromByteArray above. Re-orders parts so all
+// shapes/text precede all joints/thrusters, records the ARRAY INDEX each
+// joint/thruster references, then writes the whole array as one AMF3 object.
+// (Same logic as robotSerialization.putPartsIntoByteArray — kept as its own copy
+// to keep the two serializers independently faithful to their Database source.)
+
+/** Only parts flagged drawAnyway are stored (Database.IsPartOfRobot :1718). */
+function isPartOfRobot(p: Part): boolean {
+	return (p as { drawAnyway?: boolean }).drawAnyway === true;
+}
+
+function putPartsIntoByteArray(parts: Part[], b: ByteArray): ByteArray {
+	parts = parts.filter(isPartOfRobot);
+
+	const partsToStore: Part[] = [];
+	for (let i = 0; i < parts.length; i++) {
+		if (parts[i] instanceof ShapePart || parts[i] instanceof TextPart) {
+			partsToStore.push(parts[i]);
+		}
+	}
+	let numShapes = 0;
+	for (let i = 0; i < parts.length; i++) {
+		if (parts[i] instanceof JointPart || parts[i] instanceof Thrusters) {
+			partsToStore.push(parts[i]);
+			if (parts[i] instanceof PrismaticJoint) {
+				(parts[i] as PrismaticJoint).arrayIndex = numShapes;
+				numShapes++;
+			}
+		} else {
+			numShapes++;
+		}
+	}
+
+	for (let i = 0; i < partsToStore.length; i++) {
+		const part = partsToStore[i];
+		if (part instanceof JointPart) {
+			for (let j = 0; j < partsToStore.length; j++) {
+				if (partsToStore[j] === part.part1) (part as JointPart & { part1Index: number }).part1Index = j;
+				if (partsToStore[j] === part.part2) (part as JointPart & { part2Index: number }).part2Index = j;
+			}
+		} else if (part instanceof Thrusters) {
+			for (let j = 0; j < partsToStore.length; j++) {
+				if (partsToStore[j] === part.shape) (part as Thrusters & { shapeIndex: number }).shapeIndex = j;
+			}
+		}
+	}
+
+	b.writeObject(partsToStore);
+	return b;
+}
+
 /** Only ShapeParts count as "shapes" for condition shape1/shape2 index resolution (Database.IsShape). */
 function isShape(p: Part): boolean {
 	return p instanceof ShapePart;
@@ -201,6 +275,7 @@ function isShape(p: Part): boolean {
 
 function extractChallengeFromByteArray(data: ByteArray): Challenge {
 	const partData = extractPartsFromByteArray(data);
+	resetAmfReadTables(data);
 	const settings = data.readObject() as any;
 	const c = new Challenge(
 		new SandboxSettings(
@@ -233,6 +308,7 @@ function extractChallengeFromByteArray(data: ByteArray): Challenge {
 	c.maxSJSpeed = data.readDouble();
 	c.maxThrusterStrength = data.readDouble();
 
+	resetAmfReadTables(data);
 	const buildAreas = data.readObject() as any[];
 	c.buildAreas = [];
 	for (let i = 0; i < buildAreas.length; i++) {
@@ -244,6 +320,7 @@ function extractChallengeFromByteArray(data: ByteArray): Challenge {
 
 	const allShapes = partData.filter(isShape);
 
+	resetAmfReadTables(data);
 	let conditions = data.readObject() as any[];
 	for (let i = 0; i < conditions.length; i++) {
 		const cond = new WinCondition(conditions[i].name, conditions[i].subject, conditions[i].object);
@@ -256,6 +333,7 @@ function extractChallengeFromByteArray(data: ByteArray): Challenge {
 		c.winConditions.push(cond);
 	}
 
+	resetAmfReadTables(data);
 	conditions = data.readObject() as any[];
 	for (let i = 0; i < conditions.length; i++) {
 		const con = new LossCondition(
@@ -294,6 +372,141 @@ function extractChallengeFromByteArray(data: ByteArray): Challenge {
 			c.thrustersAllowed;
 	}
 	return c;
+}
+
+// --- Challenge -> ByteArray -----------------------------------------------
+//
+// Verbatim port of Database.PutChallengeIntoByteArray (Database.ts:1726-1812),
+// the inverse of extractChallengeFromByteArray. Writes: parts (AMF3) -> settings
+// -> 10 permission booleans -> 7 numeric limit doubles -> buildAreas -> win/loss
+// conditions (with resolved shape indices) -> winConditionsAnded -> camera floats
+// -> nonColliding/showConditions/cannons booleans. Conditions whose required
+// shape reference could not be resolved are dropped exactly as the legacy does.
+
+function putChallengeIntoByteArray(challenge: Challenge): ByteArray {
+	const b = putPartsIntoByteArray(challenge.allParts, new ByteArray());
+	// The legacy re-decodes the just-written parts to get the SAME re-ordered
+	// shape array the reader will see, so condition shape indices line up.
+	b.position = 0;
+	const partData = extractPartsFromByteArray(b);
+	b.position = b.length;
+
+	b.writeObject(challenge.settings);
+	b.writeBoolean(challenge.circlesAllowed);
+	b.writeBoolean(challenge.rectanglesAllowed);
+	b.writeBoolean(challenge.trianglesAllowed);
+	b.writeBoolean(challenge.fixedJointsAllowed);
+	b.writeBoolean(challenge.rotatingJointsAllowed);
+	b.writeBoolean(challenge.slidingJointsAllowed);
+	b.writeBoolean(challenge.thrustersAllowed);
+	b.writeBoolean(challenge.fixateAllowed);
+	b.writeBoolean(challenge.mouseDragAllowed);
+	b.writeBoolean(challenge.botControlAllowed);
+	b.writeDouble(challenge.minDensity);
+	b.writeDouble(challenge.maxDensity);
+	b.writeDouble(challenge.maxRJStrength);
+	b.writeDouble(challenge.maxRJSpeed);
+	b.writeDouble(challenge.maxSJStrength);
+	b.writeDouble(challenge.maxSJSpeed);
+	b.writeDouble(challenge.maxThrusterStrength);
+	b.writeObject(challenge.buildAreas);
+
+	const allShapes = partData.filter(isShape) as ShapePart[];
+	for (let i = challenge.winConditions.length - 1; i >= 0; i--) {
+		const wc = challenge.winConditions[i];
+		if (wc.shape1) {
+			for (let j = 0; j < allShapes.length; j++) {
+				if (wc.shape1.equals(allShapes[j])) wc.shape1Index = j;
+			}
+		}
+		if (wc.shape2) {
+			for (let j = 0; j < allShapes.length; j++) {
+				if (wc.shape2.equals(allShapes[j])) wc.shape2Index = j;
+			}
+		}
+		if ((wc.subject === 0 && wc.shape1Index === -1) || (wc.object > 4 && wc.shape2Index === -1)) {
+			challenge.winConditions = Util.RemoveFromArray(wc, challenge.winConditions);
+		}
+	}
+	for (let i = challenge.lossConditions.length - 1; i >= 0; i--) {
+		const lc = challenge.lossConditions[i];
+		if (lc.shape1) {
+			for (let j = 0; j < allShapes.length; j++) {
+				if (lc.shape1.equals(allShapes[j])) lc.shape1Index = j;
+			}
+		}
+		if (lc.shape2) {
+			for (let j = 0; j < allShapes.length; j++) {
+				if (lc.shape2.equals(allShapes[j])) lc.shape2Index = j;
+			}
+		}
+		if ((lc.subject === 0 && lc.shape1Index === -1) || (lc.object > 4 && lc.shape2Index === -1)) {
+			challenge.lossConditions = Util.RemoveFromArray(lc, challenge.lossConditions);
+		}
+	}
+	b.writeObject(challenge.winConditions);
+	b.writeObject(challenge.lossConditions);
+	// Reset the transient indices exactly as the legacy does (they are only valid
+	// for the duration of the write).
+	for (let i = 0; i < challenge.winConditions.length; i++) {
+		challenge.winConditions[i].shape1Index = -1;
+		challenge.winConditions[i].shape2Index = -1;
+	}
+	for (let i = 0; i < challenge.lossConditions.length; i++) {
+		challenge.lossConditions[i].shape1Index = -1;
+		challenge.lossConditions[i].shape2Index = -1;
+	}
+	b.writeBoolean(challenge.winConditionsAnded);
+	b.writeFloat(challenge.cameraX);
+	b.writeFloat(challenge.cameraY);
+	b.writeFloat(challenge.zoomLevel);
+	b.writeBoolean(challenge.nonCollidingAllowed);
+	b.writeBoolean(challenge.showConditions);
+	b.writeBoolean(challenge.cannonsAllowed);
+	return b;
+}
+
+/**
+ * Decode a challenge EXPORT STRING (the base64 string Database.ExportChallenge
+ * produces / ImportChallenge consumes) into a live Challenge. Faithful port of
+ * Database.ImportChallenge (Database.ts:1274-1287): base64-decode -> uncompress
+ * -> skip the leading name/desc/shared/allowEdits header, then extract the
+ * challenge body exactly as decodeChallengeBlob does (shared extraction). Unlike
+ * ImportRobot (which reads a 5th "prop" int) the challenge header is only
+ * UTF name, UTF desc, int shared, int allowEdits — matching ExportChallenge's
+ * writeUTF/writeUTF/writeInt/writeInt wrapper (Database.ts:283-286). Node-clean.
+ */
+export async function decodeChallenge(challengeStr: string): Promise<Challenge> {
+	const decoder = new Base64Decoder();
+	decoder.decode(challengeStr);
+	const b = decoder.toByteArray();
+	await b.uncompress();
+
+	b.readUTF(); // name
+	b.readUTF(); // desc
+	b.readInt(); // shared
+	b.readInt(); // allowEdits
+	return extractChallengeFromByteArray(b);
+}
+
+/**
+ * Encode a Challenge to the legacy export STRING (base64 of a zlib-compressed
+ * ByteArray). Byte-compatible with Database.ExportChallenge (Database.ts:273-295):
+ * writeUTF(name)/writeUTF(desc)/writeInt(shared)/writeInt(allowEdits) header,
+ * then the PutChallengeIntoByteArray body, then compress + base64. Round-trips
+ * with decodeChallenge. Node-clean.
+ */
+export async function encodeChallenge(challenge: Challenge, name = "", desc = "", shared = 0, allowEdits = 0): Promise<string> {
+	const challengeData = putChallengeIntoByteArray(challenge);
+	const exportData = new ByteArray();
+	exportData.writeUTF(name);
+	exportData.writeUTF(desc);
+	exportData.writeInt(shared);
+	exportData.writeInt(allowEdits);
+	challengeData.position = 0;
+	exportData.writeBytes(challengeData);
+	await exportData.compress();
+	return exportData.buffer.toString("base64");
 }
 
 /**

@@ -122,6 +122,23 @@ export const useGameStore = defineStore("game", () => {
 		return core.loadBuiltInChallengeBlob(name, blob);
 	}
 
+	/**
+	 * Decode a challenge EXPORT STRING (Database.ExportChallenge output) and make it
+	 * the live challenge session. The string-import counterpart of
+	 * loadBuiltInChallengeBlob (which takes raw .dat bytes). async. Editing-phase only.
+	 */
+	function importChallenge(str: string): Promise<void> {
+		return core.importChallenge(str);
+	}
+
+	/**
+	 * Encode the live challenge session to the legacy export string, or null when
+	 * no challenge is active. async (compression). Mirrors exportReplayString.
+	 */
+	function exportChallengeString(): Promise<string | null> {
+		return core.exportChallengeString();
+	}
+
 	// --- UI-only application mode (menu vs editor) ---------------------------
 	// This is deliberately NOT part of GameCore/GameState: the headless core
 	// knows only about robots/sim/edit, not about which screen the shell shows.
@@ -179,6 +196,8 @@ export const useGameStore = defineStore("game", () => {
 		exportReplayString,
 		importReplay,
 		loadBuiltInChallengeBlob,
+		importChallenge,
+		exportChallengeString,
 		appMode,
 		goToEditor,
 		goToMenu,

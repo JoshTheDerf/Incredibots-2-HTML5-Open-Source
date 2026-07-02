@@ -8,7 +8,7 @@ export { GameCore } from "./GameCore";
 export type { Unsubscribe, StateListener, SoundEvent, SoundListener, MessageListener } from "./GameCore";
 export { encodeRobot, decodeRobot } from "./robotSerialization";
 export type { DecodedRobot } from "./robotSerialization";
-export { decodeChallengeBlob } from "./challengeSerialization";
+export { decodeChallengeBlob, decodeChallenge, encodeChallenge } from "./challengeSerialization";
 export type {
 	GameState,
 	SimState,
