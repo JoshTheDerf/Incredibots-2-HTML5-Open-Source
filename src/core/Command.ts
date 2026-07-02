@@ -65,7 +65,22 @@ export type Command =
 	| { type: "deleteParts"; partIds: number[] }
 	| { type: "moveParts"; partIds: number[]; dx: number; dy: number }
 	| { type: "rotateParts"; partIds: number[]; angle: number }
-	| { type: "resizeParts"; partIds: number[]; scaleFactor: number }
+	// --- resize gesture lifecycle (ControllerGame.scaleButton :3975 + RESIZING_SHAPES
+	// MouseDrag :1553 + commit-on-up :2070). Unlike the per-move incremental
+	// `resizeParts`, this mirrors the legacy gesture: resizeStart captures a
+	// baseline (pivot = selectedParts[0]'s anchor, per-part dragOff + PrepareForResizing)
+	// over the ATTACHED CLUSTER of the selection; resizeParts carries the TOTAL
+	// from-baseline scale factor (mouseXWorld − firstClickX, mapped :1555-1562);
+	// resizeEnd commits (fit check + clears the gesture). scaleFactor is the raw
+	// legacy total factor already mapped by the caller.
+	| { type: "resizeStart"; partIds: number[] }
+	| { type: "resizeParts"; scaleFactor: number }
+	| { type: "resizeEnd" }
+	// Mirror the selected parts about selectedParts[0]'s pivot, cloning shapes and
+	// rebinding joints/thrusters (ControllerGame.mirrorHorizontal :3489 /
+	// mirrorVertical :3732). DEVIATION: the legacy begins a PASTE mouse-drag of the
+	// clones; the port places them at their mirrored positions and selects them.
+	| { type: "mirrorParts"; partIds: number[]; axis: "horizontal" | "vertical" }
 	| { type: "setColour"; partIds: number[]; r: number; g: number; b: number; opacity: number }
 	// --- per-property part edits (ported from ControllerGame + src/Actions/*) ---
 	// Shape (ShapePart: Circle/Rectangle/Triangle/Cannon). Values are absolute

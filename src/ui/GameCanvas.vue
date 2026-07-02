@@ -96,11 +96,13 @@ type Gesture =
 	// mirroring ControllerGame's ROTATE branch which reads the mouse angle from
 	// the part centre (ControllerGame.ts:1528).
 	| { kind: "rotate"; pivot: { x: number; y: number }; lastAngle: number }
-	// Resize the selection. `pivot` is the selection centroid (screen px); we
-	// track the cursor's last distance from it and dispatch the incremental
-	// scale ratio, mirroring ControllerGame's RESIZING_SHAPES distance-driven
-	// scale (ControllerGame.ts:1558).
-	| { kind: "resize"; pivot: { x: number; y: number }; lastDist: number }
+	// Resize the selection's ATTACHED CLUSTER about selectedParts[0]'s anchor.
+	// Faithful to ControllerGame's RESIZING_SHAPES: the core captured the pivot +
+	// per-part baseline on `resizeStart`; here we only track the horizontal world
+	// distance from the initial press (firstClickWorldX) and map it to the TOTAL
+	// from-baseline scale factor the same way the original does (mouseXWorld −
+	// firstClickX, ControllerGame.ts:1555-1562).
+	| { kind: "resize"; firstClickWorldX: number }
 	// Marquee box-select. `origin` is the world-space anchor (first corner).
 	| { kind: "marquee"; origin: { x: number; y: number }; current: { x: number; y: number } }
 	// Create a Circle/Rectangle/Triangle by dragging. `start` is the press point
@@ -304,13 +306,18 @@ function onPointerDown(event: PointerEvent): void {
 	// incremental delta on each move.
 	if (tool === "rotate" || tool === "resize") {
 		if (game.edit.selection.length === 0) return;
-		const pivot = selectionCentroidScreen(s.w, s.h);
-		if (!pivot) return;
 		if (tool === "rotate") {
+			const pivot = selectionCentroidScreen(s.w, s.h);
+			if (!pivot) return;
 			gesture = { kind: "rotate", pivot, lastAngle: Math.atan2(s.y - pivot.y, s.x - pivot.x) };
 		} else {
-			const d = Math.hypot(s.x - pivot.x, s.y - pivot.y);
-			gesture = { kind: "resize", pivot, lastDist: Math.max(d, 1e-6) };
+			// Begin the legacy resize gesture: the core snapshots the pivot
+			// (selectedParts[0]'s anchor), the attached cluster, per-part dragOff and
+			// PrepareForResizing() baseline (ControllerGame.scaleButton :3975). We
+			// record the press point's world X as firstClickX (:3992) and drive the
+			// TOTAL scale factor from the horizontal drag on move.
+			game.dispatch({ type: "resizeStart", partIds: [...game.edit.selection] });
+			gesture = { kind: "resize", firstClickWorldX: world.x };
 		}
 		container.value.setPointerCapture(event.pointerId);
 		return;
@@ -415,15 +422,17 @@ function onPointerMove(event: PointerEvent): void {
 	}
 
 	if (gesture.kind === "resize") {
-		// Ratio of the cursor's distance from the pivot vs. the last move;
-		// dispatch it as the incremental scale factor.
-		const dist = Math.max(Math.hypot(s.x - gesture.pivot.x, s.y - gesture.pivot.y), 1e-6);
-		const factor = dist / gesture.lastDist;
-		if (factor !== 1) {
-			const partIds = [...game.edit.selection];
-			if (partIds.length > 0) game.dispatch({ type: "resizeParts", partIds, scaleFactor: factor });
-			gesture.lastDist = dist;
+		// Map the horizontal world drag to the TOTAL from-baseline scale factor the
+		// way the original does (ControllerGame.ts:1555-1562): rightward (≥0) grows
+		// via sf/75 + 1; leftward shrinks via −1 / (sf/25 − 1).
+		let sf = world.x - gesture.firstClickWorldX;
+		if (sf >= 0) {
+			sf = sf / 75 + 1;
+		} else {
+			sf = sf / 25 - 1;
+			sf = -1 / sf;
 		}
+		game.dispatch({ type: "resizeParts", scaleFactor: sf });
 		return;
 	}
 
@@ -448,6 +457,19 @@ function onPointerUp(event: PointerEvent): void {
 	if (mouseJointActive) {
 		game.dispatch({ type: "mouseJointEnd" });
 		mouseJointActive = false;
+		try {
+			container.value.releasePointerCapture(event.pointerId);
+		} catch {
+			// pointer may not have been captured; ignore.
+		}
+		return;
+	}
+
+	if (gesture.kind === "resize") {
+		// Commit the resize gesture (ControllerGame commit-on-up :2070-2078): the
+		// core runs the fit check and clears its baseline.
+		game.dispatch({ type: "resizeEnd" });
+		gesture = { kind: "none" };
 		try {
 			container.value.releasePointerCapture(event.pointerId);
 		} catch {

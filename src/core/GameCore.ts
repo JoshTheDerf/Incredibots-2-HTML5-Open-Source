@@ -236,6 +236,22 @@ export class GameCore {
 	 */
 	private mouseJoint: b2Joint | null = null;
 
+	/**
+	 * Active resize-gesture baseline (ControllerGame.scaleButton :3975), or null.
+	 * Captured on `resizeStart`: the pivot (selectedParts[0]'s anchor), the whole
+	 * attached cluster (GetAttachedParts union), each part's dragOff from the pivot,
+	 * and each part's PrepareForResizing() snapshot. `resizeParts` applies the TOTAL
+	 * from-baseline factor against this; `resizeEnd` clears it. Holds live Part
+	 * references (persist across pushHistory, which only clones into the undo stack).
+	 */
+	private resizeGesture: {
+		pivotX: number;
+		pivotY: number;
+		parts: Part[];
+		dragXOff: number[];
+		dragYOff: number[];
+	} | null = null;
+
 	constructor(initial: GameState = createInitialState()) {
 		this.state = initial;
 		// Any parts seeded into the initial state (e.g. the sandbox terrain bodies
@@ -1155,86 +1171,400 @@ export class GameCore {
 	}
 
 	/**
-	 * Scale a part's geometry and its offset from (cx,cy) by `factor`, clamped to
-	 * the part type's legal size range. Incremental multiplicative form of
-	 * ControllerGame's RESIZING_SHAPES branch (MouseDrag :1558-1669) — the
-	 * original scales from a PrepareForResizing() baseline captured at gesture
-	 * start; feeding the per-move ratio composes to the same total scale.
+	 * The resize/mirror pivot anchor of a Part (ControllerGame.scaleButton :3980
+	 * & mirror* :3495): JointPart → (anchorX,anchorY); TextPart → centre
+	 * (x+w/2, y+h/2); Thrusters → (centerX,centerY); ShapePart → (centerX,centerY).
 	 */
-	private scalePartAbout(p: Part, cx: number, cy: number, factor: number): void {
-		if (factor <= 0) return;
-
-		// Clamp so no shape leaves its legal size range (ControllerGame :1570-1614).
-		let f = factor;
-		if (p instanceof Circle) {
-			f = this.clampScale(f, p.radius, Circle.MIN_RADIUS, Circle.MAX_RADIUS);
-		} else if (p instanceof Rectangle) {
-			f = this.clampScale(f, p.w, Rectangle.MIN_WIDTH, Rectangle.MAX_WIDTH);
-			f = this.clampScale(f, p.h, Rectangle.MIN_WIDTH, Rectangle.MAX_WIDTH);
-		} else if (p instanceof Cannon) {
-			f = this.clampScale(f, p.w, Cannon.MIN_WIDTH, Cannon.MAX_WIDTH);
-		} else if (p instanceof Triangle) {
-			const l1 = Util.GetDist(p.x1, p.y1, p.x2, p.y2);
-			const l2 = Util.GetDist(p.x1, p.y1, p.x3, p.y3);
-			const l3 = Util.GetDist(p.x2, p.y2, p.x3, p.y3);
-			f = this.clampScale(f, l1, Triangle.MIN_SIDE_LENGTH, Triangle.MAX_SIDE_LENGTH);
-			f = this.clampScale(f, l2, Triangle.MIN_SIDE_LENGTH, Triangle.MAX_SIDE_LENGTH);
-			f = this.clampScale(f, l3, Triangle.MIN_SIDE_LENGTH, Triangle.MAX_SIDE_LENGTH);
-		}
-		if (f <= 0) return;
-
-		const anchor = this.currentXY(p);
-		const nx = cx + (anchor.x - cx) * f;
-		const ny = cy + (anchor.y - cy) * f;
-
-		if (p instanceof Circle) {
-			p.radius *= f;
-			p.Move(nx, ny);
-		} else if (p instanceof Rectangle) {
-			p.w *= f;
-			p.h *= f;
-			p.Move(nx, ny);
-		} else if (p instanceof Cannon) {
-			p.w *= f;
-			p.Move(nx, ny);
-		} else if (p instanceof Triangle) {
-			// Triangle vertices are stored absolutely; scale each about the new centre.
-			const dx1 = p.x1 - anchor.x;
-			const dy1 = p.y1 - anchor.y;
-			const dx2 = p.x2 - anchor.x;
-			const dy2 = p.y2 - anchor.y;
-			const dx3 = p.x3 - anchor.x;
-			const dy3 = p.y3 - anchor.y;
-			p.centerX = nx;
-			p.centerY = ny;
-			p.x1 = nx + dx1 * f;
-			p.y1 = ny + dy1 * f;
-			p.x2 = nx + dx2 * f;
-			p.y2 = ny + dy2 * f;
-			p.x3 = nx + dx3 * f;
-			p.y3 = ny + dy3 * f;
-		} else if (p instanceof PrismaticJoint) {
-			p.Move(nx, ny);
-			p.initLength *= f;
-		} else if (p instanceof JointPart) {
-			p.Move(nx, ny);
-		} else if (p instanceof Thrusters) {
-			p.centerX = nx;
-			p.centerY = ny;
-		} else if (p instanceof TextPart) {
-			p.w *= f;
-			p.h *= f;
-			p.x = nx - p.w / 2;
-			p.y = ny - p.h / 2;
-		}
+	private resizeAnchor(part: Part): { x: number; y: number } {
+		if (part instanceof JointPart) return { x: part.anchorX, y: part.anchorY };
+		if (part instanceof TextPart) return { x: part.x + part.w / 2, y: part.y + part.h / 2 };
+		if (part instanceof Thrusters) return { x: part.centerX, y: part.centerY };
+		if (part instanceof ShapePart) return { x: part.centerX, y: part.centerY };
+		return { x: 0, y: 0 };
 	}
 
-	/** Clamp a scale factor so `value * f` stays within [min, max]. */
-	private clampScale(f: number, value: number, min: number, max: number): number {
-		if (value <= 0) return f;
-		if (value * f > max) return max / value;
-		if (value * f < min) return min / value;
-		return f;
+	/**
+	 * resizeStart — ControllerGame.scaleButton() (:3975-4021). Pivot = the FIRST
+	 * selected part's anchor (:3980-3991), captured ONCE. The dragging set is the
+	 * union of every selected part's GetAttachedParts() — the whole connected
+	 * cluster (:3994-3997). Per part we record dragOff = anchor − pivot (:3998-4010)
+	 * and snapshot its immutable baseline via PrepareForResizing() (:4011).
+	 */
+	private handleResizeStart(partIds: number[]): void {
+		const selected = partIds.map((id) => this.findPart(id)).filter((p): p is Part => p !== undefined);
+		if (selected.length === 0) {
+			this.resizeGesture = null;
+			return;
+		}
+		const pivot = this.resizeAnchor(selected[0]);
+
+		// Union of every selected part's attached cluster (Util.RemoveDuplicates
+		// over concatenated GetAttachedParts, :3994-3997).
+		const cluster: Part[] = [];
+		const seen = new Set<Part>();
+		for (const sel of selected) {
+			for (const p of sel.GetAttachedParts() as Part[]) {
+				if (!seen.has(p)) {
+					seen.add(p);
+					cluster.push(p);
+				}
+			}
+		}
+
+		const dragXOff: number[] = [];
+		const dragYOff: number[] = [];
+		for (const p of cluster) {
+			const a = this.resizeAnchor(p);
+			p.dragXOff = a.x - pivot.x;
+			p.dragYOff = a.y - pivot.y;
+			dragXOff.push(p.dragXOff);
+			dragYOff.push(p.dragYOff);
+			p.PrepareForResizing();
+		}
+
+		this.resizeGesture = { pivotX: pivot.x, pivotY: pivot.y, parts: cluster, dragXOff, dragYOff };
+		this.markChanged();
+	}
+
+	/**
+	 * resizeApply — the RESIZING_SHAPES branch of MouseDrag (:1553-1665). `sf` is
+	 * the TOTAL from-baseline scale factor (already mapped from the mouse delta by
+	 * the caller, :1555-1562). We clamp it against every part's init* baseline so
+	 * no shape leaves its legal size range (:1564-1620), then set geometry =
+	 * baseline × sf and reposition each part so anchor = pivot + dragOff × sf
+	 * (:1621-1663). Geometry is derived from the init* snapshot, NOT live geometry.
+	 */
+	private handleResizeApply(scaleFactor: number): void {
+		const g = this.resizeGesture;
+		if (!g) return;
+
+		let sf = scaleFactor;
+		// Clamp pass (:1564-1620) — verbatim per part type against the init* baseline.
+		for (const p of g.parts) {
+			if (p instanceof Circle) {
+				if (p.initRadius * sf > Circle.MAX_RADIUS) sf = Circle.MAX_RADIUS / p.initRadius;
+				if (p.initRadius * sf < Circle.MIN_RADIUS) sf = Circle.MIN_RADIUS / p.initRadius;
+			} else if (p instanceof Rectangle) {
+				if (p.initW * sf > Rectangle.MAX_WIDTH) sf = Rectangle.MAX_WIDTH / p.initW;
+				if (p.initW * sf < Rectangle.MIN_WIDTH) sf = Rectangle.MIN_WIDTH / p.initW;
+				if (p.initH * sf > Rectangle.MAX_WIDTH) sf = Rectangle.MAX_WIDTH / p.initH;
+				if (p.initH * sf < Rectangle.MIN_WIDTH) sf = Rectangle.MIN_WIDTH / p.initH;
+			} else if (p instanceof Triangle) {
+				const length1 = Util.GetDist(p.initX1, p.initY1, p.initX2, p.initY2);
+				if (length1 * sf > Triangle.MAX_SIDE_LENGTH) sf = Triangle.MAX_SIDE_LENGTH / length1;
+				if (length1 * sf < Triangle.MIN_SIDE_LENGTH) sf = Triangle.MIN_SIDE_LENGTH / length1;
+				const length2 = Util.GetDist(p.initX1, p.initY1, p.initX3, p.initY3);
+				if (length2 * sf > Triangle.MAX_SIDE_LENGTH) sf = Triangle.MAX_SIDE_LENGTH / length2;
+				if (length2 * sf < Triangle.MIN_SIDE_LENGTH) sf = Triangle.MIN_SIDE_LENGTH / length2;
+				const length3 = Util.GetDist(p.initX2, p.initY2, p.initX3, p.initY3);
+				if (length3 * sf > Triangle.MAX_SIDE_LENGTH) sf = Triangle.MAX_SIDE_LENGTH / length3;
+				if (length3 * sf < Triangle.MIN_SIDE_LENGTH) sf = Triangle.MIN_SIDE_LENGTH / length3;
+			} else if (p instanceof Cannon) {
+				if (p.initW * sf > Cannon.MAX_WIDTH) sf = Cannon.MAX_WIDTH / p.initW;
+				if (p.initW * sf < Cannon.MIN_WIDTH) sf = Cannon.MIN_WIDTH / p.initW;
+			}
+		}
+
+		// Apply pass (:1621-1663) — verbatim.
+		for (const p of g.parts) {
+			const nx = g.pivotX + p.dragXOff * sf;
+			const ny = g.pivotY + p.dragYOff * sf;
+			if (p instanceof Circle) {
+				p.radius = p.initRadius * sf;
+				p.Move(nx, ny);
+			} else if (p instanceof Rectangle) {
+				p.w = p.initW * sf;
+				p.h = p.initH * sf;
+				p.Move(nx, ny);
+			} else if (p instanceof Triangle) {
+				p.centerX = nx;
+				p.centerY = ny;
+				p.x1 = p.centerX + p.initX1 * sf;
+				p.y1 = p.centerY + p.initY1 * sf;
+				p.x2 = p.centerX + p.initX2 * sf;
+				p.y2 = p.centerY + p.initY2 * sf;
+				p.x3 = p.centerX + p.initX3 * sf;
+				p.y3 = p.centerY + p.initY3 * sf;
+			} else if (p instanceof Cannon) {
+				p.w = p.initW * sf;
+				p.Move(nx, ny);
+			} else if (p instanceof JointPart) {
+				p.Move(nx, ny);
+				if (p instanceof PrismaticJoint) {
+					p.initLength = p.initInitLength * sf;
+				}
+			} else if (p instanceof TextPart) {
+				p.w = p.initW * sf;
+				p.h = p.initH * sf;
+				p.x = nx - p.w / 2;
+				p.y = ny - p.h / 2;
+			} else if (p instanceof Thrusters) {
+				p.centerX = nx;
+				p.centerY = ny;
+			}
+		}
+
+		this.state = {
+			...this.state,
+			parts: [...this.state.parts],
+			edit: { ...this.state.edit, selectedPart: this.deriveSelectedPart(this.state.edit.selection) },
+		};
+		this.markChanged();
+		if (this.challenge) this.syncChallenge();
+	}
+
+	/**
+	 * resizeEnd — commit-on-up (:2070-2078). The legacy pushed a ResizeShapesAction
+	 * for undo and re-ran CheckIfPartsFit. The port's undo is snapshot-based
+	 * (resizeStart already pushed history capturing the pre-resize state), so we
+	 * only run the fit-check equivalent (syncChallenge → checkIfPartsFit) and clear
+	 * the gesture. DEVIATION: no ResizeShapesAction — snapshot undo supersedes it.
+	 */
+	private handleResizeEnd(): void {
+		if (!this.resizeGesture) return;
+		this.resizeGesture = null;
+		if (this.challenge) this.syncChallenge();
+		this.markChanged();
+	}
+
+	/**
+	 * mirrorParts — faithful port of ControllerGame.mirrorHorizontal (:3489-3730)
+	 * and mirrorVertical (:3732-3973), which are structurally identical and differ
+	 * only in the reflected axis. `h` = true for horizontal (reflect X about pivotX,
+	 * angle → π − a), false for vertical (reflect Y about pivotY, angle → 2π − a).
+	 *
+	 * Pass 1 clones each SELECTED shape and records a partMapping parallel to the
+	 * ORIGINAL selection (the clone for shapes, -1 for joints/thrusters/text).
+	 * Pass 2 rebinds each selected joint/thruster via the mapping; a joint/thruster
+	 * whose target is not in the selection is dropped (:3625-3641).
+	 *
+	 * DEVIATION: the legacy finishes by starting a PASTE mouse-drag of the clones
+	 * (:3692-3722). The port has no paste-drag; we place the clones at their
+	 * mirrored positions, append them with fresh ids, and select them.
+	 */
+	private handleMirror(partIds: number[], axis: "horizontal" | "vertical"): void {
+		const h = axis === "horizontal";
+		const selectedParts = partIds
+			.map((id) => this.findPart(id))
+			.filter((p): p is Part => p !== undefined);
+		if (selectedParts.length === 0) return;
+
+		const first = selectedParts[0];
+		const pivot = this.resizeAnchor(first);
+		const centerX = pivot.x;
+		const centerY = pivot.y;
+
+		const newParts: Part[] = [];
+		// Parallel to selectedParts: the clone for a shape/text, or -1 for the
+		// entries Pass 2 rebinds against (joints, thrusters). Note the legacy pushes
+		// the TextPart CLONE into newParts but records -1 in the mapping (:3591-3608).
+		const partMapping: (ShapePart | -1)[] = [];
+
+		// --- Pass 1: shapes + text ---
+		for (const sp of selectedParts) {
+			if (sp instanceof Circle) {
+				const c = h
+					? new Circle(centerX - (sp.centerX - centerX), sp.centerY, sp.radius)
+					: new Circle(sp.centerX, centerY - (sp.centerY - centerY), sp.radius);
+				c.angle = h ? Math.PI - sp.angle : 2 * Math.PI - sp.angle;
+				c.isStatic = sp.isStatic;
+				c.density = sp.density;
+				c.collide = sp.collide;
+				c.red = sp.red;
+				c.green = sp.green;
+				c.blue = sp.blue;
+				c.opacity = sp.opacity;
+				c.outline = sp.outline;
+				c.terrain = sp.terrain;
+				c.undragable = sp.undragable;
+				newParts.push(c);
+				partMapping.push(c);
+			} else if (sp instanceof Rectangle) {
+				const r = h
+					? new Rectangle(centerX - (sp.x - centerX), sp.y, -sp.w, sp.h)
+					: new Rectangle(sp.x, centerY - (sp.y - centerY), sp.w, -sp.h);
+				r.angle = h ? Math.PI - sp.angle : 2 * Math.PI - sp.angle;
+				r.isStatic = sp.isStatic;
+				r.density = sp.density;
+				r.collide = sp.collide;
+				r.red = sp.red;
+				r.green = sp.green;
+				r.blue = sp.blue;
+				r.opacity = sp.opacity;
+				r.outline = sp.outline;
+				r.terrain = sp.terrain;
+				r.undragable = sp.undragable;
+				newParts.push(r);
+				partMapping.push(r);
+			} else if (sp instanceof Triangle) {
+				const verts = sp.GetVertices();
+				const t = h
+					? new Triangle(
+							centerX - (verts[0].x - centerX),
+							verts[0].y,
+							centerX - (verts[1].x - centerX),
+							verts[1].y,
+							centerX - (verts[2].x - centerX),
+							verts[2].y,
+					  )
+					: new Triangle(
+							verts[0].x,
+							centerY - (verts[0].y - centerY),
+							verts[1].x,
+							centerY - (verts[1].y - centerY),
+							verts[2].x,
+							centerY - (verts[2].y - centerY),
+					  );
+				t.isStatic = sp.isStatic;
+				t.density = sp.density;
+				t.collide = sp.collide;
+				t.red = sp.red;
+				t.green = sp.green;
+				t.blue = sp.blue;
+				t.opacity = sp.opacity;
+				t.outline = sp.outline;
+				t.terrain = sp.terrain;
+				t.undragable = sp.undragable;
+				newParts.push(t);
+				partMapping.push(t);
+			} else if (sp instanceof Cannon) {
+				const ca = h
+					? new Cannon(centerX - (sp.x - centerX) - sp.w, sp.y, sp.w)
+					: new Cannon(sp.x, centerY - (sp.y - centerY) - sp.w / 2, sp.w);
+				ca.angle = h ? Math.PI - sp.angle : 2 * Math.PI - sp.angle;
+				ca.isStatic = sp.isStatic;
+				ca.density = sp.density;
+				ca.collide = sp.collide;
+				ca.red = sp.red;
+				ca.green = sp.green;
+				ca.blue = sp.blue;
+				ca.opacity = sp.opacity;
+				ca.outline = sp.outline;
+				ca.terrain = sp.terrain;
+				ca.undragable = sp.undragable;
+				ca.fireKey = sp.fireKey;
+				ca.strength = sp.strength;
+				newParts.push(ca);
+				partMapping.push(ca);
+			} else if (sp instanceof TextPart) {
+				const te = h
+					? new TextPart(null, centerX - (sp.x + sp.w / 2 - centerX), sp.y, sp.w, sp.h, sp.text, sp.inFront)
+					: new TextPart(null, sp.x, centerY - (sp.y + sp.h / 2 - centerY), sp.w, sp.h, sp.text, sp.inFront);
+				te.red = sp.red;
+				te.green = sp.green;
+				te.blue = sp.blue;
+				te.size = sp.size;
+				te.alwaysVisible = sp.alwaysVisible;
+				te.inFront = sp.inFront;
+				te.scaleWithZoom = sp.scaleWithZoom;
+				te.displayKey = sp.displayKey;
+				newParts.push(te);
+				partMapping.push(-1);
+			} else if (sp instanceof JointPart || sp instanceof Thrusters) {
+				partMapping.push(-1);
+			}
+		}
+
+		// --- Pass 2: joints + thrusters ---
+		for (const sp of selectedParts) {
+			let index1 = -1;
+			let index2 = -1;
+			if (sp instanceof JointPart) {
+				for (let j = 0; j < selectedParts.length; j++) {
+					if (selectedParts[j] === sp.part1) index1 = j;
+					if (selectedParts[j] === sp.part2) index2 = j;
+				}
+				if (index1 === -1 || index2 === -1) continue;
+			} else if (sp instanceof Thrusters) {
+				for (let j = 0; j < selectedParts.length; j++) {
+					if (selectedParts[j] === sp.shape) index1 = j;
+				}
+				if (index1 === -1) continue;
+			}
+
+			if (sp instanceof FixedJoint) {
+				const p1 = partMapping[index1];
+				const p2 = partMapping[index2];
+				if (p1 === -1 || p2 === -1) continue;
+				const fj = h
+					? new FixedJoint(p1, p2, centerX - (sp.anchorX - centerX), sp.anchorY)
+					: new FixedJoint(p1, p2, sp.anchorX, centerY - (sp.anchorY - centerY));
+				newParts.push(fj);
+			} else if (sp instanceof RevoluteJoint) {
+				const p1 = partMapping[index1];
+				const p2 = partMapping[index2];
+				if (p1 === -1 || p2 === -1) continue;
+				const rj = h
+					? new RevoluteJoint(p1, p2, centerX - (sp.anchorX - centerX), sp.anchorY)
+					: new RevoluteJoint(p1, p2, sp.anchorX, centerY - (sp.anchorY - centerY));
+				rj.enableMotor = sp.enableMotor;
+				rj.motorCWKey = sp.motorCCWKey;
+				rj.motorCCWKey = sp.motorCWKey;
+				rj.motorStrength = sp.motorStrength;
+				rj.motorSpeed = sp.motorSpeed;
+				rj.motorLowerLimit = -sp.motorUpperLimit;
+				rj.motorUpperLimit = -sp.motorLowerLimit;
+				rj.isStiff = sp.isStiff;
+				rj.autoCW = sp.autoCCW;
+				rj.autoCCW = sp.autoCW;
+				newParts.push(rj);
+			} else if (sp instanceof PrismaticJoint) {
+				const p1 = partMapping[index1];
+				const p2 = partMapping[index2];
+				if (p1 === -1 || p2 === -1) continue;
+				const pj = new PrismaticJoint(p1, p2, 0, 0, 1, 1);
+				pj.anchorX = h ? centerX - (sp.anchorX - centerX) : sp.anchorX;
+				pj.anchorY = h ? sp.anchorY : centerY - (sp.anchorY - centerY);
+				let axisAngle = Math.atan2(sp.axis.y, sp.axis.x);
+				axisAngle = Util.NormalizeAngle(h ? Math.PI - axisAngle : 2 * Math.PI - axisAngle);
+				pj.axis = new b2Vec2(Math.cos(axisAngle), Math.sin(axisAngle));
+				pj.axis.Normalize();
+				pj.initLength = sp.initLength;
+				pj.enablePiston = sp.enablePiston;
+				pj.pistonUpKey = sp.pistonUpKey;
+				pj.pistonDownKey = sp.pistonDownKey;
+				pj.pistonStrength = sp.pistonStrength;
+				pj.pistonSpeed = sp.pistonSpeed;
+				pj.isStiff = sp.isStiff;
+				pj.autoOscillate = sp.autoOscillate;
+				pj.red = sp.red;
+				pj.green = sp.green;
+				pj.blue = sp.blue;
+				pj.opacity = sp.opacity;
+				pj.outline = sp.outline;
+				pj.collide = sp.collide;
+				newParts.push(pj);
+			} else if (sp instanceof Thrusters) {
+				const parent = partMapping[index1];
+				if (parent === -1) continue;
+				const th = h
+					? new Thrusters(parent, centerX - (sp.centerX - centerX), sp.centerY)
+					: new Thrusters(parent, sp.centerX, centerY - (sp.centerY - centerY));
+				th.angle = h ? Math.PI - sp.angle : 2 * Math.PI - sp.angle;
+				th.strength = sp.strength;
+				th.thrustKey = sp.thrustKey;
+				th.autoOn = sp.autoOn;
+				newParts.push(th);
+			}
+		}
+
+		if (newParts.length === 0) return;
+
+		// Finalize: assign fresh ids, append the clones, select them (DEVIATION —
+		// no PASTE drag; place at mirrored positions, :3693-3721 collapsed).
+		for (const p of newParts) p.id = ++this.nextId;
+		const selection = newParts.map((p) => p.id);
+		this.state = {
+			...this.state,
+			parts: [...this.state.parts, ...newParts],
+			edit: {
+				...this.state.edit,
+				selection,
+				selectedPart: this.snapshotOf(newParts[0]),
+			},
+		};
+		this.markChanged();
+		if (this.challenge) this.syncChallenge();
 	}
 
 	/**
@@ -2091,7 +2421,11 @@ export class GameCore {
 			case "deleteParts":
 			case "moveParts":
 			case "rotateParts":
-			case "resizeParts":
+			// resizeStart snapshots history for the whole resize gesture; the
+			// per-move resizeParts + resizeEnd deliberately do NOT (they'd stack a
+			// history entry per pointer-move). mirrorParts is a one-shot mutation.
+			case "resizeStart":
+			case "mirrorParts":
 			case "setColour":
 			case "setDensity":
 			case "setCollide":
@@ -2165,7 +2499,10 @@ export class GameCore {
 				case "deleteParts":
 				case "moveParts":
 				case "rotateParts":
+				case "resizeStart":
 				case "resizeParts":
+				case "resizeEnd":
+				case "mirrorParts":
 				case "setColour":
 				case "setTool":
 				case "setDensity":
@@ -2679,21 +3016,22 @@ export class GameCore {
 				this.markChanged();
 				return;
 			}
-			// Scale the selection about its centroid (>1 grows, <1 shrinks).
-			// GameCanvas feeds the incremental ratio since the last move.
+			// Resize gesture lifecycle — faithful port of ControllerGame.scaleButton
+			// (:3975) + RESIZING_SHAPES MouseDrag (:1553) + commit-on-up (:2070).
+			case "resizeStart": {
+				this.handleResizeStart(command.partIds);
+				return;
+			}
 			case "resizeParts": {
-				if (command.scaleFactor === 1 || command.scaleFactor <= 0) return;
-				const target = new Set(command.partIds);
-				const parts = this.state.parts.filter((p) => target.has(p.id));
-				if (parts.length === 0) return;
-				const c = this.selectionCentroid(parts);
-				for (const p of parts) this.scalePartAbout(p, c.x, c.y, command.scaleFactor);
-				this.state = {
-					...this.state,
-					parts: [...this.state.parts],
-					edit: { ...this.state.edit, selectedPart: this.deriveSelectedPart(this.state.edit.selection) },
-				};
-				this.markChanged();
+				this.handleResizeApply(command.scaleFactor);
+				return;
+			}
+			case "resizeEnd": {
+				this.handleResizeEnd();
+				return;
+			}
+			case "mirrorParts": {
+				this.handleMirror(command.partIds, command.axis);
 				return;
 			}
 			case "createThrusters": {

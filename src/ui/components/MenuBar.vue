@@ -112,8 +112,16 @@ const helpMenu: DropdownMenuItem[][] = [
 // menu shares).
 const extrasMenu: DropdownMenuItem[][] = [
 	[
-		{ label: "Mirror Horizontal", icon: "i-lucide-flip-horizontal" },
-		{ label: "Mirror Vertical", icon: "i-lucide-flip-vertical" },
+		{
+			label: "Mirror Horizontal",
+			icon: "i-lucide-flip-horizontal",
+			onSelect: () => game.dispatch({ type: "mirrorParts", partIds: game.edit.selection, axis: "horizontal" }),
+		},
+		{
+			label: "Mirror Vertical",
+			icon: "i-lucide-flip-vertical",
+			onSelect: () => game.dispatch({ type: "mirrorParts", partIds: game.edit.selection, axis: "vertical" }),
+		},
 		{ label: "Scale...", icon: "i-lucide-scaling" },
 	],
 	[
