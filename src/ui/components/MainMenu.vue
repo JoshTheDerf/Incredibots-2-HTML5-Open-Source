@@ -23,15 +23,62 @@
 // that need a mode GameCore lacks (tutorials, challenges, replays, high scores,
 // online load) open a ported panel as a modal and/or carry an <IbTodo/> flag —
 // exactly as the legacy buttons that were `disabled = true`.
-import { ref } from "vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
+import { Application } from "pixi.js";
 import { useGameStore } from "../gameStore";
 import { frameTextures } from "../assets";
+import { SkyRenderer } from "../renderer/skyRenderer";
+import { GroundRenderer } from "../renderer/groundRenderer";
+import type { CameraState, SandboxState } from "../../core";
 import IbButton from "./IbButton.vue";
 import IbTodo from "./IbTodo.vue";
 import TutorialSelectPanel from "./panels/TutorialSelectPanel.vue";
 import ImportPanel from "./panels/ImportPanel.vue";
 
 const game = useGameStore();
+
+// --- Animated background (faithful to ControllerMainMenu's sSky + sGround) ----
+// The legacy menu drew the SPACE sky (Sky type 1) over a SMALL "LAND" ground in
+// the MARS palette (terrainTheme 6) — its gradient1/gradient2 literals are
+// exactly groundRenderer's theme-6 colours (ControllerMainMenu.ts:109-152). We
+// reuse the in-game SkyRenderer + GroundRenderer as-is (they are self-contained
+// pixi Containers driven by plain SandboxState/CameraState), mounted in a small
+// pixi Application behind the menu UI. The demo-bot Box2D animation stays out of
+// scope (as it was in the prior port pass); the logo remains the <img> below.
+const bgContainer = ref<HTMLDivElement | null>(null);
+
+// SPACE sky + SMALL mars LAND — the menu's fixed backdrop settings.
+const MENU_SANDBOX: SandboxState = {
+	gravity: 15, // unused by the renderers; the canonical sandbox default.
+	background: 1, // Sky type 1 = space/stars (ControllerMainMenu.ts:109)
+	backgroundR: 0,
+	backgroundG: 0,
+	backgroundB: 0,
+	terrainType: 0, // LAND
+	size: 0, // SMALL
+	terrainTheme: 6, // mars (matches the menu's gradient literals)
+	bounds: { minX: -50, maxX: 50, minY: -30, maxY: 40 }, // computeBounds(SMALL/LAND)
+};
+
+let bgApp: Application | null = null;
+let bgSky: SkyRenderer | null = null;
+let bgGround: GroundRenderer | null = null;
+let bgTicker: (() => void) | null = null;
+let bgResizeObserver: ResizeObserver | null = null;
+
+/**
+ * Frame the mars hill along the bottom-centre of the (responsive) viewport.
+ * Framing is a cosmetic tuning value — the legacy menu was a fixed 800x600 stage
+ * (spec note: no faithfulness constraint here). We derive scale from the width so
+ * the SMALL land's ~85-unit span slightly overflows into a domed hill, and set
+ * offsetY so the ground surface (world y ~= 12) sits near the lower third.
+ */
+function menuCamera(w: number, h: number): CameraState {
+	const scale = Math.max(16, w / 42);
+	// screen = h/2 + world*scale - offsetY; want the y=12 surface at ~0.82h.
+	const offsetY = 12 * scale - 0.32 * h;
+	return { scale, offsetX: 0, offsetY };
+}
 
 const logoSrc = frameTextures.logo;
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
@@ -53,10 +100,89 @@ const soundEnabled = ref(false);
 function enterEditor(): void {
 	game.goToEditor(true);
 }
+
+onMounted(async () => {
+	if (!bgContainer.value) return;
+	const w0 = bgContainer.value.clientWidth || 1;
+	const h0 = bgContainer.value.clientHeight || 1;
+
+	const app = new Application();
+	await app.init({
+		width: w0,
+		height: h0,
+		backgroundAlpha: 0,
+		antialias: true,
+		resolution: window.devicePixelRatio || 1,
+		autoDensity: true,
+	});
+	// Component may have been torn down while init() awaited.
+	if (!bgContainer.value) {
+		app.destroy(true, { children: true });
+		return;
+	}
+	bgApp = app;
+	bgContainer.value.appendChild(app.canvas as unknown as Node);
+	(app.canvas as HTMLCanvasElement).style.display = "block";
+	(app.canvas as HTMLCanvasElement).style.width = "100%";
+	(app.canvas as HTMLCanvasElement).style.height = "100%";
+
+	// Sky behind, ground over it — same display order as GameCanvas / the legacy.
+	bgSky = new SkyRenderer();
+	app.stage.addChild(bgSky.view);
+	void bgSky.preload();
+	bgGround = new GroundRenderer();
+	app.stage.addChild(bgGround.view);
+
+	bgTicker = () => {
+		if (!bgApp || !bgContainer.value) return;
+		const w = bgContainer.value.clientWidth || 1;
+		const h = bgContainer.value.clientHeight || 1;
+		const cam = menuCamera(w, h);
+		if (bgSky) {
+			bgSky.build(MENU_SANDBOX);
+			// Clouds don't drift on the menu (space background has none); paused=true.
+			bgSky.update(cam, MENU_SANDBOX.bounds, w, h, true);
+		}
+		if (bgGround) {
+			bgGround.build(MENU_SANDBOX);
+			bgGround.update(cam, w, h);
+		}
+	};
+	app.ticker.add(bgTicker);
+
+	const resizeToContainer = (): void => {
+		if (!bgApp || !bgContainer.value) return;
+		const cw = Math.max(1, Math.floor(bgContainer.value.clientWidth));
+		const ch = Math.max(1, Math.floor(bgContainer.value.clientHeight));
+		if (bgApp.renderer.width !== cw || bgApp.renderer.height !== ch) {
+			bgApp.renderer.resize(cw, ch);
+		}
+	};
+	bgResizeObserver = new ResizeObserver(() => resizeToContainer());
+	bgResizeObserver.observe(bgContainer.value);
+	resizeToContainer();
+});
+
+onBeforeUnmount(() => {
+	bgResizeObserver?.disconnect();
+	bgResizeObserver = null;
+	if (bgApp && bgTicker) bgApp.ticker.remove(bgTicker);
+	bgTicker = null;
+	bgGround?.destroy();
+	bgGround = null;
+	bgSky = null;
+	if (bgApp) {
+		bgApp.destroy(true, { children: true });
+		bgApp = null;
+	}
+});
 </script>
 
 <template>
 	<div class="main-menu">
+		<!-- Animated space-sky + mars-ground backdrop (pixi), behind the UI. -->
+		<div ref="bgContainer" class="menu-bg" aria-hidden="true" />
+
 		<!-- Top bar: "Welcome, Guest" (original x=10,y=20) on the left, Log In
 		     (original x=675, top-right) on the right — laid out with flex, not
 		     absolute coordinates. -->
@@ -169,18 +295,34 @@ function enterEditor(): void {
 
 <style scoped>
 .main-menu {
+	position: relative;
 	height: 100vh;
 	width: 100%;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	/* Classic periwinkle page background from the original index.html. */
-	background: #686d77;
+	/* Dark space fallback behind the pixi backdrop (matches Sky type-1 base). */
+	background: #05060a;
 	font-family: Arial, Helvetica, sans-serif;
 	color: var(--ib-dark);
 	overflow: auto;
 	padding: 14px 16px;
 	box-sizing: border-box;
+}
+
+/* Full-bleed pixi backdrop (sky + ground) behind all menu content. */
+.menu-bg {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+/* Menu content sits above the backdrop. */
+.main-menu > *:not(.menu-bg) {
+	position: relative;
+	z-index: 1;
 }
 
 /* Top bar spans the full width: welcome text left, Log In right. */
