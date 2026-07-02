@@ -172,6 +172,60 @@ describe("encodeRobot -> decodeRobot round-trip preserves geometry/props/counts"
 		const decoded = await decodeRobot(await encodeRobot([]));
 		expect(decoded.parts.length).toBe(0);
 	});
+
+	// REGRESSION (H6): a joint/thruster whose part reference index is stored must
+	// index the SAME reordered (shapes-first) array the decoder reads back, NOT the
+	// original input array (Database.PutPartsIntoByteArray :1938-1949 scans
+	// `partsToStore`). If a joint appears in the input array BEFORE one of the shapes
+	// it connects, the two orderings disagree: the shape's index in the original
+	// `parts` array (2) differs from its index in the reordered `partsToStore` (1).
+	// Scanning `parts` therefore wrote an index pointing at the wrong/nonexistent
+	// decoded part, so the joint attached to the wrong shape or was dropped.
+	it("joint declared before one of its shapes re-attaches to the correct shapes", async () => {
+		// Distinct geometry per shape so we can verify attachment identity.
+		const shapeA = new Circle(1, 1, 1.5); // radius 1.5 identifies A
+		const shapeB = new Rectangle(10, 10, 3, 2); // rectangle identifies B
+		const rj = new RevoluteJoint(shapeA, shapeB, 5, 5);
+		rj.motorStrength = 42;
+
+		// Input order puts the joint BEFORE shapeB: [shapeA, joint, shapeB].
+		const decoded = await decodeRobot(await encodeRobot([shapeA, rj, shapeB]));
+
+		// Reordered on encode: [Circle, Rectangle, RevoluteJoint].
+		expect(decoded.parts.map((p) => p.type)).toEqual(["Circle", "Rectangle", "RevoluteJoint"]);
+		const dCircle = decoded.parts[0] as Circle;
+		const dRect = decoded.parts[1] as Rectangle;
+		const dJoint = decoded.parts[2] as RevoluteJoint;
+
+		// Sanity: the shapes kept their identifying geometry.
+		expect(dCircle.radius).toBeCloseTo(1.5, 6);
+		expect(dRect.w).toBeCloseTo(3, 6);
+		expect(dJoint.motorStrength).toBe(42);
+
+		// The joint must attach part1->Circle and part2->Rectangle. Under the old
+		// (scan `parts`) code part2Index pointed at index 2, which in decode order is
+		// the joint itself (or out of range), so this assertion failed.
+		expect(dJoint.part1).toBe(dCircle);
+		expect(dJoint.part2).toBe(dRect);
+	});
+
+	// Same hazard for a Thrusters attached to a shape that appears after it in input.
+	it("thruster declared before its shape re-attaches to the correct shape", async () => {
+		const shapeA = new Rectangle(0, 0, 4, 1);
+		const shapeB = new Circle(20, 20, 2.5); // radius 2.5 identifies B
+		const thr = new Thrusters(shapeB, 3, 3);
+		thr.strength = 33;
+
+		// Input: [shapeA, thruster(->shapeB), shapeB].
+		const decoded = await decodeRobot(await encodeRobot([shapeA, thr, shapeB]));
+
+		expect(decoded.parts.map((p) => p.type)).toEqual(["Rectangle", "Circle", "Thrusters"]);
+		const dCircle = decoded.parts[1] as Circle;
+		const dThr = decoded.parts[2] as Thrusters;
+		expect(dCircle.radius).toBeCloseTo(2.5, 6);
+		expect(dThr.strength).toBe(33);
+		expect(dThr.shape).toBe(dCircle);
+	});
 });
 
 describe("legacy byte format (robotSerialization.ts:14-21 / Database.ExportRobot)", () => {

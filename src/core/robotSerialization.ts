@@ -88,13 +88,13 @@ function putPartsIntoByteArray(parts: Part[], b: ByteArray): ByteArray {
 	for (let i = 0; i < partsToStore.length; i++) {
 		const part = partsToStore[i];
 		if (part instanceof JointPart) {
-			for (let j = 0; j < parts.length; j++) {
-				if (parts[j] === part.part1) (part as JointPart & { part1Index: number }).part1Index = j;
-				if (parts[j] === part.part2) (part as JointPart & { part2Index: number }).part2Index = j;
+			for (let j = 0; j < partsToStore.length; j++) {
+				if (partsToStore[j] === part.part1) (part as JointPart & { part1Index: number }).part1Index = j;
+				if (partsToStore[j] === part.part2) (part as JointPart & { part2Index: number }).part2Index = j;
 			}
 		} else if (part instanceof Thrusters) {
-			for (let j = 0; j < parts.length; j++) {
-				if (parts[j] === part.shape) (part as Thrusters & { shapeIndex: number }).shapeIndex = j;
+			for (let j = 0; j < partsToStore.length; j++) {
+				if (partsToStore[j] === part.shape) (part as Thrusters & { shapeIndex: number }).shapeIndex = j;
 			}
 		}
 	}
