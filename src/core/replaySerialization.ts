@@ -38,7 +38,7 @@ import { Util } from "../General/Util";
 import { Base64Decoder } from "../mx/utils/Base64Decoder";
 import type { Part } from "../Parts/Part";
 import { SandboxSettings } from "../Game/SandboxSettings";
-import { decodeRobot, encodeRobot, type DecodedRobot } from "./robotSerialization";
+import { decodeRobot, decodeRobotBlob, encodeRobot, type DecodedRobot } from "./robotSerialization";
 import type { CameraMovement, KeyPress, ReplayData, ReplaySyncPoint, Vec2Like } from "./replay";
 
 // --- Compact 2-byte scalar codecs (Database.ts:2293-2344) -----------------
@@ -372,6 +372,35 @@ export async function decodeReplay(replayStr: string): Promise<DecodedReplay> {
 	b.readUTF();
 	b.readInt();
 
+	return { replay, robot };
+}
+
+/** The decoded demo replay: the recorded motion + the robot parts it animates. */
+export interface DecodedDemoReplay {
+	replay: ReplayData;
+	robot: DecodedRobot;
+}
+
+/**
+ * Decode the bundled main-menu DEMO replay from its two RAW asset blobs
+ * (resource/replay.dat + resource/robot.dat). This is the RAW replay format the
+ * legacy ControllerMainMenu.LoadReplay reads (ControllerMainMenu.ts:443-457) —
+ * NOT the base64 export-string wrapper decodeReplay handles. Each .dat is a
+ * standalone zlib-compressed ByteArray: uncompress replay.dat and extract the
+ * replay stream directly; uncompress robot.dat and ExtractRobotFromByteArray
+ * directly (no export header). Node-clean (no pixi). `replayBlob` / `robotBlob`
+ * are the raw asset bytes (fetch().arrayBuffer() in the browser, readFileSync in
+ * tests).
+ */
+export async function decodeDemoReplay(
+	replayBlob: ArrayBuffer | Uint8Array,
+	robotBlob: ArrayBuffer | Uint8Array,
+): Promise<DecodedDemoReplay> {
+	const rb = new ByteArray(replayBlob as ArrayBuffer);
+	await rb.uncompress();
+	rb.position = 0;
+	const replay = extractReplayFromByteArray(rb);
+	const robot = await decodeRobotBlob(robotBlob);
 	return { replay, robot };
 }
 

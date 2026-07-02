@@ -24,13 +24,19 @@
 // online load) open a ported panel as a modal and/or carry an <IbTodo/> flag —
 // exactly as the legacy buttons that were `disabled = true`.
 import { onBeforeUnmount, onMounted, ref } from "vue";
-import { Application } from "pixi.js";
+import { Application, Graphics } from "pixi.js";
 import { useGameStore } from "../gameStore";
 import { frameTextures } from "../assets";
 import { SkyRenderer } from "../renderer/skyRenderer";
 import { GroundRenderer } from "../renderer/groundRenderer";
 import { soundService } from "../sound";
+import { GameCore } from "../../core/GameCore";
+import { createInitialState } from "../../core/GameState";
+import { Draw } from "../../Game/Draw";
+import replayDatUrl from "../../../resource/replay.dat";
+import robotDatUrl from "../../../resource/robot.dat";
 import type { CameraState, SandboxState } from "../../core";
+import type { Part } from "../../Parts/Part";
 import IbButton from "./IbButton.vue";
 import IbTodo from "./IbTodo.vue";
 import TutorialSelectPanel from "./panels/TutorialSelectPanel.vue";
@@ -66,6 +72,18 @@ let bgSky: SkyRenderer | null = null;
 let bgGround: GroundRenderer | null = null;
 let bgTicker: (() => void) | null = null;
 let bgResizeObserver: ResizeObserver | null = null;
+
+// --- Demo replay (faithful to ControllerMainMenu's looping demo bot) ---------
+// The legacy menu played a looping DEMO replay of a robot driving over terrain
+// (ControllerMainMenu.LoadReplay + Update, ControllerMainMenu.ts:407-457). We
+// reproduce it headlessly: a private menu-only GameCore decodes the two RAW asset
+// blobs (resource/replay.dat + resource/robot.dat) via loadDemoReplay and drives
+// sim-FREE spline playback; a Draw sprite (the ORIGINAL renderer) paints the
+// robot into the SAME background pixi app, above the ground. When playback ends
+// we dispatch `viewReplayAgain` to loop, exactly as the legacy Update() does.
+let demoCore: GameCore | null = null;
+let demoDraw: Draw | null = null;
+let demoSprite: Graphics | null = null;
 
 /**
  * Frame the mars hill along the bottom-centre of the (responsive) viewport.
@@ -135,6 +153,73 @@ function enterEditor(): void {
 	game.goToEditor(true);
 }
 
+/**
+ * Fetch the two RAW demo assets (Vite resolves the .dat imports to URL strings)
+ * and load them into the menu-only GameCore. loadDemoReplay decodes the raw
+ * replay+robot blobs and begins sim-free playback. Mirrors
+ * ControllerMainMenu.LoadReplay (ControllerMainMenu.ts:443-457).
+ */
+async function loadDemo(): Promise<void> {
+	try {
+		const [replayBytes, robotBytes] = await Promise.all([
+			fetch(replayDatUrl).then((r) => r.arrayBuffer()),
+			fetch(robotDatUrl).then((r) => r.arrayBuffer()),
+		]);
+		// The component may have been torn down while awaiting.
+		if (!bgApp) return;
+		const core = new GameCore(createInitialState());
+		await core.loadDemoReplay(replayBytes, robotBytes);
+		if (!bgApp) return;
+		demoCore = core;
+	} catch {
+		// A decode/fetch failure just leaves the demo bot absent — the sky+ground
+		// backdrop still renders. Don't break the menu.
+		demoCore = null;
+	}
+}
+
+/**
+ * Draw one demo-replay frame via the ORIGINAL Draw renderer, driven by the demo
+ * core's replay camera (the camera-follow is baked into the replay's camera
+ * stream). Mirrors GameCanvas.drawFrame's camera→Draw transform: advance the
+ * replay one step, map the core camera to Draw's offsets/scale, paint the parts,
+ * and dispatch `viewReplayAgain` to loop when playback finishes (the legacy
+ * ControllerMainMenu.Update loop-on-end).
+ */
+function drawDemoFrame(w: number, h: number): void {
+	if (!demoCore || !demoDraw) return;
+	const state = demoCore.getState();
+
+	// Advance sim-free playback one frame (like GameCanvas' running-phase step).
+	if (state.sim.phase === "running") demoCore.dispatch({ type: "step" });
+	// Loop: restart once the recorded motion ends (ControllerMainMenu.Update).
+	if (demoCore.getState().replay.finished) {
+		demoCore.dispatch({ type: "viewReplayAgain" });
+	}
+
+	const after = demoCore.getState();
+	const camera = after.camera;
+	// Same transform GameCanvas uses: screen = canvas/2 + world*scale - offset.
+	demoDraw.m_drawScale = camera.scale;
+	demoDraw.m_drawXOff = camera.offsetX - w / 2;
+	demoDraw.m_drawYOff = camera.offsetY - h / 2;
+	demoDraw.m_screenWidth = w;
+	demoDraw.m_screenHeight = h;
+
+	// drawStatic=false (as GameCanvas / ControllerGame): the demo terrain is the
+	// decorative ground; the dynamic robot draws. notStarted=false (playing).
+	demoDraw.DrawWorld(
+		after.parts as Part[],
+		[],
+		after.world,
+		/* notStarted */ false,
+		/* drawStatic */ false,
+		/* showJoints */ true,
+		/* showOutlines */ true,
+		/* challenge */ null as any,
+	);
+}
+
 onMounted(async () => {
 	if (!bgContainer.value) return;
 	const w0 = bgContainer.value.clientWidth || 1;
@@ -167,6 +252,16 @@ onMounted(async () => {
 	bgGround = new GroundRenderer();
 	app.stage.addChild(bgGround.view);
 
+	// Demo-bot Draw sprite sits ABOVE the ground (matching the legacy display
+	// order: sSky behind, sGround over it, the demo world/robot on top).
+	demoSprite = new Graphics();
+	app.stage.addChild(demoSprite);
+	demoDraw = new Draw();
+	demoDraw.m_sprite = demoSprite;
+
+	// Kick off the demo-replay load (async); the ticker draws it once ready.
+	void loadDemo();
+
 	bgTicker = () => {
 		if (!bgApp || !bgContainer.value) return;
 		const w = bgContainer.value.clientWidth || 1;
@@ -181,6 +276,7 @@ onMounted(async () => {
 			bgGround.build(MENU_SANDBOX);
 			bgGround.update(cam, w, h);
 		}
+		drawDemoFrame(w, h);
 	};
 	app.ticker.add(bgTicker);
 
@@ -203,6 +299,9 @@ onBeforeUnmount(() => {
 	bgResizeObserver = null;
 	if (bgApp && bgTicker) bgApp.ticker.remove(bgTicker);
 	bgTicker = null;
+	demoCore = null;
+	demoDraw = null;
+	demoSprite = null;
 	bgGround?.destroy();
 	bgGround = null;
 	bgSky = null;

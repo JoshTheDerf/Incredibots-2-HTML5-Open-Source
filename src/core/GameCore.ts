@@ -32,7 +32,7 @@ import { GameState, PartSnapshot, createInitialState } from "./GameState";
 import type { CameraState } from "./GameState";
 import { decodeRobot, encodeRobot } from "./robotSerialization";
 import { decodeChallengeBlob } from "./challengeSerialization";
-import { encodeReplay, decodeReplay } from "./replaySerialization";
+import { encodeReplay, decodeReplay, decodeDemoReplay } from "./replaySerialization";
 import { buildTerrainParts, computeBounds } from "./sandboxEnvironment";
 import {
 	ChallengeSession,
@@ -625,6 +625,33 @@ export class GameCore {
 		// static terrain doesn't shift replayBodies indices (statics are skipped), and
 		// encodeRobot preserves dynamic-shape order, so the sync indices stay aligned.
 		const { replay, robot } = await decodeReplay(replayStr);
+		for (const p of robot.parts) p.id = ++this.nextId;
+		const terrain = this.state.parts.filter((p) => (p as { isSandbox?: boolean }).isSandbox);
+		this.state = {
+			...this.state,
+			parts: [...terrain, ...robot.parts],
+			edit: { ...this.state.edit, selection: [], selectedPart: null },
+		};
+		this.markChanged();
+		this.dispatch({ type: "playReplay", data: replay });
+	}
+
+	/**
+	 * Decode the built-in main-menu DEMO replay from its two RAW asset blobs
+	 * (resource/replay.dat + resource/robot.dat) and begin sim-FREE playback.
+	 * This is the RAW replay+robot format ControllerMainMenu.LoadReplay reads
+	 * (ControllerMainMenu.ts:443-457) — NOT the base64 export string importReplay
+	 * takes. Otherwise identical to importReplay: seed the parts graph with the
+	 * bundled robot (fresh ids) then playReplay drives the bodies from the recorded
+	 * sync points. Editing-phase only. Callers loop by dispatching `viewReplayAgain`
+	 * once state.replay.finished. Throws if either blob can't be decoded.
+	 */
+	async loadDemoReplay(
+		replayBlob: ArrayBuffer | Uint8Array,
+		robotBlob: ArrayBuffer | Uint8Array,
+	): Promise<void> {
+		if (this.state.sim.phase !== "editing") return;
+		const { replay, robot } = await decodeDemoReplay(replayBlob, robotBlob);
 		for (const p of robot.parts) p.id = ++this.nextId;
 		const terrain = this.state.parts.filter((p) => (p as { isSandbox?: boolean }).isSandbox);
 		this.state = {

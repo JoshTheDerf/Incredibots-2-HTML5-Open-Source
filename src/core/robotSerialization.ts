@@ -319,6 +319,22 @@ export async function encodeRobot(
 }
 
 /**
+ * Decode a RAW robot ByteArray blob (the resource/robot.dat asset bytes) into
+ * parts + settings. Mirrors the legacy ControllerMainMenu.LoadReplay path
+ * (ControllerMainMenu.ts:449-453): construct a ByteArray from the compressed
+ * asset bytes, uncompress, then ExtractRobotFromByteArray DIRECTLY — with NO
+ * name/desc/shared/allowEdits/prop header skip (unlike ImportRobot / the export
+ * string). `blob` is the raw asset bytes (fetch().arrayBuffer() in the browser,
+ * readFileSync in tests). Node-clean (no pixi).
+ */
+export async function decodeRobotBlob(blob: ArrayBuffer | Uint8Array): Promise<DecodedRobot> {
+	const b = new ByteArray(blob as ArrayBuffer);
+	await b.uncompress();
+	b.position = 0;
+	return extractRobotFromByteArray(b);
+}
+
+/**
  * Decode a legacy robot export string back into parts + settings. Mirrors
  * Database.ImportRobot: base64-decode, zlib-uncompress, skip the header
  * (name/desc/shared/allowEdits/prop), then extract the robot.

@@ -17,3 +17,11 @@ declare module "*.mp3" {
 	export default src;
 }
 
+// Binary game-data blobs (robot/replay/challenge .dat). Vite's assetsInclude
+// resolves these to a URL string at build time (Resource.ts + the menu demo
+// replay import them and fetch() the bytes).
+declare module "*.dat" {
+	const src: string;
+	export default src;
+}
+
