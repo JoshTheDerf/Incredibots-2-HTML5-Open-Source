@@ -858,6 +858,138 @@ export class GameCore {
 		}
 	}
 
+	/**
+	 * Per-frame tutorial win predicate (H2) — a faithful port of each base
+	 * tutorial's ControllerXxx.ChallengeOver() body-position check, evaluated on
+	 * the live b2Body world centres during the running sim. All are gated on the
+	 * sim having started (the caller only invokes this while running). Returns true
+	 * on the first frame the level's win condition is met.
+	 *
+	 *   0 Tank      (ControllerTank.ts:320-326): `this.object` (the blue win-target
+	 *               rect) at -15 < x < -3 && y > 12.
+	 *   1 Shapes    (ControllerShapes.ts:48-59): ANY editable Circle at
+	 *               -15 < x < -3 && y > 10.
+	 *   2 Car       (ControllerCar.ts:138-149): ANY editable ShapePart at
+	 *               x < -7 && y > 12.
+	 *   3 Jumpbot   (ControllerJumpbot.ts:131-142): ANY editable ShapePart at
+	 *               -15 < x < -3 && 11 < y < 18.
+	 *   4 Dumpbot   (ControllerDumpbot.ts:239-247): ALL three win-target objects
+	 *               each at -15 < x < -3 && y > 12.
+	 *   5 Catapult  (ControllerCatapult.ts:138-144): `this.ball` (the green
+	 *               win-target circle) at -15 < x < -3 && y > 12.5.
+	 */
+	private tutorialChallengeOver(levelIndex: number): boolean {
+		const centre = (p: Part): { x: number; y: number } | null => {
+			const body = (p as unknown as { GetBody?: () => BodyLike | null }).GetBody?.();
+			if (!body) return null;
+			const c = (body as unknown as { GetWorldCenter: () => { x: number; y: number } }).GetWorldCenter();
+			return c;
+		};
+		const winTargets = (): Part[] =>
+			this.state.parts.filter((p) => (p as { tutorialWinTarget?: boolean }).tutorialWinTarget);
+		switch (levelIndex) {
+			case 0: {
+				const t = winTargets()[0];
+				if (!t) return false;
+				const c = centre(t);
+				return !!c && c.x > -15 && c.y > 12 && c.x < -3;
+			}
+			case 1: {
+				for (const p of this.state.parts) {
+					if (p instanceof Circle && p.isEditable) {
+						const c = centre(p);
+						if (c && c.x > -15 && c.x < -3 && c.y > 10) return true;
+					}
+				}
+				return false;
+			}
+			case 2: {
+				for (const p of this.state.parts) {
+					if (p instanceof ShapePart && p.isEditable) {
+						const c = centre(p);
+						if (c && c.x < -7 && c.y > 12) return true;
+					}
+				}
+				return false;
+			}
+			case 3: {
+				for (const p of this.state.parts) {
+					if (p instanceof ShapePart && p.isEditable) {
+						const c = centre(p);
+						if (c && c.x > -15 && c.x < -3 && c.y > 11 && c.y < 18) return true;
+					}
+				}
+				return false;
+			}
+			case 4: {
+				const targets = winTargets();
+				if (targets.length < 3) return false;
+				for (const t of targets) {
+					const c = centre(t);
+					if (!c || !(c.x > -15 && c.y > 12 && c.x < -3)) return false;
+				}
+				return true;
+			}
+			case 5: {
+				const t = winTargets()[0];
+				if (!t) return false;
+				const c = centre(t);
+				return !!c && c.x > -15 && c.x < -3 && c.y > 12.5;
+			}
+			default:
+				return false;
+		}
+	}
+
+	/**
+	 * Per-frame tutorial dialog milestones driven by a body-position check
+	 * (ControllerRubeGoldberg.Update dialog 81 / ControllerNewFeatures.Update
+	 * dialog 89). Evaluated each running-sim frame while a tutorial is active. The
+	 * machine's cursor gating means firing the key only advances if it is the next
+	 * expected step, so evaluating every frame is safe.
+	 *   7 RubeGoldberg: `this.ball` progress target at x > 25 && y > 9 -> "reachedEnd".
+	 *   8 NewFeatures:  `this.middle` progress target at x < -25 && y > -8 -> "botInBox".
+	 */
+	private tutorialFrameProgress(): void {
+		const machine = this.tutorialMachine;
+		if (!machine) return;
+		const target = this.state.parts.find(
+			(p) => (p as { tutorialProgressTarget?: boolean }).tutorialProgressTarget,
+		);
+		if (!target) return;
+		const body = (target as unknown as { GetBody?: () => BodyLike | null }).GetBody?.();
+		if (!body) return;
+		const c = (body as unknown as { GetWorldCenter: () => { x: number; y: number } }).GetWorldCenter();
+		if (!c) return;
+		if (machine.levelIndex === 7 && c.x > 25 && c.y > 9) {
+			this.notifyTutorial({ type: "progress", key: "reachedEnd" });
+		} else if (machine.levelIndex === 8 && c.x < -25 && c.y > -8) {
+			this.notifyTutorial({ type: "progress", key: "botInBox" });
+		}
+	}
+
+	/**
+	 * Emit the strength/speed-slider tutorial milestones shared by setJointStrength
+	 * and setJointSpeed. Faithful to the legacy Update() checks:
+	 *   Jumpbot (ControllerJumpbot.Update :106): the piston's strength AND speed both
+	 *     raised above 15 -> dialog 19 "powerIncreased".
+	 *   Dumpbot (ControllerDumpbot.Update :228): the loading-arm motor's speed < 15,
+	 *     strength > 15, and stiff -> dialog 31 "motorAdjusted".
+	 * Both are cursor-gated, so evaluating the whole graph each slider change is safe.
+	 */
+	private emitJointPowerMilestones(partIds: number[]): void {
+		const ids = new Set(partIds);
+		for (const p of this.state.parts) {
+			if (!ids.has(p.id)) continue;
+			if (p instanceof PrismaticJoint && p.pistonStrength > 15 && p.pistonSpeed > 15) {
+				this.notifyTutorial({ type: "progress", key: "powerIncreased" });
+			}
+			if (p instanceof RevoluteJoint && p.motorSpeed < 15 && p.motorStrength > 15 && p.isStiff) {
+				this.notifyTutorial({ type: "progress", key: "motorAdjusted" });
+			}
+		}
+	}
+
 	/** Resolve a condition's picked ShapeParts by id (for subject-0 / obj-5/6). */
 	private applyConditionShapes(
 		cond: WinCondition | LossCondition,
@@ -899,8 +1031,16 @@ export class GameCore {
 		}
 		this.applyConditionShapes(cond, shape1Id, shape2Id);
 		this.challenge.challenge.winConditions.push(cond);
-		// Tutorial milestone (ControllerChallengeEditor -> 97 "addedWinCondition").
-		if (this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "addedWinCondition" });
+		// ChallengeEditor milestones (ControllerChallengeEditor.Update :364-372). The
+		// legacy fires 95 "clickedConditions" when the Conditions dialog opens and 96
+		// "addingCondition" while a shape is being picked; those UI-dialog steps have
+		// no dedicated command, so we walk the machine's cursor through them here (each
+		// notifyTutorial advances at most one step) up to 97 "addedWinCondition".
+		if (this.tutorialMachine) {
+			this.notifyTutorial({ type: "progress", key: "clickedConditions" });
+			this.notifyTutorial({ type: "progress", key: "addingCondition" });
+			this.notifyTutorial({ type: "progress", key: "addedWinCondition" });
+		}
 	}
 
 	/** Construct + push a LossCondition; shared by the command and pick paths. */
@@ -927,8 +1067,15 @@ export class GameCore {
 		// -> 100 "addedLoss1"; second -> 102 "addedLoss2".
 		if (this.tutorialMachine) {
 			const n = this.challenge.challenge.lossConditions.length;
-			if (n === 1) this.notifyTutorial({ type: "progress", key: "addedLoss1" });
-			else if (n === 2) this.notifyTutorial({ type: "progress", key: "addedLoss2" });
+			// The "drawing loss line" (99) / "selecting shape 2" (101) UI steps have no
+			// dedicated command; walk the cursor through them before the count milestone.
+			if (n === 1) {
+				this.notifyTutorial({ type: "progress", key: "addingLoss1" });
+				this.notifyTutorial({ type: "progress", key: "addedLoss1" });
+			} else if (n === 2) {
+				this.notifyTutorial({ type: "progress", key: "addingLoss2" });
+				this.notifyTutorial({ type: "progress", key: "addedLoss2" });
+			}
 		}
 	}
 
@@ -1801,6 +1948,10 @@ export class GameCore {
 	 */
 	private handleCopy(partIds: number[]): void {
 		this.clipboard = this.cloneSelectionForClipboard(partIds);
+		// HomeMovies milestone (ControllerHomeMovies.copyButton :433-439): the ragdoll
+		// was copied -> dialog 45 "copied". Cursor-gated. (exportRobot also emits this
+		// for the encoded-robot copy path; the copy button is the faithful trigger.)
+		if (this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "copied" });
 	}
 
 	/**
@@ -1919,6 +2070,9 @@ export class GameCore {
 		};
 		this.markChanged();
 		if (this.challenge) this.syncChallenge();
+		// HomeMovies milestone (ControllerHomeMovies.Update :412): the copied ragdoll
+		// was pasted -> dialog 46 "pasted". Cursor-gated.
+		if (this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "pasted" });
 	}
 
 	/** Map a clipboard Part to its CreatePartKind for the paste restriction gate. */
@@ -1977,6 +2131,9 @@ export class GameCore {
 		const parts = [...rest.slice(0, insertAt), ...moved, ...rest.slice(insertAt)];
 		this.state = { ...this.state, parts };
 		this.markChanged();
+		// HomeMovies milestone (ControllerHomeMovies.Update :368-389): a leg piece
+		// moved to back (z-order) -> dialog 56 "movedLegsBack". Cursor-gated.
+		if (this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "movedLegsBack" });
 	}
 
 	/**
@@ -2558,6 +2715,26 @@ export class GameCore {
 				this.recording.canSave = false;
 			}
 
+			// Tutorial per-frame milestones (H1) + physics win (H2). The base
+			// tutorials (Tank/Shapes/Car/Jumpbot/Dumpbot/Catapult) win via a
+			// per-frame body-position check in their ChallengeOver(); the sandbox
+			// tutorials (RubeGoldberg/NewFeatures) also fire dialog milestones from
+			// a per-frame position check in Update() (dialog 81 / 89). Both are
+			// evaluated here each non-replay sim frame while a tutorial is active,
+			// exactly where the legacy Update()/ChallengeOver() ran.
+			if (this.tutorialMachine) {
+				this.tutorialFrameProgress();
+				if (!this.tutorialWonFired && this.tutorialChallengeOver(this.tutorialMachine.levelIndex)) {
+					// Win SFX + advance to the win dialog + mark the level done
+					// (ControllerGame.ts:738-772 pauses & records; notifyTutorial({won})
+					// writes levelsDone[levelIndex] and shows the win dialog).
+					this.emitSound("won");
+					this.notifyTutorial({ type: "won" });
+					ended = true;
+					break;
+				}
+			}
+
 			// Challenge: evaluate every win + loss condition this frame
 			// (ControllerChallenge.Update :23-30), then check for win/loss. The base
 			// loop pauses + records the outcome when ChallengeOver() first fires
@@ -2972,7 +3149,27 @@ export class GameCore {
 		this.markChanged();
 		// PlayJointSound at every joint/thruster create site.
 		this.emitSound("jointCreated");
-		if (this.tutorialMachine) this.notifyTutorial({ type: "partCreated", partKind: createdKind });
+		if (this.tutorialMachine) {
+			this.notifyTutorial({ type: "partCreated", partKind: createdKind });
+			// Joint-creation milestones the machines await beyond a bare partCreated
+			// (all cursor-gated, so emitting generously is safe):
+			//   Dumpbot (ControllerDumpbot.Update): a RevoluteJoint (the arm joint) ->
+			//     26 "armJoint" (:179); each FixedJoint of the bucket -> 29/30
+			//     "fixed1"/"fixed2" by count (:220/:224).
+			//   HomeMovies (ControllerHomeMovies.Update :392): the support rect's
+			//     FixedJoint -> 59 "createdRect".
+			//   NewFeatures (ControllerNewFeatures.Update :305): the 4th connecting
+			//     FixedJoint -> 85 "partsConnected".
+			if (createdKind === "RevoluteJoint") {
+				this.notifyTutorial({ type: "progress", key: "armJoint" });
+			} else if (createdKind === "FixedJoint") {
+				this.notifyTutorial({ type: "progress", key: "createdRect" });
+				const fixedCount = this.state.parts.filter((p) => p instanceof FixedJoint).length;
+				if (fixedCount === 1) this.notifyTutorial({ type: "progress", key: "fixed1" });
+				else if (fixedCount === 2) this.notifyTutorial({ type: "progress", key: "fixed2" });
+				if (fixedCount >= 4) this.notifyTutorial({ type: "progress", key: "partsConnected" });
+			}
+		}
 	}
 
 	private finalizeThrusters(part: ShapePart, x: number, y: number): void {
@@ -3354,6 +3551,11 @@ export class GameCore {
 			case "setTool":
 				this.state = { ...this.state, edit: { ...this.state.edit, tool: command.tool } };
 				this.markChanged();
+				// Dumpbot milestone (ControllerDumpbot.Update :163): the Rotating Joint tool
+				// selected (curAction == NEW_REVOLUTE_JOINT) -> dialog 58 "clickedJoint".
+				if (command.tool === "newRevoluteJoint" && this.tutorialMachine) {
+					this.notifyTutorial({ type: "progress", key: "clickedJoint" });
+				}
 				return;
 			case "clearSelection":
 				this.state = {
@@ -3387,6 +3589,13 @@ export class GameCore {
 					edit: { ...this.state.edit, selection, selectedPart: this.deriveSelectedPart(selection) },
 				};
 				this.markChanged();
+				// RubeGoldberg selection milestones (ControllerRubeGoldberg.Update
+				// :685/:697): a single part selected -> 73 "rectSelected"; two parts
+				// selected -> 76 "selectedRects". Cursor-gated, so emit both generously.
+				if (this.tutorialMachine) {
+					if (selection.length === 1) this.notifyTutorial({ type: "progress", key: "rectSelected" });
+					else if (selection.length === 2) this.notifyTutorial({ type: "progress", key: "selectedRects" });
+				}
 				return;
 			}
 			case "createShape": {
@@ -3438,7 +3647,26 @@ export class GameCore {
 				this.markChanged();
 				// Play the shape-create SFX (ControllerGame.PlayShapeSound call sites).
 				this.emitSound("shapeCreated");
-				if (this.tutorialMachine) this.notifyTutorial({ type: "partCreated", partKind: createdKind });
+				if (this.tutorialMachine) {
+					this.notifyTutorial({ type: "partCreated", partKind: createdKind });
+					// Dumpbot shape-count milestones (ControllerDumpbot.Update :136/:157/
+					// :214) — the whole bot is player-built. Emitting these generously is
+					// safe: the machine's chain only advances on the key it expects next.
+					//   two editable Circles -> 23 "wheels"           (:136)
+					//   a Rectangle (the arm) -> 25 "arm"             (:157)
+					//   two editable Rectangles (the bucket) -> 28 "bucket" (:214)
+					const editableShapes = this.state.parts.filter((p) => p instanceof ShapePart && p.isEditable && p.isEnabled);
+					const n = editableShapes.length;
+					const last = editableShapes[n - 1];
+					const prev = editableShapes[n - 2];
+					if (last instanceof Circle && prev instanceof Circle) {
+						this.notifyTutorial({ type: "progress", key: "wheels" });
+					}
+					if (last instanceof Rectangle) {
+						this.notifyTutorial({ type: "progress", key: "arm" });
+						if (prev instanceof Rectangle) this.notifyTutorial({ type: "progress", key: "bucket" });
+					}
+				}
 				return;
 			}
 			case "createText": {
@@ -3454,6 +3682,10 @@ export class GameCore {
 					edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(part), tool: "select" },
 				};
 				this.markChanged();
+				// Tutorial milestone (ControllerHomeMovies.Update :414-417): a TextPart
+				// was created -> dialog 47 (audit L3). TextPart.type is "text"; the
+				// HomeMovies machine's chain step matches part "TextPart", so pass that.
+				if (this.tutorialMachine) this.notifyTutorial({ type: "partCreated", partKind: "TextPart" });
 				return;
 			}
 			case "deleteParts": {
@@ -3483,6 +3715,13 @@ export class GameCore {
 					edit: { ...this.state.edit, selectedPart: this.deriveSelectedPart(this.state.edit.selection) },
 				};
 				this.markChanged();
+				// RubeGoldberg drag milestones (ControllerRubeGoldberg.Update :693/:701):
+				// dragging a single rect -> 75 "draggedRect"; dragging the two
+				// multi-selected rects together -> 77 "draggedRects". Cursor-gated.
+				if (this.tutorialMachine) {
+					if (command.partIds.length === 1) this.notifyTutorial({ type: "progress", key: "draggedRect" });
+					else if (command.partIds.length >= 2) this.notifyTutorial({ type: "progress", key: "draggedRects" });
+				}
 				return;
 			}
 			case "setColour": {
@@ -3518,6 +3757,15 @@ export class GameCore {
 					edit: { ...this.state.edit, selectedPart: this.deriveSelectedPart(this.state.edit.selection) },
 				};
 				this.markChanged();
+				// HomeMovies colour milestones (ControllerHomeMovies.Update :360/:402):
+				// the face coloured beige (255,216,136) -> 41 "colouredFace"; the support
+				// rect made invisible (opacity 0) -> 43 "invisiblised". Cursor-gated.
+				if (this.tutorialMachine) {
+					if (command.r === 255 && command.g === 216 && command.b === 136) {
+						this.notifyTutorial({ type: "progress", key: "colouredFace" });
+					}
+					if (command.opacity === 0) this.notifyTutorial({ type: "progress", key: "invisiblised" });
+				}
 				return;
 			}
 			// --- Shape properties (ShapePart family) ---
@@ -3530,6 +3778,11 @@ export class GameCore {
 				this.editParts(command.partIds, (p) => {
 					if (p instanceof ShapePart) p.density = v;
 				});
+				// Jumpbot milestone (ControllerJumpbot.Update :110): the car body's
+				// density decreased below 15 -> dialog 20 "densityDecreased". The legacy
+				// checks carBody.density < 15; cursor-gated so any shape's density
+				// crossing below 15 emits it faithfully.
+				if (this.tutorialMachine && v < 15) this.notifyTutorial({ type: "progress", key: "densityDecreased" });
 				return;
 			}
 			// Collide lives on ShapePart AND PrismaticJoint (ShapeCheckboxAction COLLIDE_TYPE).
@@ -3538,6 +3791,9 @@ export class GameCore {
 					if (p instanceof ShapePart) p.collide = command.value;
 					else if (p instanceof PrismaticJoint) p.collide = command.value;
 				});
+				// RubeGoldberg milestone (ControllerRubeGoldberg.Update :713): the "END"
+				// letter chunk made non-colliding -> dialog 80 "endUncollided". Cursor-gated.
+				if (command.value === false && this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "endUncollided" });
 				return;
 			// Camera focus (CameraAction). Setting one part's focus clears any other
 			// part currently focused, matching CameraAction's oldCameraPart handling.
@@ -3567,6 +3823,10 @@ export class GameCore {
 					if (p instanceof ShapePart) p.outline = command.value;
 					else if (p instanceof PrismaticJoint) p.outline = command.value;
 				});
+				// HomeMovies milestone (ControllerHomeMovies.Update :364): the hair pieces
+				// had "Show Outlines" turned OFF -> dialog 42 "unoutlined" (audit L4). This
+				// is distinct from "outlinesBehind" (the terrain flag, NewFeatures 86).
+				if (command.value === false && this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "unoutlined" });
 				return;
 			// "Outlines Behind" == ShapePart.terrain (ShapeCheckboxAction TERRAIN_TYPE).
 			case "setOutlineBehind":
@@ -3601,8 +3861,17 @@ export class GameCore {
 					const enabledRevolute = this.state.parts.some((p) => p instanceof RevoluteJoint && ids.has(p.id));
 					const enabledPrismatic = this.state.parts.some((p) => p instanceof PrismaticJoint && ids.has(p.id));
 					if (enabledRevolute) {
-						this.notifyTutorial({ type: "progress", key: "motorsEnabled" });
+						// A single revolute motor enabled advances ControllerHomeMovies (one
+						// shoulder joint -> 44 "shoulderEnabled", :406). Car (-> 13, :113) and
+						// Dumpbot (-> 24, :140) require BOTH wheel joints motored; emit those
+						// keys only once two motored RevoluteJoints exist (the last two parts
+						// legacy check). Cursor gating keeps the extra emits harmless.
 						this.notifyTutorial({ type: "progress", key: "shoulderEnabled" });
+						const motoredRevolutes = this.state.parts.filter((p) => p instanceof RevoluteJoint && p.enableMotor).length;
+						if (motoredRevolutes >= 2) {
+							this.notifyTutorial({ type: "progress", key: "motorsEnabled" });
+							this.notifyTutorial({ type: "progress", key: "wheelJoints" });
+						}
 					}
 					if (enabledPrismatic) this.notifyTutorial({ type: "progress", key: "pistonEnabled" });
 				}
@@ -3618,6 +3887,7 @@ export class GameCore {
 					if (p instanceof RevoluteJoint) p.motorStrength = ch ? clampRJ(ch, v, "strength") : v;
 					else if (p instanceof PrismaticJoint) p.pistonStrength = ch ? clampSJ(ch, v, "strength") : v;
 				});
+				if (this.tutorialMachine) this.emitJointPowerMilestones(command.partIds);
 				return;
 			}
 			// Speed: motorSpeed / pistonSpeed (ChangeSliderAction SPEED_TYPE).
@@ -3630,6 +3900,7 @@ export class GameCore {
 					if (p instanceof RevoluteJoint) p.motorSpeed = ch ? clampRJ(ch, v, "speed") : v;
 					else if (p instanceof PrismaticJoint) p.pistonSpeed = ch ? clampSJ(ch, v, "speed") : v;
 				});
+				if (this.tutorialMachine) this.emitJointPowerMilestones(command.partIds);
 				return;
 			}
 			// Revolute limits, in degrees (LimitChangeAction; clamp rules from
@@ -3665,6 +3936,16 @@ export class GameCore {
 						else if (command.which === "down") p.pistonDownKey = command.key;
 					}
 				});
+				// Dumpbot milestone (ControllerDumpbot.Update :189): the loading-arm joint's
+				// control keys set to up(38)/down(40) -> dialog 27 "controlKeys". The legacy
+				// checks motorCWKey == 38 && motorCCWKey == 40 on the last RevoluteJoint.
+				if (this.tutorialMachine) {
+					const ids = new Set(command.partIds);
+					const ok = this.state.parts.some(
+						(p) => p instanceof RevoluteJoint && ids.has(p.id) && p.motorCWKey === 38 && p.motorCCWKey === 40,
+					);
+					if (ok) this.notifyTutorial({ type: "progress", key: "controlKeys" });
+				}
 				return;
 			// Auto-on flags (JointCheckboxAction AUTO_*): cw/ccw are mutually
 			// exclusive on a revolute (setting one on clears the other, matching the
@@ -3683,6 +3964,11 @@ export class GameCore {
 						p.autoOscillate = command.value;
 					}
 				});
+				// RubeGoldberg milestone (ControllerRubeGoldberg.Update :709): the cart's
+				// back-wheel motor set to Auto-On CCW -> dialog 79 "autoWheel".
+				if (command.which === "ccw" && command.value && this.tutorialMachine) {
+					this.notifyTutorial({ type: "progress", key: "autoWheel" });
+				}
 				return;
 			// isStiff (JointCheckboxAction RIGID_TYPE) — the UI shows "Floppy Joint"
 			// (= !isStiff); the command already carries the resolved isStiff value.
@@ -3690,6 +3976,15 @@ export class GameCore {
 				this.editParts(command.partIds, (p) => {
 					if (p instanceof RevoluteJoint || p instanceof PrismaticJoint) p.isStiff = command.value;
 				});
+				// Dumpbot milestone (ControllerDumpbot.Update :185): the arm joint made
+				// non-floppy (isStiff) with its motor enabled -> dialog 57 "solidified".
+				if (command.value && this.tutorialMachine) {
+					const ids = new Set(command.partIds);
+					const ok = this.state.parts.some(
+						(p) => p instanceof RevoluteJoint && ids.has(p.id) && p.enableMotor && p.isStiff,
+					);
+					if (ok) this.notifyTutorial({ type: "progress", key: "solidified" });
+				}
 				return;
 			case "setJointInitialLength":
 				this.editParts(command.partIds, (p) => {
@@ -3737,11 +4032,15 @@ export class GameCore {
 				this.editParts(command.partIds, (p) => {
 					if (p instanceof TextPart) p.text = command.text;
 				});
+				// HomeMovies milestone (ControllerHomeMovies.Update :419): the dialogue text
+				// was entered/resized -> dialog 48 "enteredText". Emit on a content change.
+				if (this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "enteredText" });
 				return;
 			case "setTextSize":
 				this.editParts(command.partIds, (p) => {
 					if (p instanceof TextPart) p.size = Math.max(1, command.value);
 				});
+				if (this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "enteredText" });
 				return;
 			case "setTextDisplayKey":
 				this.editParts(command.partIds, (p) => {
@@ -3752,6 +4051,11 @@ export class GameCore {
 				this.editParts(command.partIds, (p) => {
 					if (p instanceof TextPart) p.alwaysVisible = command.value;
 				});
+				// HomeMovies milestone (ControllerHomeMovies.Update :423): "Always Display"
+				// unchecked -> dialog 52 "uncheckedAlwaysDisplay".
+				if (command.value === false && this.tutorialMachine) {
+					this.notifyTutorial({ type: "progress", key: "uncheckedAlwaysDisplay" });
+				}
 				return;
 			case "setTextScaleWithZoom":
 				this.editParts(command.partIds, (p) => {
@@ -3832,6 +4136,9 @@ export class GameCore {
 					edit: { ...this.state.edit, selectedPart: this.deriveSelectedPart(this.state.edit.selection) },
 				};
 				this.markChanged();
+				// RubeGoldberg milestone (ControllerRubeGoldberg.Update :689): rotating
+				// the straight rect -> dialog 74 "rotated". Cursor-gated.
+				if (this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "rotated" });
 				return;
 			}
 			// Resize gesture lifecycle — faithful port of ControllerGame.scaleButton
@@ -4014,6 +4321,9 @@ export class GameCore {
 				// centerBox (:5257): flip snapToCenter.
 				this.state = { ...this.state, edit: { ...this.state.edit, snapToCenter: !this.state.edit.snapToCenter } };
 				this.markChanged();
+				// Car milestone (ControllerCar.centerBox :118-124): toggling "Snap to Center"
+				// after making the first joint -> dialog 11 "snapToCenter". Cursor-gated.
+				if (this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "snapToCenter" });
 				return;
 			case "zoomIn":
 				this.handleZoom(ZOOM_IN_FACTOR);
@@ -4182,6 +4492,16 @@ export class GameCore {
 				ch.thrustersAllowed = command.thrusters;
 				ch.cannonsAllowed = command.cannons;
 				this.syncChallenge();
+				// ChallengeEditor milestones (ControllerChallengeEditor.Update :385-390):
+				// opening the Restrictions dialog -> 103 "clickedRestrictions" (no dedicated
+				// command, walk the cursor); excluding Fixed+Sliding joints AND Thrusters ->
+				// 105 "excludedStuff" (fixed && sliding && thrusters now disallowed).
+				if (this.tutorialMachine) {
+					this.notifyTutorial({ type: "progress", key: "clickedRestrictions" });
+					if (!command.fixed && !command.prismatic && !command.thrusters) {
+						this.notifyTutorial({ type: "progress", key: "excludedStuff" });
+					}
+				}
 				return;
 			}
 			case "setBuildPermissions": {
@@ -4193,6 +4513,15 @@ export class GameCore {
 				ch.nonCollidingAllowed = command.nonColliding;
 				ch.showConditions = command.showConditions;
 				this.syncChallenge();
+				// ChallengeEditor milestone (ControllerChallengeEditor.Update :391-393):
+				// "Allow user Control of Bot" unchecked -> 106 "disallowedControl". Walk the
+				// cursor through clickedRestrictions first in case setAllowedParts wasn't the
+				// dispatch that opened the dialog (cursor-gated, so it's a no-op if already
+				// past it).
+				if (this.tutorialMachine) {
+					this.notifyTutorial({ type: "progress", key: "clickedRestrictions" });
+					if (!command.botControl) this.notifyTutorial({ type: "progress", key: "disallowedControl" });
+				}
 				return;
 			}
 			case "setPartLimits": {
@@ -4217,6 +4546,16 @@ export class GameCore {
 				area.upperBound.Set(command.maxX, command.maxY);
 				this.challenge.challenge.buildAreas.push(area);
 				this.syncChallenge();
+				// ChallengeEditor milestones (ControllerChallengeEditor.Update :358-363):
+				// clicking the build-box tool -> 93 "clickedBuildBox"; drawing the box ->
+				// 94 "builtBuildBox". The tool-click has no dedicated command, so walk the
+				// cursor through it before the built-box milestone (cursor-gated).
+				if (this.tutorialMachine) {
+					this.notifyTutorial({ type: "progress", key: "clickedBuildBox" });
+					if (this.challenge.challenge.buildAreas.length === 1) {
+						this.notifyTutorial({ type: "progress", key: "builtBuildBox" });
+					}
+				}
 				return;
 			}
 			case "removeBuildArea": {

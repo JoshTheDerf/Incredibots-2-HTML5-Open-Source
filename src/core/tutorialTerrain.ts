@@ -291,6 +291,9 @@ export function buildTankScene(): Part[] {
   object.blue = 255;
   object.isEditable = false;
   object.drawAnyway = false;
+  // Win target for ControllerTank.ChallengeOver (this.object). See GameCore
+  // tutorialChallengeOver level 0.
+  object.tutorialWinTarget = true;
   parts.push(object);
   p = new Triangle(57.5, 2.4, 58.5, 2.4, 58, 1.6);
   p.red = 255;
@@ -606,6 +609,9 @@ export function buildDumpbotScene(): Part[] {
   object1.blue = 94;
   object1.isEditable = false;
   object1.drawAnyway = false;
+  // Win targets for ControllerDumpbot.ChallengeOver (object1/object2/object3 —
+  // ALL three must reach the pit). See GameCore tutorialChallengeOver level 4.
+  object1.tutorialWinTarget = true;
   parts.push(object1);
   object2 = new Circle(0.9, 9.7, 0.3);
   object2.red = 255;
@@ -613,6 +619,7 @@ export function buildDumpbotScene(): Part[] {
   object2.blue = 94;
   object2.isEditable = false;
   object2.drawAnyway = false;
+  object2.tutorialWinTarget = true;
   parts.push(object2);
   object3 = new Triangle(-2, 9.9, -1, 9.9, -1.5, 8.9);
   object3.red = 255;
@@ -620,6 +627,7 @@ export function buildDumpbotScene(): Part[] {
   object3.blue = 94;
   object3.isEditable = false;
   object3.drawAnyway = false;
+  object3.tutorialWinTarget = true;
   parts.push(object3);
   tutorialPart = new Rectangle(30, 7, 3.5, 1.5);
   tutorialPart.isEditable = false;
@@ -673,6 +681,9 @@ export function buildCatapultScene(): Part[] {
   ball.red = 100;
   ball.green = 255;
   ball.blue = 40;
+  // Win target for ControllerCatapult.ChallengeOver (this.ball). See GameCore
+  // tutorialChallengeOver level 5.
+  ball.tutorialWinTarget = true;
   parts.push(ball);
   return parts as Part[];
 }
@@ -1534,6 +1545,9 @@ export function buildRubeGoldbergScene(): Part[] {
   ball.blue = 116;
   ball.density = 30;
   ball.isCameraFocus = true;
+  // Per-frame progress target for ControllerRubeGoldberg.Update (this.ball ->
+  // dialog 81 "reachedEnd" when x>25 && y>9). See GameCore tutorialFrameProgress.
+  ball.tutorialProgressTarget = true;
   parts.push(ball);
   return parts as Part[];
 }
@@ -1690,6 +1704,9 @@ export function buildNewFeaturesScene(): Part[] {
   middle.blue = blue;
   middle.green = green;
   middle.red = red;
+  // Per-frame progress target for ControllerNewFeatures.Update (this.middle ->
+  // dialog 89 "botInBox" when x<-25 && y>-8). See GameCore tutorialFrameProgress.
+  middle.tutorialProgressTarget = true;
   parts.push(middle);
   j = new FixedJoint(leg1Circle1, leg1Rect, 16.05, 5.04);
   parts.push(j);
