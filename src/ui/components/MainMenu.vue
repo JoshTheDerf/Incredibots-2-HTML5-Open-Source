@@ -91,6 +91,15 @@ function closeModal(): void {
 	modal.value = null;
 }
 
+// A successful robot/replay import from the menu must switch into the editor view
+// so the imported robot (or the now-playing replay) is visible — the canvas isn't
+// mounted on the menu. goToEditor(false) enters WITHOUT clearing (no newRobot), so
+// the just-imported parts survive.
+function onImported(): void {
+	closeModal();
+	game.goToEditor(false);
+}
+
 // Challenge Editor (legacy editorButton → straightToChallengeEditor): start a
 // fresh authoring challenge and enter the challenge-editor screen.
 function enterChallengeEditor(): void {
@@ -245,9 +254,7 @@ onBeforeUnmount(() => {
 						<IbButton family="orange" class="ls-btn" disabled>
 							Import Challenge <IbTodo label="no challenges" />
 						</IbButton>
-						<IbButton family="orange" class="ls-btn" disabled>
-							Import Replay <IbTodo label="no replays" />
-						</IbButton>
+						<IbButton family="orange" class="ls-btn" label="Import Replay" @click="modal = 'importReplay'" />
 						<IbButton family="orange" class="ls-btn" label="Import Bot" @click="modal = 'importRobot'" />
 					</div>
 					<div class="loadsave-col">
@@ -309,7 +316,19 @@ onBeforeUnmount(() => {
 			@update:open="(v: boolean) => !v && closeModal()"
 		>
 			<template #content>
-				<ImportPanel import-type="robot" @close="closeModal" />
+				<ImportPanel import-type="robot" @imported="onImported" @close="closeModal" />
+			</template>
+		</UModal>
+
+		<!-- Import Replay reuses the Import panel in replay mode (paste an exported
+		     replay string; importReplay loads the bundled robot + starts playback). -->
+		<UModal
+			:open="modal === 'importReplay'"
+			:ui="{ content: 'ib-modal-content' }"
+			@update:open="(v: boolean) => !v && closeModal()"
+		>
+			<template #content>
+				<ImportPanel import-type="replay" @imported="onImported" @close="closeModal" />
 			</template>
 		</UModal>
 

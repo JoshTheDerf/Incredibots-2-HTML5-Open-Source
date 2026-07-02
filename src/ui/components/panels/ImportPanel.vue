@@ -23,7 +23,11 @@ const props = withDefaults(defineProps<{ importType?: ImportType }>(), {
 	importType: "robot",
 });
 
-const emit = defineEmits<{ close: [] }>();
+// `imported` fires only on a SUCCESSFUL import (before close) so callers that
+// need to navigate — e.g. the main menu, which must switch into the editor view
+// for the imported robot/replay to become visible — can react. `close` fires on
+// both success and cancel.
+const emit = defineEmits<{ close: []; imported: [] }>();
 
 const game = useGameStore();
 const linkText = ref("");
@@ -56,6 +60,7 @@ async function doImport(): Promise<void> {
 		} else {
 			await game.importRobot(linkText.value.trim());
 		}
+		emit("imported");
 		emit("close");
 	} catch (err) {
 		// Decode failures (bad/corrupt string) surface here instead of crashing.

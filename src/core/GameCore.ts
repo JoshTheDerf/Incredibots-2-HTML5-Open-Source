@@ -616,7 +616,23 @@ export class GameCore {
 	 */
 	async importReplay(replayStr: string): Promise<void> {
 		if (this.state.sim.phase !== "editing") return;
-		const { replay } = await decodeReplay(replayStr);
+		// A replay export bundles BOTH the recorded motion AND the robot it animates
+		// (Database.ExportReplay). Playback replays body sync points indexed by the
+		// order of the dynamic ShapeParts (replayBodies), so the bundled robot must be
+		// loaded into the parts graph BEFORE playback — otherwise there is nothing to
+		// animate (the bug: the robot half was decoded but discarded). Load it exactly
+		// like importRobot (keep the sandbox terrain, assign fresh ids); the prepended
+		// static terrain doesn't shift replayBodies indices (statics are skipped), and
+		// encodeRobot preserves dynamic-shape order, so the sync indices stay aligned.
+		const { replay, robot } = await decodeReplay(replayStr);
+		for (const p of robot.parts) p.id = ++this.nextId;
+		const terrain = this.state.parts.filter((p) => (p as { isSandbox?: boolean }).isSandbox);
+		this.state = {
+			...this.state,
+			parts: [...terrain, ...robot.parts],
+			edit: { ...this.state.edit, selection: [], selectedPart: null },
+		};
+		this.markChanged();
 		this.dispatch({ type: "playReplay", data: replay });
 	}
 
