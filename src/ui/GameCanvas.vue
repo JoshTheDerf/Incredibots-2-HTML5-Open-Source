@@ -24,6 +24,7 @@ import { Triangle } from "../Parts/Triangle";
 import { useGameStore } from "./gameStore";
 import { screenToWorld, worldToScreen, hitTestPart, partsInBox } from "./renderer/sceneRenderer";
 import { SkyRenderer } from "./renderer/skyRenderer";
+import { GroundRenderer } from "./renderer/groundRenderer";
 import type { ToolMode } from "../core";
 import type { Part } from "../Parts/Part";
 
@@ -58,6 +59,11 @@ let drawSprite: Graphics | null = null;
 // Renderer-only sky/background (gradient + clouds/stars), a faithful port of
 // Sky.ts. Mounted BEHIND the Draw sprite so the world draws over it.
 let sky: SkyRenderer | null = null;
+// Renderer-only static terrain visual (grass/dirt gradient + rocks + end-cap
+// outline circles), a faithful port of ControllerSandbox's sGround. Mounted
+// ABOVE the sky but BELOW the Draw sprite, matching the legacy display order
+// (sSky behind, sGround over it, the world/robot on top).
+let ground: GroundRenderer | null = null;
 // Lightweight overlay Graphics for the marquee rectangle — kept separate from
 // the Draw sprite so it never fights Draw.ts's per-frame clear/repaint.
 let overlay: Graphics | null = null;
@@ -523,6 +529,16 @@ function drawFrame(): void {
 		sky.update(camera, state.sandbox.bounds, w, h, state.sim.phase === "paused");
 	}
 
+	// Static terrain visual (sGround port): build for the current sandbox settings
+	// (cheap no-op unless terrainType/size/theme changed) then rescale/reposition to
+	// the world each frame. This replaces drawing the raw collision bodies — the
+	// core's terrain parts stay invisible (drawStatic=false below), exactly as the
+	// legacy game drew the ground via sGround and passed drawStatic=false.
+	if (ground) {
+		ground.build(state.sandbox);
+		ground.update(camera, w, h);
+	}
+
 	// Map selection ids -> live Part instances for highlight.
 	const selected = new Set(state.edit.selection);
 	const selectedParts: Part[] = state.parts.filter((p) => selected.has(p.id));
@@ -535,7 +551,12 @@ function drawFrame(): void {
 		selectedParts,
 		state.world,
 		notStarted,
-		/* drawStatic */ true,
+		// drawStatic=false — faithful to ControllerGame.ts:640. Non-editable static
+		// terrain bodies are NOT drawn by DrawWorld; the visible ground is the
+		// GroundRenderer (sGround) painted above. Editable static parts (isEditable)
+		// still draw, per the `!isStatic || isEditable || drawStatic || drawAnyway`
+		// gate in Draw.DrawWorld.
+		/* drawStatic */ false,
 		/* showJoints */ true,
 		/* showOutlines */ true,
 		// Live Challenge (or null): Draw paints win/loss condition zones when the
@@ -644,6 +665,10 @@ onMounted(async () => {
 	// Preload cloud textures; the next drawFrame rebuilds the sky with them.
 	void sky.preload();
 
+	// Static terrain visual, above the sky and below the world Draw sprite.
+	ground = new GroundRenderer();
+	app.stage.addChild(ground.view);
+
 	drawSprite = new Graphics();
 	app.stage.addChild(drawSprite);
 	draw = new Draw();
@@ -705,6 +730,8 @@ onBeforeUnmount(() => {
 	drawSprite = null;
 	overlay = null;
 	sky = null;
+	ground?.destroy();
+	ground = null;
 	if (app) {
 		app.destroy(true, { children: true });
 		app = null;

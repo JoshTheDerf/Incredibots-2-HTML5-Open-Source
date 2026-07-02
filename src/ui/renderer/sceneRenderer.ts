@@ -46,10 +46,16 @@ export function screenToWorld(
  * Hit-test the topmost part under a world-space point. Uses each part's own
  * `InsideShape` so geometry stays owned by src/Parts/*. Iterates back-to-front
  * (last drawn = topmost) so the visual stacking order matches selection.
+ *
+ * Non-editable parts (sandbox terrain: isEditable=false) are skipped so they
+ * can't be clicked/selected — faithful to ControllerGame's select path, which
+ * only ever picks parts where `isEditable` is true (ControllerGame.ts:2406,
+ * :5491, and the mouseClick selection loop).
  */
 export function hitTestPart(parts: readonly Part[], worldX: number, worldY: number, scale: number): Part | null {
 	for (let i = parts.length - 1; i >= 0; i--) {
 		const part = parts[i];
+		if (!part.isEditable) continue;
 		try {
 			if (part.InsideShape(worldX, worldY, scale)) return part;
 		} catch {
@@ -74,6 +80,9 @@ export function partsInBox(parts: readonly Part[], ax: number, ay: number, bx: n
 	const h = Math.abs(ay - by);
 	const hits: Part[] = [];
 	for (const part of parts) {
+		// Skip non-editable sandbox terrain — box-select only grabs editable parts
+		// (ControllerGame.ts:2406 gates BOX_SELECTING on `allParts[i].isEditable`).
+		if (!part.isEditable) continue;
 		try {
 			if (part.IntersectsBox(minX, minY, w, h)) hits.push(part);
 		} catch {
