@@ -83,6 +83,8 @@ export type PartSnapshot = {
 	cameraFocus?: boolean;
 	/** "Fixate": maps to Part.isStatic. */
 	fixate?: boolean;
+	/** IB3 "Fixed Rotation": locks the body angle (ShapePart.fixedRotation). */
+	fixedRotation?: boolean;
 	outline?: boolean;
 	/** "Outlines Behind": maps to ShapePart.terrain. */
 	outlineBehind?: boolean;

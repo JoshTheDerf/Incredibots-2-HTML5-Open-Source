@@ -58,6 +58,11 @@ const fixate = computed({
 	get: () => sel.value?.fixate ?? false,
 	set: (v: boolean) => game.dispatch({ type: "setFixate", partIds: ids.value, value: v }),
 });
+// IB3 fixed rotation (locks the body angle) — ShapePart.fixedRotation.
+const fixedRotation = computed({
+	get: () => sel.value?.fixedRotation ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setFixedRotation", partIds: ids.value, value: v }),
+});
 const outline = computed({
 	get: () => sel.value?.outline ?? true,
 	set: (v: boolean) => game.dispatch({ type: "setOutline", partIds: ids.value, value: v }),
@@ -127,6 +132,9 @@ function applyColour(): void {
 		</div>
 		<div class="checkboxes">
 			<UCheckbox v-model="fixate" label="Fixate" />
+		</div>
+		<div class="checkboxes">
+			<UCheckbox v-model="fixedRotation" label="Fixed Rotation" />
 		</div>
 
 		<UFormField label="Color" class="field">

@@ -1716,6 +1716,7 @@ export class GameCore {
 				subColl: part.subColl,
 				cameraFocus: part.isCameraFocus,
 				fixate: part.isStatic, // "Fixate" == Part.isStatic
+				fixedRotation: part.fixedRotation, // IB3 ShapePart.fixedRotation
 				outline: part.outline,
 				outlineBehind: part.terrain, // "Outlines Behind" == terrain
 				undragable: part.undragable,
@@ -4262,6 +4263,7 @@ export class GameCore {
 			case "setTriggerList":
 			case "setCameraFocus":
 			case "setFixate":
+			case "setFixedRotation":
 			case "setOutline":
 			case "setOutlineBehind":
 			case "setUndragable":
@@ -4271,11 +4273,14 @@ export class GameCore {
 			case "setJointLimits":
 			case "setJointControlKey":
 			case "setJointAutoOn":
+			case "setJointEnableKey":
+			case "setJointBeginExpanded":
 			case "setJointStiff":
 			case "setJointInitialLength":
 			case "setThrusterStrength":
 			case "setThrusterKey":
 			case "setThrusterAutoOn":
+			case "setThrusterEnableKey":
 			case "setCannonStrength":
 			case "setCannonFireKey":
 			case "setBombProps":
@@ -4284,6 +4289,8 @@ export class GameCore {
 			case "setTextDisplayKey":
 			case "setTextAlwaysVisible":
 			case "setTextScaleWithZoom":
+			case "setTextAngle":
+			case "setTextVisibleOnStart":
 				return true;
 			// A batch is mutating iff it wraps at least one mutating sub-command, so a
 			// group edit pushes exactly one history snapshot (MultiActionsAction).
@@ -4366,6 +4373,7 @@ export class GameCore {
 				case "setTriggerList":
 				case "setCameraFocus":
 				case "setFixate":
+				case "setFixedRotation":
 				case "setOutline":
 				case "setOutlineBehind":
 				case "setUndragable":
@@ -4375,11 +4383,14 @@ export class GameCore {
 				case "setJointLimits":
 				case "setJointControlKey":
 				case "setJointAutoOn":
+				case "setJointEnableKey":
+				case "setJointBeginExpanded":
 				case "setJointStiff":
 				case "setJointInitialLength":
 				case "setThrusterStrength":
 				case "setThrusterKey":
 				case "setThrusterAutoOn":
+				case "setThrusterEnableKey":
 				case "setCannonStrength":
 				case "setCannonFireKey":
 				case "setBombProps":
@@ -4388,6 +4399,8 @@ export class GameCore {
 				case "setTextDisplayKey":
 				case "setTextAlwaysVisible":
 				case "setTextScaleWithZoom":
+				case "setTextAngle":
+				case "setTextVisibleOnStart":
 				case "batch":
 				case "undo":
 				case "redo":
@@ -4799,6 +4812,12 @@ export class GameCore {
 				// Tutorial milestone: fixating a shape (ControllerHomeMovies -> 60,
 				// ControllerRubeGoldberg -> 78, both key "fixated").
 				if (command.value && this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "fixated" });
+				return;
+			// IB3 fixed rotation == ShapePart.fixedRotation (locks the body angle).
+			case "setFixedRotation":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof ShapePart) p.fixedRotation = command.value;
+				});
 				return;
 			// Outline lives on ShapePart AND PrismaticJoint (ShapeCheckboxAction OUTLINE_TYPE).
 			case "setOutline":

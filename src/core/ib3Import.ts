@@ -629,6 +629,8 @@ function applyCommonShapeFields(shape: ShapePart, od: Record<string, unknown>, v
 	if (has(od, "selfColl")) shape.subColl = Boolean(od.selfColl);
 	if (has(od, "buoyant")) shape.buoyant = Boolean(od.buoyant);
 	if (has(od, "fixated")) shape.isStatic = Boolean(od.fixated);
+	// IB3 fixedRotation -> IB2 ShapePart.fixedRotation (direct; applied at Init).
+	if (has(od, "fixedRotation")) shape.fixedRotation = Boolean(od.fixedRotation);
 	if (has(od, "cameraFocus")) shape.isCameraFocus = Boolean(od.cameraFocus);
 	if (has(od, "draggable")) shape.undragable = !Boolean(od.draggable);
 	if (has(od, "collA")) shape.collA = Boolean(od.collA);
@@ -636,9 +638,6 @@ function applyCommonShapeFields(shape: ShapePart, od: Record<string, unknown>, v
 	if (has(od, "collC")) shape.collC = Boolean(od.collC);
 	if (has(od, "collD")) shape.collD = Boolean(od.collD);
 	shape.collide = shape.collA || shape.collB || shape.collC || shape.collD;
-	if (has(od, "fixedRotation") && od.fixedRotation) {
-		warnings.add("IB3 'fixed rotation' has no IB2 equivalent and was ignored.");
-	}
 	if (has(od, "triggerList") && String(od.triggerList).replace(/[, ]/g, "") !== "") {
 		warnings.add("IB3 trigger wiring is not imported.");
 	}

@@ -217,6 +217,8 @@ export class Cannon extends ShapePart {
       }
       var bd:b2BodyDef = new b2BodyDef();
       bd.position.Set(this.centerX, this.centerY);
+      // IB3 fixedRotation locks body angle (IB3 ShapePart.MakeBody :238).
+      bd.fixedRotation = this.fixedRotation;
       this.m_body = world.CreateBody(bd);
     }
     sd.userData = new Object();

@@ -217,6 +217,8 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 			// IB3 buoyancy participation flag (IB3 ShapePart.as:25); absent on
 			// pre-IB3-merge and Jaybit/CE codes -> default true (ShapePart.as:91).
 			shape.buoyant = has(od, "buoyant") ? Boolean(od.buoyant) : true;
+			// IB3 fixedRotation (IB3 ShapePart.as:31); absent on old codes -> false.
+			shape.fixedRotation = has(od, "fixedRotation") ? Boolean(od.fixedRotation) : false;
 			partData.push(shape);
 		} else if (od.type === "TextPart") {
 			// Legacy passes Main.m_curController; the headless core has no controller
