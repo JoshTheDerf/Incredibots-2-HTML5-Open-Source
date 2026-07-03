@@ -21,6 +21,7 @@ import { Application, Graphics } from "pixi.js";
 import { Draw } from "../Game/Draw";
 import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals";
 import { Triangle } from "../Parts/Triangle";
+import { Polygon } from "../Parts/Polygon";
 import { JointPart } from "../Parts/JointPart";
 import { useGameStore } from "./gameStore";
 import { useUiPrefs } from "./uiPrefs";
@@ -96,6 +97,13 @@ watch(
 	() => [game.edit.tool, game.sim.phase],
 	() => {
 		triangleBase = null;
+		// Abort an in-progress polygon (some vertices placed, ring not yet closed)
+		// when the tool changes or the sim leaves editing — same reset as the
+		// triangle base above.
+		if (polygonPoints.length > 0) {
+			polygonPoints = [];
+			overlay?.clear();
+		}
 		// Abort an in-progress prismatic two-click / joint disambiguation when the
 		// tool changes or the sim leaves editing (legacy resets curAction/actionStep
 		// + clears highlightForJoint on a new tool button).
@@ -215,6 +223,15 @@ let triangleBase: { v1: { x: number; y: number }; v2: { x: number; y: number } }
 // Last known cursor position in world units — drives the triangle apex preview
 // while `triangleBase` is set (the cursor moves with no button held down).
 let pointerWorld: { x: number; y: number } | null = null;
+
+// Polygon is a MULTI-CLICK gesture (new IB2/Jaybit editor tool — IB3 v0.00.33b
+// has no interactive polygon draw, polygons only arrive via import/copy). Each
+// click appends a grid-snapped vertex here (kept convex + within
+// [3, Polygon.MAX_VERTICES] + minimum side length as we go); the ring closes by
+// clicking near the first vertex, double-clicking, or pressing Enter, and
+// Escape cancels. Empty when no polygon is mid-construction. `pointerWorld`
+// (shared with the triangle preview) drives the rubber-band edge to the cursor.
+let polygonPoints: { x: number; y: number }[] = [];
 
 // Pointer-down anchor of a >2-overlap joint/thruster DISAMBIGUATION interaction
 // (ControllerGame FINALIZING_JOINT). Set on pointer-down while the core's
@@ -439,6 +456,16 @@ function onPointerDown(event: PointerEvent): void {
 			y3: apex.y,
 		});
 		triangleBase = null;
+		return;
+	}
+
+	// Polygon MULTI-CLICK gesture: each press places one vertex (grid-snapped,
+	// convexity + vertex-cap + min-side enforced in handlePolygonClick). The ring
+	// closes by clicking near the first vertex or double-clicking; Enter also
+	// commits and Escape cancels (both in onKeyDown). No drag — vertices are
+	// point clicks, like the triangle apex.
+	if (tool === "newPolygon") {
+		handlePolygonClick(world, event.detail >= 2);
 		return;
 	}
 
@@ -933,6 +960,24 @@ function onWindowBlur(): void {
 
 function onKeyDown(event: KeyboardEvent): void {
 	updateMods(event);
+	// Polygon multi-click gesture: Enter (13) commits the ring, Escape (27)
+	// cancels it. Handled here (not App's Escape cascade, which owns modals /
+	// condition-pick / joint gestures — none active during a polygon draw) since
+	// the in-progress vertices live in this component. Only while editing with
+	// vertices placed; skip while typing in a form field.
+	if (game.sim.phase === "editing" && polygonPoints.length > 0 && !isTypingTarget(event)) {
+		if (event.keyCode === 13) {
+			commitPolygon();
+			event.preventDefault();
+			return;
+		}
+		if (event.keyCode === 27) {
+			polygonPoints = [];
+			overlay?.clear();
+			event.preventDefault();
+			return;
+		}
+	}
 	const arrowKey = event.keyCode;
 	// Editing-phase fast camera pan (Ctrl = 3x): track held arrows; drawFrame does
 	// the per-frame pan (ControllerGame.as:6795-6835). preventDefault so the arrows
@@ -1087,6 +1132,43 @@ function drawPrismaticAxisPreview(start: { x: number; y: number }, cur: { x: num
 	overlay.stroke({ width: 2, color: 0xffaa00, alpha: 0.9 });
 	overlay.circle(a.x, a.y, 3);
 	overlay.fill({ color: 0xffaa00, alpha: 0.9 });
+}
+
+/**
+ * Paint the in-progress POLYGON into the overlay (world → screen): the placed
+ * vertices as handles (the first, the close target, drawn larger/gold), the
+ * edges between them, and a rubber-band from the last vertex to the cursor. Once
+ * there are ≥ 2 placed vertices the closing edge back to the first is previewed
+ * too so the author sees the shape that will be created. Cursor snaps the same
+ * way placement does, so the preview matches the committed geometry.
+ */
+function drawPolygonPreview(): void {
+	if (!overlay || !app || !container.value || polygonPoints.length === 0) return;
+	const rect = container.value.getBoundingClientRect();
+	const cam = game.camera;
+	const toS = (p: { x: number; y: number }) => worldToScreen(p.x, p.y, cam, rect.width, rect.height);
+	overlay.clear();
+	const pts = polygonPoints.map(toS);
+	const cursorWorld = pointerWorld ? snapGesturePoint(pointerWorld) : null;
+	const cur = cursorWorld ? toS(cursorWorld) : null;
+	// The previewed ring: placed vertices + the rubber-band cursor point.
+	const ring = cur ? [...pts, cur] : pts;
+	if (ring.length >= 3) {
+		overlay.moveTo(ring[0].x, ring[0].y);
+		for (let i = 1; i < ring.length; i++) overlay.lineTo(ring[i].x, ring[i].y);
+		overlay.lineTo(ring[0].x, ring[0].y);
+		overlay.fill({ color: 0x33aaff, alpha: 0.12 });
+		overlay.stroke({ width: 2, color: 0x33aaff, alpha: 0.9 });
+	} else {
+		overlay.moveTo(ring[0].x, ring[0].y);
+		for (let i = 1; i < ring.length; i++) overlay.lineTo(ring[i].x, ring[i].y);
+		overlay.stroke({ width: 2, color: 0x33aaff, alpha: 0.9 });
+	}
+	// Vertex handles; the first vertex (the click-to-close target) is larger + gold.
+	for (let i = 0; i < pts.length; i++) {
+		overlay.circle(pts[i].x, pts[i].y, i === 0 ? 5 : 3);
+		overlay.fill({ color: i === 0 ? 0xffcc00 : 0x33aaff, alpha: 0.95 });
+	}
 }
 
 /**
@@ -1346,6 +1428,13 @@ function drawFrame(): void {
 	// matches the finished shape's look (Draw.ts:819). It reuses the same Draw
 	// sprite DrawWorld just painted into, so it must run each frame after it.
 	drawShapePreview();
+
+	// Polygon multi-click preview: the placed vertices + rubber-band edge to the
+	// cursor, painted into the OVERLAY (not the Draw sprite — it's an N-vertex
+	// in-progress shape DrawTempShape can't express). Only touches the overlay
+	// while a polygon is mid-construction, so it never fights the marquee /
+	// prismatic-axis / condition previews (all on mutually-exclusive tools).
+	if (polygonPoints.length > 0) drawPolygonPreview();
 }
 
 /**
@@ -1479,6 +1568,61 @@ function resolveTriangleApex(
 		);
 	}
 	return { x: ax, y: ay };
+}
+
+/**
+ * Handle one click of the polygon multi-click gesture. `world` is the raw cursor
+ * (grid-snapped here at the same FINAL-geometry funnel as the other create
+ * gestures); `closeRequested` is true for a double-click. Closing (>= 3 verts):
+ * a click near the FIRST vertex or a double-click commits the ring. Otherwise
+ * the click APPENDS a vertex, but only if it keeps the closed ring convex
+ * (b2PolygonShape requires convex — it doesn't validate), stays within
+ * Polygon.MAX_VERTICES, and is at least Polygon.MIN_SIDE_LENGTH from the previous
+ * vertex; a click that would violate any of these is IGNORED (rejected).
+ */
+function handlePolygonClick(world: { x: number; y: number }, closeRequested: boolean): void {
+	const snapped = snapGesturePoint(world);
+	const n = polygonPoints.length;
+	// Close threshold in world units: a small screen distance scaled by the camera
+	// (same world-from-pixels convention as screenToWorld / the joint threshold).
+	const closeThresh = 12 / game.camera.scale;
+	if (n >= 3) {
+		const first = polygonPoints[0];
+		const distToFirst = Math.hypot(snapped.x - first.x, snapped.y - first.y);
+		if (closeRequested || distToFirst <= closeThresh) {
+			commitPolygon();
+			return;
+		}
+	}
+	// At the vertex cap only the close action (handled above) is possible.
+	if (n >= Polygon.MAX_VERTICES) return;
+	// Minimum side length: ignore a vertex too close to the previous one
+	// (accidental double placement / noise) — PolygonPart.SIDE_MIN_LENGTH.
+	if (n > 0) {
+		const prev = polygonPoints[n - 1];
+		if (Math.hypot(snapped.x - prev.x, snapped.y - prev.y) < Polygon.MIN_SIDE_LENGTH) return;
+	}
+	// Convexity: reject a vertex that would make the CLOSED ring non-convex.
+	// isConvex is winding-agnostic and treats the list as a closed ring (so it
+	// tests the wrap-around edges too), matching what the b2PolygonShape will be.
+	const candidate = [...polygonPoints, { x: snapped.x, y: snapped.y }];
+	if (candidate.length >= 3 && !Polygon.isConvex(candidate)) return;
+	polygonPoints = candidate;
+}
+
+/**
+ * Commit the in-progress polygon: dispatch createPolygon with the accumulated
+ * ring (only when it is a valid convex 3..MAX_VERTICES polygon — the gesture
+ * keeps it so, but re-check defensively) and reset the gesture. GameCore builds,
+ * adds and selects the Polygon part through the same undoable history path as
+ * every other create.
+ */
+function commitPolygon(): void {
+	if (polygonPoints.length >= 3 && polygonPoints.length <= Polygon.MAX_VERTICES && Polygon.isConvex(polygonPoints)) {
+		game.dispatch({ type: "createPolygon", verts: polygonPoints.map((p) => ({ x: p.x, y: p.y })) });
+	}
+	polygonPoints = [];
+	overlay?.clear();
 }
 
 onMounted(async () => {

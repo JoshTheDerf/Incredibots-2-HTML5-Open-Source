@@ -15,6 +15,7 @@ export type ToolMode =
 	| "newCircle"
 	| "newRect"
 	| "newTriangle"
+	| "newPolygon"
 	| "newFixedJoint"
 	| "newRevoluteJoint"
 	| "newPrismaticJoint"
@@ -25,7 +26,7 @@ export type ToolMode =
 	| "rotate"
 	| "resize";
 
-export type ShapeKind = "circle" | "rect" | "triangle" | "cannon" | "bomb";
+export type ShapeKind = "circle" | "rect" | "triangle" | "polygon" | "cannon" | "bomb";
 
 /**
  * Discriminated union of everything the UI can ask the core to do.
@@ -53,6 +54,18 @@ export type Command =
 	// degenerate (zero-length base / collinear apex) gesture. cannon is not created
 	// via this command.
 	| { type: "createShape"; kind: ShapeKind; x1: number; y1: number; x2: number; y2: number; x3?: number; y3?: number }
+	// Create a convex Polygon (Polygon ShapePart) from an ORDERED vertex list.
+	// Unlike createShape's fixed press/drag/apex points, a polygon carries N (3..8,
+	// b2_maxPolygonVertices) vertices, so it gets its own command; the multi-click
+	// gesture (GameCanvas newPolygon) enforces convexity + vertex-count + minimum
+	// side length while placing them, then dispatches the accumulated ring here.
+	// IB3 v0.00.33b has no interactive polygon draw tool (polygons only arrive via
+	// import/copy — PolygonPart.as); this is a new IB2/Jaybit editor gesture whose
+	// UX mirrors the existing triangle create (click-per-vertex, close by clicking
+	// the first vertex / Enter, Escape cancels). GameCore re-validates convexity +
+	// count and no-ops a degenerate ring, then builds + selects the part exactly
+	// like createShape (default colour/material, undoable via the same history path).
+	| { type: "createPolygon"; verts: { x: number; y: number }[] }
 	| { type: "createText"; x: number; y: number; text: string }
 	// Attach a Thrusters / Cannon at the click point. createThrusters snaps onto
 	// the single shape under (x,y) (ControllerGame.MaybeCreateThrusters :6797);
