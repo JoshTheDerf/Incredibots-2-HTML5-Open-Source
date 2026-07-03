@@ -13,6 +13,14 @@ export class TextPart extends Part {
   public scaleWithZoom: boolean = true;
   public displayKey: number = 32;
   public displayKeyPressed: boolean = false;
+  // IB3 TextPart.angle (IB3 TextPart.as:30, radians): the text is rendered
+  // rotated by this angle (applied in Draw.ts). Persisted optional-guarded.
+  public angle: number = 0;
+  // IB3 TextPart.visibleOnStart (:32): when the text is key-toggled
+  // (!alwaysVisible), it starts SHOWN if this is set. IB3 Init computes
+  // visible = !enableKey || visibleOnStart (TextPart.as:61-64); IB2 mirrors
+  // that by seeding displayKeyPressed = visibleOnStart at Init below.
+  public visibleOnStart: boolean = false;
   /**
    * Comma-separated trigger names this text LISTENS to (Jaybit
    * TextPart.as:37-53; persisted).
@@ -120,6 +128,8 @@ export class TextPart extends Part {
     tPart.scaleWithZoom = this.scaleWithZoom;
     tPart.alwaysVisible = this.alwaysVisible;
     tPart.displayKey = this.displayKey;
+    tPart.angle = this.angle;
+    tPart.visibleOnStart = this.visibleOnStart;
     tPart.red = this.red;
     tPart.green = this.green;
     tPart.blue = this.blue;
@@ -224,7 +234,11 @@ export class TextPart extends Part {
     // Per-play trigger runtime reset (Jaybit TextPart.as Init :152-156).
     this.triggerTouches = 0;
     super.Init(world);
-    this.displayKeyPressed = false;
+    // IB3 TextPart.Init (:61-64): a key-toggled text starts shown iff
+    // visibleOnStart. alwaysVisible (== !enableKey) text is always drawn, so its
+    // start toggle is irrelevant. displayKeyPressed drives the play-time
+    // visibility (Draw.ts) and is toggled by the display key.
+    this.displayKeyPressed = this.visibleOnStart;
   }
 
   public PrepareForResizing(): void {

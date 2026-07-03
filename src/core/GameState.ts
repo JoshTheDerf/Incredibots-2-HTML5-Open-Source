@@ -83,6 +83,8 @@ export type PartSnapshot = {
 	cameraFocus?: boolean;
 	/** "Fixate": maps to Part.isStatic. */
 	fixate?: boolean;
+	/** IB3 "Fixed Rotation": locks the body angle (ShapePart.fixedRotation). */
+	fixedRotation?: boolean;
 	outline?: boolean;
 	/** "Outlines Behind": maps to ShapePart.terrain. */
 	outlineBehind?: boolean;
@@ -107,6 +109,16 @@ export type PartSnapshot = {
 	autoCW?: boolean;
 	autoCCW?: boolean;
 	autoOscillate?: boolean;
+	/** IB3 independent prismatic auto directions (SlidingJoint.autoExpand/Retract). */
+	autoExpand?: boolean;
+	autoRetract?: boolean;
+	/** IB3 SlidingJoint.beginExpanded. */
+	beginExpanded?: boolean;
+	/** IB3 per-direction key enable: cw/ccw (revolute), expand/retract (prismatic). */
+	enableKeyCW?: boolean;
+	enableKeyCCW?: boolean;
+	enableKeyExpand?: boolean;
+	enableKeyRetract?: boolean;
 	/** isStiff — the UI shows the inverse ("Floppy Joint" = !isStiff). */
 	stiff?: boolean;
 	/** PrismaticJoint.initLength. */
@@ -117,6 +129,8 @@ export type PartSnapshot = {
 	thrustKey?: number;
 	/** Thrusters.autoOn / Cannon has none. */
 	autoOn?: boolean;
+	/** IB3 Thrusters.enableKey — whether the thrust key is honored. */
+	enableKey?: boolean;
 
 	// Cannon
 	/** Cannon.fireKey code. */
@@ -142,6 +156,8 @@ export type PartSnapshot = {
 	displayKey?: number;
 	alwaysVisible?: boolean;
 	scaleWithZoom?: boolean;
+	/** IB3 TextPart.visibleOnStart (angle is carried by the shared `angle` field). */
+	visibleOnStart?: boolean;
 
 	// --- Triggers (Jaybit AdvancedPropertiesWindow read-model) ---
 	// Trigger SOURCE fields (ShapePart: Circle/Rectangle/Triangle/Cannon) — two

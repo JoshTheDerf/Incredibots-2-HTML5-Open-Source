@@ -382,9 +382,8 @@ function mapParts(arr: unknown[], version: string, warnings: Set<string>): Part[
 		}
 		if (has(od, "thrustKey")) t.thrustKey = trunc(od.thrustKey);
 		if (has(od, "autoOn")) t.autoOn = Boolean(od.autoOn);
-		if (has(od, "enableKey") && !od.enableKey) {
-			warnings.add("IB3 thruster 'enable key' toggle has no IB2 equivalent (thruster always keyed).");
-		}
+		// IB3 Thrusters.enableKey maps directly (IB3 Thrusters.as:24).
+		if (has(od, "enableKey")) t.enableKey = Boolean(od.enableKey);
 		if (has(od, "triggerList") && String(od.triggerList).replace(/[, ]/g, "") !== "") {
 			warnings.add("IB3 trigger wiring is not imported.");
 		}
@@ -523,15 +522,13 @@ function buildText(od: Record<string, unknown>, warnings: Set<string>): TextPart
 	if (has(od, "size")) t.size = num(od.size, t.size);
 	if (has(od, "scaleWithZoom")) t.scaleWithZoom = Boolean(od.scaleWithZoom);
 	if (has(od, "keyShow")) t.displayKey = trunc(od.keyShow, t.displayKey);
-	// IB3 visible = !enableKey || visibleOnStart; IB2 alwaysVisible == shown-always.
+	// IB3 visible = !enableKey || visibleOnStart; IB2 alwaysVisible == shown-always,
+	// visibleOnStart seeds displayKeyPressed at Init (TextPart.as:61-64 mirrored).
 	const enableKey = has(od, "enableKey") ? Boolean(od.enableKey) : false;
 	t.alwaysVisible = !enableKey;
-	if (enableKey && has(od, "visibleOnStart") && od.visibleOnStart) {
-		warnings.add("IB3 text 'visible on start' with a key toggle is approximated (starts hidden).");
-	}
-	if (has(od, "angle") && num(od.angle) !== 0) {
-		warnings.add("IB3 text rotation is not supported; text imported unrotated.");
-	}
+	if (has(od, "visibleOnStart")) t.visibleOnStart = Boolean(od.visibleOnStart);
+	// IB3 text rotation maps directly (applied in Draw.ts).
+	if (has(od, "angle")) t.angle = num(od.angle);
 	return t;
 }
 
@@ -569,9 +566,9 @@ function buildJoint(od: Record<string, unknown>, shapeByIndex: (ShapePart | null
 		const lower = has(od, "lowerLimit") ? num(od.lowerLimit, Number.MAX_VALUE) : Number.MAX_VALUE;
 		rj.motorUpperLimit = upper >= NO_LIMIT ? Number.MAX_VALUE : upper;
 		rj.motorLowerLimit = lower >= NO_LIMIT ? -Number.MAX_VALUE : -lower;
-		if ((has(od, "enableKeyCW") && !od.enableKeyCW) || (has(od, "enableKeyCCW") && !od.enableKeyCCW)) {
-			warnings.add("IB3 rotating-joint per-direction key enable has no IB2 equivalent (both keys active).");
-		}
+		// Per-direction key enable maps directly (IB3 RotatingJoint.as:37-39).
+		if (has(od, "enableKeyCW")) rj.enableKeyCW = Boolean(od.enableKeyCW);
+		if (has(od, "enableKeyCCW")) rj.enableKeyCCW = Boolean(od.enableKeyCCW);
 		return rj;
 	}
 	if (nm === "Sliding joint") {
@@ -587,10 +584,11 @@ function buildJoint(od: Record<string, unknown>, shapeByIndex: (ShapePart | null
 		if (has(od, "strength")) pj.pistonStrength = num(od.strength); // both maxMotorForce = s*30
 		if (has(od, "speed")) pj.pistonSpeed = num(od.speed) * 2.5; // IB2 drives speed*0.4
 		if (has(od, "floppy")) pj.isStiff = !Boolean(od.floppy);
-		const ae = has(od, "autoExpand") ? Boolean(od.autoExpand) : false;
-		const ar = has(od, "autoRetract") ? Boolean(od.autoRetract) : false;
-		pj.autoOscillate = ae || ar;
-		if (ae !== ar) warnings.add("IB3 one-directional auto piston approximated as oscillation.");
+		// Independent auto directions map directly (IB3 SlidingJoint.as:53-55).
+		if (has(od, "autoExpand")) pj.autoExpand = Boolean(od.autoExpand);
+		if (has(od, "autoRetract")) pj.autoRetract = Boolean(od.autoRetract);
+		// autoOscillate stays the both-directions shortcut for legacy readers/UI.
+		pj.autoOscillate = pj.autoExpand && pj.autoRetract;
 		if (has(od, "keyExpand")) pj.pistonUpKey = trunc(od.keyExpand, pj.pistonUpKey);
 		if (has(od, "keyRetract")) pj.pistonDownKey = trunc(od.keyRetract, pj.pistonDownKey);
 		if (has(od, "collA")) pj.collA = Boolean(od.collA);
@@ -599,12 +597,11 @@ function buildJoint(od: Record<string, unknown>, shapeByIndex: (ShapePart | null
 		if (has(od, "collD")) pj.collD = Boolean(od.collD);
 		if (has(od, "selfColl")) pj.subColl = Boolean(od.selfColl);
 		if (has(od, "buoyant")) pj.buoyant = Boolean(od.buoyant);
-		if (has(od, "beginExpanded") && od.beginExpanded) {
-			warnings.add("IB3 sliding-joint 'begin expanded' has no IB2 equivalent.");
-		}
-		if ((has(od, "enableKeyExpand") && !od.enableKeyExpand) || (has(od, "enableKeyRetract") && !od.enableKeyRetract)) {
-			warnings.add("IB3 sliding-joint per-direction key enable has no IB2 equivalent (both keys active).");
-		}
+		// Begin-expanded + per-direction key enable map directly (IB3
+		// SlidingJoint.as:57 / :89-91).
+		if (has(od, "beginExpanded")) pj.beginExpanded = Boolean(od.beginExpanded);
+		if (has(od, "enableKeyExpand")) pj.enableKeyExpand = Boolean(od.enableKeyExpand);
+		if (has(od, "enableKeyRetract")) pj.enableKeyRetract = Boolean(od.enableKeyRetract);
 		return pj;
 	}
 	return null;
@@ -629,6 +626,8 @@ function applyCommonShapeFields(shape: ShapePart, od: Record<string, unknown>, v
 	if (has(od, "selfColl")) shape.subColl = Boolean(od.selfColl);
 	if (has(od, "buoyant")) shape.buoyant = Boolean(od.buoyant);
 	if (has(od, "fixated")) shape.isStatic = Boolean(od.fixated);
+	// IB3 fixedRotation -> IB2 ShapePart.fixedRotation (direct; applied at Init).
+	if (has(od, "fixedRotation")) shape.fixedRotation = Boolean(od.fixedRotation);
 	if (has(od, "cameraFocus")) shape.isCameraFocus = Boolean(od.cameraFocus);
 	if (has(od, "draggable")) shape.undragable = !Boolean(od.draggable);
 	if (has(od, "collA")) shape.collA = Boolean(od.collA);
@@ -636,9 +635,6 @@ function applyCommonShapeFields(shape: ShapePart, od: Record<string, unknown>, v
 	if (has(od, "collC")) shape.collC = Boolean(od.collC);
 	if (has(od, "collD")) shape.collD = Boolean(od.collD);
 	shape.collide = shape.collA || shape.collB || shape.collC || shape.collD;
-	if (has(od, "fixedRotation") && od.fixedRotation) {
-		warnings.add("IB3 'fixed rotation' has no IB2 equivalent and was ignored.");
-	}
 	if (has(od, "triggerList") && String(od.triggerList).replace(/[, ]/g, "") !== "") {
 		warnings.add("IB3 trigger wiring is not imported.");
 	}
@@ -667,24 +663,20 @@ function mapSettings(s: Record<string, unknown>, version: string, warnings: Set<
 	// gravityY is an IB3 1..40 UI value; convert to the raw m/s^2 IB2 uses.
 	const gravity = has(s, "gravityY") ? num(s.gravityY, 16) / GRAVITY_DIVISOR : 15.0;
 
+	// IB3 world size SMALL..XLARGE (0..3, Ground.as:19-25) maps 1:1 to IB2.
 	let size = 0;
-	if (has(s, "size")) {
-		const raw = trunc(s.size);
-		size = clamp(0, 2, raw);
-		if (raw > 2) warnings.add("IB3 'XLarge' world size was mapped to Large.");
-	}
+	if (has(s, "size")) size = clamp(0, 3, trunc(s.size));
 
-	// IB3 groundType SHORE(0)/ISLAND(1) -> IB2 terrainType LAND(0) (best-effort).
+	// IB3 groundType SHORE(0) -> IB2 LAND; ISLAND(1) -> IB2 ISLAND (Ground.as:15-17).
 	let terrainType = SandboxSettings.TERRAIN_LAND;
-	if (has(s, "groundType")) {
-		if (trunc(s.groundType) === 1) warnings.add("IB3 'Island' ground was approximated as land terrain.");
-		terrainType = SandboxSettings.TERRAIN_LAND;
+	if (has(s, "groundType") && trunc(s.groundType) === 1) {
+		terrainType = SandboxSettings.TERRAIN_ISLAND;
 	}
 
-	const terrainTheme = 0; // IB3 `theme` has no IB2 terrainTheme mapping.
-	if (has(s, "theme") && trunc(s.theme) !== 0) {
-		warnings.add("IB3 ground theme has no IB2 equivalent and was ignored.");
-	}
+	// IB3 `theme` picks a decor gradient BY groundType (Ground.TYPEGRADIENTS is
+	// indexed by type, not by `theme`), so the field drives no rendering or
+	// physics in IB3; there is nothing to lose and no warning is needed.
+	const terrainTheme = 0;
 
 	// skyType/skyColor -> background (+RGB when custom/solid).
 	let background = SandboxSettings.BACKGROUND_SKY;

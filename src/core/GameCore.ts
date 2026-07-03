@@ -1716,6 +1716,7 @@ export class GameCore {
 				subColl: part.subColl,
 				cameraFocus: part.isCameraFocus,
 				fixate: part.isStatic, // "Fixate" == Part.isStatic
+				fixedRotation: part.fixedRotation, // IB3 ShapePart.fixedRotation
 				outline: part.outline,
 				outlineBehind: part.terrain, // "Outlines Behind" == terrain
 				undragable: part.undragable,
@@ -1782,6 +1783,8 @@ export class GameCore {
 				keyCCW: part.motorCCWKey,
 				autoCW: part.autoCW,
 				autoCCW: part.autoCCW,
+				enableKeyCW: part.enableKeyCW,
+				enableKeyCCW: part.enableKeyCCW,
 				stiff: part.isStiff,
 				// Rotating joint is a trigger TARGET (a triggerList drives/destroys it).
 				triggerList: part.triggerList,
@@ -1825,6 +1828,11 @@ export class GameCore {
 				keyUp: part.pistonUpKey,
 				keyDown: part.pistonDownKey,
 				autoOscillate: part.autoOscillate,
+				autoExpand: part.autoExpand,
+				autoRetract: part.autoRetract,
+				beginExpanded: part.beginExpanded,
+				enableKeyExpand: part.enableKeyExpand,
+				enableKeyRetract: part.enableKeyRetract,
 				stiff: part.isStiff,
 				initialLength: part.initLength,
 				collide: part.collide,
@@ -1853,6 +1861,7 @@ export class GameCore {
 				strength: part.strength,
 				thrustKey: part.thrustKey,
 				autoOn: part.autoOn,
+				enableKey: part.enableKey, // IB3 Thrusters.enableKey
 				// Thrusters are a trigger TARGET (thrust while a named trigger touches).
 				triggerList: part.triggerList,
 			};
@@ -1876,6 +1885,8 @@ export class GameCore {
 				displayKey: part.displayKey,
 				alwaysVisible: part.alwaysVisible,
 				scaleWithZoom: part.scaleWithZoom,
+				angle: part.angle, // IB3 TextPart.angle (radians)
+				visibleOnStart: part.visibleOnStart, // IB3 TextPart.visibleOnStart
 				// Text parts are a trigger TARGET (display while a named trigger touches).
 				triggerList: part.triggerList,
 			};
@@ -4262,6 +4273,7 @@ export class GameCore {
 			case "setTriggerList":
 			case "setCameraFocus":
 			case "setFixate":
+			case "setFixedRotation":
 			case "setOutline":
 			case "setOutlineBehind":
 			case "setUndragable":
@@ -4271,11 +4283,14 @@ export class GameCore {
 			case "setJointLimits":
 			case "setJointControlKey":
 			case "setJointAutoOn":
+			case "setJointEnableKey":
+			case "setJointBeginExpanded":
 			case "setJointStiff":
 			case "setJointInitialLength":
 			case "setThrusterStrength":
 			case "setThrusterKey":
 			case "setThrusterAutoOn":
+			case "setThrusterEnableKey":
 			case "setCannonStrength":
 			case "setCannonFireKey":
 			case "setBombProps":
@@ -4284,6 +4299,8 @@ export class GameCore {
 			case "setTextDisplayKey":
 			case "setTextAlwaysVisible":
 			case "setTextScaleWithZoom":
+			case "setTextAngle":
+			case "setTextVisibleOnStart":
 				return true;
 			// A batch is mutating iff it wraps at least one mutating sub-command, so a
 			// group edit pushes exactly one history snapshot (MultiActionsAction).
@@ -4366,6 +4383,7 @@ export class GameCore {
 				case "setTriggerList":
 				case "setCameraFocus":
 				case "setFixate":
+				case "setFixedRotation":
 				case "setOutline":
 				case "setOutlineBehind":
 				case "setUndragable":
@@ -4375,11 +4393,14 @@ export class GameCore {
 				case "setJointLimits":
 				case "setJointControlKey":
 				case "setJointAutoOn":
+				case "setJointEnableKey":
+				case "setJointBeginExpanded":
 				case "setJointStiff":
 				case "setJointInitialLength":
 				case "setThrusterStrength":
 				case "setThrusterKey":
 				case "setThrusterAutoOn":
+				case "setThrusterEnableKey":
 				case "setCannonStrength":
 				case "setCannonFireKey":
 				case "setBombProps":
@@ -4388,6 +4409,8 @@ export class GameCore {
 				case "setTextDisplayKey":
 				case "setTextAlwaysVisible":
 				case "setTextScaleWithZoom":
+				case "setTextAngle":
+				case "setTextVisibleOnStart":
 				case "batch":
 				case "undo":
 				case "redo":
@@ -4800,6 +4823,12 @@ export class GameCore {
 				// ControllerRubeGoldberg -> 78, both key "fixated").
 				if (command.value && this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "fixated" });
 				return;
+			// IB3 fixed rotation == ShapePart.fixedRotation (locks the body angle).
+			case "setFixedRotation":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof ShapePart) p.fixedRotation = command.value;
+				});
+				return;
 			// Outline lives on ShapePart AND PrismaticJoint (ShapeCheckboxAction OUTLINE_TYPE).
 			case "setOutline":
 				this.editParts(command.partIds, (p) => {
@@ -4943,8 +4972,21 @@ export class GameCore {
 							p.autoCCW = command.value;
 							if (command.value) p.autoCW = false;
 						}
-					} else if (p instanceof PrismaticJoint && command.which === "oscillate") {
-						p.autoOscillate = command.value;
+					} else if (p instanceof PrismaticJoint) {
+						// oscillate == both directions; expand/retract are the IB3
+						// independent auto flags. Keep autoOscillate == (expand && retract)
+						// so the legacy flag stays coherent for readers/UI.
+						if (command.which === "oscillate") {
+							p.autoOscillate = command.value;
+							p.autoExpand = command.value;
+							p.autoRetract = command.value;
+						} else if (command.which === "expand") {
+							p.autoExpand = command.value;
+							p.autoOscillate = p.autoExpand && p.autoRetract;
+						} else if (command.which === "retract") {
+							p.autoRetract = command.value;
+							p.autoOscillate = p.autoExpand && p.autoRetract;
+						}
 					}
 				});
 				// RubeGoldberg milestone (ControllerRubeGoldberg.Update :709): the cart's
@@ -4952,6 +4994,25 @@ export class GameCore {
 				if (command.which === "ccw" && command.value && this.tutorialMachine) {
 					this.notifyTutorial({ type: "progress", key: "autoWheel" });
 				}
+				return;
+			// IB3 per-direction key enable (RotatingJoint enableKeyCW/CCW,
+			// SlidingJoint enableKeyExpand/Retract).
+			case "setJointEnableKey":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof RevoluteJoint) {
+						if (command.which === "cw") p.enableKeyCW = command.value;
+						else if (command.which === "ccw") p.enableKeyCCW = command.value;
+					} else if (p instanceof PrismaticJoint) {
+						if (command.which === "expand") p.enableKeyExpand = command.value;
+						else if (command.which === "retract") p.enableKeyRetract = command.value;
+					}
+				});
+				return;
+			// IB3 SlidingJoint.beginExpanded (piston starts fully expanded).
+			case "setJointBeginExpanded":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof PrismaticJoint) p.beginExpanded = command.value;
+				});
 				return;
 			// isStiff (JointCheckboxAction RIGID_TYPE) — the UI shows "Floppy Joint"
 			// (= !isStiff); the command already carries the resolved isStiff value.
@@ -4993,6 +5054,12 @@ export class GameCore {
 			case "setThrusterAutoOn":
 				this.editParts(command.partIds, (p) => {
 					if (p instanceof Thrusters) p.autoOn = command.value;
+				});
+				return;
+			// IB3 Thrusters.enableKey — whether the thrust key is honored.
+			case "setThrusterEnableKey":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof Thrusters) p.enableKey = command.value;
 				});
 				return;
 
@@ -5065,6 +5132,18 @@ export class GameCore {
 			case "setTextScaleWithZoom":
 				this.editParts(command.partIds, (p) => {
 					if (p instanceof TextPart) p.scaleWithZoom = command.value;
+				});
+				return;
+			// IB3 TextPart.angle (radians) — rotates the rendered text.
+			case "setTextAngle":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof TextPart) p.angle = command.value;
+				});
+				return;
+			// IB3 TextPart.visibleOnStart — key-toggled text starts shown.
+			case "setTextVisibleOnStart":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof TextPart) p.visibleOnStart = command.value;
 				});
 				return;
 

@@ -711,6 +711,8 @@ export class Draw extends b2DebugDraw {
         textField.visible = notStarted || part.alwaysVisible || part.displayKeyPressed;
         textField.x = part.x * this.m_drawScale - this.m_drawXOff;
         textField.y = part.y * this.m_drawScale - this.m_drawYOff;
+        // IB3 TextPart.angle (radians): rotate the text about its top-left anchor.
+        textField.rotation = part.angle;
         var format: TextStyle = new TextStyle();
         format.fontSize = part.scaleWithZoom ? (part.size * this.m_drawScale) / 30 : part.size;
         format.fill = (part.red << 16) | (part.green << 8) | part.blue;

@@ -177,6 +177,7 @@ export type Command =
 	| { type: "setTriggerList"; partIds: number[]; value: string }
 	| { type: "setCameraFocus"; partIds: number[]; value: boolean }
 	| { type: "setFixate"; partIds: number[]; value: boolean }
+	| { type: "setFixedRotation"; partIds: number[]; value: boolean }
 	| { type: "setOutline"; partIds: number[]; value: boolean }
 	| { type: "setOutlineBehind"; partIds: number[]; value: boolean }
 	| { type: "setUndragable"; partIds: number[]; value: boolean }
@@ -189,13 +190,22 @@ export type Command =
 	| { type: "setJointSpeed"; partIds: number[]; value: number }
 	| { type: "setJointLimits"; partIds: number[]; lower: number | null; upper: number | null }
 	| { type: "setJointControlKey"; partIds: number[]; which: "cw" | "ccw" | "up" | "down"; key: number }
-	| { type: "setJointAutoOn"; partIds: number[]; which: "cw" | "ccw" | "oscillate"; value: boolean }
+	// autoExpand/autoRetract are INDEPENDENT prismatic auto directions (IB3
+	// SlidingJoint.as:53-55); "oscillate" remains the both-directions shortcut.
+	| { type: "setJointAutoOn"; partIds: number[]; which: "cw" | "ccw" | "oscillate" | "expand" | "retract"; value: boolean }
+	// IB3 per-direction key enable (RotatingJoint enableKeyCW/CCW :37-39;
+	// SlidingJoint enableKeyExpand/Retract :89-91).
+	| { type: "setJointEnableKey"; partIds: number[]; which: "cw" | "ccw" | "expand" | "retract"; value: boolean }
+	// IB3 SlidingJoint.beginExpanded (:57): piston starts fully expanded.
+	| { type: "setJointBeginExpanded"; partIds: number[]; value: boolean }
 	| { type: "setJointStiff"; partIds: number[]; value: boolean }
 	| { type: "setJointInitialLength"; partIds: number[]; value: number }
 	// Thruster
 	| { type: "setThrusterStrength"; partIds: number[]; value: number }
 	| { type: "setThrusterKey"; partIds: number[]; key: number }
 	| { type: "setThrusterAutoOn"; partIds: number[]; value: boolean }
+	// IB3 Thrusters.enableKey (:24): whether the thrust key is honored at all.
+	| { type: "setThrusterEnableKey"; partIds: number[]; value: boolean }
 	// Cannon
 	| { type: "setCannonStrength"; partIds: number[]; value: number }
 	| { type: "setCannonFireKey"; partIds: number[]; key: number }
@@ -224,6 +234,9 @@ export type Command =
 	| { type: "setTextDisplayKey"; partIds: number[]; key: number }
 	| { type: "setTextAlwaysVisible"; partIds: number[]; value: boolean }
 	| { type: "setTextScaleWithZoom"; partIds: number[]; value: boolean }
+	// IB3 TextPart.angle (:30, radians) and visibleOnStart (:32).
+	| { type: "setTextAngle"; partIds: number[]; value: number }
+	| { type: "setTextVisibleOnStart"; partIds: number[]; value: boolean }
 	// --- sandbox environment (ported from AdvancedSandboxWindow Apply flow) ---
 	// Mirrors AdvancedSandboxWindow.okButtonPressed + ControllerSandbox.
 	// RefreshSandboxSettings (ControllerSandbox.ts:570-678): store the new

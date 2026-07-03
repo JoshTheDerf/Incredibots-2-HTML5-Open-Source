@@ -217,6 +217,8 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 			// IB3 buoyancy participation flag (IB3 ShapePart.as:25); absent on
 			// pre-IB3-merge and Jaybit/CE codes -> default true (ShapePart.as:91).
 			shape.buoyant = has(od, "buoyant") ? Boolean(od.buoyant) : true;
+			// IB3 fixedRotation (IB3 ShapePart.as:31); absent on old codes -> false.
+			shape.fixedRotation = has(od, "fixedRotation") ? Boolean(od.fixedRotation) : false;
 			partData.push(shape);
 		} else if (od.type === "TextPart") {
 			// Legacy passes Main.m_curController; the headless core has no controller
@@ -233,6 +235,9 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 			text.green = od.green;
 			text.blue = od.blue;
 			text.size = od.size;
+			// IB3 text rotation + visible-on-start (IB3 TextPart.as:30/:32); absent -> 0 / false.
+			text.angle = has(od, "angle") ? Number(od.angle) : 0;
+			text.visibleOnStart = has(od, "visibleOnStart") ? Boolean(od.visibleOnStart) : false;
 			text.triggerList = has(od, "triggerList") ? od.triggerList : "";
 			partData.push(text);
 		} else if (od.type === "Thrusters") {
@@ -242,6 +247,8 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 				t.angle = od.angle;
 				t.thrustKey = od.thrustKey;
 				t.autoOn = od.autoOn;
+				// IB3 Thrusters.enableKey (IB3 Thrusters.as:24); absent -> true.
+				t.enableKey = has(od, "enableKey") ? Boolean(od.enableKey) : true;
 				t.triggerList = has(od, "triggerList") ? od.triggerList : "";
 				partData.push(t);
 			}
@@ -272,6 +279,9 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 					rj.isStiff = od.isStiff;
 					rj.autoCW = od.autoCW;
 					rj.autoCCW = od.autoCCW;
+					// IB3 per-direction key enable (RotatingJoint.as:37-39); absent -> true.
+					rj.enableKeyCW = has(od, "enableKeyCW") ? Boolean(od.enableKeyCW) : true;
+					rj.enableKeyCCW = has(od, "enableKeyCCW") ? Boolean(od.enableKeyCCW) : true;
 					joint = rj;
 				} else {
 					const pj = new PrismaticJoint(
@@ -292,6 +302,16 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 					pj.pistonSpeed = od.pistonSpeed;
 					pj.isStiff = od.isStiff;
 					pj.autoOscillate = od.autoOscillate;
+					// IB3 independent auto directions (SlidingJoint.as:53-55). Absent on
+					// pre-IB3-merge codes -> derive from the legacy both-directions flag so
+					// old oscillating pistons keep oscillating.
+					pj.autoExpand = has(od, "autoExpand") ? Boolean(od.autoExpand) : Boolean(od.autoOscillate);
+					pj.autoRetract = has(od, "autoRetract") ? Boolean(od.autoRetract) : Boolean(od.autoOscillate);
+					// IB3 begin-expanded (:57); absent -> false.
+					pj.beginExpanded = has(od, "beginExpanded") ? Boolean(od.beginExpanded) : false;
+					// IB3 per-direction key enable (:89-91); absent -> true.
+					pj.enableKeyExpand = has(od, "enableKeyExpand") ? Boolean(od.enableKeyExpand) : true;
+					pj.enableKeyRetract = has(od, "enableKeyRetract") ? Boolean(od.enableKeyRetract) : true;
 					pj.initLength = od.initLength;
 					pj.red = od.red;
 					pj.green = od.green;

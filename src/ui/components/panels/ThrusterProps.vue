@@ -31,6 +31,11 @@ const autoOn = computed({
 	get: () => sel.value?.autoOn ?? false,
 	set: (v: boolean) => game.dispatch({ type: "setThrusterAutoOn", partIds: ids.value, value: v }),
 });
+// IB3 Thrusters.enableKey — whether the thrust key fires the thruster.
+const enableKey = computed({
+	get: () => sel.value?.enableKey ?? true,
+	set: (v: boolean) => game.dispatch({ type: "setThrusterEnableKey", partIds: ids.value, value: v }),
+});
 </script>
 
 <template>
@@ -48,6 +53,9 @@ const autoOn = computed({
 
 		<div class="checkboxes">
 			<UCheckbox v-model="autoOn" label="Auto-On" />
+		</div>
+		<div class="checkboxes">
+			<UCheckbox v-model="enableKey" label="Enable Key" />
 		</div>
 	</div>
 </template>

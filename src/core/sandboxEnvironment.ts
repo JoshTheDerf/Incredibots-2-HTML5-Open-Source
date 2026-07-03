@@ -21,10 +21,16 @@ import { defaultWaterState } from "./waterSystem";
 export const SIZE_SMALL = 0;
 export const SIZE_MEDIUM = 1;
 export const SIZE_LARGE = 2;
+// IB3 Ground.XLARGE (IB3 Control/Ground.as:25).
+export const SIZE_XLARGE = 3;
 
 export const TERRAIN_LAND = 0;
 export const TERRAIN_BOX = 1;
 export const TERRAIN_EMPTY = 2;
+// IB3 Ground.ISLAND (IB3 Control/Ground.as:17) — a centered platform. IB2 LAND
+// is already a symmetric rounded platform, so ISLAND reuses the LAND geometry
+// (distinct enum for faithful round-trip).
+export const TERRAIN_ISLAND = 3;
 
 export const BACKGROUND_SOLID_COLOUR = 6;
 
@@ -104,8 +110,14 @@ export function buildTerrainParts(settings: Pick<SandboxState, "terrainType" | "
 	const theme = settings.terrainTheme ?? 0;
 	const g = (p: Part) => markGround(p, theme);
 
-	if (terrainType === TERRAIN_LAND) {
-		if (size === SIZE_LARGE) {
+	// ISLAND reuses LAND geometry (IB2 LAND is already a centered platform).
+	if (terrainType === TERRAIN_LAND || terrainType === TERRAIN_ISLAND) {
+		if (size === SIZE_XLARGE) {
+			// IB3 XLARGE world — LARGE geometry scaled ~1.5x horizontally.
+			parts.push(g(new Rectangle(-371.55, 12, 743.1, 12.5, false)));
+			parts.push(g(new Circle(-371.1, 18.25, 6.25, false)));
+			parts.push(g(new Circle(371.1, 18.25, 6.25, false)));
+		} else if (size === SIZE_LARGE) {
 			parts.push(g(new Rectangle(-247.7, 12, 495.4, 12.5, false)));
 			parts.push(g(new Circle(-247.4, 18.25, 6.25, false)));
 			parts.push(g(new Circle(247.4, 18.25, 6.25, false)));
@@ -119,7 +131,13 @@ export function buildTerrainParts(settings: Pick<SandboxState, "terrainType" | "
 			parts.push(g(new Circle(39.4, 15, 3)));
 		}
 	} else if (terrainType === TERRAIN_BOX) {
-		if (size === SIZE_LARGE) {
+		if (size === SIZE_XLARGE) {
+			// IB3 XLARGE box — LARGE box scaled ~1.5x.
+			parts.push(g(new Rectangle(-450, -270, 900, 60, false)));
+			parts.push(g(new Rectangle(-450, -270, 60, 345, false)));
+			parts.push(g(new Rectangle(390, -270, 60, 345, false)));
+			parts.push(g(new Rectangle(-450, 15, 900, 60, false)));
+		} else if (size === SIZE_LARGE) {
 			parts.push(g(new Rectangle(-300, -180, 600, 40, false)));
 			parts.push(g(new Rectangle(-300, -180, 40, 230, false)));
 			parts.push(g(new Rectangle(260, -180, 40, 230, false)));
@@ -151,14 +169,15 @@ export function computeBounds(
 	settings: Pick<SandboxState, "size" | "terrainType">,
 ): { minX: number; maxX: number; minY: number; maxY: number } {
 	const { size, terrainType } = settings;
-	const minX = size === SIZE_LARGE ? -280 : size === SIZE_MEDIUM ? -150 : -50;
-	const maxX = size === SIZE_LARGE ? 280 : size === SIZE_MEDIUM ? 150 : 50;
-	const minY = size === SIZE_LARGE ? -160 : size === SIZE_MEDIUM ? -100 : -30;
+	// XLARGE extends the LARGE clamp ~1.5x (matches the scaled terrain above).
+	const minX = size === SIZE_XLARGE ? -420 : size === SIZE_LARGE ? -280 : size === SIZE_MEDIUM ? -150 : -50;
+	const maxX = size === SIZE_XLARGE ? 420 : size === SIZE_LARGE ? 280 : size === SIZE_MEDIUM ? 150 : 50;
+	const minY = size === SIZE_XLARGE ? -240 : size === SIZE_LARGE ? -160 : size === SIZE_MEDIUM ? -100 : -30;
 	let maxY: number;
 	if (terrainType === TERRAIN_BOX) {
 		maxY = size === SIZE_SMALL ? 15 : 30;
 	} else {
-		maxY = size === SIZE_LARGE ? 160 : size === SIZE_MEDIUM ? 100 : 40;
+		maxY = size === SIZE_XLARGE ? 240 : size === SIZE_LARGE ? 160 : size === SIZE_MEDIUM ? 100 : 40;
 	}
 	return { minX, maxX, minY, maxY };
 }

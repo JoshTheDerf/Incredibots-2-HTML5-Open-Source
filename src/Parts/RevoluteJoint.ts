@@ -23,6 +23,11 @@ export class RevoluteJoint extends JointPart {
   public isStiff: boolean;
   public autoCW: boolean;
   public autoCCW: boolean;
+  // IB3 per-direction key enable (IB3 RotatingJoint.as:37-39, both default
+  // true :62-63): a motor key only registers when its direction is enabled
+  // (KeyInput :159-168). Persisted optional-guarded (absent -> true).
+  public enableKeyCW: boolean = true;
+  public enableKeyCCW: boolean = true;
 
   private isKeyDown1: boolean = false;
   private isKeyDown2: boolean = false;
@@ -71,6 +76,8 @@ export class RevoluteJoint extends JointPart {
     this.isStiff = other.isStiff;
     this.autoCW = other.autoCW;
     this.autoCCW = other.autoCCW;
+    this.enableKeyCW = other.enableKeyCW;
+    this.enableKeyCCW = other.enableKeyCCW;
     this.triggerList = other.triggerList;
   }
 
@@ -86,6 +93,8 @@ export class RevoluteJoint extends JointPart {
     j.isStiff = this.isStiff;
     j.autoCW = this.autoCW;
     j.autoCCW = this.autoCCW;
+    j.enableKeyCW = this.enableKeyCW;
+    j.enableKeyCCW = this.enableKeyCCW;
     j.triggerList = this.triggerList;
     return j;
   }
@@ -281,8 +290,10 @@ export class RevoluteJoint extends JointPart {
   }
 
   public KeyInput(key: number, up: boolean, replay: boolean): void {
-    if (key == this.motorCWKey) this.isKeyDown1 = !up;
-    if (key == this.motorCCWKey) this.isKeyDown2 = !up;
+    // IB3 RotatingJoint.KeyInput (:159-168): a direction key only registers
+    // while its enable flag is set. isKeyDown1 == CW, isKeyDown2 == CCW.
+    if (this.enableKeyCW && key == this.motorCWKey) this.isKeyDown1 = !up;
+    if (this.enableKeyCCW && key == this.motorCCWKey) this.isKeyDown2 = !up;
   }
 
   public ToString(): string {

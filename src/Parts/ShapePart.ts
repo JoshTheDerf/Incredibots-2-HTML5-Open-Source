@@ -55,6 +55,11 @@ export class ShapePart extends Part {
   // ShapePart.as:25, default true :91). Persisted as an optional AMF field;
   // the buoyancy runtime lands in the water wave (P3).
   public buoyant: boolean = true;
+  // IB3 ShapePart.fixedRotation (IB3 ShapePart.as:31, default false :93): locks
+  // the body's angle. Applied at Init via b2BodyDef.fixedRotation (IB3
+  // MakeBody :238 / AddToBody SetFixedRotation :219-222). Persisted as an
+  // optional AMF field (absent on old codes -> false).
+  public fixedRotation: boolean = false;
   public isCameraFocus: boolean = false;
   public m_collisionGroup: number = COLLISION_GROUP_UNSET;
   public highlightForJoint: boolean = false;
@@ -260,6 +265,8 @@ export class ShapePart extends Part {
     other.onSameName_2 = this.onSameName_2;
     // IB3 copies buoyant in ApplyProperties/CopyProperties (ShapePart.as:328/:353).
     other.buoyant = this.buoyant;
+    // IB3 copies fixedRotation likewise (ShapePart.as:331/:356).
+    other.fixedRotation = this.fixedRotation;
   }
 
   /**
@@ -453,6 +460,7 @@ export class ShapePart extends Part {
       this.onSameName == other.onSameName &&
       this.onSameName_2 == other.onSameName_2 &&
       this.buoyant == other.buoyant &&
+      this.fixedRotation == other.fixedRotation &&
       this.red == other.red &&
       this.green == other.green &&
       this.blue == other.blue &&

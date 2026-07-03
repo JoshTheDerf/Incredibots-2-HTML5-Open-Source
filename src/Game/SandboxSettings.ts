@@ -45,10 +45,16 @@ export class SandboxSettings {
   public static SIZE_SMALL: number = 0;
   public static SIZE_MEDIUM: number = 1;
   public static SIZE_LARGE: number = 2;
+  // IB3 Ground.XLARGE (IB3 Control/Ground.as:25) — a fourth, larger world size.
+  public static SIZE_XLARGE: number = 3;
 
   public static TERRAIN_LAND: number = 0;
   public static TERRAIN_BOX: number = 1;
   public static TERRAIN_EMPTY: number = 2;
+  // IB3 Ground.ISLAND (IB3 Control/Ground.as:17) — a centered platform. IB2's
+  // LAND is already a symmetric rounded platform, so ISLAND reuses that geometry
+  // but is a distinct enum so IB3 island imports round-trip as island, not land.
+  public static TERRAIN_ISLAND: number = 3;
 
   public static TERRAIN_GRASS: number = 0;
   public static TERRAIN_DIRT: number = 1;

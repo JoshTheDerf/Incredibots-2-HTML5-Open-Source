@@ -12,6 +12,10 @@ export class Thrusters extends Part {
   public angle: number;
   public thrustKey: number;
   public autoOn: boolean;
+  // IB3 Thrusters.enableKey (IB3 Thrusters.as:24, default true :54): when false
+  // the thrust key is ignored entirely (KeyInput :96-102) — the thruster then
+  // only fires via auto-on or a trigger. Persisted optional-guarded (-> true).
+  public enableKey: boolean = true;
 
   /**
    * Comma-separated trigger names this thruster LISTENS to (Jaybit
@@ -51,6 +55,7 @@ export class Thrusters extends Part {
     t.autoOn = this.autoOn;
     t.thrustKey = this.thrustKey;
     t.angle = this.angle;
+    t.enableKey = this.enableKey;
     t.triggerList = this.triggerList;
     return t;
   }
@@ -105,7 +110,9 @@ export class Thrusters extends Part {
   }
 
   public KeyInput(key: number, up: boolean, replay: boolean): void {
-    if (key == this.thrustKey) this.isKeyDown = !up;
+    // IB3 Thrusters.KeyInput (:96-102): the thrust key only registers while
+    // enableKey is set (auto-on / triggers still fire it).
+    if (this.enableKey && key == this.thrustKey) this.isKeyDown = !up;
   }
 
   public Update(world: b2World): void {

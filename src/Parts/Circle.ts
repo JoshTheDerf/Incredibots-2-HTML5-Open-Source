@@ -80,6 +80,8 @@ export class Circle extends ShapePart {
     } else {
       var bd = new b2BodyDef();
       bd.position.Set(this.centerX, this.centerY);
+      // IB3 fixedRotation locks body angle (IB3 ShapePart.MakeBody :238).
+      bd.fixedRotation = this.fixedRotation;
       if (this.isEditable) {
         var hasJoints:boolean = false;
         for (var j:number = 0; j < this.m_joints.length; j++) {

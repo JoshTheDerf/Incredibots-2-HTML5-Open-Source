@@ -27,6 +27,19 @@ export class PrismaticJoint extends JointPart {
   public pistonSpeed: number;
   public isStiff: boolean;
   public autoOscillate: boolean;
+  // IB3 SlidingJoint independent auto directions (IB3 SlidingJoint.as:53-55,
+  // both default false :141-142). autoOscillate stays the "both" shortcut; the
+  // runtime treats (autoExpand && autoRetract) OR autoOscillate as oscillation
+  // and a single flag as continuous one-directional drive (Update :346-391).
+  public autoExpand: boolean = false;
+  public autoRetract: boolean = false;
+  // IB3 SlidingJoint.beginExpanded (:57): piston starts fully expanded (its
+  // travel runs from expanded toward retracted). Init flips the b2 limits.
+  public beginExpanded: boolean = false;
+  // IB3 per-direction key enable (SlidingJoint.as:89-91, both default true
+  // :145-146): keyExpand==pistonUpKey, keyRetract==pistonDownKey.
+  public enableKeyExpand: boolean = true;
+  public enableKeyRetract: boolean = true;
   public red: number;
   public green: number;
   public blue: number;
@@ -123,6 +136,11 @@ export class PrismaticJoint extends JointPart {
     this.pistonSpeed = other.pistonSpeed;
     this.isStiff = other.isStiff;
     this.autoOscillate = other.autoOscillate;
+    this.autoExpand = other.autoExpand;
+    this.autoRetract = other.autoRetract;
+    this.beginExpanded = other.beginExpanded;
+    this.enableKeyExpand = other.enableKeyExpand;
+    this.enableKeyRetract = other.enableKeyRetract;
     this.red = other.red;
     this.green = other.green;
     this.blue = other.blue;
@@ -158,6 +176,11 @@ export class PrismaticJoint extends JointPart {
     j.pistonSpeed = this.pistonSpeed;
     j.isStiff = this.isStiff;
     j.autoOscillate = this.autoOscillate;
+    j.autoExpand = this.autoExpand;
+    j.autoRetract = this.autoRetract;
+    j.beginExpanded = this.beginExpanded;
+    j.enableKeyExpand = this.enableKeyExpand;
+    j.enableKeyRetract = this.enableKeyRetract;
     j.red = this.red;
     j.green = this.green;
     j.blue = this.blue;
@@ -284,7 +307,9 @@ export class PrismaticJoint extends JointPart {
     this.triggerMotorExpand = false;
     this.triggerMotorContract = false;
     this.isDestroyed = false;
-    this.expanding = true;
+    // A begin-expanded piston rests at full extension, so oscillation starts by
+    // retracting; a normal piston starts by expanding.
+    this.expanding = !this.beginExpanded;
 
     this.m_shapes = new Array();
     if (this.part1.GetBody() != this.part2.GetBody()) {
@@ -457,8 +482,17 @@ export class PrismaticJoint extends JointPart {
       jd.maxMotorForce = this.pistonStrength * 30;
 
       jd.enableLimit = true;
-      jd.lowerTranslation = 0;
-      jd.upperTranslation = this.initLength - 0.2;
+      // IB3 begin-expanded: the piston rests at full extension, so its travel
+      // runs from expanded (translation 0, the built length) toward retracted
+      // (negative) instead of the default retracted->expanded (IB3
+      // SlidingJoint.InitJoint :307-308 flips lower/upperTranslation).
+      if (this.beginExpanded) {
+        jd.lowerTranslation = -(this.initLength - 0.2);
+        jd.upperTranslation = 0;
+      } else {
+        jd.lowerTranslation = 0;
+        jd.upperTranslation = this.initLength - 0.2;
+      }
       jd.collideConnected = true;
       jd.Initialize(this.part1.GetBody()!, this.part2.GetBody()!, new b2Vec2(this.anchorX, this.anchorY), this.axis);
 
@@ -521,7 +555,15 @@ export class PrismaticJoint extends JointPart {
   public Update(world: b2World): void {
     if (this.m_joint && this.enablePiston) {
       var joint = this.m_joint as b2PrismaticJoint;
-      if (this.isKeyDown1 || this.isKeyDown2 || this.triggerMotorExpand || this.triggerMotorContract) {
+      // IB3 SlidingJoint.Update (:346-391): both auto directions == oscillation
+      // (autoOscillate is IB2's legacy "both" flag); a single auto direction is
+      // continuous one-directional drive. Travel bounds shift for beginExpanded.
+      var oscillate: boolean = this.autoOscillate || (this.autoExpand && this.autoRetract);
+      var autoExpandOnly: boolean = this.autoExpand && !this.autoRetract;
+      var autoRetractOnly: boolean = this.autoRetract && !this.autoExpand;
+      var lowerT: number = this.beginExpanded ? -(this.initLength - 0.2) : 0;
+      var upperT: number = this.beginExpanded ? 0 : this.initLength - 0.2;
+      if (this.isKeyDown1 || this.isKeyDown2 || this.triggerMotorExpand || this.triggerMotorContract || oscillate || autoExpandOnly || autoRetractOnly) {
         joint.EnableMotor(true);
 
         //CE PROBLEM
@@ -533,7 +575,7 @@ export class PrismaticJoint extends JointPart {
         this.part1.GetBody()!.WakeUp();
         this.part2.GetBody()!.WakeUp();
       }
-      if (((this.isKeyDown1 || this.triggerMotorExpand) && !(this.autoOscillate && !this.expanding)) || (this.autoOscillate && this.expanding)) {
+      if (((this.isKeyDown1 || this.triggerMotorExpand || autoExpandOnly) && !(oscillate && !this.expanding)) || (oscillate && this.expanding)) {
         //CE PROBLEM
         //joint.SetMotorSpeed(Math.max(1, Math.min(30, pistonSpeed)) * 0.4);
 
@@ -549,8 +591,8 @@ export class PrismaticJoint extends JointPart {
           //CE FIX
           joint.SetMaxMotorForce(this.pistonStrength * 3000);
         }
-        if (joint.GetJointTranslation() > this.initLength - 0.4) this.expanding = false;
-      } else if (this.isKeyDown2 || this.triggerMotorContract || (this.autoOscillate && !this.expanding)) {
+        if (joint.GetJointTranslation() > upperT - 0.2) this.expanding = false;
+      } else if (this.isKeyDown2 || this.triggerMotorContract || autoRetractOnly || (oscillate && !this.expanding)) {
         //CE PROBLEM
         //joint.SetMotorSpeed(-Math.max(1, Math.min(30, pistonSpeed)) * 0.4);
 
@@ -566,7 +608,7 @@ export class PrismaticJoint extends JointPart {
           //CE FIX
           joint.m_maxMotorForce = this.pistonStrength * 3000;
         }
-        if (joint.GetJointTranslation() < 0.1) this.expanding = true;
+        if (joint.GetJointTranslation() < lowerT + 0.1) this.expanding = true;
       } else {
         if (this.wasKeyDown1 || this.wasKeyDown2) {
           this.targetJointDisp = joint.GetJointTranslation();
@@ -591,8 +633,11 @@ export class PrismaticJoint extends JointPart {
   }
 
   public KeyInput(key: number, up: boolean, replay: boolean): void {
-    if (key == this.pistonUpKey) this.isKeyDown1 = !up;
-    if (key == this.pistonDownKey) this.isKeyDown2 = !up;
+    // IB3 SlidingJoint.KeyInput (:334-343): expand/retract keys only register
+    // while their enable flags are set. isKeyDown1 == expand (pistonUpKey),
+    // isKeyDown2 == retract (pistonDownKey).
+    if (this.enableKeyExpand && key == this.pistonUpKey) this.isKeyDown1 = !up;
+    if (this.enableKeyRetract && key == this.pistonDownKey) this.isKeyDown2 = !up;
   }
 
   public PrepareForResizing(): void {
