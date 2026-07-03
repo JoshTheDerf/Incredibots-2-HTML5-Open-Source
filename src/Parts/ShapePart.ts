@@ -2,6 +2,7 @@ import { b2Body, b2RevoluteJointDef, b2Shape, b2Vec2, b2World } from "../Box2D";
 import { Util } from "../General/Util"
 import { FixedJoint } from "./FixedJoint"
 import { JointPart } from "./JointPart"
+import { getPhysicsBackend } from "./partGlobals"
 import { IllegalOperationError, Part } from "./Part"
 import {
   COLLISION_GROUP_UNSET,
@@ -176,7 +177,7 @@ export class ShapePart extends Part {
     super.UnInit(world);
     if (this.m_body) {
       if (!this.m_body.GetUserData() || !this.m_body.GetUserData().deleted) {
-        world.DestroyBody(this.m_body);
+        getPhysicsBackend().destroyBody(world, this.m_body);
         if (!this.m_body.GetUserData()) this.m_body.SetUserData({});
         this.m_body.GetUserData().deleted = true;
       }
@@ -322,7 +323,7 @@ export class ShapePart extends Part {
               def.lowerAngle = 0;
               def.upperAngle = 0;
               def.Initialize(this.m_body!, connectedPart.GetBody()!, new b2Vec2(fj.anchorX, fj.anchorY));
-              fj.MakeStiffFixedJoint(world.CreateJoint(def));
+              fj.MakeStiffFixedJoint(getPhysicsBackend().createJoint(world, def));
             }
           } else {
             connectedPart.Init(world, this.m_body);

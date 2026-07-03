@@ -2,6 +2,7 @@ import { b2Body, b2RevoluteJoint, b2RevoluteJointDef, b2Vec2, b2World } from "..
 import { Util } from "../General/Util"
 import { Circle } from "./Circle"
 import { JointPart } from "./JointPart"
+import { getPhysicsBackend } from "./partGlobals"
 import {
   MAX_RJ_SPEED,
   MAX_RJ_STRENGTH,
@@ -172,7 +173,7 @@ export class RevoluteJoint extends JointPart {
       } else {
         jd.Initialize(this.part2.GetBody()!, this.part1.GetBody()!, new b2Vec2(this.anchorX, this.anchorY));
       }
-      this.m_joint = world.CreateJoint(jd);
+      this.m_joint = getPhysicsBackend().createJoint(world, jd);
       this.targetJointAngle = 0;
 
       this.isKeyDown1 = false;
@@ -189,7 +190,7 @@ export class RevoluteJoint extends JointPart {
       // Check joint constraints to see if the joint should break
       var dist:number = Util.GetDist(joint.GetAnchor1().x, joint.GetAnchor1().y, joint.GetAnchor2().x, joint.GetAnchor2().y);
       if (dist > 3.0) {
-        world.DestroyJoint(this.m_joint);
+        getPhysicsBackend().destroyJoint(world, this.m_joint);
         this.m_joint = null;
       }
     }

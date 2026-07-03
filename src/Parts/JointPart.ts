@@ -1,5 +1,6 @@
 import { b2Joint, b2World } from "../Box2D";
 import { Util } from "../General/Util"
+import { getPhysicsBackend } from "./partGlobals"
 import { IllegalOperationError, Part } from "./Part"
 import { ShapePart } from "./ShapePart"
 
@@ -90,7 +91,7 @@ export class JointPart extends Part {
    */
   public DestroyJointPart(world: b2World): boolean {
     if (this.m_joint) {
-      world.DestroyJoint(this.m_joint);
+      getPhysicsBackend().destroyJoint(world, this.m_joint);
       this.m_joint = null;
       return true;
     }

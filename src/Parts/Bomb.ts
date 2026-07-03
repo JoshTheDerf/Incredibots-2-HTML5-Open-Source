@@ -23,11 +23,12 @@
 //    bombs re-simulate from sync points instead (a mid-run body destroy can
 //    degrade replay fidelity for later-recorded bodies).
 
-import { b2AABB, b2Body, b2Segment, b2Shape, b2Vec2, b2World } from "../Box2D";
+import { b2Body, b2Segment, b2Shape, b2Vec2, b2World } from "../Box2D";
 import { ContactFilter } from "../Game/ContactFilter";
 import { Util } from "../General/Util";
 import { Circle } from "./Circle";
 import { JointPart } from "./JointPart";
+import { getPhysicsBackend } from "./partGlobals";
 import { ShapePart } from "./ShapePart";
 import { Thrusters } from "./Thrusters";
 import { TRIGGER_NONE } from "./partDefaults";
@@ -278,8 +279,9 @@ export class Bomb extends Circle {
   /** Velocity-jolt arming (Bomb.as CheckSensitiveDetonation :213-245). */
   public CheckSensitiveDetonation(): void {
     if (!this.isInitted || this.m_destroyed || !this.sensitive || !this.m_body) return;
-    const vx = this.m_body.GetLinearVelocity().x;
-    const vy = this.m_body.GetLinearVelocity().y;
+    const vel = getPhysicsBackend().bodyVelocity(this.m_body);
+    const vx = vel.x;
+    const vy = vel.y;
     const dx = Math.abs(this.m_previousLinearMagnitudeX - vx);
     const dy = Math.abs(this.m_previousLinearMagnitudeY - vy);
     if (dx > this.m_actualSensitivity || dy > this.m_actualSensitivity) {
@@ -372,12 +374,17 @@ export class Bomb extends Circle {
     // shape flagged destroyedNextFrame, and only pairs the contact filter
     // would let collide.
     const useBlastRadius = this.m_initBlastRadius;
-    const aabb = new b2AABB();
-    aabb.lowerBound.Set(curPos.x - useBlastRadius, curPos.y - useBlastRadius);
-    aabb.upperBound.Set(curPos.x + useBlastRadius, curPos.y + useBlastRadius);
     const MAX_QUERY = 1000;
     const queried: b2Shape[] = new Array(MAX_QUERY);
-    const count = world.Query(aabb, queried, MAX_QUERY);
+    const count = getPhysicsBackend().queryAABB(
+      world,
+      curPos.x - useBlastRadius,
+      curPos.y - useBlastRadius,
+      curPos.x + useBlastRadius,
+      curPos.y + useBlastRadius,
+      queried,
+      MAX_QUERY,
+    );
     const shapes: b2Shape[] = [];
     for (let i = 0; i < count; i++) {
       const s = queried[i];
@@ -414,8 +421,8 @@ export class Bomb extends Circle {
       if (body.m_shapeCount > 1) {
         // Welded cluster: remove only the bomb's own shape (the 2.0 equivalent
         // of destroying the bomb fixture off a multi-fixture body).
-        body.DestroyShape(this.m_shape);
-        if (!body.IsStatic()) body.SetMassFromShapes();
+        getPhysicsBackend().destroyShape(body, this.m_shape);
+        if (!body.IsStatic()) getPhysicsBackend().setMassFromShapes(body);
       } else {
         // Free-standing bomb: destroy the whole body (Bomb.as:440-455).
         let bud = body.GetUserData() as Record<string, unknown> | null;
@@ -425,7 +432,7 @@ export class Bomb extends Circle {
         }
         if (!bud.deleted) {
           bud.deleted = true;
-          world.DestroyBody(body);
+          getPhysicsBackend().destroyBody(world, body);
         }
       }
       this.m_shape = null;
@@ -523,7 +530,7 @@ export class Bomb extends Circle {
     // Apply the accumulated forces + bomb-chain impact marking (Bomb.as:572-584).
     for (let i = 0; i < applyToShapes.length; i++) {
       const body = applyToShapes[i].GetBody();
-      if (body) body.ApplyForce(applyForceVectors[i], applyPositions[i]);
+      if (body) getPhysicsBackend().applyForce(body, applyForceVectors[i], applyPositions[i]);
       const ud = applyToShapes[i].GetUserData() as Record<string, unknown> | null;
       if (ud && ud.isBomb) {
         ud.impacted = true;

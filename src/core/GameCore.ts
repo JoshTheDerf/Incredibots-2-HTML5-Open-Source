@@ -12,7 +12,7 @@
 import { b2AABB, b2MouseJointDef, b2Vec2, b2World } from "../Box2D";
 import type { b2Joint } from "../Box2D";
 import { ContactFilter } from "../Game/ContactFilter";
-import { setCannonballs } from "../Parts/partGlobals";
+import { getPhysicsBackend, setCannonballs } from "../Parts/partGlobals";
 import { Util } from "../General/Util";
 import { Bomb, markBombImpact } from "../Parts/Bomb";
 import { Cannon } from "../Parts/Cannon";
@@ -2942,14 +2942,23 @@ export class GameCore {
 	 * super.ContactAdded -> ProcessTriggers (jaybit ControllerChallenge.as:305-319).
 	 */
 	private createWorld(): b2World {
-		const worldAABB = new b2AABB();
-		worldAABB.lowerBound.Set(WORLD_AABB_LOWER.x, WORLD_AABB_LOWER.y);
-		worldAABB.upperBound.Set(WORLD_AABB_UPPER.x, WORLD_AABB_UPPER.y);
 		// Gravity is read from the sandbox settings at world-creation time — the
 		// downward vector b2Vec2(0, sandbox.gravity), matching
 		// ControllerSandbox.GetGravity() (:716). Changing gravity via
 		// setSandboxSettings therefore takes effect only on the NEXT play (spec §4).
-		const world = new b2World(worldAABB, new b2Vec2(GRAVITY.x, this.state.sandbox.gravity), true);
+		// The world (bounds + gravity + doSleep) is built through the physics
+		// backend seam (P1.5b); the 2.0-specific ContactFilter and the trigger/
+		// condition ContactListener are wired here onto the returned handle — a
+		// deliberate boundary, since contact-event semantics differ per engine.
+		const world = getPhysicsBackend().createWorld({
+			lowerX: WORLD_AABB_LOWER.x,
+			lowerY: WORLD_AABB_LOWER.y,
+			upperX: WORLD_AABB_UPPER.x,
+			upperY: WORLD_AABB_UPPER.y,
+			gravityX: GRAVITY.x,
+			gravityY: this.state.sandbox.gravity,
+			doSleep: true,
+		});
 		world.SetContactFilter(new ContactFilter());
 		// Challenge "touching"/"touched" conditions (obj 5/6) and the trigger
 		// runtime both need Box2D contact events. The vendored b2World invokes
@@ -3386,11 +3395,16 @@ export class GameCore {
 		const world = this.state.world;
 		if (!world) return null;
 		const mousePVec = new b2Vec2(worldX, worldY);
-		const aabb = new b2AABB();
-		aabb.lowerBound.Set(worldX - MOUSE_PICK_HALF, worldY - MOUSE_PICK_HALF);
-		aabb.upperBound.Set(worldX + MOUSE_PICK_HALF, worldY + MOUSE_PICK_HALF);
-		const shapes: unknown[] = [];
-		world.Query(aabb, shapes, MOUSE_PICK_MAX_COUNT);
+		const shapes: import("../Box2D").b2Shape[] = [];
+		getPhysicsBackend().queryAABB(
+			world,
+			worldX - MOUSE_PICK_HALF,
+			worldY - MOUSE_PICK_HALF,
+			worldX + MOUSE_PICK_HALF,
+			worldY + MOUSE_PICK_HALF,
+			shapes,
+			MOUSE_PICK_MAX_COUNT,
+		);
 		for (const s of shapes as Array<{
 			m_body: import("../Box2D").b2Body;
 			GetUserData: () => { undragable?: boolean; isPiston?: number };
@@ -3430,7 +3444,7 @@ export class GameCore {
 		md.target.Set(worldX, worldY);
 		md.maxForce = MOUSE_JOINT_MAX_FORCE_FACTOR * body.m_mass;
 		md.timeStep = MOUSE_JOINT_TIME_STEP;
-		this.mouseJoint = world.CreateJoint(md);
+		this.mouseJoint = getPhysicsBackend().createJoint(world, md);
 		body.WakeUp();
 	}
 
@@ -3449,7 +3463,7 @@ export class GameCore {
 	private handleMouseJointEnd(): void {
 		const world = this.state.world;
 		if (this.mouseJoint && world) {
-			world.DestroyJoint(this.mouseJoint);
+			getPhysicsBackend().destroyJoint(world, this.mouseJoint);
 		}
 		this.mouseJoint = null;
 	}
@@ -3503,8 +3517,8 @@ export class GameCore {
 			if (this.recording && frame % REPLAY_SYNC_FRAMES === 0) {
 				addSyncPoint(this.recording, frame, this.replayBodies(), this.replayCannonballs());
 			}
-			world.Step(STEP_DT, STEP_ITERATIONS_WARMUP);
-			world.Step(STEP_DT, STEP_ITERATIONS);
+			getPhysicsBackend().step(world, STEP_DT, STEP_ITERATIONS_WARMUP);
+			getPhysicsBackend().step(world, STEP_DT, STEP_ITERATIONS);
 			frame++;
 			// Replay save cap (ControllerGame.ts:585).
 			if (this.recording && (frame >= REPLAY_MAX_FRAMES || this.cannonballs.length > REPLAY_MAX_CANNONBALLS)) {

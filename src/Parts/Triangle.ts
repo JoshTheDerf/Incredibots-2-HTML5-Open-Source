@@ -1,6 +1,7 @@
 import { b2Body, b2BodyDef, b2MassData, b2PolygonDef, b2Vec2, b2World } from "../Box2D";
 import { Util } from "../General/Util"
 import { COLLISION_GROUP_UNSET } from "./partDefaults"
+import { getPhysicsBackend } from "./partGlobals"
 import { ShapePart } from "./ShapePart"
 
 export class Triangle extends ShapePart {
@@ -185,7 +186,7 @@ export class Triangle extends ShapePart {
         if (!hasJoints) bd.isBullet = true;
       }
       if (this.isBullet) bd.isBullet = true;
-      this.m_body = world.CreateBody(bd);
+      this.m_body = getPhysicsBackend().createBody(world, bd);
     }
     sd.userData = new Object();
     sd.userData.collide = this.collide;
@@ -214,9 +215,9 @@ export class Triangle extends ShapePart {
     sd.userData.jointsToTrigger = new Array();
     sd.userData.actionsToTrigger = new Array();
     sd.userData.isFirstTrigger = new Array();
-    this.m_shape = this.m_body.CreateShape(sd);
-    if (this.isStatic || bodyStatic) this.m_body.SetMass(new b2MassData());
-    else this.m_body.SetMassFromShapes();
+    this.m_shape = getPhysicsBackend().createShape(this.m_body, sd);
+    if (this.isStatic || bodyStatic) getPhysicsBackend().setMass(this.m_body, new b2MassData());
+    else getPhysicsBackend().setMassFromShapes(this.m_body);
 
     // Weld/lock fixed-joint partners (Jaybit Triangle.as:358 CheckFixedJoints
     // — replaces CE's inline merge loop; untriggered joints still body-merge).

@@ -15,6 +15,26 @@
 // `mainMenuCannonballs`, and `collisionGroup` accessors to here, so legacy game
 // code is unaffected while Parts import only this light module.
 
+import { box2d20Backend } from "../core/physics";
+import type { PhysicsBackend } from "../core/physics";
+import type { b2Body, b2Joint, b2Shape, b2World } from "../Box2D";
+
+// Active physics engine backend the Part construction paths + GameCore build
+// through, instead of calling world.CreateBody / body.CreateShape / etc.
+// directly (the P1.5b engine seam). Defaults to the engine-0 (Box2D 2.0.2)
+// singleton so any code path that Inits parts works out of the box; GameCore
+// and tests can swap it via setPhysicsBackend (same pattern as the cannonball
+// sinks below). The 2.0 backend delegates 1:1, so this is behaviour-preserving.
+let physicsBackend: PhysicsBackend<b2World, b2Body, b2Shape, b2Joint> = box2d20Backend;
+
+export function getPhysicsBackend(): PhysicsBackend<b2World, b2Body, b2Shape, b2Joint> {
+  return physicsBackend;
+}
+
+export function setPhysicsBackend(value: PhysicsBackend<b2World, b2Body, b2Shape, b2Joint>): void {
+  physicsBackend = value;
+}
+
 // Collision group bit used when initialising prismatic-joint piston shapes.
 // The legacy controller resets this to 0x0001 at play time and doubles it for
 // every PrismaticJoint (ControllerGame.playButton). The core owns the value;

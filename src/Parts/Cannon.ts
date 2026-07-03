@@ -1,5 +1,5 @@
 import { b2Body, b2BodyDef, b2CircleDef, b2CircleShape, b2MassData, b2PolygonDef, b2Vec2, b2World } from "../Box2D";
-import { getCannonballs, getMainMenuCannonballs } from "./partGlobals"
+import { getCannonballs, getMainMenuCannonballs, getPhysicsBackend } from "./partGlobals"
 import { Util } from "../General/Util"
 import { COLLISION_GROUP_UNSET, TRIGGER_DESTROY, TRIGGER_FIRE } from "./partDefaults"
 import { ShapePart } from "./ShapePart"
@@ -219,7 +219,7 @@ export class Cannon extends ShapePart {
       bd.position.Set(this.centerX, this.centerY);
       // IB3 fixedRotation locks body angle (IB3 ShapePart.MakeBody :238).
       bd.fixedRotation = this.fixedRotation;
-      this.m_body = world.CreateBody(bd);
+      this.m_body = getPhysicsBackend().createBody(world, bd);
     }
     sd.userData = new Object();
     sd.userData.collide = this.collide;
@@ -233,10 +233,10 @@ export class Cannon extends ShapePart {
     sd.userData.terrain = this.terrain;
     sd.userData.undragable = this.undragable;
     sd.userData.isPiston = -1;
-    this.m_shape = this.m_body.CreateShape(sd);
+    this.m_shape = getPhysicsBackend().createShape(this.m_body, sd);
 
-    if (this.isStatic || bodyStatic) this.m_body.SetMass(new b2MassData());
-    else this.m_body.SetMassFromShapes();
+    if (this.isStatic || bodyStatic) getPhysicsBackend().setMass(this.m_body, new b2MassData());
+    else getPhysicsBackend().setMassFromShapes(this.m_body);
 
     this.cannonballs.length = 0;
     this.cannonballCounters.length = 0;
@@ -308,7 +308,7 @@ export class Cannon extends ShapePart {
     localPoint.Add(this.relativeCannonPos);
     bd.position.SetV(this.m_body!.GetWorldPoint(localPoint));
     bd.isBullet = true;
-    var body:b2Body = world.CreateBody(bd);
+    var body:b2Body = getPhysicsBackend().createBody(world, bd);
     this.cannonballs.push(body);
     circ.userData = new Object();
     circ.userData.collide = true;
@@ -320,8 +320,8 @@ export class Cannon extends ShapePart {
     circ.userData.terrain = false;
     circ.userData.undragable = true;
     circ.userData.isPiston = -1;
-    body.CreateShape(circ);
-    body.SetMassFromShapes();
+    getPhysicsBackend().createShape(body, circ);
+    getPhysicsBackend().setMassFromShapes(body);
 
     var forceAngle:number = this.angle + this.m_body!.GetAngle();
 
@@ -333,9 +333,9 @@ export class Cannon extends ShapePart {
 
     var forceVector:b2Vec2 = Util.Vector(Math.cos(forceAngle) * forceStrength, Math.sin(forceAngle) * forceStrength);
     var positionVector:b2Vec2 = this.m_body!.GetWorldPoint(this.relativeCannonPos);
-    body.ApplyImpulse(forceVector, body.GetWorldCenter());
+    getPhysicsBackend().applyImpulse(body, forceVector, body.GetWorldCenter());
     forceVector = forceVector.Negative();
-    this.m_body!.ApplyImpulse(forceVector, positionVector);
+    getPhysicsBackend().applyImpulse(this.m_body!, forceVector, positionVector);
     const sink = getCannonballs();
     if (sink) sink.push(body);
     const mainMenuSink = getMainMenuCannonballs();

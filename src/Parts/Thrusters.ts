@@ -2,6 +2,7 @@ import { b2Body, b2Vec2, b2World } from "../Box2D";
 import { Util } from "../General/Util"
 import { Part } from "./Part"
 import { MAX_THRUSTER_STRENGTH, TRIGGER_DESTROY, TRIGGER_FIRE, TRIGGER_NONE } from "./partDefaults"
+import { getPhysicsBackend } from "./partGlobals"
 import { ShapePart } from "./ShapePart"
 
 export class Thrusters extends Part {
@@ -130,7 +131,7 @@ export class Thrusters extends Part {
 
       var forceVector = Util.Vector(Math.cos(forceAngle) * forceStrength, Math.sin(forceAngle) * forceStrength);
       var positionVector = this.shape.GetBody()!.GetWorldPoint(this.relativeThrusterPos);
-      this.shape.GetBody()!.ApplyForce(forceVector, positionVector);
+      getPhysicsBackend().applyForce(this.shape.GetBody()!, forceVector, positionVector);
     }
   }
 

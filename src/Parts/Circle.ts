@@ -1,6 +1,7 @@
 import { b2Body, b2BodyDef, b2CircleDef, b2MassData, b2Vec2, b2World } from "../Box2D";
 import { Util } from "../General/Util"
 import { COLLISION_GROUP_UNSET } from "./partDefaults"
+import { getPhysicsBackend } from "./partGlobals"
 import { ShapePart } from "./ShapePart"
 
 export class Circle extends ShapePart {
@@ -93,7 +94,7 @@ export class Circle extends ShapePart {
         if (!hasJoints) bd.isBullet = true;
       }
       if (this.isBullet) bd.isBullet = true;
-      this.m_body = world.CreateBody(bd);
+      this.m_body = getPhysicsBackend().createBody(world, bd);
     }
     circ.userData = new Object();
     circ.userData.collide = this.collide;
@@ -125,9 +126,9 @@ export class Circle extends ShapePart {
     circ.userData.jointsToTrigger = new Array();
     circ.userData.actionsToTrigger = new Array();
     circ.userData.isFirstTrigger = new Array();
-    this.m_shape = this.m_body.CreateShape(circ);
-    if (this.isStatic || bodyStatic) this.m_body.SetMass(new b2MassData());
-    else this.m_body.SetMassFromShapes();
+    this.m_shape = getPhysicsBackend().createShape(this.m_body, circ);
+    if (this.isStatic || bodyStatic) getPhysicsBackend().setMass(this.m_body, new b2MassData());
+    else getPhysicsBackend().setMassFromShapes(this.m_body);
 
     // Weld/lock fixed-joint partners (Jaybit Circle.as:192 CheckFixedJoints —
     // replaces CE's inline merge loop; untriggered joints still body-merge).
