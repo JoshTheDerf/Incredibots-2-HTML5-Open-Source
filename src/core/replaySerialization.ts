@@ -171,6 +171,12 @@ function putReplayIntoByteArray(replay: ReplayData, b: ByteArray): ByteArray {
 		}
 	}
 	writeInt(b, Number.MIN_VALUE);
+	// Physics-engine tag (P1.5b-2b), appended AFTER the keyPress MIN_VALUE
+	// terminator so it is optional/backward-compatible: legacy CE/Jaybit readers
+	// stop at the terminator and ignore these trailing bytes, and old replays
+	// (which lack them) read back as engine 0 (see extractReplayFromByteArray).
+	// Written with the same compact 2-byte codec as the rest of the stream.
+	writeInt(b, replay.physicsEngine ?? 0);
 	return b;
 }
 
@@ -278,7 +284,12 @@ function extractReplayFromByteArray(data: ByteArray): ReplayData {
 			}
 		}
 	}
-	return { cameraMovements, syncPoints, keyPresses, numFrames, version };
+	// Optional physics-engine tag (P1.5b-2b) written after the keyPress
+	// terminator. Present only on replays exported by this stack post-P1.5b;
+	// legacy CE/Jaybit replays end here, so absent -> engine 0 (classic 2.0.2).
+	let physicsEngine = 0;
+	if (data.position !== data.length) physicsEngine = readInt(data);
+	return { cameraMovements, syncPoints, keyPresses, numFrames, version, physicsEngine };
 }
 
 // --- Public string API (matches Database.ExportReplay / ImportReplay) ------

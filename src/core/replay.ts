@@ -100,6 +100,13 @@ export interface ReplayData {
 	syncPoints: ReplaySyncPoint[];
 	numFrames: number;
 	version: string;
+	/**
+	 * The physics engine this replay ran under (P1.5b-2b): 0 = IB2 (Box2DFlash
+	 * 2.0.2) | 1 = IB3 (2.1a). Playback selects the SAME backend so a bot tuned
+	 * on one engine reproduces exactly. Optional: replays lacking it (CE / Jaybit
+	 * legacy exports) default to 0, the classic engine (see replaySerialization).
+	 */
+	physicsEngine?: number;
 }
 
 /**
@@ -116,6 +123,8 @@ export interface RecordingBuffers {
 	syncPoints: ReplaySyncPoint[];
 	/** false once frame>=9000 or cannonballs>500 (ControllerGame.ts:585). */
 	canSave: boolean;
+	/** Physics engine this run uses (P1.5b-2b): 0 = IB2 (2.0.2) | 1 = IB3 (2.1a). */
+	physicsEngine: number;
 }
 
 /**
@@ -123,7 +132,7 @@ export interface RecordingBuffers {
  * play-start reset (ControllerGame.ts:2730-2735): the first camera movement is
  * the +Infinity/+Infinity "keep current pan" sentinel at frame 0.
  */
-export function createRecording(physScale: number): RecordingBuffers {
+export function createRecording(physScale: number, physicsEngine = 0): RecordingBuffers {
 	return {
 		cameraMovements: [
 			{ frame: 0, x: Number.POSITIVE_INFINITY, y: Number.POSITIVE_INFINITY, scale: physScale },
@@ -131,6 +140,7 @@ export function createRecording(physScale: number): RecordingBuffers {
 		keyPresses: [],
 		syncPoints: [],
 		canSave: true,
+		physicsEngine,
 	};
 }
 
@@ -211,6 +221,7 @@ export function finalizeReplay(rec: RecordingBuffers, numFrames: number): Replay
 		syncPoints: rec.syncPoints,
 		numFrames,
 		version: VERSION_STRING_FOR_REPLAYS,
+		physicsEngine: rec.physicsEngine,
 	};
 }
 
