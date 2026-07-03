@@ -2915,6 +2915,10 @@ export class GameCore {
 				if (radius <= 0) return null;
 				return new Bomb(x1, y1, radius, Math.round(radius * 10 * 100) / 100);
 			}
+			case "polygon":
+				// Polygon carries an N-vertex list, not press/drag/apex points, so it
+				// is created via the createPolygon command, not createShape.
+				throw new Error(`GameCore: createShape "polygon" not supported — use createPolygon`);
 			case "cannon":
 				// Cannon is created via the createCannon command, not createShape.
 				throw new Error(`GameCore: createShape "cannon" not supported — use createCannon`);
@@ -4282,6 +4286,7 @@ export class GameCore {
 	private isMutating(command: Command): boolean {
 		switch (command.type) {
 			case "createShape":
+			case "createPolygon":
 			case "createText":
 			case "createThrusters":
 			case "createCannon":
@@ -4394,6 +4399,7 @@ export class GameCore {
 		if (this.state.sim.phase !== "editing") {
 			switch (command.type) {
 				case "createShape":
+				case "createPolygon":
 				case "createText":
 				case "createThrusters":
 				case "createCannon":
@@ -4543,6 +4549,11 @@ export class GameCore {
 					circle: "circle",
 					rect: "rect",
 					triangle: "triangle",
+					// Polygon isn't a distinct challenge restriction; gate it with the
+					// triangle restriction (its N-vertex generalization), the way bomb
+					// borrows the circle restriction below. (createShape never receives
+					// "polygon" — createPolygon does — but the map must be exhaustive.)
+					polygon: "triangle",
 					cannon: "cannon",
 					// Legacy challenges predate bombs (no bombsAllowed restriction
 					// exists); gate them with the circle restriction, the family the
@@ -4612,6 +4623,45 @@ export class GameCore {
 						if (prev instanceof Rectangle) this.notifyTutorial({ type: "progress", key: "bucket" });
 					}
 				}
+				return;
+			}
+			case "createPolygon": {
+				// Convex Polygon create from the multi-click gesture's ordered vertex
+				// ring. Mirrors the createShape finalize path (challenge gate → build →
+				// default colour/material → add → select → revert to Select tool) but
+				// takes an N-vertex list. Restriction-gated with the triangle family
+				// (its N-vertex generalization; there is no separate polygon restriction).
+				if (this.challenge && !partTypeAllowed(this.challenge, "triangle")) return;
+				const verts = command.verts;
+				// Guard the degenerate inputs the gesture is supposed to prevent, so a
+				// stray/programmatic dispatch can't build an invalid b2PolygonShape
+				// (b2PolygonShape does NOT validate convexity — its asserts are compiled
+				// out — so a non-convex ring would simulate wrongly): need 3..MAX_VERTICES
+				// vertices and a convex ring. Undo of a no-op create is harmless.
+				if (!verts || verts.length < 3 || verts.length > Polygon.MAX_VERTICES) return;
+				if (!Polygon.isConvex(verts)) return;
+				const part = new Polygon(verts.map((v) => new b2Vec2(v.x, v.y)));
+				// Challenge material limits clamp friction/restitution defaults, exactly
+				// like createShape (Jaybit ShapePart ctor vs ControllerGame.min/maxFriction).
+				this.clampPartToChallengeLimits(part);
+				// Adopt the current default colour (ControllerGameGlobals.defaultR/G/B/O),
+				// as every new shape does.
+				part.red = this.defaultRed;
+				part.green = this.defaultGreen;
+				part.blue = this.defaultBlue;
+				part.opacity = this.defaultOpacity;
+				const createdKind = part.type;
+				part.id = ++this.nextId;
+				const selection = [part.id];
+				this.state = {
+					...this.state,
+					parts: [...this.state.parts, part],
+					// A successful create reverts to the Select tool, like createShape.
+					edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(part), tool: "select" },
+				};
+				this.markChanged();
+				this.emitSound("shapeCreated");
+				if (this.tutorialMachine) this.notifyTutorial({ type: "partCreated", partKind: createdKind });
 				return;
 			}
 			case "createText": {
