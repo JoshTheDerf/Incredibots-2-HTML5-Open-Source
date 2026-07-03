@@ -13,11 +13,13 @@
 // route to the native path).
 
 import { describe, expect, it } from "vitest";
-import { b2Vec2 } from "../src/Box2D";
+import { b2AABB, b2Vec2, b2World } from "../src/Box2D";
+import { ContactFilter } from "../src/Game/ContactFilter";
 import { ByteArray } from "../src/General/ByteArray";
 import { Bomb } from "../src/Parts/Bomb";
 import { Circle } from "../src/Parts/Circle";
 import { FixedJoint } from "../src/Parts/FixedJoint";
+import type { Part } from "../src/Parts/Part";
 import { Polygon } from "../src/Parts/Polygon";
 import { PrismaticJoint } from "../src/Parts/PrismaticJoint";
 import { Rectangle } from "../src/Parts/Rectangle";
@@ -25,7 +27,9 @@ import { RevoluteJoint } from "../src/Parts/RevoluteJoint";
 import { TextPart } from "../src/Parts/TextPart";
 import { Thrusters } from "../src/Parts/Thrusters";
 import { Triangle } from "../src/Parts/Triangle";
+import { TRIGGER_DESTROY, TRIGGER_FIRE } from "../src/Parts/partDefaults";
 import { compareVersions, decodeIB3, decodeIB3FromByteArray, looksLikeIB3 } from "../src/core/ib3Import";
+import { processTriggers, type TriggerUserData, wireTriggers } from "../src/core/triggers";
 import { decodeRobot, encodeRobot } from "../src/core/robotSerialization";
 import { SandboxSettings } from "../src/Game/SandboxSettings";
 
@@ -722,6 +726,125 @@ describe("IB3 type variants + errors", () => {
 function bombOf(): Record<string, unknown> {
 	return { name: "Bomb", x: 3, y: 0, radius: 0.8, angle: 0, blastRadius: 6, strength: 20, delay: 1500, sensitivity: 80 };
 }
+
+// --- trigger wiring ---------------------------------------------------------
+
+/** A fresh b2World matching GameCore.createWorld's extents/gravity. */
+function triggerWorld(): b2World {
+	const aabb = new b2AABB();
+	aabb.lowerBound.Set(-300, -200);
+	aabb.upperBound.Set(300, 200);
+	const world = new b2World(aabb, new b2Vec2(0, 15), true);
+	world.SetContactFilter(new ContactFilter());
+	return world;
+}
+
+/** Init every part into `world` (shapes/text first, then joints/thrusters). */
+function initAll(world: b2World, parts: Part[]): void {
+	for (let i = parts.length - 1; i >= 0; i--) {
+		const p = parts[i];
+		if (!(p instanceof RevoluteJoint) && !(p instanceof PrismaticJoint) && !(p instanceof FixedJoint) && !(p instanceof Thrusters)) {
+			p.Init(world);
+		}
+	}
+	for (const p of parts) {
+		if (p instanceof RevoluteJoint || p instanceof PrismaticJoint || p instanceof FixedJoint || p instanceof Thrusters) {
+			p.Init(world);
+		}
+	}
+}
+
+function shapeUD(p: Circle): TriggerUserData {
+	return (p.GetShape() as { GetUserData(): TriggerUserData }).GetUserData();
+}
+
+const noopKeyInput = (): void => {};
+
+describe("IB3 trigger wiring maps onto working IB2 triggers", () => {
+	it("maps a bomb detonate list: shape becomes a FIRE source, bomb keeps its listen list, and a contact arms the bomb", () => {
+		// Source circle broadcasting "boom"; a Bomb listening for "boom".
+		const parts = [
+			circle({ x: 0, triggerList: "boom" }),
+			{ name: "Bomb", x: 3, y: 0, radius: 0.8, angle: 0, blastRadius: 6, strength: 20, delay: 1500, triggerList: "boom" },
+		];
+		const { robot, warnings } = decodeIB3FromByteArray(ib3Bytes({ parts }));
+		const src = robot.parts[0] as Circle;
+		const bomb = robot.parts.find((p) => p instanceof Bomb) as Bomb;
+
+		// Source-side reconstruction: name copied, action recovered (detonate), no qualifiers.
+		expect(src.triggerName).toBe("boom");
+		expect(src.triggerAction).toBe(TRIGGER_FIRE);
+		expect(src.onGroundHit).toBe(false);
+		expect(src.onSameName).toBe(false);
+		// Target-side direct copy.
+		expect(bomb.triggerList).toBe("boom");
+		// A bomb detonate list is unambiguous -> no warning.
+		expect(warnings.some((m) => m.toLowerCase().includes("trigger"))).toBe(false);
+
+		// Headless: wire + a contact begin, and the bomb's DoTriggerAction fires.
+		const world = triggerWorld();
+		initAll(world, robot.parts);
+		wireTriggers(robot.parts);
+		const ud = shapeUD(src);
+		expect(ud.jointsToTrigger).toContain(robot.parts.indexOf(bomb));
+		expect(bomb.triggerTouches).toBe(0);
+		processTriggers(robot.parts, world, ud, null, true, noopKeyInput);
+		expect(bomb.triggerTouches).toBe(1); // triggered action fired -> bomb armed
+	});
+
+	it("maps a thruster trigger: source drives the thruster's triggerThruster on contact", () => {
+		const parts = [
+			circle({ x: 0, triggerList: "go" }),
+			{ name: "Thrusters", x: 0, y: 0, partIndex: 0, angle: 0, strength: 16, triggerList: "go" },
+		];
+		const { robot } = decodeIB3FromByteArray(ib3Bytes({ parts }));
+		const src = robot.parts[0] as Circle;
+		const th = robot.parts.find((p) => p instanceof Thrusters) as Thrusters;
+		expect(src.triggerName).toBe("go");
+		expect(src.triggerAction).toBe(TRIGGER_FIRE);
+		expect(th.triggerList).toBe("go");
+
+		const world = triggerWorld();
+		initAll(world, robot.parts);
+		wireTriggers(robot.parts);
+		const ud = shapeUD(src);
+		processTriggers(robot.parts, world, ud, null, true, noopKeyInput);
+		expect(th.triggerTouches).toBe(1);
+		expect((th as unknown as { triggerThruster: boolean }).triggerThruster).toBe(true); // fired
+	});
+
+	it("a source driving ONLY fixed joints recovers the unambiguous DESTROY (break) action", () => {
+		const parts = [
+			circle({ x: 0, triggerList: "cut" }),
+			circle({ x: 2, triggerList: "" }),
+			{ name: "Fixed joint", x: 1, y: 0, part1Index: 0, part2Index: 1, triggerList: "cut" },
+		];
+		const { robot } = decodeIB3FromByteArray(ib3Bytes({ parts }));
+		const src = robot.parts[0] as Circle;
+		const fj = robot.parts.find((p) => p instanceof FixedJoint) as FixedJoint;
+		expect(fj.triggerList).toBe("cut");
+		expect(src.triggerAction).toBe(TRIGGER_DESTROY); // fixed joint only breaks
+	});
+
+	it("rotating/sliding joint triggers wire the CSV but warn that direction was not stored", () => {
+		const parts = [
+			circle({ x: 0, triggerList: "spin" }),
+			circle({ x: 2, triggerList: "" }),
+			{ name: "Rotating joint", x: 1, y: 0, part1Index: 0, part2Index: 1, triggerList: "spin" },
+		];
+		const { robot, warnings } = decodeIB3FromByteArray(ib3Bytes({ parts }));
+		const rj = robot.parts.find((p) => p instanceof RevoluteJoint) as RevoluteJoint;
+		expect(rj.triggerList).toBe("spin"); // CSV linkage preserved
+		expect(warnings.some((m) => m.includes("rotate/expand direction"))).toBe(true);
+	});
+
+	it("shapes and targets with no triggerList stay unwired (no spurious triggers)", () => {
+		const { robot, warnings } = decodeIB3FromByteArray(ib3Bytes({ parts: [circle({ x: 0 })] }));
+		const c = robot.parts[0] as Circle;
+		expect(c.triggerName).toBe("");
+		expect(warnings.some((m) => m.toLowerCase().includes("trigger"))).toBe(false);
+	});
+});
 
 // --- version comparator -----------------------------------------------------
 

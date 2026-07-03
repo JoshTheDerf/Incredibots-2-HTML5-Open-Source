@@ -72,6 +72,7 @@ import { ShapePart } from "../Parts/ShapePart";
 import { TextPart } from "../Parts/TextPart";
 import { Thrusters } from "../Parts/Thrusters";
 import { Triangle } from "../Parts/Triangle";
+import { TRIGGER_DESTROY, TRIGGER_FIRE } from "../Parts/partDefaults";
 import { EXPO_PUBLIC_EDITABLE, EXPO_PUBLIC_UNEDITABLE, type ExposureFlags } from "./exposure";
 import type { DecodedRobot } from "./robotSerialization";
 import { VERSION_PREFIX } from "./serializationVersion";
@@ -386,14 +387,138 @@ function mapParts(arr: unknown[], version: string, warnings: Set<string>): Part[
 		if (has(od, "autoOn")) t.autoOn = Boolean(od.autoOn);
 		// IB3 Thrusters.enableKey maps directly (IB3 Thrusters.as:24).
 		if (has(od, "enableKey")) t.enableKey = Boolean(od.enableKey);
-		if (has(od, "triggerList") && String(od.triggerList).replace(/[, ]/g, "") !== "") {
-			warnings.add("IB3 trigger wiring is not imported.");
-		}
+		// A thruster is a trigger TARGET (triggerList == source names it listens
+		// to); its action is unambiguous (thrust) — copy verbatim (mapIB3Triggers).
+		if (has(od, "triggerList")) t.triggerList = String(od.triggerList);
 		applyCommonPartFields(t, od, warnings);
 		parts.push(t);
 	}
 
+	// Trigger wiring: resolve synthesized source actions from listening targets.
+	resolveIB3TriggerActions(parts, warnings);
+
 	return parts;
+}
+
+// --- trigger wiring --------------------------------------------------------
+//
+// IB3 -> IB2 TRIGGER MAPPING ANALYSIS
+// ===================================
+// The two engines' trigger MODELS differ, so this maps only what genuinely
+// corresponds and warns (narrowly) for what IB3's format cannot express.
+//
+// IB2 / Jaybit model (src/core/triggers.ts, the RICH superset):
+//   * A trigger SOURCE is an ordinary shape carrying TWO named slots on its
+//     ShapePart: triggerName / triggerName_2 (its identifying names), a
+//     triggerAction / triggerAction_2 (TRIGGER_ROTATECW/CCW/EXPAND/CONTRACT/
+//     FIRE/DESTROY), and onGroundHit / onSameName contact qualifiers.
+//   * A trigger TARGET (joint / thruster / cannon / text / bomb) carries a
+//     comma-separated `triggerList` naming the SOURCES it listens to.
+//   * At a Box2D contact begin/end, each source with a matching target fires
+//     that source's action on the target (wireTriggers + processTriggers).
+//
+// IB3 model (ib3-decompiled, v0.00.33b — the SIMPLE, DATA-DEGRADED subset):
+//   * The ONLY persisted trigger field is `triggerList:String` (CSV), on
+//     ShapePart, JointPart, Thrusters and Bomb (Database.as:670/784/942/985;
+//     ShapePart.as:39, JointPart.as:18, Thrusters.as:28, Bomb.as:96). IB3 has
+//     NO triggerName / triggerAction / onGroundHit / onSameName field at all
+//     (grep: 0 hits) — the source-side identity, ACTION, and qualifiers that
+//     IB2 stores were dropped.
+//   * IB3's trigger RUNTIME is unimplemented in this build: ShapePart.AddTrigger
+//     is an empty no-op with no callers, `triggerList` is never parsed/split,
+//     and the trigger-touch counters (m_triggerDetonateTouches, JointPart /
+//     Thrusters triggerTouches) are declared and reset to 0 but NEVER
+//     incremented. There is also no editor UI that edits triggerList (0 hits in
+//     Gui/). Collision handling (SandboxControl.as:391/407 -> TriggerSystem.
+//     ProcessDependents) only sets a bomb's `impacted` flag; ProcessTrigger is
+//     driven ONLY by recorded replay TriggerPresses (Replay.as:117-119). So at
+//     runtime IB3 performs NO named-trigger action.
+//
+// CORRESPONDENCE (token by token):
+//   * IB3 TARGET `triggerList` (joints, thrusters, bomb) == IB2 TARGET
+//     `triggerList`: identical field name, identical CSV-of-source-names format,
+//     shared lineage. Mapped DIRECTLY, verbatim (buildJoint / thruster block /
+//     Bomb branch above).
+//   * IB3 SHAPE `triggerList` (non-Bomb) is the source's broadcast NAME. IB2's
+//     equivalent source-identity field is `triggerName`, so it is copied there,
+//     with onGroundHit/onSameName defaulted false ("fire on any non-terrain
+//     contact", IB2's neutral default). This reconstructs the source<->target
+//     name linkage IB2's wireTriggers needs.
+//   * ACTION: IB2 stores the action on the SOURCE; IB3 stores NO action anywhere.
+//     We recover it from the UNAMBIGUOUS intent of each LISTENING target type:
+//     a bomb only detonates, a thruster only thrusts, a fixed joint only breaks.
+//     So a synthesized source is given TRIGGER_FIRE when it drives bombs/
+//     thrusters (detonate / thrust) and TRIGGER_DESTROY when it drives ONLY
+//     fixed joints (break). Neither is a guess — it is the sole action each of
+//     those target types accepts (Bomb/Thrusters/FixedJoint.DoTriggerAction).
+//
+// GENUINELY INEXPRESSIBLE (kept as a narrow, accurate warning):
+//   * ROTATING / SLIDING joints need a DIRECTION (CW vs CCW, expand vs contract)
+//     that IB3's format never stored. We wire the joint to its source (the CSV
+//     linkage survives) but cannot pick a direction without fabricating a 50/50
+//     guess, so the joint stays inert until the user sets the direction in the
+//     editor. Warned per-occurrence.
+//   * A single source name driving BOTH a break target (fixed joint) and an
+//     activate target (bomb/thruster) cannot get both actions from IB2's one
+//     action-per-slot: we pick activate (FIRE) so the fixed joint won't break.
+//     Warned. (Vanishingly rare given IB3's dead trigger feature.)
+
+/**
+ * Resolve the ACTION of every synthesized IB2 trigger source (see the mapping
+ * analysis above). IB3 does not persist a trigger action, so we recover it from
+ * the target types that listen to each source: FIRE for bomb/thruster
+ * (detonate/thrust), DESTROY for a source driving only fixed joints (break).
+ * Rotating/sliding joints need a direction IB3 never stored and stay inert with
+ * a narrowed warning.
+ */
+function resolveIB3TriggerActions(parts: Part[], warnings: Set<string>): void {
+	const tokensOf = (s: string): string[] => s.replace(/ /g, "").split(",").filter((t) => t !== "");
+
+	// Aggregate, per trigger token, what its listening targets need.
+	const fireTokens = new Set<string>();
+	const destroyTokens = new Set<string>();
+	for (const p of parts) {
+		if (p instanceof Bomb) {
+			for (const t of tokensOf(p.triggerList)) fireTokens.add(t); // any non-NONE detonates
+		} else if (p instanceof Thrusters) {
+			for (const t of tokensOf(p.triggerList)) fireTokens.add(t); // FIRE == thrust
+		} else if (p instanceof FixedJoint) {
+			for (const t of tokensOf(p.triggerList)) destroyTokens.add(t); // only DESTROY (break)
+		} else if (p instanceof RevoluteJoint || p instanceof PrismaticJoint) {
+			if (tokensOf(p.triggerList).length > 0) {
+				warnings.add(
+					"An IB3 rotating/sliding joint's trigger direction is not stored in the IB3 format; " +
+						"the joint was wired to its trigger source but its rotate/expand direction defaults to " +
+						"inactive and must be set in the editor.",
+				);
+			}
+		}
+	}
+
+	// Assign each source shape's action from the tokens it broadcasts.
+	for (const p of parts) {
+		if (!(p instanceof ShapePart) || p instanceof Bomb) continue;
+		const tokens = tokensOf(p.triggerName);
+		if (tokens.length === 0) continue;
+		let drivesFire = false;
+		let drivesDestroy = false;
+		for (const t of tokens) {
+			if (fireTokens.has(t)) drivesFire = true;
+			if (destroyTokens.has(t)) drivesDestroy = true;
+		}
+		if (drivesDestroy && !drivesFire) {
+			p.triggerAction = TRIGGER_DESTROY;
+		} else {
+			p.triggerAction = TRIGGER_FIRE;
+			if (drivesDestroy) {
+				warnings.add(
+					"An IB3 trigger source drives both a break-on-trigger (fixed joint) and an " +
+						"activate-on-trigger (bomb/thruster) target through the same name; the source was set " +
+						"to activate, so the fixed joint will not break. Split the trigger name in the editor.",
+				);
+			}
+		}
+	}
 }
 
 /** Read an IB3 vertex vector ([{x,y}, ...]). */
@@ -572,15 +697,20 @@ function buildJoint(od: Record<string, unknown>, shapeByIndex: (ShapePart | null
 		return null;
 	}
 
-	if (has(od, "triggerList") && String(od.triggerList).replace(/[, ]/g, "") !== "") {
-		warnings.add("IB3 trigger wiring is not imported.");
-	}
+	// A joint is a trigger TARGET: its triggerList is a CSV of source names it
+	// listens to — the SAME field/format as IB2 target triggerList, so copy it
+	// verbatim (see mapIB3Triggers). The per-type ACTION (rotate direction /
+	// expand-contract / break) is resolved/warned in resolveIB3TriggerActions.
+	const jointTriggerList = has(od, "triggerList") ? String(od.triggerList) : "";
 
 	if (nm === "Fixed joint") {
-		return new FixedJoint(p1, p2, num(od.x), num(od.y));
+		const fj = new FixedJoint(p1, p2, num(od.x), num(od.y));
+		fj.triggerList = jointTriggerList;
+		return fj;
 	}
 	if (nm === "Rotating joint") {
 		const rj = new RevoluteJoint(p1, p2, num(od.x), num(od.y));
+		rj.triggerList = jointTriggerList;
 		if (has(od, "enableMotor")) rj.enableMotor = Boolean(od.enableMotor);
 		if (has(od, "autoCW")) rj.autoCW = Boolean(od.autoCW);
 		if (has(od, "autoCCW")) rj.autoCCW = Boolean(od.autoCCW);
@@ -609,6 +739,7 @@ function buildJoint(od: Record<string, unknown>, shapeByIndex: (ShapePart | null
 			num(od.anchor2x),
 			num(od.anchor2y),
 		);
+		pj.triggerList = jointTriggerList;
 		if (has(od, "enableMotor")) pj.enablePiston = Boolean(od.enableMotor);
 		if (has(od, "strength")) pj.pistonStrength = num(od.strength); // both maxMotorForce = s*30
 		if (has(od, "speed")) pj.pistonSpeed = num(od.speed) * 2.5; // IB2 drives speed*0.4
@@ -664,8 +795,18 @@ function applyCommonShapeFields(shape: ShapePart, od: Record<string, unknown>, v
 	if (has(od, "collC")) shape.collC = Boolean(od.collC);
 	if (has(od, "collD")) shape.collD = Boolean(od.collD);
 	shape.collide = shape.collA || shape.collB || shape.collC || shape.collD;
+	// Trigger wiring (see mapIB3Triggers). A Bomb is a trigger TARGET (its
+	// triggerList is the detonate-listen CSV → IB2 Bomb.triggerList); every other
+	// shape is a trigger SOURCE (its triggerList is its broadcast NAME → IB2
+	// triggerName). The source ACTION is resolved later in resolveIB3TriggerActions.
 	if (has(od, "triggerList") && String(od.triggerList).replace(/[, ]/g, "") !== "") {
-		warnings.add("IB3 trigger wiring is not imported.");
+		if (shape instanceof Bomb) {
+			shape.triggerList = String(od.triggerList);
+		} else {
+			shape.triggerName = String(od.triggerList);
+			shape.onGroundHit = false;
+			shape.onSameName = false;
+		}
 	}
 }
 
