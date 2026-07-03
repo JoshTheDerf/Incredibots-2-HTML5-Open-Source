@@ -326,6 +326,131 @@ export class b2PolygonShape extends b2Shape
 		massData.I = this.m_density * I;
 	}
 
+	/// @see b2Shape::ComputeSubmergedArea
+	/// Backport of Box2DFlash 2.1a b2PolygonShape.ComputeSubmergedArea
+	/// (ib3-decompiled/scripts/Box2D/Collision/Shapes/b2PolygonShape.as, the
+	/// ComputeSubmergedArea override): clip the polygon against the surface
+	/// plane and integrate the wet sub-polygon's area + centroid. m_vertices
+	/// here are the 2.0.2 body-local vertices, so the same math applies with
+	/// xf = the body transform. The fully-submerged branch computes
+	/// area/centroid directly rather than via ComputeMass (2.0.2's ComputeMass
+	/// bakes in m_density; 2.1a's took density as a parameter).
+	public ComputeSubmergedArea(normal:b2Vec2, offset:number, xf:b2XForm, c:b2Vec2) : number {
+		var i:number;
+		// Transform the plane into the frame of the body: normalL = b2MulT(xf.R, normal).
+		var normalL:b2Vec2 = b2Math.b2MulTMV(xf.R, normal);
+		var offsetL:number = offset - b2Math.b2Dot(normal, xf.position);
+
+		var depths:Array<number> = new Array(this.m_vertexCount);
+		var diveCount:number = 0;
+		var intoIndex:number = -1;
+		var outoIndex:number = -1;
+		var lastSubmerged:boolean = false;
+		for (i = 0; i < this.m_vertexCount; ++i)
+		{
+			depths[i] = b2Math.b2Dot(normalL, this.m_vertices[i]) - offsetL;
+			var isSubmerged:boolean = depths[i] < -Number.MIN_VALUE;
+			if (i > 0)
+			{
+				if (isSubmerged)
+				{
+					if (!lastSubmerged)
+					{
+						intoIndex = i - 1;
+						diveCount++;
+					}
+				}
+				else if (lastSubmerged)
+				{
+					outoIndex = i - 1;
+					diveCount++;
+				}
+			}
+			lastSubmerged = isSubmerged;
+		}
+		switch (diveCount)
+		{
+			case 0:
+				if (lastSubmerged)
+				{
+					// Completely submerged: whole-polygon area + world centroid
+					// (2.1a does ComputeMass(md, density=1) — mass at density 1 == area).
+					var fullArea:number = 0.0;
+					var fcX:number = 0.0;
+					var fcY:number = 0.0;
+					var p0:b2Vec2 = this.m_vertices[0];
+					for (i = 1; i < this.m_vertexCount - 1; ++i)
+					{
+						var pa:b2Vec2 = this.m_vertices[i];
+						var pb:b2Vec2 = this.m_vertices[i + 1];
+						var triA:number = 0.5 * ((pa.x - p0.x) * (pb.y - p0.y) - (pa.y - p0.y) * (pb.x - p0.x));
+						fullArea += triA;
+						fcX += triA * (p0.x + pa.x + pb.x) / 3;
+						fcY += triA * (p0.y + pa.y + pb.y) / 3;
+					}
+					if (fullArea > Number.MIN_VALUE)
+					{
+						fcX /= fullArea;
+						fcY /= fullArea;
+					}
+					c.SetV(b2Math.b2MulX(xf, new b2Vec2(fcX, fcY)));
+					return fullArea;
+				}
+				// Completely dry.
+				return 0;
+			case 1:
+				if (intoIndex == -1)
+				{
+					intoIndex = this.m_vertexCount - 1;
+				}
+				else
+				{
+					outoIndex = this.m_vertexCount - 1;
+				}
+				break;
+		}
+		var intoIndex2:number = (intoIndex + 1) % this.m_vertexCount;
+		var outoIndex2:number = (outoIndex + 1) % this.m_vertexCount;
+		var intoLambda:number = (0 - depths[intoIndex]) / (depths[intoIndex2] - depths[intoIndex]);
+		var outoLambda:number = (0 - depths[outoIndex]) / (depths[outoIndex2] - depths[outoIndex]);
+		var intoVec:b2Vec2 = new b2Vec2(
+			this.m_vertices[intoIndex].x * (1 - intoLambda) + this.m_vertices[intoIndex2].x * intoLambda,
+			this.m_vertices[intoIndex].y * (1 - intoLambda) + this.m_vertices[intoIndex2].y * intoLambda);
+		var outoVec:b2Vec2 = new b2Vec2(
+			this.m_vertices[outoIndex].x * (1 - outoLambda) + this.m_vertices[outoIndex2].x * outoLambda,
+			this.m_vertices[outoIndex].y * (1 - outoLambda) + this.m_vertices[outoIndex2].y * outoLambda);
+
+		// Initialize the accumulator.
+		var area:number = 0;
+		var center:b2Vec2 = new b2Vec2();
+		var p2:b2Vec2 = this.m_vertices[intoIndex2];
+		var p3:b2Vec2;
+
+		// An awkward loop from intoIndex2+1 to outoIndex2 (wrapping).
+		i = intoIndex2;
+		while (i != outoIndex2)
+		{
+			i = (i + 1) % this.m_vertexCount;
+			if (i == outoIndex2)
+				p3 = outoVec;
+			else
+				p3 = this.m_vertices[i];
+
+			var triangleArea:number = 0.5 * ((p2.x - intoVec.x) * (p3.y - intoVec.y) - (p2.y - intoVec.y) * (p3.x - intoVec.x));
+			area += triangleArea;
+			// Area-weighted centroid.
+			center.x += triangleArea * (intoVec.x + p2.x + p3.x) / 3;
+			center.y += triangleArea * (intoVec.y + p2.y + p3.y) / 3;
+
+			p2 = p3;
+		}
+
+		// Normalize the centroid and transform it into world coords.
+		center.Multiply(1 / area);
+		c.SetV(b2Math.b2MulX(xf, center));
+		return area;
+	}
+
 	/// Get the oriented bounding box relative to the parent body.
 	public GetOBB() : b2OBB{
 		return this.m_obb;

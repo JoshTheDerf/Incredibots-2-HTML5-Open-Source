@@ -17,6 +17,8 @@
 */
 
 import { b2AABB, b2Body, b2BodyDef, b2BoundaryListener, b2BroadPhase, b2CircleShape, b2Color, b2ConcaveArcShape, b2Contact, b2ContactEdge, b2ContactFilter, b2ContactListener, b2ContactManager, b2DebugDraw, b2DestructionListener, b2Distance, b2Island, b2Joint, b2JointDef, b2JointEdge, b2Mat22, b2Math, b2OBB, b2Pair, b2PolygonShape, b2Proxy, b2PulleyJoint, b2Settings, b2Shape, b2ShapeDef, b2StaticEdgeChain, b2StaticEdgeShape, b2TimeOfImpact, b2TimeStep, b2Vec2, b2XForm } from "..";
+import type { b2Controller } from "./Controllers/b2Controller";
+import type { b2ControllerEdge } from "./Controllers/b2ControllerEdge";
 
 
 
@@ -161,6 +163,17 @@ export class b2World
 		if (this.m_lock == true)
 		{
 			return;
+		}
+
+		// Detach from any controllers (2.1a b2World.DestroyBody backport for the
+		// IB3 water controllers — bombs destroy bodies mid-sim, and a dangling
+		// controller edge would keep applying forces to a dead body).
+		var ce:b2ControllerEdge | null = b.m_controllerList;
+		while (ce)
+		{
+			var ce0:b2ControllerEdge = ce;
+			ce = ce.nextController;
+			ce0.controller!.RemoveBody(b);
 		}
 
 		// Delete the attached joints.
@@ -410,6 +423,59 @@ export class b2World
 		this.m_gravity = gravity;
 	}
 
+	/// Get the global gravity vector (2.1a parity, used by the water controllers).
+	public GetGravity() : b2Vec2
+	{
+		return this.m_gravity;
+	}
+
+	// --- Controllers (Box2DFlash 2.1a backport for the IB3 water physics) ---
+	// A minimal port of the 2.1a controller framework: controllers registered
+	// here are stepped at the top of Solve() — exactly where 2.1a steps them
+	// (ib3-decompiled/scripts/Box2D/Dynamics/b2World.as Solve:785-790), i.e.
+	// forces are applied after collision detection and before island solving.
+
+	/// Add a controller to the world (2.1a b2World.AddController).
+	public AddController(c:b2Controller) : b2Controller
+	{
+		c.m_next = this.m_controllerList;
+		c.m_prev = null;
+		if (this.m_controllerList)
+		{
+			this.m_controllerList.m_prev = c;
+		}
+		this.m_controllerList = c;
+		++this.m_controllerCount;
+		c.m_world = this;
+		return c;
+	}
+
+	/// Remove a controller from the world (2.1a b2World.RemoveController).
+	public RemoveController(c:b2Controller) : void
+	{
+		if (c.m_prev)
+		{
+			c.m_prev.m_next = c.m_next;
+		}
+		if (c.m_next)
+		{
+			c.m_next.m_prev = c.m_prev;
+		}
+		if (this.m_controllerList == c)
+		{
+			this.m_controllerList = c.m_next;
+		}
+		c.m_prev = null;
+		c.m_next = null;
+		c.m_world = null;
+		--this.m_controllerCount;
+	}
+
+	public GetControllerList() : b2Controller | null
+	{
+		return this.m_controllerList;
+	}
+
 	/// The world provides a single static ground body with no collision shapes.
 	/// You can use this to simplify the creation of joints and static shapes.
 	public GetGroundBody() : b2Body{
@@ -510,6 +576,14 @@ export class b2World
 		var b:b2Body;
 
 		this.m_positionIterationCount = 0;
+
+		// Step all controllers (2.1a b2World.Solve backport: controllers apply
+		// their forces at the top of Solve, before island solving — see the
+		// AddController comment).
+		for (var ctrl:b2Controller | null = this.m_controllerList; ctrl; ctrl = ctrl.m_next)
+		{
+			ctrl.Step(step);
+		}
 
 		// Size the island for the worst case.
 		var island:b2Island = new b2Island(this.m_bodyCount, this.m_contactCount, this.m_jointCount, this.m_stackAllocator, this.m_contactListener);
@@ -1312,6 +1386,10 @@ export class b2World
 	public m_bodyCount:number;
 	public m_contactCount:number;
 	public m_jointCount:number;
+
+	// Controller list (2.1a backport for the IB3 water controllers).
+	public m_controllerList:b2Controller | null = null;
+	public m_controllerCount:number = 0;
 
 	public m_gravity:b2Vec2;
 	public m_allowSleep:boolean;

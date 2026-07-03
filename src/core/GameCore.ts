@@ -86,6 +86,7 @@ import { LossCondition } from "../Game/LossCondition";
 import type { Challenge } from "../Game/Challenge";
 import { SandboxSettings } from "../Game/SandboxSettings";
 import { b2ContactListener } from "../Box2D";
+import { WaterSystem, applyWaterState, waterStateFromSettings } from "./waterSystem";
 import {
 	REPLAY_SYNC_FRAMES,
 	REPLAY_MAX_FRAMES,
@@ -285,6 +286,16 @@ export class GameCore {
 	 * (ControllerGame.ts:2736).
 	 */
 	private cannonballs: unknown[] = [];
+
+	/**
+	 * Live water system for the current run (IB3 WaterControl port,
+	 * src/core/waterSystem.ts). Built at play when sandbox.water.enabled,
+	 * dropped with the world on reset/stop. Owns the buoyancy(+tide/wave)
+	 * controller registered on the b2World; newly-created bodies join via
+	 * waterSystem.addBody and destroyed bodies are unlinked by
+	 * b2World.DestroyBody's controller-edge cleanup (bombs!).
+	 */
+	private waterSystem: WaterSystem | null = null;
 	/**
 	 * Live replay recording buffers while a normal (non-replay) sim runs; null
 	 * otherwise. Reset on `play` (ControllerGame.ts:2730-2735). See src/core/replay.ts.
@@ -700,6 +711,9 @@ export class GameCore {
 			backgroundG: s.backgroundG,
 			backgroundB: s.backgroundB,
 			bounds: computeBounds({ size: s.size, terrainType: s.terrainType }),
+			// IB3 water settings ride on the SandboxSettings (optional-guarded on
+			// decode); project them into the sandbox slice (waterSystem.ts).
+			water: waterStateFromSettings(s),
 		};
 
 		this.notifyDepth++;
@@ -792,6 +806,9 @@ export class GameCore {
 			backgroundG: s.backgroundG,
 			backgroundB: s.backgroundB,
 			bounds: computeBounds({ size: s.size, terrainType: s.terrainType }),
+			// IB3 water settings ride on the SandboxSettings (optional-guarded on
+			// decode); project them into the sandbox slice (waterSystem.ts).
+			water: waterStateFromSettings(s),
 		};
 
 		this.notifyDepth++;
@@ -853,15 +870,18 @@ export class GameCore {
 		// challenges already carry their own settings, so this only fires for authored ones.
 		if (!this.challenge.challenge.settings) {
 			const sb = this.state.sandbox;
-			this.challenge.challenge.settings = new SandboxSettings(
-				sb.gravity,
-				sb.size,
-				sb.terrainType,
-				sb.terrainTheme,
-				sb.background,
-				sb.backgroundR,
-				sb.backgroundG,
-				sb.backgroundB,
+			this.challenge.challenge.settings = applyWaterState(
+				new SandboxSettings(
+					sb.gravity,
+					sb.size,
+					sb.terrainType,
+					sb.terrainTheme,
+					sb.background,
+					sb.backgroundR,
+					sb.backgroundG,
+					sb.backgroundB,
+				),
+				sb.water,
 			);
 		}
 		return this.challenge.challenge;
@@ -978,15 +998,18 @@ export class GameCore {
 		// Database.ExportReplay which packs the replay AND the robot it was run with.
 		const robotParts = this.state.parts.filter((p) => !(p as { isSandbox?: boolean }).isSandbox);
 		const s = this.state.sandbox;
-		const settings = new SandboxSettings(
-			s.gravity,
-			s.size,
-			s.terrainType,
-			s.terrainTheme,
-			s.background,
-			s.backgroundR,
-			s.backgroundG,
-			s.backgroundB,
+		const settings = applyWaterState(
+			new SandboxSettings(
+				s.gravity,
+				s.size,
+				s.terrainType,
+				s.terrainTheme,
+				s.background,
+				s.backgroundR,
+				s.backgroundG,
+				s.backgroundB,
+			),
+			s.water,
 		);
 		return { data, robot: { parts: robotParts, settings } };
 	}
@@ -1037,6 +1060,9 @@ export class GameCore {
 			backgroundG: s.backgroundG,
 			backgroundB: s.backgroundB,
 			bounds: computeBounds({ size: s.size, terrainType: s.terrainType }),
+			// IB3 water settings ride on the SandboxSettings (optional-guarded on
+			// decode); project them into the sandbox slice (waterSystem.ts).
+			water: waterStateFromSettings(s),
 		};
 		const terrain = buildTerrainParts(sandbox);
 		for (const p of terrain) p.id = ++this.nextId;
@@ -3017,6 +3043,28 @@ export class GameCore {
 		// equivalent (the pushed part indices index state.parts, our allParts).
 		wireTriggers(this.state.parts);
 
+		// Water (IB3 GameControl.playButton :4054 waterControl.Init() + :4110-4126
+		// AddBody loop): build the water controller from the sandbox settings and
+		// register every buoyant, non-destroyed ShapePart's body. Welded groups
+		// share a b2Body — WaterSystem's added-set is the addedToWater guard, and
+		// per-shape userData.isBuoyant handles mixed buoyant/non-buoyant groups.
+		// DEVIATION: cannonballs spawned mid-sim are NOT added to the water (IB3
+		// has no cannon; only ShapeParts ever join the controller).
+		this.waterSystem = null;
+		if (this.state.sandbox.water.enabled && !this.replaySession) {
+			const ws = new WaterSystem(this.state.sandbox.water);
+			ws.init(world);
+			// (IB3's loop also skips IsDestroyed() parts; nothing is destroyed at
+			// play time here — bodies destroyed later (bombs) are unlinked by
+			// b2World.DestroyBody's controller cleanup.)
+			for (const p of this.state.parts) {
+				if (p instanceof ShapePart && p.buoyant) {
+					ws.addBody(p.GetBody());
+				}
+			}
+			this.waterSystem = ws;
+		}
+
 		// Replay recording / playback setup (ControllerGame.ts:2728-2746). During a
 		// normal sim we seed fresh recording buffers (frame 0, +Infinity camera
 		// sentinel). During playback (replaySession set) we reset the replay
@@ -3036,6 +3084,8 @@ export class GameCore {
 			world,
 			sim: { phase: "running", frame: 0 },
 			replay: { ...this.state.replay, finished: false },
+			// Seed the water surface read-model for the renderer.
+			water: this.waterSystem ? this.waterSystem.surface() : null,
 		};
 		this.markChanged();
 		this.syncChallenge();
@@ -3065,6 +3115,8 @@ export class GameCore {
 		if (world) {
 			for (const p of this.state.parts) p.UnInit(world);
 		}
+		// Water system dies with the world (WaterControl.UnInit).
+		this.waterSystem = null;
 
 		// Restore the exact edit-space transform captured at play time.
 		for (const snap of this.editSnapshots) {
@@ -3087,6 +3139,7 @@ export class GameCore {
 			world: null,
 			sim: { phase: "editing", frame: 0 },
 			replay: this.replayStateSnapshot(),
+			water: null,
 		};
 		this.markChanged();
 
@@ -3440,6 +3493,9 @@ export class GameCore {
 			// -> pauseButton, ControllerGame.ts:1183-1184).
 			sim: { phase: ended ? "paused" : "running", frame },
 			replay: { ...this.state.replay, frame, finished: this.state.replay.finished || replayFinished },
+			// Refresh the water surface read-model (tide offset/tilt + live waves
+			// animate per controller step inside world.Step).
+			water: this.waterSystem ? this.waterSystem.surface() : this.state.water,
 		};
 		this.markChanged();
 		if (this.challenge) this.syncChallenge();
@@ -3505,6 +3561,7 @@ export class GameCore {
 		if (world) {
 			for (const p of this.state.parts) p.UnInit(world);
 		}
+		this.waterSystem = null;
 		for (const snap of this.editSnapshots) {
 			snap.part.Move(snap.x, snap.y);
 			if (snap.part instanceof ShapePart) snap.part.angle = snap.angle;
@@ -3516,6 +3573,7 @@ export class GameCore {
 			world: null,
 			sim: { phase: "editing", frame: 0 },
 			replay: { recording: false, playing: false, frame: 0, numFrames: null, canSave: true, finished: false },
+			water: null,
 		};
 		this.markChanged();
 	}
@@ -3682,6 +3740,9 @@ export class GameCore {
 			backgroundG: command.backgroundG,
 			backgroundB: command.backgroundB,
 			bounds: computeBounds({ size: command.size, terrainType: command.terrainType }),
+			// Water settings: replaced when the command carries them (P6 water
+			// panel), preserved otherwise so pre-water callers are unaffected.
+			water: command.water ?? this.state.sandbox.water,
 		};
 
 		// Drop the current terrain bodies (isSandbox) and rebuild from the new
@@ -3763,6 +3824,7 @@ export class GameCore {
 			for (const p of this.state.parts) p.UnInit(world);
 		}
 		this.mouseJoint = null;
+		this.waterSystem = null;
 		this.editSnapshots = [];
 		this.cameraSnapshot = null;
 		this.recording = null;
@@ -3780,6 +3842,7 @@ export class GameCore {
 			world: null,
 			sim: { phase: "editing", frame: 0 },
 			replay: { recording: false, playing: false, frame: 0, numFrames: null, canSave: true, finished: false },
+			water: null,
 			tutorial: null,
 			challenge: null,
 			conditionDraft: null,

@@ -52,6 +52,8 @@ export type {
 	ConditionDraft,
 } from "./GameState";
 export { createInitialState } from "./GameState";
+export type { WaterState, WaterSurfaceState } from "./waterSystem";
+export { defaultWaterState, waterStateFromSettings, applyWaterState } from "./waterSystem";
 export type { ReplayData, CameraMovement, KeyPress, ReplaySyncPoint } from "./replay";
 export { REPLAY_SYNC_FRAMES, VERSION_STRING_FOR_REPLAYS } from "./replay";
 export { encodeReplay, decodeReplay, decodeReplayFile, exportReplayFile } from "./replaySerialization";

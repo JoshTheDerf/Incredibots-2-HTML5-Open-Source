@@ -39,6 +39,7 @@ import { GroundRenderer } from "./renderer/groundRenderer";
 import { TutorialGroundRenderer } from "./renderer/tutorialGroundRenderer";
 import { ChallengeGroundRenderer } from "./renderer/challengeGroundRenderer";
 import { GridRenderer } from "./renderer/gridRenderer";
+import { WaterRenderer } from "./renderer/waterRenderer";
 import type { ToolMode } from "../core";
 import type { Part } from "../Parts/Part";
 
@@ -129,6 +130,10 @@ let challengeGround: ChallengeGroundRenderer | null = null;
 // terrain visuals but BELOW the Draw sprite so parts render over the grid;
 // drawn only while editing with the gridEnabled pref on.
 let grid: GridRenderer | null = null;
+// Water layer (IB3 WaterControl draw port). Mounted ABOVE the Draw sprite —
+// IB3 draws the water in front of the parts (SandboxControl.Init addChild
+// order) so submerged parts show through the translucent fill.
+let water: WaterRenderer | null = null;
 // Lightweight overlay Graphics for the marquee rectangle — kept separate from
 // the Draw sprite so it never fights Draw.ts's per-frame clear/repaint.
 let overlay: Graphics | null = null;
@@ -1284,6 +1289,13 @@ function drawFrame(): void {
 		);
 	}
 
+	// Water layer: translucent quad + animated surface (tide offset/tilt or
+	// wave profile) from the core's read-model; static surface at
+	// sandbox.water.height while editing (state.water is null then).
+	if (water) {
+		water.update(camera, w, h, state.sandbox.water, state.water);
+	}
+
 	// Map selection ids -> live Part instances for highlight.
 	const selected = new Set(state.edit.selection);
 	const selectedParts: Part[] = state.parts.filter((p) => selected.has(p.id));
@@ -1530,6 +1542,11 @@ onMounted(async () => {
 	draw = new Draw();
 	draw.m_sprite = drawSprite;
 
+	// Water layer, in FRONT of the world Draw sprite (IB3 SandboxControl.Init
+	// puts waterControl above the parts) and below the marquee overlay.
+	water = new WaterRenderer();
+	app.stage.addChild(water.view);
+
 	// Marquee overlay lives above the Draw sprite; Draw never touches it.
 	overlay = new Graphics();
 	app.stage.addChild(overlay);
@@ -1598,6 +1615,8 @@ onBeforeUnmount(() => {
 	challengeGround = null;
 	grid?.destroy();
 	grid = null;
+	water?.destroy();
+	water = null;
 	if (app) {
 		app.destroy(true, { children: true });
 		app = null;

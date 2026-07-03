@@ -166,6 +166,8 @@ export class Rectangle extends ShapePart {
     }
     sd.userData = new Object();
     sd.userData.collide = this.collide;
+    // Per-shape water opt-out (IB3 ShapePart.Init fixture userData isBuoyant).
+    sd.userData.isBuoyant = this.buoyant;
     sd.userData.editable = (this.isEditable || this.isTank);
     sd.userData.red = this.red;
     sd.userData.green = this.green;

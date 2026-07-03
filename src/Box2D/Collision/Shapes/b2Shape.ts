@@ -110,6 +110,29 @@ export class b2Shape
 	/// @param massData returns the mass data for this shape.
 	public  ComputeMass(massData:b2MassData) : void {};
 
+	/// Compute the area of this shape submerged under the plane
+	/// `dot(normal, p) = offset` (points with dot(normal,p) - offset < 0 are
+	/// "under water") and the world-space centroid of that area.
+	///
+	/// Backport of Box2DFlash 2.1a b2Shape.ComputeSubmergedArea (the IB3 water
+	/// controllers call this per fixture — ib3-decompiled/scripts/Box2D/Collision/
+	/// Shapes/*.as), adapted onto the 2.0.2 shape classes for the buoyancy /
+	/// tide / wave controllers in Dynamics/Controllers. Overridden by
+	/// b2CircleShape and b2PolygonShape; b2ConcaveArcShape inherits the polygon
+	/// implementation (an arc shape is approximated by its polygon hull — the
+	/// arc cut is small relative to the hull). The base returns 0 (no submerged
+	/// area) so shapes without an implementation (b2ConvexArcShape, static
+	/// edges — none of which the Part classes put on dynamic bodies) simply
+	/// contribute no buoyancy.
+	/// @param normal the surface plane normal (pointing OUT of the fluid).
+	/// @param offset the surface plane offset along `normal`.
+	/// @param xf the shape's parent body transform.
+	/// @param c returns the world centroid of the submerged area.
+	/// @return the submerged area.
+	public ComputeSubmergedArea(normal:b2Vec2, offset:number, xf:b2XForm, c:b2Vec2) : number {
+		return 0.0;
+	}
+
 	/// Get the maximum radius about the parent body's center of mass.
 	public GetSweepRadius() : number
 	{

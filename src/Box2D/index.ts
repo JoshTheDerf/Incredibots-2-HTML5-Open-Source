@@ -98,3 +98,11 @@ export * from './Dynamics/b2DestructionListener'
 export * from './Dynamics/b2Island'
 export * from './Dynamics/b2TimeStep'
 export * from './Dynamics/b2World'
+
+// IB3 water controllers (Box2DFlash 2.1a controller framework backport).
+export * from './Dynamics/Controllers/b2ControllerEdge'
+export * from './Dynamics/Controllers/b2Controller'
+export * from './Dynamics/Controllers/b2BuoyancyController'
+export * from './Dynamics/Controllers/b2TideController'
+export * from './Dynamics/Controllers/b2Wave'
+export * from './Dynamics/Controllers/b2WaveController'

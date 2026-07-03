@@ -8,6 +8,7 @@
 import type { b2World } from "../Box2D";
 import type { Part } from "../Parts/Part";
 import type { ChallengeState } from "./challenge";
+import type { WaterState, WaterSurfaceState } from "./waterSystem";
 import { buildTerrainParts, createDefaultSandboxState } from "./sandboxEnvironment";
 
 export type SimPhase = "editing" | "running" | "paused";
@@ -206,6 +207,12 @@ export interface SandboxState {
 	backgroundB: number;
 	/** Derived camera-clamp / cloud-spawn extent (ControllerSandbox.ts:680-714). */
 	bounds: { minX: number; maxX: number; minY: number; maxY: number };
+	/**
+	 * IB3 water settings (Control/WaterControl.as / SandboxSettings water
+	 * fields — see src/core/waterSystem.ts). enabled defaults false; when on,
+	 * play builds a WaterSystem (buoyancy + tide/wave controllers) from this.
+	 */
+	water: WaterState;
 }
 
 /**
@@ -353,6 +360,14 @@ export interface GameState {
 		/** prismaticAxis only: the world-space axis-START point (for the UI preview line). */
 		axisStart?: { x: number; y: number };
 	} | null;
+	/**
+	 * Live water-surface read-model (offset/normal.x/waves), refreshed each
+	 * step by the core's WaterSystem — the renderer draws the animated surface
+	 * from it (waterRenderer.ts). null while editing or when water is disabled;
+	 * the renderer falls back to a static surface at sandbox.water.height then
+	 * (WaterControl.GetGPath's non-initted branch).
+	 */
+	water: WaterSurfaceState | null;
 }
 
 export function createInitialState(): GameState {
@@ -390,5 +405,6 @@ export function createInitialState(): GameState {
 		tutorial: null,
 		conditionDraft: null,
 		jointGesture: null,
+		water: null,
 	};
 }

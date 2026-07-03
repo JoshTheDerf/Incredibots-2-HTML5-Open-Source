@@ -152,6 +152,38 @@ export class b2CircleShape extends b2Shape
 		massData.I = massData.mass * (0.5 * this.m_radius * this.m_radius + (this.m_localPosition.x*this.m_localPosition.x + this.m_localPosition.y*this.m_localPosition.y));
 	}
 
+	/// @see b2Shape::ComputeSubmergedArea
+	/// Backport of Box2DFlash 2.1a b2CircleShape.ComputeSubmergedArea
+	/// (ib3-decompiled/scripts/Box2D/Collision/Shapes/b2CircleShape.as:104-127),
+	/// with m_p renamed to the 2.0.2 m_localPosition.
+	public ComputeSubmergedArea(normal:b2Vec2, offset:number, xf:b2XForm, c:b2Vec2) : number {
+		// p = b2Math.MulX(xf, m_p) — the circle centre in world space.
+		var tMat:b2Mat22 = xf.R;
+		var pX:number = xf.position.x + (tMat.col1.x * this.m_localPosition.x + tMat.col2.x * this.m_localPosition.y);
+		var pY:number = xf.position.y + (tMat.col1.y * this.m_localPosition.x + tMat.col2.y * this.m_localPosition.y);
+		// l = -(dot(normal, p) - offset): submersion depth of the centre.
+		var l:number = -((normal.x * pX + normal.y * pY) - offset);
+		if (l < -this.m_radius + Number.MIN_VALUE)
+		{
+			// Completely dry.
+			return 0;
+		}
+		if (l > this.m_radius)
+		{
+			// Completely wet.
+			c.Set(pX, pY);
+			return Math.PI * this.m_radius * this.m_radius;
+		}
+		// Magic (circular-segment area + centroid, as in the 2.1a source).
+		var r2:number = this.m_radius * this.m_radius;
+		var l2:number = l * l;
+		var area:number = r2 * (Math.asin(l / this.m_radius) + Math.PI / 2) + l * Math.sqrt(r2 - l2);
+		var com:number = -2 / 3 * Math.pow(r2 - l2, 1.5) / area;
+		c.x = pX + normal.x * com;
+		c.y = pY + normal.y * com;
+		return area;
+	}
+
 	/// Get the local position of this circle in its parent body.
 	public GetLocalPosition() : b2Vec2{
 		return this.m_localPosition;

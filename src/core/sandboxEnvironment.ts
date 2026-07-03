@@ -14,6 +14,7 @@ import { Circle } from "../Parts/Circle";
 import type { Part } from "../Parts/Part";
 import { Rectangle } from "../Parts/Rectangle";
 import type { SandboxState } from "./GameState";
+import { defaultWaterState } from "./waterSystem";
 
 // SandboxSettings.* enum values, inlined so the core doesn't depend on the
 // (Pixi-adjacent) src/Game module (SandboxSettings.ts:11-33).
@@ -165,5 +166,5 @@ export function computeBounds(
 /** A fresh default SandboxState (SMALL/LAND/GRASS/SKY, gravity 15) with bounds. */
 export function createDefaultSandboxState(): SandboxState {
 	const base = { ...DEFAULT_SANDBOX_SETTINGS };
-	return { ...base, bounds: computeBounds(base) };
+	return { ...base, bounds: computeBounds(base), water: defaultWaterState() };
 }

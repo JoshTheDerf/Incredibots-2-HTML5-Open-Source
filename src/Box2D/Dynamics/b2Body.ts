@@ -17,6 +17,7 @@
 */
 
 import { b2BodyDef, b2ContactEdge, b2JointEdge, b2MassData, b2Mat22, b2Math, b2Shape, b2ShapeDef, b2Sweep, b2Vec2, b2World, b2XForm } from "..";
+import type { b2ControllerEdge } from "./Controllers/b2ControllerEdge";
 
 
 
@@ -817,6 +818,11 @@ export class b2Body
 
 	public m_jointList:b2JointEdge;
 	public m_contactList:b2ContactEdge;
+
+	// Controller-edge list (Box2DFlash 2.1a b2Body.m_controllerList backport,
+	// for the IB3 water controllers in Dynamics/Controllers). Maintained by
+	// b2Controller.AddBody/RemoveBody; b2World.DestroyBody unlinks it.
+	public m_controllerList:b2ControllerEdge | null = null;
 
 	public m_mass:number;
 	public m_invMass:number;

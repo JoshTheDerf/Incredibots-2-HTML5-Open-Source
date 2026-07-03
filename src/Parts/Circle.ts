@@ -95,6 +95,9 @@ export class Circle extends ShapePart {
     }
     circ.userData = new Object();
     circ.userData.collide = this.collide;
+    // Per-shape water opt-out (IB3 ShapePart.Init sets fixture userData
+    // isBuoyant from part.buoyant; read by the water controllers).
+    circ.userData.isBuoyant = this.buoyant;
     circ.userData.editable = this.isEditable;
     circ.userData.red = this.red;
     circ.userData.green = this.green;

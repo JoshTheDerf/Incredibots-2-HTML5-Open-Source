@@ -8,6 +8,8 @@
 // The Vue + Nuxt UI layer dispatches these; the renderer never mutates — it only
 // reads state. See docs/CONTRACT.md.
 
+import type { WaterState } from "./waterSystem";
+
 export type ToolMode =
 	| "select"
 	| "newCircle"
@@ -241,6 +243,13 @@ export type Command =
 			backgroundR: number;
 			backgroundG: number;
 			backgroundB: number;
+			/**
+			 * IB3 water settings (WaterWindow.as / P6 water panel). Optional so
+			 * pre-water callers keep working: when absent the current sandbox
+			 * water settings are preserved unchanged. Like gravity, water takes
+			 * effect at the NEXT play (WaterSystem is built at world creation).
+			 */
+			water?: WaterState;
 	  }
 	// --- view menu (ControllerGame BuildViewMenu) ---
 	// Display toggles + zoom, ported faithfully. The toggles flip the edit-view

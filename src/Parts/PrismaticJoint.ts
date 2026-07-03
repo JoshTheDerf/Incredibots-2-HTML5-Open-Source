@@ -323,6 +323,9 @@ export class PrismaticJoint extends JointPart {
       sd.userData.blue = this.blue;
       sd.userData.outline = this.outline;
       sd.userData.collide = this.collide;
+      // Per-shape water opt-out for the piston shaft segments (IB3
+      // SlidingJoint.buoyant -> fixture userData isBuoyant).
+      sd.userData.isBuoyant = this.buoyant;
       sd.userData.editable = this.isEditable;
       sd.userData.isPiston = collisionGroup;
       var verts:Array<any> = new Array();
