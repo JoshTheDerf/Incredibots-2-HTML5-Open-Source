@@ -153,6 +153,34 @@ const viewMenu = computed<DropdownMenuItem[][]>(() => {
 			{ label: "Show Colors", icon: check(e.showColours), onSelect: () => game.dispatch({ type: "toggleShowColours" }) },
 			{ label: "Show Outlines", icon: check(e.showOutlines), onSelect: () => game.dispatch({ type: "toggleShowOutlines" }) },
 		],
+		// IB3 grid (Control/Graphics/GridControl.as port). UI-local prefs like the
+		// Jaybit toggles below. "Show Grid" mirrors IB3's GRID button
+		// (GameControl.as gridButton :4235-4241, hidden by default per
+		// SandboxControl.as:69); "Snap to Grid" is IB3's snapToGrid flag
+		// (GameControl.as:269, default true); spacing presets around IB3's fixed
+		// spacing of 2 (GridControl.as:46-47 — IB3 shipped no spacing UI). IB3 had
+		// no grid keyboard shortcut (GameControl.keyPress :752-816).
+		[
+			{
+				label: "Show Grid",
+				icon: check(uiPrefs.gridEnabled.value),
+				onSelect: () => uiPrefs.toggleGridEnabled(),
+			},
+			{
+				label: "Snap to Grid",
+				icon: check(uiPrefs.gridSnap.value),
+				onSelect: () => uiPrefs.toggleGridSnap(),
+			},
+			{
+				label: `Grid Spacing (${uiPrefs.gridSpacing.value})`,
+				icon: "i-lucide-grid-2x2",
+				children: [0.5, 1, 2, 4, 8].map((s) => ({
+					label: String(s),
+					icon: check(uiPrefs.gridSpacing.value === s),
+					onSelect: () => uiPrefs.setGridSpacing(s),
+				})),
+			},
+		],
 		// Jaybit View-menu additions (DropDownMenu.as:420/423). UI-local prefs, not
 		// core state — highlightForJointBox / triangleSnappingBox.
 		[
