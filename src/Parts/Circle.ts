@@ -77,7 +77,7 @@ export class Circle extends ShapePart {
     if (body) {
       circ.localPosition = new b2Vec2(this.centerX - body.GetPosition().x, this.centerY - body.GetPosition().y);
       this.m_body = body;
-      bodyStatic = body.IsStatic();
+      bodyStatic = getPhysicsBackend().bodyIsStatic(body);
     } else {
       var bd = new b2BodyDef();
       bd.position.Set(this.centerX, this.centerY);

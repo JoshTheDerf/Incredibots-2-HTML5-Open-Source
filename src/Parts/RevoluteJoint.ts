@@ -255,8 +255,8 @@ export class RevoluteJoint extends JointPart {
         //CE FIX
         joint.m_maxMotorTorque = this.motorStrength * 30;
 
-        this.part1.GetBody()!.WakeUp();
-        this.part2.GetBody()!.WakeUp();
+        getPhysicsBackend().wakeBody(this.part1.GetBody()!);
+        getPhysicsBackend().wakeBody(this.part2.GetBody()!);
       }
       if (this.isKeyDown1 && this.triggerMotorCCW) {
         this.MotorCW(joint); // player key overrides the opposing trigger

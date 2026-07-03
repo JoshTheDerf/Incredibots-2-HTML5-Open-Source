@@ -23,7 +23,7 @@
 //    bombs re-simulate from sync points instead (a mid-run body destroy can
 //    degrade replay fidelity for later-recorded bodies).
 
-import { b2Body, b2Segment, b2Shape, b2Vec2, b2World } from "../Box2D";
+import { b2Body, b2Shape, b2Vec2, b2World } from "../Box2D";
 import { ContactFilter } from "../Game/ContactFilter";
 import { Util } from "../General/Util";
 import { Circle } from "./Circle";
@@ -422,7 +422,7 @@ export class Bomb extends Circle {
         // Welded cluster: remove only the bomb's own shape (the 2.0 equivalent
         // of destroying the bomb fixture off a multi-fixture body).
         getPhysicsBackend().destroyShape(body, this.m_shape);
-        if (!body.IsStatic()) getPhysicsBackend().setMassFromShapes(body);
+        if (!getPhysicsBackend().bodyIsStatic(body)) getPhysicsBackend().setMassFromShapes(body);
       } else {
         // Free-standing bomb: destroy the whole body (Bomb.as:440-455).
         let bud = body.GetUserData() as Record<string, unknown> | null;
@@ -452,9 +452,6 @@ export class Bomb extends Circle {
     const startPos = new b2Vec2();
     const endPos = new b2Vec2();
     const useForceVector = new b2Vec2();
-    const segment = new b2Segment();
-    const lambdaOut: number[] = [0];
-    const normalOut = new b2Vec2();
 
     for (let forceAngle = 0; forceAngle < PI2; forceAngle += incrementAngle) {
       let fractionLeft = 1;
@@ -476,18 +473,16 @@ export class Bomb extends Circle {
         let lowestRatio = 1;
         let nearestShape: b2Shape | null = null;
         let nearestNormal: b2Vec2 | null = null;
-        segment.p1.SetV(startPos);
-        segment.p2.SetV(endPos);
         for (const s of shapes) {
           const sBody = s.GetBody();
           if (!sBody) continue;
-          lambdaOut[0] = 0;
-          if (s.TestSegment(sBody.GetXForm(), lambdaOut, normalOut, segment, fractionLeft)) {
-            if (lambdaOut[0] < lowestRatio) {
-              lowestRatio = lambdaOut[0];
-              nearestShape = s;
-              nearestNormal = normalOut.Copy();
-            }
+          // Nearest hit via the engine seam (2.0 shape.TestSegment / 2.1a
+          // fixture.RayCast) — maxFraction = fractionLeft mirrors the 2.0 maxLambda.
+          const hit = getPhysicsBackend().shapeTestSegment(s, sBody, startPos.x, startPos.y, endPos.x, endPos.y, fractionLeft);
+          if (hit && hit.lambda < lowestRatio) {
+            lowestRatio = hit.lambda;
+            nearestShape = s;
+            nearestNormal = new b2Vec2(hit.nx, hit.ny);
           }
         }
         fractionLeft -= lowestRatio;

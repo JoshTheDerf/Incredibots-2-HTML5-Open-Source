@@ -72,6 +72,23 @@ class SpyBackend implements Backend {
 	bodyTransform(b: b2Body) {
 		return this.inner.bodyTransform(b);
 	}
+	// P1.5b-2a per-frame handle ops + contact wiring — plain pass-throughs (this
+	// spy only tallies construction/step calls; these keep the interface satisfied).
+	wakeBody(b: b2Body) {
+		this.inner.wakeBody(b);
+	}
+	bodyIsStatic(b: b2Body) {
+		return this.inner.bodyIsStatic(b);
+	}
+	shapeTestPoint(...args: Parameters<Backend["shapeTestPoint"]>) {
+		return this.inner.shapeTestPoint(...args);
+	}
+	shapeTestSegment(...args: Parameters<Backend["shapeTestSegment"]>) {
+		return this.inner.shapeTestSegment(...args);
+	}
+	installContactHandlers(...args: Parameters<Backend["installContactHandlers"]>) {
+		this.inner.installContactHandlers(...args);
+	}
 }
 
 function coreWith(parts: Part[]): GameCore {

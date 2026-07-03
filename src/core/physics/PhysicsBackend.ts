@@ -37,12 +37,57 @@
 //             get/set) stay direct on the concrete handle for engine 0, which
 //             is the only exercised backend in this sub-phase.
 
+//
+//  EXTENDED IN P1.5b-2a. Added: the handful of per-frame handle ops whose
+//  METHOD NAMES differ across the two Box2DFlash ports (wakeBody = WakeUp vs
+//  SetAwake; bodyIsStatic = IsStatic vs GetType; shapeTestPoint/shapeTestSegment
+//  = b2Shape.TestPoint/TestSegment vs b2Fixture.TestPoint/RayCast), plus
+//  installContactHandlers so each engine wires its OWN contact filter + listener
+//  and translates its native contact event into a neutral ContactPointLike for
+//  engine-shared hooks (challenge conditions + trigger dispatch stay in
+//  GameCore). Joint motor ops (SetMotorSpeed/EnableMotor/GetJointAngle/limits)
+//  and body world-space reads (GetWorldPoint/GetWorldCenter/GetAngle) are NOT
+//  abstracted: those method names + signatures are byte-identical in both ports,
+//  so a stored handle is already engine-agnostic under duck typing.
+
 import type { b2BodyDef, b2JointDef, b2MassData, b2ShapeDef } from "../../Box2D";
 
 /** A plain 2D vector — structural, so an engine-0 b2Vec2 satisfies it. */
 export interface Vec2Like {
 	x: number;
 	y: number;
+}
+
+/**
+ * The engine-neutral view of a contact event handed to the shared hooks. Each
+ * `shapeN` is the engine's touching shape/fixture handle — the SAME object a
+ * ShapePart stored via GetShape(), so Condition.ContactAdded can compare it by
+ * identity — and answers GetUserData() with that shape's userData record.
+ */
+export interface ContactPointLike {
+	shape1: { GetUserData(): unknown };
+	shape2: { GetUserData(): unknown };
+}
+
+/**
+ * Engine-neutral contact hooks. installContactHandlers invokes onAdd when a new
+ * contact begins and onRemove when one ends, passing the neutral point. The hook
+ * bodies (condition matching + trigger dispatch) live in GameCore and are
+ * identical across engines.
+ */
+export interface ContactHooks {
+	onAdd(point: ContactPointLike): void;
+	onRemove(point: ContactPointLike): void;
+}
+
+/** Result of a segment/ray cast against one shape: hit fraction + surface normal. */
+export interface SegmentHit {
+	/** Fraction along the segment where the hit occurred (0..1), like b2RayCastOutput.fraction. */
+	lambda: number;
+	/** Hit surface normal x. */
+	nx: number;
+	/** Hit surface normal y. */
+	ny: number;
 }
 
 /** World construction parameters (bounds + gravity + sleep), as plain data. */
@@ -96,4 +141,35 @@ export interface PhysicsBackend<W = unknown, B = unknown, S = unknown, J = unkno
 	// --- read-back ---
 	bodyVelocity(body: B): Vec2Like;
 	bodyTransform(body: B): BodyTransform;
+
+	// --- per-frame handle ops whose method names differ across the ports ---
+	/** Wake a sleeping body (2.0 WakeUp / 2.1a SetAwake(true)). */
+	wakeBody(body: B): void;
+	/** True iff the body is static (2.0 IsStatic() / 2.1a GetType()===static). */
+	bodyIsStatic(body: B): boolean;
+	/**
+	 * True iff `point` (world coords) is inside `shape`. The body is passed so
+	 * the adapter can supply the transform (2.0 shape.TestPoint(body.GetXForm(),
+	 * p); 2.1a fixture.TestPoint(p), which reads its own body transform).
+	 */
+	shapeTestPoint(shape: S, body: B, point: Vec2Like): boolean;
+	/**
+	 * Cast the segment (x1,y1)->(x2,y2) against `shape`, clipped to `maxFraction`
+	 * of its length. Returns the nearest hit (fraction + normal) or null on miss.
+	 * 2.0 shape.TestSegment(body.GetXForm(), lambda, normal, seg, maxFraction);
+	 * 2.1a fixture.RayCast(output, input).
+	 */
+	shapeTestSegment(
+		shape: S,
+		body: B,
+		x1: number,
+		y1: number,
+		x2: number,
+		y2: number,
+		maxFraction: number,
+	): SegmentHit | null;
+
+	// --- contact wiring (each engine installs its own filter + listener) ---
+	/** Wire this engine's contact filter + a listener that drives `hooks`. */
+	installContactHandlers(world: W, hooks: ContactHooks): void;
 }

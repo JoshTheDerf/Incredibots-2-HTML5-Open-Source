@@ -572,8 +572,8 @@ export class PrismaticJoint extends JointPart {
         //CE FIX
         joint.SetMaxMotorForce(this.pistonStrength * 30);
 
-        this.part1.GetBody()!.WakeUp();
-        this.part2.GetBody()!.WakeUp();
+        getPhysicsBackend().wakeBody(this.part1.GetBody()!);
+        getPhysicsBackend().wakeBody(this.part2.GetBody()!);
       }
       if (((this.isKeyDown1 || this.triggerMotorExpand || autoExpandOnly) && !(oscillate && !this.expanding)) || (oscillate && this.expanding)) {
         //CE PROBLEM

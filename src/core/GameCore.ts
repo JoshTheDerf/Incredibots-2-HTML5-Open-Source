@@ -11,7 +11,6 @@
 
 import { b2AABB, b2MouseJointDef, b2Vec2, b2World } from "../Box2D";
 import type { b2Joint } from "../Box2D";
-import { ContactFilter } from "../Game/ContactFilter";
 import { getPhysicsBackend, setCannonballs } from "../Parts/partGlobals";
 import { Util } from "../General/Util";
 import { Bomb, markBombImpact } from "../Parts/Bomb";
@@ -86,7 +85,6 @@ import { WinCondition } from "../Game/WinCondition";
 import { LossCondition } from "../Game/LossCondition";
 import type { Challenge } from "../Game/Challenge";
 import { SandboxSettings } from "../Game/SandboxSettings";
-import { b2ContactListener } from "../Box2D";
 import { WaterSystem, applyWaterState, waterStateFromSettings } from "./waterSystem";
 import {
 	REPLAY_SYNC_FRAMES,
@@ -2959,57 +2957,55 @@ export class GameCore {
 			gravityY: this.state.sandbox.gravity,
 			doSleep: true,
 		});
-		world.SetContactFilter(new ContactFilter());
 		// Challenge "touching"/"touched" conditions (obj 5/6) and the trigger
-		// runtime both need Box2D contact events. The vendored b2World invokes
-		// `listener.Add(cp)` for each new contact point (b2CircleContact.ts:94
-		// etc.) and `listener.Remove(cp)` when one goes away
-		// (b2CircleContact.ts:128, b2ContactManager.ts:180), where
-		// `cp.shape1/shape2` are the touching b2Shapes. The listener is ALWAYS
-		// attached now (jaybit ControllerGame.CreateWorld wires its
-		// ContactListener unconditionally); condition matching only runs while a
-		// challenge session exists.
-		const listener = new b2ContactListener();
+		// runtime both need Box2D contact events. The engine installs its OWN
+		// contact filter + listener (P1.5b-2a) and translates its native contact
+		// event into an engine-neutral point (shape1/shape2 answering
+		// GetUserData(), and identity-comparable against a part's GetShape()).
+		// The hook bodies below are identical across engines: the listener is
+		// ALWAYS attached (jaybit ControllerGame.CreateWorld wires it
+		// unconditionally); condition matching only runs while a challenge exists.
 		type ContactPoint = {
 			shape1: { GetUserData(): unknown };
 			shape2: { GetUserData(): unknown };
 		};
-		listener.Add = (point: unknown): void => {
-			// Conditions FIRST (legacy ControllerChallenge.ContactAdded order).
-			if (this.challenge) {
-				conditionsContactAdded(this.challenge, point, this.state.parts, this.cannonballs);
-			}
-			// Trigger dispatch (jaybit ControllerGame.ContactAdded :2462 ->
-			// ProcessTriggers(ud1, ud2, true)).
-			const cp = point as ContactPoint;
-			// Bomb impact marking (IB3 TriggerSystem.Process :37-50): record the
-			// live contact on any bomb shape's userData so
-			// Bomb.CheckImpactDetonation can arm on NEW impacts next Update.
-			markBombImpact(cp.shape1.GetUserData(), cp.shape2.GetUserData(), true);
-			processTriggers(
-				this.state.parts,
-				world,
-				cp.shape1.GetUserData() as TriggerUserData,
-				cp.shape2.GetUserData() as TriggerUserData,
-				true,
-				this.triggerKeyInput,
-			);
-		};
-		listener.Remove = (point: unknown): void => {
-			// jaybit ControllerGame.ContactRemoved :1257 -> ProcessTriggers(..., false).
-			const cp = point as ContactPoint;
-			// Bomb impact unmarking (IB3 TriggerSystem.Process, contact-end path).
-			markBombImpact(cp.shape1.GetUserData(), cp.shape2.GetUserData(), false);
-			processTriggers(
-				this.state.parts,
-				world,
-				cp.shape1.GetUserData() as TriggerUserData,
-				cp.shape2.GetUserData() as TriggerUserData,
-				false,
-				this.triggerKeyInput,
-			);
-		};
-		world.SetContactListener(listener);
+		getPhysicsBackend().installContactHandlers(world, {
+			onAdd: (point): void => {
+				// Conditions FIRST (legacy ControllerChallenge.ContactAdded order).
+				if (this.challenge) {
+					conditionsContactAdded(this.challenge, point, this.state.parts, this.cannonballs);
+				}
+				// Trigger dispatch (jaybit ControllerGame.ContactAdded :2462 ->
+				// ProcessTriggers(ud1, ud2, true)).
+				const cp = point as ContactPoint;
+				// Bomb impact marking (IB3 TriggerSystem.Process :37-50): record the
+				// live contact on any bomb shape's userData so
+				// Bomb.CheckImpactDetonation can arm on NEW impacts next Update.
+				markBombImpact(cp.shape1.GetUserData(), cp.shape2.GetUserData(), true);
+				processTriggers(
+					this.state.parts,
+					world,
+					cp.shape1.GetUserData() as TriggerUserData,
+					cp.shape2.GetUserData() as TriggerUserData,
+					true,
+					this.triggerKeyInput,
+				);
+			},
+			onRemove: (point): void => {
+				// jaybit ControllerGame.ContactRemoved :1257 -> ProcessTriggers(..., false).
+				const cp = point as ContactPoint;
+				// Bomb impact unmarking (IB3 TriggerSystem.Process, contact-end path).
+				markBombImpact(cp.shape1.GetUserData(), cp.shape2.GetUserData(), false);
+				processTriggers(
+					this.state.parts,
+					world,
+					cp.shape1.GetUserData() as TriggerUserData,
+					cp.shape2.GetUserData() as TriggerUserData,
+					false,
+					this.triggerKeyInput,
+				);
+			},
+		});
 		return world;
 	}
 
@@ -3405,14 +3401,14 @@ export class GameCore {
 			shapes,
 			MOUSE_PICK_MAX_COUNT,
 		);
-		for (const s of shapes as Array<{
-			m_body: import("../Box2D").b2Body;
-			GetUserData: () => { undragable?: boolean; isPiston?: number };
-			TestPoint: (xf: unknown, p: b2Vec2) => boolean;
-		}>) {
-			const ud = s.GetUserData();
-			if (s.m_body.IsStatic() === false && !ud.undragable && ud.isPiston === -1) {
-				if (s.TestPoint(s.m_body.GetXForm(), mousePVec)) return s.m_body;
+		for (const s of shapes) {
+			const ud = (s.GetUserData() ?? {}) as { undragable?: boolean; isPiston?: number };
+			// Both engine handles expose GetBody() (2.0 b2Shape / 2.1a b2Fixture).
+			const body = s.GetBody();
+			if (!body) continue;
+			const backend = getPhysicsBackend();
+			if (backend.bodyIsStatic(body) === false && !ud.undragable && ud.isPiston === -1) {
+				if (backend.shapeTestPoint(s, body, mousePVec)) return body;
 			}
 		}
 		return null;
@@ -3445,7 +3441,7 @@ export class GameCore {
 		md.maxForce = MOUSE_JOINT_MAX_FORCE_FACTOR * body.m_mass;
 		md.timeStep = MOUSE_JOINT_TIME_STEP;
 		this.mouseJoint = getPhysicsBackend().createJoint(world, md);
-		body.WakeUp();
+		getPhysicsBackend().wakeBody(body);
 	}
 
 	/**

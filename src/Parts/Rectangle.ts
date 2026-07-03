@@ -144,7 +144,7 @@ export class Rectangle extends ShapePart {
         sd.vertices[i].y -= body.GetPosition().y;
       }
       this.m_body = body;
-      bodyStatic = body.IsStatic();
+      bodyStatic = getPhysicsBackend().bodyIsStatic(body);
     } else {
       for (i = 0; i < 4; i++) {
         sd.vertices[i].x -= this.centerX;
