@@ -121,6 +121,24 @@ export class Box2D20Backend implements PhysicsBackend<b2World, b2Body, b2Shape, 
 		return { lambda: lambda[0], nx: normal.x, ny: normal.y };
 	}
 
+	jointAnchorA(joint: b2Joint): Vec2Like {
+		const v = (joint as unknown as { GetAnchor1(): Vec2Like }).GetAnchor1();
+		return { x: v.x, y: v.y };
+	}
+
+	jointAnchorB(joint: b2Joint): Vec2Like {
+		const v = (joint as unknown as { GetAnchor2(): Vec2Like }).GetAnchor2();
+		return { x: v.x, y: v.y };
+	}
+
+	jointBodyA(joint: b2Joint): b2Body {
+		return joint.GetBody1();
+	}
+
+	jointBodyB(joint: b2Joint): b2Body {
+		return joint.GetBody2();
+	}
+
 	installContactHandlers(world: b2World, hooks: ContactHooks): void {
 		// Byte-identical to the pre-seam GameCore.createWorld wiring: the vendored
 		// ContactFilter (honours collide/group flags) plus a b2ContactListener

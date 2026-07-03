@@ -169,6 +169,17 @@ export interface PhysicsBackend<W = unknown, B = unknown, S = unknown, J = unkno
 		maxFraction: number,
 	): SegmentHit | null;
 
+	// --- joint accessors whose method names differ across the ports (used by
+	//     the per-frame CheckForBreakage checks) ---
+	/** World anchor on body A of the joint (2.0 GetAnchor1 / 2.1a GetAnchorA). */
+	jointAnchorA(joint: J): Vec2Like;
+	/** World anchor on body B of the joint (2.0 GetAnchor2 / 2.1a GetAnchorB). */
+	jointAnchorB(joint: J): Vec2Like;
+	/** Body A the joint connects (2.0 GetBody1 / 2.1a GetBodyA). */
+	jointBodyA(joint: J): B;
+	/** Body B the joint connects (2.0 GetBody2 / 2.1a GetBodyB). */
+	jointBodyB(joint: J): B;
+
 	// --- contact wiring (each engine installs its own filter + listener) ---
 	/** Wire this engine's contact filter + a listener that drives `hooks`. */
 	installContactHandlers(world: W, hooks: ContactHooks): void;

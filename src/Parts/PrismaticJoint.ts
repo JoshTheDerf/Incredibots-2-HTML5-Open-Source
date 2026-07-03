@@ -536,8 +536,13 @@ export class PrismaticJoint extends JointPart {
     if (this.m_joint) {
       var joint = this.m_joint as b2PrismaticJoint;
 
-      // Check joint constraints to see if the joint should break
-      var angleApart: number = Math.abs(joint.GetBody1().GetAngle() - joint.GetBody2().GetAngle());
+      // Check joint constraints to see if the joint should break. The joint's
+      // connected-body accessors differ across the ports (GetBody1/2 vs
+      // GetBodyA/B), so read them through the backend seam.
+      const backend = getPhysicsBackend();
+      var angleApart: number = Math.abs(
+        backend.bodyTransform(backend.jointBodyA(joint)).angle - backend.bodyTransform(backend.jointBodyB(joint)).angle,
+      );
       if (angleApart > (90 * Math.PI) / 180 /* || GetJointPerpTranslation() > 3.0*/) {
         getPhysicsBackend().destroyJoint(world, this.m_joint);
         this.m_joint = null;

@@ -89,6 +89,18 @@ class SpyBackend implements Backend {
 	installContactHandlers(...args: Parameters<Backend["installContactHandlers"]>) {
 		this.inner.installContactHandlers(...args);
 	}
+	jointAnchorA(j: b2Joint) {
+		return this.inner.jointAnchorA(j);
+	}
+	jointAnchorB(j: b2Joint) {
+		return this.inner.jointAnchorB(j);
+	}
+	jointBodyA(j: b2Joint) {
+		return this.inner.jointBodyA(j);
+	}
+	jointBodyB(j: b2Joint) {
+		return this.inner.jointBodyB(j);
+	}
 }
 
 function coreWith(parts: Part[]): GameCore {

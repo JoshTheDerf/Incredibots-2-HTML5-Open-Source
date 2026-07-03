@@ -284,6 +284,24 @@ export class Box2D21Backend implements PhysicsBackend<b2World, b2Body, b2Fixture
 		return { lambda: output.fraction, nx: output.normal.x, ny: output.normal.y };
 	}
 
+	jointAnchorA(joint: b2Joint): Vec2Like {
+		const v = (joint as unknown as { GetAnchorA(): Vec2Like }).GetAnchorA();
+		return { x: v.x, y: v.y };
+	}
+
+	jointAnchorB(joint: b2Joint): Vec2Like {
+		const v = (joint as unknown as { GetAnchorB(): Vec2Like }).GetAnchorB();
+		return { x: v.x, y: v.y };
+	}
+
+	jointBodyA(joint: b2Joint): b2Body {
+		return joint.GetBodyA();
+	}
+
+	jointBodyB(joint: b2Joint): b2Body {
+		return joint.GetBodyB();
+	}
+
 	installContactHandlers(world: b2World, hooks: ContactHooks): void {
 		installBox2D21Contacts(world, hooks);
 	}

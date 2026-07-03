@@ -187,8 +187,12 @@ export class RevoluteJoint extends JointPart {
     if (this.m_joint) {
       var joint = (this.m_joint) as b2RevoluteJoint;
 
-      // Check joint constraints to see if the joint should break
-      var dist:number = Util.GetDist(joint.GetAnchor1().x, joint.GetAnchor1().y, joint.GetAnchor2().x, joint.GetAnchor2().y);
+      // Check joint constraints to see if the joint should break. Anchor
+      // accessors differ across the ports (GetAnchor1/2 vs GetAnchorA/B), so
+      // read them through the backend seam.
+      const a = getPhysicsBackend().jointAnchorA(joint);
+      const b = getPhysicsBackend().jointAnchorB(joint);
+      var dist:number = Util.GetDist(a.x, a.y, b.x, b.y);
       if (dist > 3.0) {
         getPhysicsBackend().destroyJoint(world, this.m_joint);
         this.m_joint = null;
