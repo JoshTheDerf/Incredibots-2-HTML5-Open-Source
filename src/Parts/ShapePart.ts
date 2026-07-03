@@ -51,6 +51,10 @@ export class ShapePart extends Part {
   public onGroundHit_2: boolean = false;
   public onSameName: boolean = false;
   public onSameName_2: boolean = false;
+  // IB3 water: whether this shape participates in buoyancy (IB3
+  // ShapePart.as:25, default true :91). Persisted as an optional AMF field;
+  // the buoyancy runtime lands in the water wave (P3).
+  public buoyant: boolean = true;
   public isCameraFocus: boolean = false;
   public m_collisionGroup: number = COLLISION_GROUP_UNSET;
   public highlightForJoint: boolean = false;
@@ -254,6 +258,8 @@ export class ShapePart extends Part {
     other.onGroundHit_2 = this.onGroundHit_2;
     other.onSameName = this.onSameName;
     other.onSameName_2 = this.onSameName_2;
+    // IB3 copies buoyant in ApplyProperties/CopyProperties (ShapePart.as:328/:353).
+    other.buoyant = this.buoyant;
   }
 
   /**
@@ -446,6 +452,7 @@ export class ShapePart extends Part {
       this.onGroundHit_2 == other.onGroundHit_2 &&
       this.onSameName == other.onSameName &&
       this.onSameName_2 == other.onSameName_2 &&
+      this.buoyant == other.buoyant &&
       this.red == other.red &&
       this.green == other.green &&
       this.blue == other.blue &&

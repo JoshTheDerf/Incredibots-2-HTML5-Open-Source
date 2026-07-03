@@ -8,6 +8,40 @@ export class SandboxSettings {
   public backgroundG: number;
   public backgroundB: number;
 
+  // --- IB3 water settings (IB3 Control/SandboxSettings.as:37-59, defaults
+  // :90-101 via Control/WaterControl.as consts + General/Util.as WC*Default).
+  // Serialized with the settings object (AMF writes all public fields);
+  // absent on old codes, so loaders hasOwnProperty-guard them to these
+  // defaults. NOTE: waterEnabled defaults FALSE here (IB3's
+  // WaterControl.ENABLED_DEFAULT is true) so existing IB2 sandboxes keep
+  // their behavior — water only turns on when a code/UI asks for it.
+  public waterEnabled: boolean = false;
+  /** WaterControl.TYPE_TIDE=0 / TYPE_WAVE=1 (WaterControl.as:19-23). */
+  public waterType: number = SandboxSettings.WATER_TYPE_TIDE;
+  /** Util.WC_DENSITY_VAL_DEF (Util.as:98). */
+  public waterDensity: number = 20;
+  /** WaterControl.HEIGHT_DEFAULT (WaterControl.as:25). */
+  public waterHeight: number = 0;
+  /** uint 0xRRGGBB; WaterControl.COLOR_DEFAULT = 255 = 0x0000FF (WaterControl.as:27). */
+  public waterColor: number = 255;
+  /** 0-255; WaterControl.OPACITY_DEFAULT (WaterControl.as:33). */
+  public waterOpacity: number = 127;
+  /** Util.WC_LINEAR_VAL_DEF (Util.as:104). */
+  public waterLinearDrag: number = 5;
+  /** Util.WC_ANGULAR_VAL_DEF (Util.as:110). */
+  public waterAngularDrag: number = 2;
+  /** WaterControl.HEIGHTOSC_DEFAULT (WaterControl.as:29). */
+  public waterHeightOsc: number = 0.167;
+  /** ms per oscillation; WaterControl.HEIGHTOSCSPEED_DEFAULT (WaterControl.as:31). */
+  public waterHeightOscSpeed: number = 4000;
+  /** WaterControl.TILTOSC_DEFAULT (WaterControl.as:35). */
+  public waterTiltOsc: number = 0;
+  /** WaterControl.TILTOSCSPEED_DEFAULT (WaterControl.as:37). */
+  public waterTiltOscSpeed: number = 1;
+
+  public static WATER_TYPE_TIDE: number = 0;
+  public static WATER_TYPE_WAVE: number = 1;
+
   public static SIZE_SMALL: number = 0;
   public static SIZE_MEDIUM: number = 1;
   public static SIZE_LARGE: number = 2;

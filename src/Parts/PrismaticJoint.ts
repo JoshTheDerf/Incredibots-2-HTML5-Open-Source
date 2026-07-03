@@ -43,6 +43,10 @@ export class PrismaticJoint extends JointPart {
   public collC: boolean = true;
   public collD: boolean = true;
   public subColl: boolean = false;
+  // IB3 water: whether the piston's shaft participates in buoyancy (IB3
+  // SlidingJoint.as:73, default true :151). Persisted as an optional AMF
+  // field; the buoyancy runtime lands in the water wave (P3).
+  public buoyant: boolean = true;
   /** Runtime-only (NOT persisted): set by TRIGGER_DESTROY in the triggers wave. */
   public isDestroyed: boolean = false;
   /** Runtime-only "not yet assigned" sentinel, like ShapePart.m_collisionGroup. */
@@ -130,6 +134,8 @@ export class PrismaticJoint extends JointPart {
     this.collC = other.collC;
     this.collD = other.collD;
     this.subColl = other.subColl;
+    // IB3 copies buoyant in ApplyProperties/CopyProperties (SlidingJoint.as:765/:795).
+    this.buoyant = other.buoyant;
     this.triggerList = other.triggerList;
   }
 
@@ -163,6 +169,7 @@ export class PrismaticJoint extends JointPart {
     j.collC = this.collC;
     j.collD = this.collD;
     j.subColl = this.subColl;
+    j.buoyant = this.buoyant; // IB3 SlidingJoint.as:765
     j.triggerList = this.triggerList;
     return j;
   }

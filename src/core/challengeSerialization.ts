@@ -118,6 +118,9 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 			shape.onSameName_2 = has(od, "onSameName_2") ? Boolean(od.onSameName_2) : false;
 			if (has(od, "terrain")) shape.terrain = od.terrain;
 			if (has(od, "undragable")) shape.undragable = od.undragable;
+			// IB3 buoyancy participation flag (IB3 ShapePart.as:25); absent on
+			// pre-IB3-merge and Jaybit/CE codes -> default true (ShapePart.as:91).
+			shape.buoyant = has(od, "buoyant") ? Boolean(od.buoyant) : true;
 			partData.push(shape);
 		} else if (od.type === "TextPart") {
 			// Legacy passes Main.m_curController; the headless core has no controller
@@ -205,6 +208,8 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 					pj.collC = has(od, "collC") ? Boolean(od.collC) : Boolean(od.collide);
 					pj.collD = has(od, "collD") ? Boolean(od.collD) : Boolean(od.collide);
 					pj.subColl = has(od, "subColl") ? Boolean(od.subColl) : false;
+					// IB3 buoyancy flag (IB3 SlidingJoint.as:73, default true :151).
+					pj.buoyant = has(od, "buoyant") ? Boolean(od.buoyant) : true;
 					if (has(od, "arrayIndex")) pj.arrayIndex = od.arrayIndex;
 					joint = pj;
 				}
@@ -309,18 +314,47 @@ function isShape(p: Part): boolean {
 /** INIT_PHYS_SCALE (ControllerGameGlobals) — camera-clamp fallback zoom. */
 const INIT_PHYS_SCALE = 30;
 
+/**
+ * Apply the IB3 water fields from a raw decoded AMF settings object onto a
+ * fresh SandboxSettings, hasOwnProperty-guarded like the Jaybit optional part
+ * fields — absent fields (all pre-IB3-merge codes) keep the constructor
+ * defaults (waterEnabled false etc., see SandboxSettings.ts / IB3
+ * Control/SandboxSettings.as:37-59). The WRITE side needs no counterpart:
+ * writeObject(settings) serializes all public fields automatically, and stock
+ * Jaybit clients ignore unknown AMF props. (Same helper as
+ * robotSerialization.ts — kept as its own copy, as the two serializers are.)
+ */
+function applyWaterSettings(settings: SandboxSettings, s: any): SandboxSettings {
+	if (has(s, "waterEnabled")) settings.waterEnabled = Boolean(s.waterEnabled);
+	if (has(s, "waterType")) settings.waterType = Math.trunc(s.waterType);
+	if (has(s, "waterDensity")) settings.waterDensity = Number(s.waterDensity);
+	if (has(s, "waterHeight")) settings.waterHeight = Number(s.waterHeight);
+	if (has(s, "waterColor")) settings.waterColor = Number(s.waterColor);
+	if (has(s, "waterOpacity")) settings.waterOpacity = Math.trunc(s.waterOpacity);
+	if (has(s, "waterLinearDrag")) settings.waterLinearDrag = Number(s.waterLinearDrag);
+	if (has(s, "waterAngularDrag")) settings.waterAngularDrag = Number(s.waterAngularDrag);
+	if (has(s, "waterHeightOsc")) settings.waterHeightOsc = Number(s.waterHeightOsc);
+	if (has(s, "waterHeightOscSpeed")) settings.waterHeightOscSpeed = Math.trunc(s.waterHeightOscSpeed);
+	if (has(s, "waterTiltOsc")) settings.waterTiltOsc = Number(s.waterTiltOsc);
+	if (has(s, "waterTiltOscSpeed")) settings.waterTiltOscSpeed = Number(s.waterTiltOscSpeed);
+	return settings;
+}
+
 function readChallengeBodyAfterParts(data: ByteArray, partData: Part[], inlineFriction: boolean): Challenge {
 	const settings = data.readObject() as any;
 	const c = new Challenge(
-		new SandboxSettings(
-			settings.gravity,
-			settings.size,
-			settings.terrainType,
-			settings.terrainTheme,
-			settings.background,
-			settings.backgroundR,
-			settings.backgroundG,
-			settings.backgroundB,
+		applyWaterSettings(
+			new SandboxSettings(
+				settings.gravity,
+				settings.size,
+				settings.terrainType,
+				settings.terrainTheme,
+				settings.background,
+				settings.backgroundR,
+				settings.backgroundG,
+				settings.backgroundB,
+			),
+			settings,
 		),
 	);
 	c.allParts = partData;
