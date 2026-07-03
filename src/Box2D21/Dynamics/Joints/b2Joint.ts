@@ -64,6 +64,15 @@ export class b2Joint
 		return this.m_bodyB;
 	}
 
+	// 2.0-compat read aliases (Box2DFlash 2.0.2 named these Body1/Body2 and
+	// Anchor1/Anchor2). The shared renderer (src/Game/Draw.ts DrawJoint) is
+	// engine-agnostic and calls the 2.0 names; forward to the 2.1a A/B accessors
+	// (GetAnchorA/B are virtual — dispatched to the concrete joint override).
+	public GetBody1() : b2Body { return this.GetBodyA(); }
+	public GetBody2() : b2Body { return this.GetBodyB(); }
+	public GetAnchor1() : b2Vec2 { return this.GetAnchorA(); }
+	public GetAnchor2() : b2Vec2 { return this.GetAnchorB(); }
+
 	/// Get the next joint the world joint list.
 	public GetNext() : b2Joint | null
 	{

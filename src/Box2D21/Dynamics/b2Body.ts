@@ -538,13 +538,25 @@ export class b2Body
 		this.m_linearVelocity.y += this.m_angularVelocity * (this.m_sweep.c.x - oldCenter.x);
 	}
 
-	public GetWorldPoint(localPoint:b2Vec2) : b2Vec2{
+	// `out` added for 2.0-compat: Box2DFlash 2.0.2's GetWorldPoint fills a caller-
+	// supplied vector (the shared renderer, Draw.ts DrawJoint, relies on that).
+	// Omitting `out` keeps the native 2.1a behaviour (returns a fresh vector).
+	public GetWorldPoint(localPoint:b2Vec2, out:b2Vec2 | null = null) : b2Vec2{
 		var tMat:b2Mat22 = this.m_xf.R;
-		var v:b2Vec2 = new b2Vec2(tMat.col1.x * localPoint.x + tMat.col2.x * localPoint.y,tMat.col1.y * localPoint.x + tMat.col2.y * localPoint.y);
-		v.x += this.m_xf.position.x;
-		v.y += this.m_xf.position.y;
+		var v:b2Vec2 = out || new b2Vec2();
+		v.x = tMat.col1.x * localPoint.x + tMat.col2.x * localPoint.y + this.m_xf.position.x;
+		v.y = tMat.col1.y * localPoint.x + tMat.col2.y * localPoint.y + this.m_xf.position.y;
 		return v;
 	}
+
+	// 2.0-compat read aliases for the shared, engine-agnostic renderer
+	// (src/Game/Draw.ts). Box2DFlash 2.0.2 named the transform getter GetXForm
+	// and exposed a per-body shape list; the renderer still calls those names.
+	// GetShapeList returns the body's first fixture (the "shape handle" the parts
+	// store under this engine); Draw resolves a fixture to its b2Shape at the
+	// read boundary.
+	public GetXForm() : b2Transform { return this.m_xf; }
+	public GetShapeList() : b2Fixture | null { return this.m_fixtureList; }
 
 	public GetWorldVector(localVector:b2Vec2) : b2Vec2{
 		return b2Math.MulMV(this.m_xf.R,localVector);

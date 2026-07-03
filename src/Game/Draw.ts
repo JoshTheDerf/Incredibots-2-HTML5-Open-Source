@@ -77,6 +77,20 @@ export class Draw extends b2DebugDraw {
   }
 
   /**
+   * Resolve a part's stored "shape handle" to a b2Shape the geometry readers
+   * (DrawShape/DrawCannon) understand. Under the IB3 (2.1a) engine that handle
+   * is a b2Fixture (so runtime contact fixtures compare == GetShape()); the
+   * classic (2.0) engine stores a raw b2Shape. A b2Shape carries an `m_type`
+   * field; a fixture does not but exposes GetShape() — so unwrap only the
+   * fixture case, leaving 2.0 shapes untouched.
+   */
+  private resolveShape(handle: any): any {
+    return handle && handle.m_type === undefined && typeof handle.GetShape === "function"
+      ? handle.GetShape()
+      : handle;
+  }
+
+  /**
    * On-screen test for a polygon, overriding b2DebugDraw's 800x600-hardcoded
    * version to use the live viewport size (m_screenWidth/Height). Keeps the base
    * class's -5 / +5 screen-edge margins; a polygon is on screen if ANY vertex
@@ -688,7 +702,7 @@ export class Draw extends b2DebugDraw {
           var bombBody = bomb.GetBody();
           if (bombShape != null && bombBody != null && bomb.outline && showOutlines) {
             var bombXf = this.RenderXForm(bombBody);
-            var bombCenter = b2Math.b2MulX(bombXf, (bombShape as any).GetLocalPosition());
+            var bombCenter = b2Math.b2MulX(bombXf, this.resolveShape(bombShape).GetLocalPosition());
             var bombAngle: number = Util.NormalizeAngle(
               Math.atan2(bombXf.R.col1.y, bombXf.R.col1.x) + bomb.angle
             );
@@ -840,6 +854,7 @@ export class Draw extends b2DebugDraw {
     showOutlines: boolean = true,
     cannonball: boolean = false
   ): void {
+    shape = this.resolveShape(shape);
     switch (shape.m_type) {
       case b2Shape.e_circleShape:
         {
@@ -896,6 +911,7 @@ export class Draw extends b2DebugDraw {
     alpha: number,
     showOutlines: boolean = true
   ): void {
+    shape = this.resolveShape(shape);
     var poly = shape;
 
     // Reorganize vertices from Box2D defaults so that cannon points the correct direction.
@@ -1011,6 +1027,7 @@ export class Draw extends b2DebugDraw {
   }
 
   public DrawShapeForOutline(shape, xf, color, alpha: number): void {
+    shape = this.resolveShape(shape);
     color = Draw.DarkenColour(color);
     var thickness: number = Math.max(0.1, (this.m_lineThickness * Math.pow(this.m_drawScale, 0.5)) / 8);
 
@@ -1049,6 +1066,7 @@ export class Draw extends b2DebugDraw {
   }
 
   public DrawCannonForOutline(shape, xf, color, alpha: number): void {
+    shape = this.resolveShape(shape);
     color = Draw.DarkenColour(color);
     var thickness: number = Math.max(0.1, (this.m_lineThickness * Math.pow(this.m_drawScale, 0.5)) / 8);
 
