@@ -66,6 +66,8 @@ export type PartSnapshot = {
 	angle?: number;
 	text?: string;
 	size?: number;
+	/** Convex-polygon (Polygon part) rotated world vertices, for renderers/inspectors. */
+	verts?: { x: number; y: number }[];
 
 	// --- per-property edit fields (read back from the live Part) ---
 	// Shape (ShapePart: Circle/Rectangle/Triangle/Cannon)

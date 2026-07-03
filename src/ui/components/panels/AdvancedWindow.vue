@@ -62,7 +62,7 @@ const variant = computed<Variant>(() => {
 	const k = sel.value?.kind;
 	if (k === "Cannon") return "cannon";
 	if (k === "PrismaticJoint") return "sliding";
-	if (k === "Circle" || k === "Rectangle" || k === "Triangle") return "shape";
+	if (k === "Circle" || k === "Rectangle" || k === "Triangle" || k === "Polygon") return "shape";
 	return "target"; // RevoluteJoint / FixedJoint / Thrusters / TextPart
 });
 const showCollisionGroups = computed(() => variant.value !== "target");

@@ -47,6 +47,7 @@ const panelKind = computed<PanelKind>(() => {
 		case "Circle":
 		case "Rectangle":
 		case "Triangle":
+		case "Polygon":
 			return "shape";
 		case "Cannon":
 			return "cannon";
@@ -83,6 +84,8 @@ const headerTitle = computed(() => {
 			return "Rectangle";
 		case "Triangle":
 			return "Triangle";
+		case "Polygon":
+			return "Polygon";
 		case "Cannon":
 			return "Cannon";
 		case "Bomb":

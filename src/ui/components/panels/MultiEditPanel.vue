@@ -37,7 +37,7 @@ const selectedParts = computed<Part[]>(() => {
 });
 
 // Per-kind partition (MultiEditWindow predicates). Shapes exclude cannons.
-const shapes = computed(() => selectedParts.value.filter((p) => ["Circle", "Rectangle", "Triangle"].includes(p.type)));
+const shapes = computed(() => selectedParts.value.filter((p) => ["Circle", "Rectangle", "Triangle", "Polygon"].includes(p.type)));
 const cannons = computed(() => selectedParts.value.filter((p) => p.type === "Cannon"));
 const joints = computed(() => selectedParts.value.filter((p) => ["RevoluteJoint", "PrismaticJoint"].includes(p.type)));
 const thrusters = computed(() => selectedParts.value.filter((p) => p.type === "Thrusters"));

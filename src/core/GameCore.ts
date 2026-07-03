@@ -34,6 +34,7 @@ import {
 	MIN_RESTITUTION,
 	TRIGGER_NONE,
 } from "../Parts/partDefaults";
+import { Polygon } from "../Parts/Polygon";
 import { Rectangle } from "../Parts/Rectangle";
 import { RevoluteJoint } from "../Parts/RevoluteJoint";
 import { ShapePart } from "../Parts/ShapePart";
@@ -1736,6 +1737,9 @@ export class GameCore {
 				snap.w = part.w;
 				snap.h = part.h;
 			}
+			if (part instanceof Polygon) {
+				snap.verts = (part.GetVertices() as { x: number; y: number }[]).map((v) => ({ x: v.x, y: v.y }));
+			}
 			if (part instanceof Cannon) {
 				snap.w = part.w;
 				snap.strength = part.strength;
@@ -2083,6 +2087,16 @@ export class GameCore {
 				const length3 = Util.GetDist(p.initX2, p.initY2, p.initX3, p.initY3);
 				if (length3 * sf > Triangle.MAX_SIDE_LENGTH) sf = Triangle.MAX_SIDE_LENGTH / length3;
 				if (length3 * sf < Triangle.MIN_SIDE_LENGTH) sf = Triangle.MIN_SIDE_LENGTH / length3;
+			} else if (p instanceof Polygon) {
+				// Clamp every edge to Polygon's legal side range (PolygonPart.as:219-247).
+				const iv = p.initVertices;
+				for (let k = 0; k < iv.length; k++) {
+					const a = iv[k];
+					const b = iv[(k + 1) % iv.length];
+					const len = Util.GetDist(a.x, a.y, b.x, b.y);
+					if (len * sf > Polygon.MAX_SIDE_LENGTH) sf = Polygon.MAX_SIDE_LENGTH / len;
+					if (len * sf < Polygon.MIN_SIDE_LENGTH) sf = Polygon.MIN_SIDE_LENGTH / len;
+				}
 			} else if (p instanceof Cannon) {
 				if (p.initW * sf > Cannon.MAX_WIDTH) sf = Cannon.MAX_WIDTH / p.initW;
 				if (p.initW * sf < Cannon.MIN_WIDTH) sf = Cannon.MIN_WIDTH / p.initW;
@@ -2109,6 +2123,13 @@ export class GameCore {
 				p.y2 = p.centerY + p.initY2 * sf;
 				p.x3 = p.centerX + p.initX3 * sf;
 				p.y3 = p.centerY + p.initY3 * sf;
+			} else if (p instanceof Polygon) {
+				p.centerX = nx;
+				p.centerY = ny;
+				for (let k = 0; k < p.vertices.length; k++) {
+					p.vertices[k].x = p.centerX + p.initVertices[k].x * sf;
+					p.vertices[k].y = p.centerY + p.initVertices[k].y * sf;
+				}
 			} else if (p instanceof Cannon) {
 				p.w = p.initW * sf;
 				p.Move(nx, ny);
@@ -2282,6 +2303,28 @@ export class GameCore {
 				this.mirrorTriggerActions(t, h);
 				newParts.push(t);
 				partMapping.push(t);
+			} else if (sp instanceof Polygon) {
+				// Mirror every ROTATED vertex about the pivot axis (same maths as the
+				// Triangle branch, N verts). The Polygon ctor re-normalizes winding
+				// (mirroring flips it) so the b2PolygonShape still builds outward normals.
+				const verts = (sp.GetVertices() as { x: number; y: number }[]).map((v) =>
+					h ? new b2Vec2(centerX - (v.x - centerX), v.y) : new b2Vec2(v.x, centerY - (v.y - centerY)),
+				);
+				const pg = new Polygon(verts);
+				pg.isStatic = sp.isStatic;
+				pg.density = sp.density;
+				pg.collide = sp.collide;
+				pg.red = sp.red;
+				pg.green = sp.green;
+				pg.blue = sp.blue;
+				pg.opacity = sp.opacity;
+				pg.outline = sp.outline;
+				pg.terrain = sp.terrain;
+				pg.undragable = sp.undragable;
+				sp.CopyJaybitFieldsTo(pg); // Jaybit mirror fix (see Circle above)
+				this.mirrorTriggerActions(pg, h);
+				newParts.push(pg);
+				partMapping.push(pg);
 			} else if (sp instanceof Cannon) {
 				const ca = h
 					? new Cannon(centerX - (sp.x - centerX) - sp.w, sp.y, sp.w)

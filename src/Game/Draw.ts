@@ -19,6 +19,7 @@ import { FixedJoint } from "../Parts/FixedJoint"
 import { JointPart } from "../Parts/JointPart"
 import { Part } from "../Parts/Part"
 import { PrismaticJoint } from "../Parts/PrismaticJoint"
+import { Polygon } from "../Parts/Polygon"
 import { Rectangle } from "../Parts/Rectangle"
 import { RevoluteJoint } from "../Parts/RevoluteJoint"
 import { ShapePart } from "../Parts/ShapePart"
@@ -238,6 +239,10 @@ export class Draw extends b2DebugDraw {
                 var tri: Triangle = allParts[i] as Triangle;
                 this.m_fillAlpha = tri.opacity / 255.0;
                 this.DrawSolidPolygon(tri.GetVerticesForOutline(thickness), 3, myColor, false, false);
+              } else if (allParts[i] instanceof Polygon) {
+                var poly: Polygon = allParts[i] as Polygon;
+                this.m_fillAlpha = poly.opacity / 255.0;
+                this.DrawSolidPolygon(poly.GetVerticesForOutline(thickness), poly.numVertices(), myColor, false, false);
               } else if (allParts[i] instanceof Cannon) {
                 var ca: Cannon = allParts[i] as Cannon;
                 this.m_fillAlpha = ca.opacity / 255.0;
@@ -320,6 +325,16 @@ export class Draw extends b2DebugDraw {
                 myColor,
                 isHighlighted,
                 tri.outline && (!tri.terrain || !this.drawColours) && showOutlines
+              );
+            } else if (allParts[i] instanceof Polygon) {
+              poly = allParts[i] as Polygon;
+              if (this.drawColours) { this.m_fillAlpha = poly.opacity / 255.0; this.ApplyJointVizNudge(jvHighlight); }
+              this.DrawSolidPolygon(
+                poly.GetVertices(),
+                poly.numVertices(),
+                myColor,
+                isHighlighted,
+                poly.outline && (!poly.terrain || !this.drawColours) && showOutlines
               );
             } else if (allParts[i] instanceof Cannon) {
               ca = allParts[i] as Cannon;

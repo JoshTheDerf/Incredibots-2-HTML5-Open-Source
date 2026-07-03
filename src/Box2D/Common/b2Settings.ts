@@ -34,7 +34,13 @@ export class b2Settings{
 
 	// Collision
 	public static b2_maxManifoldPoints:number = 2;
-	public static b2_maxPolygonVertices:number = 4;
+	// Upstream Box2DFlash 2.0.2 default is 8; IB2 shipped 4 (only Triangle=3 /
+	// Rectangle=4 / Cannon=4 existed). Raised back to 8 so the convex Polygon part
+	// (IB3 PolygonPart import, up to 8 verts) fits. Every consumer sizes its fixed
+	// arrays by this constant and iterates by the shape's live vertexCount, so
+	// existing <=4-vert shapes are byte-for-byte unaffected (arrays merely allocate
+	// more slots) — determinism/replays preserved.
+	public static b2_maxPolygonVertices:number = 8;
 	// Jaybit raised this 1024 -> 4096 (b2Settings.as:16) to fit the 750-shape
 	// limit + piston segments + cannonballs in the broad-phase (b2_maxPairs
 	// below is derived, so it scales 8192 -> 32768 automatically).
