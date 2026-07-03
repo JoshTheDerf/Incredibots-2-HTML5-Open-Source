@@ -9,3 +9,4 @@ export type {
 	WorldDef,
 } from "./PhysicsBackend";
 export { Box2D20Backend, box2d20Backend } from "./Box2D20Backend";
+export { Box2D21Backend, box2d21Backend } from "./Box2D21Backend";
