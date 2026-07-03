@@ -19,10 +19,11 @@ export type ToolMode =
 	| "newText"
 	| "newThrusters"
 	| "newCannon"
+	| "newBomb"
 	| "rotate"
 	| "resize";
 
-export type ShapeKind = "circle" | "rect" | "triangle" | "cannon";
+export type ShapeKind = "circle" | "rect" | "triangle" | "cannon" | "bomb";
 
 /**
  * Discriminated union of everything the UI can ask the core to do.
@@ -196,6 +197,25 @@ export type Command =
 	// Cannon
 	| { type: "setCannonStrength"; partIds: number[]; value: number }
 	| { type: "setCannonFireKey"; partIds: number[]; key: number }
+	// Bomb (IB3 port). One command with optional fields, mirroring setShapeTrigger's
+	// omitted-means-unchanged convention. Ranges from IB3 Util.as BO_* consts:
+	// blastRadius 0..50 (world units), strength 0..40, delay ms >= 0,
+	// repeat >= 0 (0 == unlimited when repeatable), sensitivity 0..100.
+	| {
+			type: "setBombProps";
+			partIds: number[];
+			blastRadius?: number;
+			strength?: number;
+			delay?: number;
+			delayAfterTrigger?: boolean;
+			explodeOnImpact?: boolean;
+			delayAfterImpact?: boolean;
+			repeatable?: boolean;
+			repeat?: number;
+			sensitive?: boolean;
+			sensitivity?: number;
+			deflect?: boolean;
+	  }
 	// Text
 	| { type: "setTextContent"; partIds: number[]; text: string }
 	| { type: "setTextSize"; partIds: number[]; value: number }

@@ -12,6 +12,7 @@ import { ControllerGameGlobals } from "./Globals/ControllerGameGlobals"
 import { b2DebugDraw } from "./Graphics/b2DebugDraw"
 import { Util } from "../General/Util"
 import { Main } from "../Main"
+import { Bomb } from "../Parts/Bomb"
 import { Cannon } from "../Parts/Cannon"
 import { Circle } from "../Parts/Circle"
 import { FixedJoint } from "../Parts/FixedJoint"
@@ -283,6 +284,14 @@ export class Draw extends b2DebugDraw {
                 isHighlighted,
                 circ.outline && (!circ.terrain || !this.drawColours) && showOutlines
               );
+              // Bomb (extends Circle): inner emblem marking + a blast-radius
+              // preview ring while selected in edit mode (IB3 bomb look).
+              if (circ instanceof Bomb) {
+                this.DrawBombEmblem(new b2Vec2(circ.centerX, circ.centerY), circ.radius, myColor);
+                if (Util.ObjectInArray(allParts[i], selectedParts)) {
+                  this.DrawCircle(new b2Vec2(circ.centerX, circ.centerY), (circ as Bomb).blastRadius, myColor);
+                }
+              }
             } else if (allParts[i] instanceof Rectangle) {
               rect = allParts[i] as Rectangle;
               if (this.drawColours) { this.m_fillAlpha = rect.opacity / 255.0; this.ApplyJointVizNudge(jvHighlight); }
@@ -531,7 +540,9 @@ export class Draw extends b2DebugDraw {
       }
       for (i = 0; i < allParts.length; i++) {
         if (!allParts[i].isStatic || allParts[i].isEditable || drawStatic || allParts[i].drawAnyway) {
-          if (allParts[i] instanceof ShapePart) {
+          // An exploded Bomb has no shape/body left (Bomb.Explode destroys
+          // them mid-sim) — skip the shape pass; its flash is drawn below.
+          if (allParts[i] instanceof ShapePart && (allParts[i] as ShapePart).GetShape() != null) {
             xf = this.RenderXForm(allParts[i].GetBody());
             if (this.drawColours) {
               if (allParts[i] instanceof Cannon)
@@ -632,6 +643,14 @@ export class Draw extends b2DebugDraw {
               );
             }
           }
+        }
+
+        // Bomb runtime overlays (sim only): the emblem on a live bomb and the
+        // explosion flash after it goes off (IB3 renders the blast ray fan for
+        // GetExplosionDelay() frames; we render an expanding fading disc over
+        // the same lifetime).
+        if (allParts[i] instanceof Bomb) {
+          this.DrawBombRuntime(allParts[i] as Bomb);
         }
       }
     }
@@ -839,6 +858,52 @@ export class Draw extends b2DebugDraw {
       false,
       poly.GetUserData().outline && (!this.drawColours || !poly.GetUserData().terrain) && showOutlines
     );
+  }
+
+  /**
+   * Bomb inner marking: a darker solid disc at 45% of the bomb radius so a
+   * Bomb reads differently from a plain Circle (IB3 bombs carry a distinct
+   * emblem; a simple inner disc per the P2 plan).
+   */
+  public DrawBombEmblem(center: b2Vec2, radius: number, baseColor: b2Color): void {
+    var prevAlpha: number = this.m_fillAlpha;
+    this.m_fillAlpha = 0.85;
+    this.DrawSolidCircle(
+      center,
+      radius * 0.45,
+      new b2Vec2(1, 0),
+      Draw.DarkenColour(Draw.DarkenColour(baseColor)),
+      false,
+      false
+    );
+    this.m_fillAlpha = prevAlpha;
+  }
+
+  /**
+   * Sim-time bomb visuals: the emblem tracking the live body pose, and the
+   * explosion flash — an expanding disc that fades over the bomb's explosion
+   * lifetime (Bomb.GetExplosionCounter()/GetExplosionDelay(), the counter IB3
+   * uses to age its blast-ray rendering).
+   */
+  public DrawBombRuntime(bomb: Bomb): void {
+    var shape = bomb.GetShape();
+    var body = bomb.GetBody();
+    if (shape != null && body != null) {
+      var xf = this.RenderXForm(body);
+      var center = b2Math.b2MulX(xf, (shape as any).GetLocalPosition());
+      this.DrawBombEmblem(center, bomb.radius, new b2Color(bomb.red / 255.0, bomb.green / 255.0, bomb.blue / 255.0));
+    }
+    var lastPos = bomb.GetLastPos();
+    if (bomb.IsExploding() && lastPos != null) {
+      var delay: number = bomb.GetExplosionDelay();
+      var progress: number = delay > 0 ? bomb.GetExplosionCounter() / delay : 1;
+      var prevAlpha: number = this.m_fillAlpha;
+      this.m_fillAlpha = 0.5 * (1 - progress);
+      // Grow to the full blast radius over the first third, then just fade.
+      var flashRadius: number = Math.max(bomb.radius, bomb.GetInitBlastRadius() * Math.min(1, progress * 3));
+      this.DrawSolidCircle(lastPos, flashRadius, new b2Vec2(1, 0), new b2Color(1.0, 0.6, 0.1), false, false);
+      this.m_fillAlpha = prevAlpha;
+    }
   }
 
   public DrawShapeForOutline(shape, xf, color, alpha: number): void {

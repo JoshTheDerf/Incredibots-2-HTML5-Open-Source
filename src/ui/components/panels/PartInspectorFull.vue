@@ -19,6 +19,7 @@ import JointProps from "./JointProps.vue";
 import FixedJointProps from "./FixedJointProps.vue";
 import ThrusterProps from "./ThrusterProps.vue";
 import CannonProps from "./CannonProps.vue";
+import BombProps from "./BombProps.vue";
 import TextProps from "./TextProps.vue";
 import MultiEditPanel from "./MultiEditPanel.vue";
 import AdvancedWindow from "./AdvancedWindow.vue";
@@ -39,7 +40,7 @@ const selectionCount = computed(() => game.edit.selection.length);
 // Pick the sub-panel from the selected part's kind, mirroring PartEditWindow.ts
 // ShowObjectPanel / ShowJointPanel / ShowThrustersPanel / ShowCannonPanel /
 // ShowTextPanel. `kind` is the live Part's `type` string.
-type PanelKind = "shape" | "joint" | "fixedJoint" | "thruster" | "cannon" | "text" | null;
+type PanelKind = "shape" | "joint" | "fixedJoint" | "thruster" | "cannon" | "bomb" | "text" | null;
 const panelKind = computed<PanelKind>(() => {
 	const k = game.edit.selectedPart?.kind;
 	switch (k) {
@@ -49,6 +50,8 @@ const panelKind = computed<PanelKind>(() => {
 			return "shape";
 		case "Cannon":
 			return "cannon";
+		case "Bomb":
+			return "bomb";
 		case "RevoluteJoint":
 		case "PrismaticJoint":
 			return "joint";
@@ -82,6 +85,8 @@ const headerTitle = computed(() => {
 			return "Triangle";
 		case "Cannon":
 			return "Cannon";
+		case "Bomb":
+			return "Bomb";
 		case "RevoluteJoint":
 			return "Rotating Joint";
 		case "PrismaticJoint":
@@ -177,6 +182,7 @@ const advancedOpen = ref(false);
 					<FixedJointProps v-else-if="panelKind === 'fixedJoint'" />
 					<ThrusterProps v-else-if="panelKind === 'thruster'" />
 					<CannonProps v-else-if="panelKind === 'cannon'" />
+					<BombProps v-else-if="panelKind === 'bomb'" />
 					<TextProps v-else-if="panelKind === 'text'" />
 
 					<!-- Advanced pop-up trigger (all single-part panels; the
@@ -356,6 +362,7 @@ const advancedOpen = ref(false);
 .inspector.is-mobile :deep(.joint-props),
 .inspector.is-mobile :deep(.thruster-props),
 .inspector.is-mobile :deep(.cannon-props),
+.inspector.is-mobile :deep(.bomb-props),
 .inspector.is-mobile :deep(.text-props) {
 	gap: 6px;
 	padding: 2px 6px 6px;

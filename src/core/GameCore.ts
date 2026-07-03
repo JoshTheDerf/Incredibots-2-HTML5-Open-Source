@@ -14,6 +14,7 @@ import type { b2Joint } from "../Box2D";
 import { ContactFilter } from "../Game/ContactFilter";
 import { setCannonballs } from "../Parts/partGlobals";
 import { Util } from "../General/Util";
+import { Bomb, markBombImpact } from "../Parts/Bomb";
 import { Cannon } from "../Parts/Cannon";
 import { Circle } from "../Parts/Circle";
 import { FixedJoint } from "../Parts/FixedJoint";
@@ -1696,6 +1697,22 @@ export class GameCore {
 				// Cannon is also a trigger TARGET (fires on a named trigger).
 				snap.triggerList = part.triggerList;
 			}
+			if (part instanceof Bomb) {
+				// Bomb fields (IB3 Bomb.as:32-54); radius came from the Circle branch.
+				snap.strength = part.strength;
+				snap.blastRadius = part.blastRadius;
+				snap.bombDelay = part.delay;
+				snap.delayAfterTrigger = part.delayAfterTrigger;
+				snap.explodeOnImpact = part.explodeOnImpact;
+				snap.delayAfterImpact = part.delayAfterImpact;
+				snap.repeatable = part.repeatable;
+				snap.repeat = part.repeat;
+				snap.sensitive = part.sensitive;
+				snap.sensitivity = part.sensitivity;
+				snap.deflect = part.deflect;
+				// Bomb is also a trigger TARGET (detonates on a named trigger).
+				snap.triggerList = part.triggerList;
+			}
 			return snap;
 		}
 
@@ -2125,7 +2142,17 @@ export class GameCore {
 
 		// --- Pass 1: shapes + text ---
 		for (const sp of selectedParts) {
-			if (sp instanceof Circle) {
+			if (sp instanceof Bomb) {
+				// Bomb BEFORE the Circle branch (Bomb extends Circle) — the clone must
+				// stay a Bomb. MakeCopy carries every bomb + Jaybit field; only the
+				// mirrored position/angle differ (same maths as the Circle branch).
+				const b = sp.MakeCopy() as Bomb;
+				b.Move(h ? centerX - (sp.centerX - centerX) : sp.centerX, h ? sp.centerY : centerY - (sp.centerY - centerY));
+				b.angle = h ? Math.PI - sp.angle : 2 * Math.PI - sp.angle;
+				this.mirrorTriggerActions(b, h);
+				newParts.push(b);
+				partMapping.push(b);
+			} else if (sp instanceof Circle) {
 				const c = h
 					? new Circle(centerX - (sp.centerX - centerX), sp.centerY, sp.radius)
 					: new Circle(sp.centerX, centerY - (sp.centerY - centerY), sp.radius);
@@ -2603,6 +2630,7 @@ export class GameCore {
 				return true;
 			}
 			if (p instanceof Cannon && p.triggerList !== "") return true;
+			if (p instanceof Bomb && p.triggerList !== "") return true;
 			return false;
 		}
 		if (p instanceof JointPart) return p.triggerList !== "";
@@ -2779,6 +2807,15 @@ export class GameCore {
 				}
 				return null;
 			}
+			case "bomb": {
+				// IB3 GameControl.CreateBomb (:5546-5558): press sets the CENTRE, drag
+				// sets the radius (like a circle), and the default blast radius derives
+				// from the drawn radius — round(radius * 10, 2dp). The Bomb ctor clamps
+				// radius (Circle range) and blastRadius (0..50).
+				const radius = Util.GetDist(x1, y1, x2, y2);
+				if (radius <= 0) return null;
+				return new Bomb(x1, y1, radius, Math.round(radius * 10 * 100) / 100);
+			}
 			case "cannon":
 				// Cannon is created via the createCannon command, not createShape.
 				throw new Error(`GameCore: createShape "cannon" not supported — use createCannon`);
@@ -2833,6 +2870,10 @@ export class GameCore {
 			// Trigger dispatch (jaybit ControllerGame.ContactAdded :2462 ->
 			// ProcessTriggers(ud1, ud2, true)).
 			const cp = point as ContactPoint;
+			// Bomb impact marking (IB3 TriggerSystem.Process :37-50): record the
+			// live contact on any bomb shape's userData so
+			// Bomb.CheckImpactDetonation can arm on NEW impacts next Update.
+			markBombImpact(cp.shape1.GetUserData(), cp.shape2.GetUserData(), true);
 			processTriggers(
 				this.state.parts,
 				world,
@@ -2845,6 +2886,8 @@ export class GameCore {
 		listener.Remove = (point: unknown): void => {
 			// jaybit ControllerGame.ContactRemoved :1257 -> ProcessTriggers(..., false).
 			const cp = point as ContactPoint;
+			// Bomb impact unmarking (IB3 TriggerSystem.Process, contact-end path).
+			markBombImpact(cp.shape1.GetUserData(), cp.shape2.GetUserData(), false);
 			processTriggers(
 				this.state.parts,
 				world,
@@ -4153,6 +4196,7 @@ export class GameCore {
 			case "setThrusterAutoOn":
 			case "setCannonStrength":
 			case "setCannonFireKey":
+			case "setBombProps":
 			case "setTextContent":
 			case "setTextSize":
 			case "setTextDisplayKey":
@@ -4256,6 +4300,7 @@ export class GameCore {
 				case "setThrusterAutoOn":
 				case "setCannonStrength":
 				case "setCannonFireKey":
+				case "setBombProps":
 				case "setTextContent":
 				case "setTextSize":
 				case "setTextDisplayKey":
@@ -4351,6 +4396,10 @@ export class GameCore {
 					rect: "rect",
 					triangle: "triangle",
 					cannon: "cannon",
+					// Legacy challenges predate bombs (no bombsAllowed restriction
+					// exists); gate them with the circle restriction, the family the
+					// Bomb part extends.
+					bomb: "circle",
 				};
 				if (this.challenge && !partTypeAllowed(this.challenge, kindMap[command.kind])) return;
 				const part = this.buildDraggedShape(
@@ -4630,6 +4679,7 @@ export class GameCore {
 				const value = this.sanitizeTriggerText(command.value);
 				this.editParts(command.partIds, (p) => {
 					if (p instanceof Cannon) p.triggerList = value;
+					else if (p instanceof Bomb) p.triggerList = value;
 					else if (p instanceof JointPart) p.triggerList = value;
 					else if (p instanceof Thrusters) p.triggerList = value;
 					else if (p instanceof TextPart) p.triggerList = value;
@@ -4875,6 +4925,28 @@ export class GameCore {
 			case "setCannonFireKey":
 				this.editParts(command.partIds, (p) => {
 					if (p instanceof Cannon) p.fireKey = command.key;
+				});
+				return;
+
+			// --- Bomb (IB3 port; ranges from Util.as BO_* consts) ---
+			case "setBombProps":
+				this.editParts(command.partIds, (p) => {
+					if (!(p instanceof Bomb)) return;
+					if (command.blastRadius !== undefined) p.blastRadius = Bomb.ClampBlastRadius(command.blastRadius);
+					if (command.strength !== undefined) {
+						p.strength = Math.max(Bomb.MIN_STRENGTH, Math.min(Bomb.MAX_STRENGTH, command.strength));
+					}
+					if (command.delay !== undefined) p.delay = Math.max(0, Math.trunc(command.delay));
+					if (command.delayAfterTrigger !== undefined) p.delayAfterTrigger = command.delayAfterTrigger;
+					if (command.explodeOnImpact !== undefined) p.explodeOnImpact = command.explodeOnImpact;
+					if (command.delayAfterImpact !== undefined) p.delayAfterImpact = command.delayAfterImpact;
+					if (command.repeatable !== undefined) p.repeatable = command.repeatable;
+					if (command.repeat !== undefined) p.repeat = Math.max(0, Math.trunc(command.repeat));
+					if (command.sensitive !== undefined) p.sensitive = command.sensitive;
+					if (command.sensitivity !== undefined) {
+						p.sensitivity = Math.max(Bomb.MIN_SENSITIVITY, Math.min(Bomb.MAX_SENSITIVITY, command.sensitivity));
+					}
+					if (command.deflect !== undefined) p.deflect = command.deflect;
 				});
 				return;
 
