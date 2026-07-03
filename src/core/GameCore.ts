@@ -11,7 +11,8 @@
 
 import { b2AABB, b2MouseJointDef, b2Vec2, b2World } from "../Box2D";
 import type { b2Joint } from "../Box2D";
-import { getPhysicsBackend, setCannonballs } from "../Parts/partGlobals";
+import { getPhysicsBackend, setCannonballs, setPhysicsBackend } from "../Parts/partGlobals";
+import { box2d20Backend, box2d21Backend } from "./physics";
 import { Util } from "../General/Util";
 import { Bomb, markBombImpact } from "../Parts/Bomb";
 import { Cannon } from "../Parts/Cannon";
@@ -661,6 +662,13 @@ export class GameCore {
 			this.state = {
 				...this.state,
 				parts: [...terrain, ...decoded.parts],
+				// An IB3 import carries its own physics engine (1 = 2.1a) so the bot
+				// runs on the engine it was tuned for (P1.5b-2b). Only IB3 codes retune
+				// the sandbox engine; native/CE/Jaybit loads keep the user's current
+				// engine (a robot load otherwise leaves the sandbox config untouched).
+				sandbox: decoded.ib3
+					? { ...this.state.sandbox, physicsEngine: decoded.settings.physicsEngine }
+					: this.state.sandbox,
 				edit: {
 					...this.state.edit,
 					selection: [],
@@ -732,6 +740,10 @@ export class GameCore {
 			// IB3 water settings ride on the SandboxSettings (optional-guarded on
 			// decode); project them into the sandbox slice (waterSystem.ts).
 			water: waterStateFromSettings(s),
+			// Physics-engine selection rides on the SandboxSettings (optional-guarded
+			// on decode; 0 for IB2/CE/Jaybit codes, 1 for IB3 imports). GameCore reads
+			// this at play time to pick the backend (P1.5b-2b).
+			physicsEngine: s.physicsEngine,
 		};
 
 		this.notifyDepth++;
@@ -827,6 +839,10 @@ export class GameCore {
 			// IB3 water settings ride on the SandboxSettings (optional-guarded on
 			// decode); project them into the sandbox slice (waterSystem.ts).
 			water: waterStateFromSettings(s),
+			// Physics-engine selection rides on the SandboxSettings (optional-guarded
+			// on decode; 0 for IB2/CE/Jaybit codes, 1 for IB3 imports). GameCore reads
+			// this at play time to pick the backend (P1.5b-2b).
+			physicsEngine: s.physicsEngine,
 		};
 
 		this.notifyDepth++;
@@ -888,7 +904,7 @@ export class GameCore {
 		// challenges already carry their own settings, so this only fires for authored ones.
 		if (!this.challenge.challenge.settings) {
 			const sb = this.state.sandbox;
-			this.challenge.challenge.settings = applyWaterState(
+			const settings = applyWaterState(
 				new SandboxSettings(
 					sb.gravity,
 					sb.size,
@@ -901,6 +917,8 @@ export class GameCore {
 				),
 				sb.water,
 			);
+			settings.physicsEngine = sb.physicsEngine;
+			this.challenge.challenge.settings = settings;
 		}
 		return this.challenge.challenge;
 	}
@@ -1029,6 +1047,7 @@ export class GameCore {
 			),
 			s.water,
 		);
+		settings.physicsEngine = s.physicsEngine;
 		return { data, robot: { parts: robotParts, settings } };
 	}
 
@@ -1081,6 +1100,10 @@ export class GameCore {
 			// IB3 water settings ride on the SandboxSettings (optional-guarded on
 			// decode); project them into the sandbox slice (waterSystem.ts).
 			water: waterStateFromSettings(s),
+			// Physics-engine selection rides on the SandboxSettings (optional-guarded
+			// on decode; 0 for IB2/CE/Jaybit codes, 1 for IB3 imports). GameCore reads
+			// this at play time to pick the backend (P1.5b-2b).
+			physicsEngine: s.physicsEngine,
 		};
 		const terrain = buildTerrainParts(sandbox);
 		for (const p of terrain) p.id = ++this.nextId;
@@ -2939,6 +2962,55 @@ export class GameCore {
 	 * ControllerChallenge.ContactAdded which evaluates conditions then calls
 	 * super.ContactAdded -> ProcessTriggers (jaybit ControllerChallenge.as:305-319).
 	 */
+	/**
+	 * Select the physics backend for the run about to start, BEFORE the world is
+	 * built and any Part is Init'd (P1.5b-2b). The engine int comes from the
+	 * replay being played back (a replay pins the engine it recorded — legacy
+	 * CE/Jaybit replays lack the field and default to 0) or, for a normal sim,
+	 * from the design's sandbox.physicsEngine.
+	 *
+	 *   0 = IB2 (Box2DFlash 2.0.2, src/Box2D)   — the classic engine + module default
+	 *   1 = IB3 (Box2DFlash 2.1a, src/Box2D21)
+	 *   2 = Box2D 3.x (box2d3-wasm)             — RESERVED, not implemented yet:
+	 *       falls back to engine 1 (the nearest real engine) with a surfaced notice.
+	 *
+	 * Engine 0 is the module default that every teardown (reset / stopReplay /
+	 * resetSessionForLoad / view-again) restores via resetPhysicsBackend(), so it
+	 * needs no explicit set here — leaving the active backend untouched for engine
+	 * 0 also lets tests inject a custom backend (a spy) for engine-0 runs. Engines
+	 * 1/2 are set explicitly and undone on the next teardown, so nothing leaks
+	 * between sessions.
+	 */
+	private applyPlayBackend(): void {
+		const engine = this.replaySession
+			? this.replaySession.data.physicsEngine ?? 0
+			: this.state.sandbox.physicsEngine;
+		// Box2D21Backend implements PhysicsBackend over 2.1a's b2Fixture shape handle,
+		// structurally distinct from engine-0's b2Shape; handles are opaque by
+		// contract (PhysicsBackend design), so present it under the active-backend
+		// setter's type. box2d20Backend already matches, so needs no cast.
+		const engine1 = box2d21Backend as unknown as Parameters<typeof setPhysicsBackend>[0];
+		if (engine === 1) {
+			setPhysicsBackend(engine1);
+		} else if (engine === 2) {
+			// Box2D 3.x is reserved but not yet implemented — run on the nearest real
+			// engine (IB3 2.1a) and tell the user (ENGINE-BOX2D3-PLAN.md).
+			setPhysicsBackend(engine1);
+			this.emitMessage("Box2D 3 (beta) is not available yet — running on the IB3 (2.1a) engine.");
+		}
+		// engine 0 (or any unknown value): leave the active backend as-is (the
+		// teardown-restored default, box2d20Backend).
+	}
+
+	/**
+	 * Restore the module-default engine-0 backend (Box2DFlash 2.0.2) on every
+	 * world teardown so a design's engine-1/2 selection never leaks into the next
+	 * play, session, or test (P1.5b-2b).
+	 */
+	private resetPhysicsBackend(): void {
+		setPhysicsBackend(box2d20Backend);
+	}
+
 	private createWorld(): b2World {
 		// Gravity is read from the sandbox settings at world-creation time — the
 		// downward vector b2Vec2(0, sandbox.gravity), matching
@@ -3075,6 +3147,10 @@ export class GameCore {
 			this.challenge.score = null;
 		}
 
+		// Choose the physics backend for this run BEFORE createWorld (which builds the
+		// world through the active backend) and BEFORE any Part.Init below.
+		this.applyPlayBackend();
+
 		const world = this.createWorld();
 
 		// Snapshot the pre-play camera so reset can restore the view after a run that
@@ -3157,7 +3233,12 @@ export class GameCore {
 			this.replaySession.keyPressIndex = 0;
 			this.recording = null;
 		} else {
-			this.recording = createRecording(this.state.camera.scale);
+			// Record which engine this run used so playback reproduces it on the SAME
+			// backend (P1.5b-2b). Engine 2 fell back to 1 in applyPlayBackend, so the
+			// recording pins the effective engine (2 -> 1), never the unimplemented 2.
+			const requested = this.state.sandbox.physicsEngine;
+			const engine = requested === 1 || requested === 2 ? 1 : 0;
+			this.recording = createRecording(this.state.camera.scale, engine);
 		}
 		this.tutorialWonFired = false;
 
@@ -3199,6 +3280,9 @@ export class GameCore {
 		}
 		// Water system dies with the world (WaterControl.UnInit).
 		this.waterSystem = null;
+		// Restore the engine-0 backend so this run's engine selection can't leak
+		// into the next play/session/test (P1.5b-2b).
+		this.resetPhysicsBackend();
 
 		// Restore the exact edit-space transform captured at play time.
 		for (const snap of this.editSnapshots) {
@@ -3622,6 +3706,8 @@ export class GameCore {
 		if (this.state.world) {
 			for (const p of this.state.parts) p.UnInit(this.state.world);
 		}
+		// Restore engine-0; handlePlay below re-selects from the replay's engine.
+		this.resetPhysicsBackend();
 		for (const snap of this.editSnapshots) {
 			snap.part.Move(snap.x, snap.y);
 			if (snap.part instanceof ShapePart) snap.part.angle = snap.angle;
@@ -3649,6 +3735,8 @@ export class GameCore {
 			for (const p of this.state.parts) p.UnInit(world);
 		}
 		this.waterSystem = null;
+		// Restore the engine-0 backend on teardown (P1.5b-2b).
+		this.resetPhysicsBackend();
 		for (const snap of this.editSnapshots) {
 			snap.part.Move(snap.x, snap.y);
 			if (snap.part instanceof ShapePart) snap.part.angle = snap.angle;
@@ -3830,6 +3918,10 @@ export class GameCore {
 			// Water settings: replaced when the command carries them (P6 water
 			// panel), preserved otherwise so pre-water callers are unaffected.
 			water: command.water ?? this.state.sandbox.water,
+			// Physics engine: replaced when the command carries it (engine selector),
+			// preserved otherwise. Like gravity, it takes effect at the NEXT play
+			// (the backend is chosen at world creation — see applyPlayBackend).
+			physicsEngine: command.physicsEngine ?? this.state.sandbox.physicsEngine,
 		};
 
 		// Drop the current terrain bodies (isSandbox) and rebuild from the new
@@ -3912,6 +4004,9 @@ export class GameCore {
 		}
 		this.mouseJoint = null;
 		this.waterSystem = null;
+		// Restore the engine-0 backend so a prior run's engine selection can't leak
+		// across a session switch / import (P1.5b-2b).
+		this.resetPhysicsBackend();
 		this.editSnapshots = [];
 		this.cameraSnapshot = null;
 		this.recording = null;

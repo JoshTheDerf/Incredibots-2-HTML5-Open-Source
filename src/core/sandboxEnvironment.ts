@@ -185,5 +185,6 @@ export function computeBounds(
 /** A fresh default SandboxState (SMALL/LAND/GRASS/SKY, gravity 15) with bounds. */
 export function createDefaultSandboxState(): SandboxState {
 	const base = { ...DEFAULT_SANDBOX_SETTINGS };
-	return { ...base, bounds: computeBounds(base), water: defaultWaterState() };
+	// physicsEngine defaults to 0 (IB2 / Box2DFlash 2.0.2) — the classic engine.
+	return { ...base, bounds: computeBounds(base), water: defaultWaterState(), physicsEngine: 0 };
 }

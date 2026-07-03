@@ -890,5 +890,10 @@ function mapSettings(s: Record<string, unknown>, version: string, warnings: Set<
 	if (has(s, "waterTiltOsc")) settings.waterTiltOsc = num(s.waterTiltOsc);
 	if (has(s, "waterTiltOscSpeed")) settings.waterTiltOscSpeed = num(s.waterTiltOscSpeed);
 
+	// IB3 bots were tuned on Box2DFlash 2.1a, so an imported IB3 design defaults to
+	// the IB3 physics engine (1) — GameCore runs it on src/Box2D21 at play time
+	// (P1.5b-2b). Native/CE/Jaybit codes never reach here and keep engine 0.
+	settings.physicsEngine = SandboxSettings.ENGINE_IB3;
+
 	return settings;
 }

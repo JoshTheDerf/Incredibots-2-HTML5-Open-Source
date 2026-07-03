@@ -276,6 +276,14 @@ export type Command =
 			 * effect at the NEXT play (WaterSystem is built at world creation).
 			 */
 			water?: WaterState;
+			/**
+			 * Physics-engine selection (P1.5b-2b, SandboxSettingsPanel engine
+			 * selector): 0 = IB2 (2.0.2) | 1 = IB3 (2.1a) | 2 = Box2D 3.x (reserved,
+			 * falls back to 1). Optional so pre-engine callers keep working; when
+			 * absent the current sandbox engine is preserved. Like gravity/water it
+			 * takes effect at the NEXT play (the backend is chosen at world creation).
+			 */
+			physicsEngine?: number;
 	  }
 	// --- view menu (ControllerGame BuildViewMenu) ---
 	// Display toggles + zoom, ported faithfully. The toggles flip the edit-view

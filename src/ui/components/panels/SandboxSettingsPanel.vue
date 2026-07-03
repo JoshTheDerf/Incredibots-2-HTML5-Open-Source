@@ -38,6 +38,20 @@ const blueValue = ref(sb.backgroundB || 255);
 
 const gravity = ref(sb.gravity);
 
+// Physics-engine selector (P1.5b-2b). 0 = IB2 (classic Box2DFlash 2.0.2, the
+// default) | 1 = IB3 (2.1a). Box2D 3.x (engine 2) is RESERVED but not yet
+// implemented, so it is OMITTED here (a disabled "coming soon" entry would need
+// object-item USelect; the two-string list keeps this panel's existing pattern).
+// Seeded from the current sandbox; applied on Okay, taking effect at the next
+// play (like gravity). An engine-2 design opened here reads back as IB3 (its
+// nearest real engine) so re-applying doesn't silently downgrade it to IB2.
+const engineLabels = ["IB2 (classic · 2.0)", "IB3 (2.1a)"];
+const engineIndex = ref(sb.physicsEngine >= 1 ? 1 : 0);
+const engineLabel = computed({
+	get: () => engineLabels[engineIndex.value] ?? engineLabels[0],
+	set: (v: string) => (engineIndex.value = Math.max(0, engineLabels.indexOf(v))),
+});
+
 // Plain label lists paired with index refs — mirrors the ShapeProps.vue
 // convention (USelect + separate index state) rather than object items,
 // since these are purely cosmetic placeholders until a real command exists.
@@ -91,6 +105,7 @@ function onOk(): void {
 		backgroundR: clampByte(Number(redValue.value)),
 		backgroundG: clampByte(Number(greenValue.value)),
 		backgroundB: clampByte(Number(blueValue.value)),
+		physicsEngine: engineIndex.value,
 	});
 	emit("ok");
 }
@@ -124,6 +139,12 @@ function onCancel(): void {
 				<label class="field-label" for="sandbox-bg">Background:</label>
 				<USelect id="sandbox-bg" v-model="bgLabel" :items="bgLabels" size="sm" />
 			</div>
+
+			<div class="field-row">
+				<label class="field-label" for="sandbox-engine">Physics:</label>
+				<USelect id="sandbox-engine" v-model="engineLabel" :items="engineLabels" size="sm" />
+			</div>
+			<p class="engine-hint">Takes effect on the next play.</p>
 
 			<div class="rgb-block">
 				<div class="rgb-row">
@@ -234,6 +255,15 @@ function onCancel(): void {
 .field-row > :global(.u-select),
 .field-row select {
 	flex: 1;
+}
+
+.engine-hint {
+	margin: -4px 0 0;
+	font-size: 10px;
+	font-style: italic;
+	color: var(--ib-dark);
+	opacity: 0.7;
+	text-align: right;
 }
 
 .rgb-block {

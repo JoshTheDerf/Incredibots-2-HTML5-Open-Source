@@ -584,6 +584,21 @@ describe("IB3 sandbox settings", () => {
 		expect(robot.settings.background).toBe(SandboxSettings.BACKGROUND_SOLID_COLOUR);
 		expect([robot.settings.backgroundR, robot.settings.backgroundG, robot.settings.backgroundB]).toEqual([0x11, 0x22, 0x33]);
 	});
+
+	// P1.5b-2b: IB3 bots were tuned on Box2DFlash 2.1a, so imports default to the
+	// IB3 engine (1); native/CE/Jaybit codes stay on the classic engine (0).
+	it("an imported IB3 design defaults to physics engine 1 (2.1a)", async () => {
+		const { robot } = decodeIB3FromByteArray(ib3Bytes({ settings: { gravityY: 16 }, parts: [circle()] }));
+		expect(robot.settings.physicsEngine).toBe(SandboxSettings.ENGINE_IB3);
+		// ...also via the base64-code path.
+		const { robot: r2 } = await decodeIB3(await ib3Code({ parts: [circle()] }));
+		expect(r2.settings.physicsEngine).toBe(1);
+	});
+
+	it("a native (non-IB3) code stays on engine 0", async () => {
+		const decoded = await decodeRobot(await encodeRobot([new Circle(0, 0, 1)], new SandboxSettings(15, 0, 0, 0, 0)));
+		expect(decoded.settings.physicsEngine).toBe(0);
+	});
 });
 
 // --- formerly-warned features now map DIRECTLY (warnings removed) ------------

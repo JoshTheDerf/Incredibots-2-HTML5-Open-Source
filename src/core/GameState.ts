@@ -231,6 +231,14 @@ export interface SandboxState {
 	 * play builds a WaterSystem (buoyancy + tide/wave controllers) from this.
 	 */
 	water: WaterState;
+	/**
+	 * Physics-engine selection (P1.5b-2b, SandboxSettings.physicsEngine):
+	 * 0 = IB2 (Box2DFlash 2.0.2, default) | 1 = IB3 (2.1a) | 2 = Box2D 3.x
+	 * (reserved, falls back to 1). GameCore picks the backend from this at
+	 * world-creation time (createWorld/handlePlay), like gravity it takes effect
+	 * on the NEXT play. Default 0.
+	 */
+	physicsEngine: number;
 }
 
 /**
