@@ -42,6 +42,7 @@ export type PanelKey =
 	| "exportReplay"
 	| "exportChallenge"
 	| "sandboxSettings"
+	| "waterSettings"
 	| "conditions"
 	| "restrictions"
 	| "colour";
@@ -91,6 +92,8 @@ const fileMenu = computed<DropdownMenuItem[][]>(() => [
 // Cut / Copy / Paste / Delete / Move to Front / Move to Back).
 const editMenu: DropdownMenuItem[][] = [
 	[{ label: "Change Settings...", icon: "i-lucide-sliders-horizontal", onSelect: () => open("sandboxSettings") }],
+	// IB3 water settings (Gui/WaterWindow.as) — sandbox water/buoyancy config.
+	[{ label: "Water...", icon: "i-lucide-waves", onSelect: () => open("waterSettings") }],
 	[{ label: "Clear All", icon: "i-lucide-eraser", onSelect: () => game.dispatch({ type: "clearAll" }) }],
 	[
 		{ label: "Undo", icon: "i-lucide-undo-2", onSelect: () => game.dispatch({ type: "undo" }) },
