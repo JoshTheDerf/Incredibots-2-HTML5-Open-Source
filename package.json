@@ -19,6 +19,7 @@
         "@nuxt/ui": "^4.9.0",
         "@pixi/sound": "^6.0.1",
         "@vitejs/plugin-vue": "^6.0.7",
+        "box2d3-wasm": "^5.2.0",
         "iconv-lite": "^0.6.2",
         "pinia": "^3.0.4",
         "pixi-viewport": "^6.0.3",
