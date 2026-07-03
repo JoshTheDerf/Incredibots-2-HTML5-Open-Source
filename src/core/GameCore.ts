@@ -1783,6 +1783,8 @@ export class GameCore {
 				keyCCW: part.motorCCWKey,
 				autoCW: part.autoCW,
 				autoCCW: part.autoCCW,
+				enableKeyCW: part.enableKeyCW,
+				enableKeyCCW: part.enableKeyCCW,
 				stiff: part.isStiff,
 				// Rotating joint is a trigger TARGET (a triggerList drives/destroys it).
 				triggerList: part.triggerList,
@@ -1826,6 +1828,11 @@ export class GameCore {
 				keyUp: part.pistonUpKey,
 				keyDown: part.pistonDownKey,
 				autoOscillate: part.autoOscillate,
+				autoExpand: part.autoExpand,
+				autoRetract: part.autoRetract,
+				beginExpanded: part.beginExpanded,
+				enableKeyExpand: part.enableKeyExpand,
+				enableKeyRetract: part.enableKeyRetract,
 				stiff: part.isStiff,
 				initialLength: part.initLength,
 				collide: part.collide,
@@ -4962,8 +4969,21 @@ export class GameCore {
 							p.autoCCW = command.value;
 							if (command.value) p.autoCW = false;
 						}
-					} else if (p instanceof PrismaticJoint && command.which === "oscillate") {
-						p.autoOscillate = command.value;
+					} else if (p instanceof PrismaticJoint) {
+						// oscillate == both directions; expand/retract are the IB3
+						// independent auto flags. Keep autoOscillate == (expand && retract)
+						// so the legacy flag stays coherent for readers/UI.
+						if (command.which === "oscillate") {
+							p.autoOscillate = command.value;
+							p.autoExpand = command.value;
+							p.autoRetract = command.value;
+						} else if (command.which === "expand") {
+							p.autoExpand = command.value;
+							p.autoOscillate = p.autoExpand && p.autoRetract;
+						} else if (command.which === "retract") {
+							p.autoRetract = command.value;
+							p.autoOscillate = p.autoExpand && p.autoRetract;
+						}
 					}
 				});
 				// RubeGoldberg milestone (ControllerRubeGoldberg.Update :709): the cart's
@@ -4971,6 +4991,25 @@ export class GameCore {
 				if (command.which === "ccw" && command.value && this.tutorialMachine) {
 					this.notifyTutorial({ type: "progress", key: "autoWheel" });
 				}
+				return;
+			// IB3 per-direction key enable (RotatingJoint enableKeyCW/CCW,
+			// SlidingJoint enableKeyExpand/Retract).
+			case "setJointEnableKey":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof RevoluteJoint) {
+						if (command.which === "cw") p.enableKeyCW = command.value;
+						else if (command.which === "ccw") p.enableKeyCCW = command.value;
+					} else if (p instanceof PrismaticJoint) {
+						if (command.which === "expand") p.enableKeyExpand = command.value;
+						else if (command.which === "retract") p.enableKeyRetract = command.value;
+					}
+				});
+				return;
+			// IB3 SlidingJoint.beginExpanded (piston starts fully expanded).
+			case "setJointBeginExpanded":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof PrismaticJoint) p.beginExpanded = command.value;
+				});
 				return;
 			// isStiff (JointCheckboxAction RIGID_TYPE) — the UI shows "Floppy Joint"
 			// (= !isStiff); the command already carries the resolved isStiff value.

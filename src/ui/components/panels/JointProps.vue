@@ -63,6 +63,15 @@ const autoOnCCW = computed({
 	get: () => sel.value?.autoCCW ?? false,
 	set: (v: boolean) => game.dispatch({ type: "setJointAutoOn", partIds: ids.value, which: "ccw", value: v }),
 });
+// IB3 per-direction key enable (RotatingJoint enableKeyCW/CCW).
+const enableKeyCW = computed({
+	get: () => sel.value?.enableKeyCW ?? true,
+	set: (v: boolean) => game.dispatch({ type: "setJointEnableKey", partIds: ids.value, which: "cw", value: v }),
+});
+const enableKeyCCW = computed({
+	get: () => sel.value?.enableKeyCCW ?? true,
+	set: (v: boolean) => game.dispatch({ type: "setJointEnableKey", partIds: ids.value, which: "ccw", value: v }),
+});
 
 // Limits are edited as text ("None" or a degree number), matching min/maxLimitText.
 const lowerLimit = ref("None");
@@ -100,6 +109,27 @@ const contractKey = computed({
 const autoOscillate = computed({
 	get: () => sel.value?.autoOscillate ?? false,
 	set: (v: boolean) => game.dispatch({ type: "setJointAutoOn", partIds: ids.value, which: "oscillate", value: v }),
+});
+// IB3 independent prismatic auto directions + begin-expanded + per-key enable.
+const autoExpand = computed({
+	get: () => sel.value?.autoExpand ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setJointAutoOn", partIds: ids.value, which: "expand", value: v }),
+});
+const autoRetract = computed({
+	get: () => sel.value?.autoRetract ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setJointAutoOn", partIds: ids.value, which: "retract", value: v }),
+});
+const beginExpanded = computed({
+	get: () => sel.value?.beginExpanded ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setJointBeginExpanded", partIds: ids.value, value: v }),
+});
+const enableKeyExpand = computed({
+	get: () => sel.value?.enableKeyExpand ?? true,
+	set: (v: boolean) => game.dispatch({ type: "setJointEnableKey", partIds: ids.value, which: "expand", value: v }),
+});
+const enableKeyRetract = computed({
+	get: () => sel.value?.enableKeyRetract ?? true,
+	set: (v: boolean) => game.dispatch({ type: "setJointEnableKey", partIds: ids.value, which: "retract", value: v }),
 });
 const outline = computed({
 	get: () => sel.value?.outline ?? true,
@@ -179,6 +209,12 @@ function applyColour(): void {
 			<div class="checkboxes">
 				<UCheckbox v-model="autoOnCCW" label="Auto-On CCW" :disabled="!motorEnabled" />
 			</div>
+			<div class="checkboxes">
+				<UCheckbox v-model="enableKeyCW" label="Enable CW Key" :disabled="!motorEnabled" />
+			</div>
+			<div class="checkboxes">
+				<UCheckbox v-model="enableKeyCCW" label="Enable CCW Key" :disabled="!motorEnabled" />
+			</div>
 			<UFormField label="Lower Limit (degrees)" class="field">
 				<UInput v-model="lowerLimit" size="xs" class="key-input" @blur="commitLimits" @keyup.enter="commitLimits" />
 			</UFormField>
@@ -196,6 +232,21 @@ function applyColour(): void {
 			</UFormField>
 			<div class="checkboxes">
 				<UCheckbox v-model="autoOscillate" label="Auto Oscillate" :disabled="!motorEnabled" />
+			</div>
+			<div class="checkboxes">
+				<UCheckbox v-model="autoExpand" label="Auto Expand" :disabled="!motorEnabled" />
+			</div>
+			<div class="checkboxes">
+				<UCheckbox v-model="autoRetract" label="Auto Retract" :disabled="!motorEnabled" />
+			</div>
+			<div class="checkboxes">
+				<UCheckbox v-model="enableKeyExpand" label="Enable Expand Key" :disabled="!motorEnabled" />
+			</div>
+			<div class="checkboxes">
+				<UCheckbox v-model="enableKeyRetract" label="Enable Retract Key" :disabled="!motorEnabled" />
+			</div>
+			<div class="checkboxes">
+				<UCheckbox v-model="beginExpanded" label="Begin Expanded" />
 			</div>
 			<div class="checkboxes">
 				<UCheckbox v-model="collides" label="Collides" />

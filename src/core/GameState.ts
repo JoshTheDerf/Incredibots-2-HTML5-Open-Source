@@ -109,6 +109,16 @@ export type PartSnapshot = {
 	autoCW?: boolean;
 	autoCCW?: boolean;
 	autoOscillate?: boolean;
+	/** IB3 independent prismatic auto directions (SlidingJoint.autoExpand/Retract). */
+	autoExpand?: boolean;
+	autoRetract?: boolean;
+	/** IB3 SlidingJoint.beginExpanded. */
+	beginExpanded?: boolean;
+	/** IB3 per-direction key enable: cw/ccw (revolute), expand/retract (prismatic). */
+	enableKeyCW?: boolean;
+	enableKeyCCW?: boolean;
+	enableKeyExpand?: boolean;
+	enableKeyRetract?: boolean;
 	/** isStiff — the UI shows the inverse ("Floppy Joint" = !isStiff). */
 	stiff?: boolean;
 	/** PrismaticJoint.initLength. */

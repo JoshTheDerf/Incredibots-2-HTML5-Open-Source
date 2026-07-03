@@ -569,9 +569,9 @@ function buildJoint(od: Record<string, unknown>, shapeByIndex: (ShapePart | null
 		const lower = has(od, "lowerLimit") ? num(od.lowerLimit, Number.MAX_VALUE) : Number.MAX_VALUE;
 		rj.motorUpperLimit = upper >= NO_LIMIT ? Number.MAX_VALUE : upper;
 		rj.motorLowerLimit = lower >= NO_LIMIT ? -Number.MAX_VALUE : -lower;
-		if ((has(od, "enableKeyCW") && !od.enableKeyCW) || (has(od, "enableKeyCCW") && !od.enableKeyCCW)) {
-			warnings.add("IB3 rotating-joint per-direction key enable has no IB2 equivalent (both keys active).");
-		}
+		// Per-direction key enable maps directly (IB3 RotatingJoint.as:37-39).
+		if (has(od, "enableKeyCW")) rj.enableKeyCW = Boolean(od.enableKeyCW);
+		if (has(od, "enableKeyCCW")) rj.enableKeyCCW = Boolean(od.enableKeyCCW);
 		return rj;
 	}
 	if (nm === "Sliding joint") {
@@ -587,10 +587,11 @@ function buildJoint(od: Record<string, unknown>, shapeByIndex: (ShapePart | null
 		if (has(od, "strength")) pj.pistonStrength = num(od.strength); // both maxMotorForce = s*30
 		if (has(od, "speed")) pj.pistonSpeed = num(od.speed) * 2.5; // IB2 drives speed*0.4
 		if (has(od, "floppy")) pj.isStiff = !Boolean(od.floppy);
-		const ae = has(od, "autoExpand") ? Boolean(od.autoExpand) : false;
-		const ar = has(od, "autoRetract") ? Boolean(od.autoRetract) : false;
-		pj.autoOscillate = ae || ar;
-		if (ae !== ar) warnings.add("IB3 one-directional auto piston approximated as oscillation.");
+		// Independent auto directions map directly (IB3 SlidingJoint.as:53-55).
+		if (has(od, "autoExpand")) pj.autoExpand = Boolean(od.autoExpand);
+		if (has(od, "autoRetract")) pj.autoRetract = Boolean(od.autoRetract);
+		// autoOscillate stays the both-directions shortcut for legacy readers/UI.
+		pj.autoOscillate = pj.autoExpand && pj.autoRetract;
 		if (has(od, "keyExpand")) pj.pistonUpKey = trunc(od.keyExpand, pj.pistonUpKey);
 		if (has(od, "keyRetract")) pj.pistonDownKey = trunc(od.keyRetract, pj.pistonDownKey);
 		if (has(od, "collA")) pj.collA = Boolean(od.collA);
@@ -599,12 +600,11 @@ function buildJoint(od: Record<string, unknown>, shapeByIndex: (ShapePart | null
 		if (has(od, "collD")) pj.collD = Boolean(od.collD);
 		if (has(od, "selfColl")) pj.subColl = Boolean(od.selfColl);
 		if (has(od, "buoyant")) pj.buoyant = Boolean(od.buoyant);
-		if (has(od, "beginExpanded") && od.beginExpanded) {
-			warnings.add("IB3 sliding-joint 'begin expanded' has no IB2 equivalent.");
-		}
-		if ((has(od, "enableKeyExpand") && !od.enableKeyExpand) || (has(od, "enableKeyRetract") && !od.enableKeyRetract)) {
-			warnings.add("IB3 sliding-joint per-direction key enable has no IB2 equivalent (both keys active).");
-		}
+		// Begin-expanded + per-direction key enable map directly (IB3
+		// SlidingJoint.as:57 / :89-91).
+		if (has(od, "beginExpanded")) pj.beginExpanded = Boolean(od.beginExpanded);
+		if (has(od, "enableKeyExpand")) pj.enableKeyExpand = Boolean(od.enableKeyExpand);
+		if (has(od, "enableKeyRetract")) pj.enableKeyRetract = Boolean(od.enableKeyRetract);
 		return pj;
 	}
 	return null;

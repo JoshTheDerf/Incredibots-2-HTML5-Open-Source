@@ -201,6 +201,9 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 					rj.isStiff = od.isStiff;
 					rj.autoCW = od.autoCW;
 					rj.autoCCW = od.autoCCW;
+					// IB3 per-direction key enable (RotatingJoint.as:37-39); absent -> true.
+					rj.enableKeyCW = has(od, "enableKeyCW") ? Boolean(od.enableKeyCW) : true;
+					rj.enableKeyCCW = has(od, "enableKeyCCW") ? Boolean(od.enableKeyCCW) : true;
 					joint = rj;
 				} else {
 					const pj = new PrismaticJoint(
@@ -221,6 +224,15 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 					pj.pistonSpeed = od.pistonSpeed;
 					pj.isStiff = od.isStiff;
 					pj.autoOscillate = od.autoOscillate;
+					// IB3 independent auto directions (SlidingJoint.as:53-55); absent ->
+					// derive from the legacy both-directions flag.
+					pj.autoExpand = has(od, "autoExpand") ? Boolean(od.autoExpand) : Boolean(od.autoOscillate);
+					pj.autoRetract = has(od, "autoRetract") ? Boolean(od.autoRetract) : Boolean(od.autoOscillate);
+					// IB3 begin-expanded (:57); absent -> false.
+					pj.beginExpanded = has(od, "beginExpanded") ? Boolean(od.beginExpanded) : false;
+					// IB3 per-direction key enable (:89-91); absent -> true.
+					pj.enableKeyExpand = has(od, "enableKeyExpand") ? Boolean(od.enableKeyExpand) : true;
+					pj.enableKeyRetract = has(od, "enableKeyRetract") ? Boolean(od.enableKeyRetract) : true;
 					pj.initLength = od.initLength;
 					pj.red = od.red;
 					pj.green = od.green;
