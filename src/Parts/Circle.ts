@@ -1,6 +1,6 @@
 import { b2Body, b2BodyDef, b2CircleDef, b2MassData, b2Vec2, b2World } from "../Box2D";
 import { Util } from "../General/Util"
-import { FixedJoint } from "./FixedJoint"
+import { COLLISION_GROUP_UNSET } from "./partDefaults"
 import { ShapePart } from "./ShapePart"
 
 export class Circle extends ShapePart {
@@ -44,6 +44,7 @@ export class Circle extends ShapePart {
     circ.outline = this.outline;
     circ.terrain = this.terrain;
     circ.undragable = this.undragable;
+    this.CopyJaybitFieldsTo(circ);
     return circ;
   }
 
@@ -53,8 +54,10 @@ export class Circle extends ShapePart {
 
     var circ = new b2CircleDef();
     circ.radius = this.radius;
-    circ.friction = 0.4;
-    circ.restitution = 0.3;
+    // Jaybit adjustable material (Circle.as:115-117): defaults 11/7 convert to
+    // CE's hardcoded 0.4/0.3 exactly.
+    circ.friction = Util.ConvertFrictionToBox2D(this.friction);
+    circ.restitution = Util.ConvertRestitutionToBox2D(this.restitution);
 
     //CE PROBLEM
     //circ.density = (Math.max(1, Math.min(30, density)) + 5.0) / 10.0;
@@ -62,7 +65,11 @@ export class Circle extends ShapePart {
     //CE FIX
     circ.density = (this.density + 5.0) / 10.0;
 
-    if (this.m_collisionGroup != Number.MIN_VALUE) circ.filter.groupIndex = this.m_collisionGroup;
+    // Collision layers A-D -> category == mask bits (Circle.as:96-118).
+    var bits: number = this.GetCollisionBits();
+    circ.filter.categoryBits = bits;
+    circ.filter.maskBits = 0xffff & bits;
+    if (this.m_collisionGroup != COLLISION_GROUP_UNSET) circ.filter.groupIndex = this.m_collisionGroup;
 
     var bodyStatic:boolean = false;
 
@@ -97,16 +104,29 @@ export class Circle extends ShapePart {
     circ.userData.undragable = this.undragable;
     circ.userData.isPiston = -1;
     circ.userData.isSandbox = this.isSandbox;
+    // Trigger snapshot (Jaybit Circle.as:168-182): the source shape's trigger
+    // config plus the parsed CSV token lists and the empty dispatch arrays the
+    // play-start wiring pass (wireTriggers) fills.
+    circ.userData.triggerName = this.triggerName;
+    circ.userData.triggerName_2 = this.triggerName_2;
+    circ.userData.triggerList = this.triggerName.replace(/ /g, "").split(",");
+    circ.userData.triggerList_2 = this.triggerName_2.replace(/ /g, "").split(",");
+    circ.userData.triggerAction = this.triggerAction;
+    circ.userData.triggerAction_2 = this.triggerAction_2;
+    circ.userData.onGroundHit = this.onGroundHit;
+    circ.userData.onGroundHit_2 = this.onGroundHit_2;
+    circ.userData.onSameName = this.onSameName;
+    circ.userData.onSameName_2 = this.onSameName_2;
+    circ.userData.jointsToTrigger = new Array();
+    circ.userData.actionsToTrigger = new Array();
+    circ.userData.isFirstTrigger = new Array();
     this.m_shape = this.m_body.CreateShape(circ);
     if (this.isStatic || bodyStatic) this.m_body.SetMass(new b2MassData());
     else this.m_body.SetMassFromShapes();
 
-    for (var i:number = 0; i < this.m_joints.length; i++) {
-      if (this.m_joints[i].isEnabled && this.m_joints[i] instanceof FixedJoint) {
-        var connectedPart:ShapePart = this.m_joints[i].GetOtherPart(this);
-        if (connectedPart.isEnabled) connectedPart.Init(world, this.m_body);
-      }
-    }
+    // Weld/lock fixed-joint partners (Jaybit Circle.as:192 CheckFixedJoints —
+    // replaces CE's inline merge loop; untriggered joints still body-merge).
+    this.CheckFixedJoints(world);
   }
 
   public IntersectsBox(boxX: number, boxY: number, boxW: number, boxH: number): boolean {

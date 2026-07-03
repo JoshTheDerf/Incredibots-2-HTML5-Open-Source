@@ -38,7 +38,9 @@ import { Util } from "../General/Util";
 import { Base64Decoder } from "../mx/utils/Base64Decoder";
 import type { Part } from "../Parts/Part";
 import { SandboxSettings } from "../Game/SandboxSettings";
-import { decodeRobot, decodeRobotBlob, encodeRobot, type DecodedRobot } from "./robotSerialization";
+import { decodeExposureInt, EXPO_PUBLIC_EDITABLE, type ExposureFlags } from "./exposure";
+import { sniffFileBytes, TYPE_TAG_REPLAY, VERSION_PREFIX, VERSION_STRING } from "./serializationVersion";
+import { decodeRobot, decodeRobotBlob, encodeRobot, readVersionedNameHeader, type DecodedRobot } from "./robotSerialization";
 import type { CameraMovement, KeyPress, ReplayData, ReplaySyncPoint, Vec2Like } from "./replay";
 
 // --- Compact 2-byte scalar codecs (Database.ts:2293-2344) -----------------
@@ -159,6 +161,14 @@ function putReplayIntoByteArray(replay: ReplayData, b: ByteArray): ByteArray {
 	for (let i = 0; i < replay.keyPresses.length; i++) {
 		writeInt(b, replay.keyPresses[i].frame);
 		writeInt(b, replay.keyPresses[i].key);
+		// TriggerPress (partIndex present): frame, key, sentinel -2, partIndex
+		// (Jaybit PutReplayIntoByteArray, Database.as:3111-3114). -2 can never be
+		// a frame number (frames are >= 0), so the reader's one-int lookahead
+		// disambiguates it from the next entry's frame.
+		if (replay.keyPresses[i].partIndex != null) {
+			writeInt(b, -2);
+			writeInt(b, replay.keyPresses[i].partIndex as number);
+		}
 	}
 	writeInt(b, Number.MIN_VALUE);
 	return b;
@@ -242,13 +252,30 @@ function extractReplayFromByteArray(data: ByteArray): ReplayData {
 	const version = String(data.readObject());
 	const numFrames = readInt(data);
 	const keyPresses: KeyPress[] = [];
+	// One-int-lookahead loop (Jaybit ExtractReplayFromByteArray,
+	// Database.as:1873-1905): after (frame, key) one more int is read — the -2
+	// sentinel marks a TriggerPress (consume partIndex); any other value is the
+	// NEXT entry's frame and is carried into the next iteration. Degrades to
+	// plain (frame, key) parsing on CE streams, which never contain -2.
+	let lookahead = -2;
 	if (data.position !== data.length) {
 		// eslint-disable-next-line no-constant-condition
 		while (true) {
-			frame = readInt(data);
+			if (lookahead !== -2) {
+				frame = lookahead;
+				lookahead = -2;
+			} else {
+				frame = readInt(data);
+			}
 			if (frame === Number.MIN_VALUE) break;
 			const key = readInt(data);
-			keyPresses.push({ frame, key });
+			lookahead = readInt(data);
+			if (lookahead !== -2) {
+				keyPresses.push({ frame, key });
+			} else {
+				const partIndex = readInt(data);
+				keyPresses.push({ frame, key, partIndex });
+			}
 		}
 	}
 	return { cameraMovements, syncPoints, keyPresses, numFrames, version };
@@ -266,6 +293,16 @@ export interface ReplayRobot {
 export interface DecodedReplay {
 	replay: ReplayData;
 	robot: DecodedRobot;
+	/** Trailer metadata (Wave 3a). */
+	name: string;
+	desc: string;
+	robotID: string;
+	score: number;
+	challenge: string;
+	/** The embedded "2.33.0.1 ibre"-style version string; null on legacy CE codes. */
+	version: string | null;
+	/** Decoded exposure (SaveWindow enum) — legacy codes map to public+editable. */
+	exposure: ExposureFlags;
 }
 
 /**
@@ -278,15 +315,16 @@ async function putRobotBytes(robot: ReplayRobot | undefined): Promise<ByteArray>
 	const parts = robot ? robot.parts : [];
 	const settings = robot?.settings;
 	const str = await encodeRobot(parts, settings ?? new SandboxSettings(15.0, 1, 0, 0, 0));
-	// encodeRobot returns base64(zlib(header + robotBytes)). Unwrap to raw robot bytes.
+	// encodeRobot returns base64(zlib(header + robotBytes)). Unwrap to raw robot
+	// bytes: the header is now the Jaybit prefix dance + name/desc + 3 ints.
 	const decoder = new Base64Decoder();
 	decoder.decode(str);
 	const b = decoder.toByteArray();
 	await b.uncompress();
-	b.readUTF(); // name
+	readVersionedNameHeader(b); // prefix/version/name (sentinel dance)
 	b.readUTF(); // desc
 	b.readInt(); // shared
-	b.readInt(); // allowEdits
+	b.readInt(); // exposure
 	b.readInt(); // prop
 	const out = new ByteArray();
 	while (b.position !== b.length) out.writeByte(b.readByte());
@@ -294,17 +332,31 @@ async function putRobotBytes(robot: ReplayRobot | undefined): Promise<ByteArray>
 	return out;
 }
 
+/** Replay export trailer metadata (Jaybit ExportReplay params). */
+export interface ReplayMeta {
+	name?: string;
+	desc?: string;
+	robotID?: string;
+	/** -1 for plain (non-score) exports, as Jaybit's caller passes. */
+	score?: number;
+	challenge?: string;
+	expo?: number;
+}
+
 /**
- * Encode a ReplayData to the legacy replay export string. Byte-compatible with
- * Database.ExportReplay, so the result loads in the legacy game. Optionally
- * bundles a robot (parts + settings); with no robot an empty robot is written,
- * which still round-trips through decodeReplay.
+ * Build the compressed replay export blob (= .ibre file bytes = the base64
+ * payload of the text code). Byte layout is Jaybit's ExportReplay
+ * (Database.as:1655-1695) — replay codes are DOUBLY compressed:
+ *
+ *   writeInt(len(deflate(replayBytes))); writeInt(len(deflate(robotBytes)))
+ *   <deflate(PutReplayIntoByteArray(replay))>      // inner zlib!
+ *   <deflate(PutRobotIntoByteArray(robot))>        // inner zlib!
+ *   writeUTF(prefix); writeUTF(VERSION + " ibre")  // NEW in Jaybit (CE starts at name)
+ *   writeUTF(name); writeUTF(desc); writeUTF(robotID)
+ *   writeInt(score); writeUTF(challengeID); writeInt(expo + 2)
+ *   compress()                                     // outer zlib
  */
-export async function encodeReplay(
-	replay: ReplayData,
-	robot?: ReplayRobot,
-	meta: { name?: string; desc?: string; robotID?: string; score?: number; challenge?: string; shared?: number } = {},
-): Promise<string> {
+async function buildReplayExportBytes(replay: ReplayData, robot: ReplayRobot | undefined, meta: ReplayMeta): Promise<ByteArray> {
 	const robotData = await putRobotBytes(robot);
 	await robotData.compress();
 
@@ -322,27 +374,62 @@ export async function encodeReplay(
 	while (robotData.position !== robotData.length) {
 		exportData.writeByte(robotData.readByte());
 	}
+	exportData.writeUTF(VERSION_PREFIX);
+	exportData.writeUTF(VERSION_STRING + TYPE_TAG_REPLAY);
 	exportData.writeUTF(meta.name ?? "");
 	exportData.writeUTF(meta.desc ?? "");
 	exportData.writeUTF(meta.robotID ?? "");
-	exportData.writeInt(meta.score ?? 0);
+	exportData.writeInt(meta.score ?? -1); // -1 == plain (non-score) export
 	exportData.writeUTF(meta.challenge ?? "");
-	exportData.writeInt(meta.shared ?? 0);
+	exportData.writeInt((meta.expo ?? EXPO_PUBLIC_EDITABLE) + 2);
 	await exportData.compress();
+	return exportData;
+}
 
+/**
+ * Encode a ReplayData to the replay export string (Jaybit 2.33 format).
+ * Optionally bundles a robot (parts + settings); with no robot an empty robot
+ * is written, which still round-trips through decodeReplay.
+ */
+export async function encodeReplay(
+	replay: ReplayData,
+	robot?: ReplayRobot,
+	meta: ReplayMeta = {},
+): Promise<string> {
+	const exportData = await buildReplayExportBytes(replay, robot, meta);
 	return exportData.buffer.toString("base64");
 }
 
 /**
- * Decode a legacy replay export string back into its ReplayData (and the bundled
- * robot). Mirrors Database.ImportReplay: base64-decode, zlib-uncompress, split by
- * the leading replayLength/robotLength ints, uncompress each half, extract.
+ * Encode a ReplayData to .ibre FILE bytes — byte-identical to the
+ * base64-decode of encodeReplay's string (files carry no extra framing, §3).
+ */
+export async function exportReplayFile(
+	replay: ReplayData,
+	robot?: ReplayRobot,
+	meta: ReplayMeta = {},
+): Promise<Uint8Array> {
+	const exportData = await buildReplayExportBytes(replay, robot, meta);
+	return new Uint8Array(exportData.buffer);
+}
+
+/**
+ * Decode a replay export string back into its ReplayData (and the bundled
+ * robot). Mirrors Jaybit's Database.ImportReplay (:938-987): base64-decode,
+ * zlib-uncompress, split by the leading replayLength/robotLength ints,
+ * uncompress each half, extract, then read the trailer with the prefix
+ * sentinel dance (tolerates BOTH legacy CE and Jaybit-prefixed trailers).
  */
 export async function decodeReplay(replayStr: string): Promise<DecodedReplay> {
 	const decoder = new Base64Decoder();
 	decoder.decode(replayStr);
 	const b = decoder.toByteArray();
 	await b.uncompress();
+	return decodeReplayFromBytes(b);
+}
+
+/** Shared tail of decodeReplay / decodeReplayFile. */
+async function decodeReplayFromBytes(b: ByteArray): Promise<DecodedReplay> {
 	const replayLength = b.readInt();
 	const robotLength = b.readInt();
 	const replayData = new ByteArray();
@@ -364,15 +451,30 @@ export async function decodeReplay(replayStr: string): Promise<DecodedReplay> {
 	robotData.position = 0;
 	const robot = await extractBundledRobot(robotData);
 
-	// Trailer (name/desc/robotID/score/challenge/shared) — consumed for fidelity.
-	b.readUTF();
-	b.readUTF();
-	b.readUTF();
-	b.readInt();
-	b.readUTF();
-	b.readInt();
+	// Trailer: prefix dance + name/desc/robotID/score/challenge/exposure
+	// (Database.as:964-985).
+	const { name, version } = readVersionedNameHeader(b);
+	const desc = b.readUTF();
+	const robotID = b.readUTF();
+	const score = b.readInt();
+	const challenge = b.readUTF();
+	const exposure = decodeExposureInt(b.readInt());
 
-	return { replay, robot };
+	return { replay, robot, name, desc, robotID, score, challenge, version, exposure };
+}
+
+/**
+ * Decode a user .ibre FILE (or a text code pasted into a file): bytes starting
+ * with "eN" are a base64 text code; anything else is the raw compressed blob
+ * (Jaybit TryLoadingReplay :929-936 / LoadReplayFromFileBytes :433-485).
+ */
+export async function decodeReplayFile(bytes: ArrayBuffer | Uint8Array): Promise<DecodedReplay> {
+	const sniffed = sniffFileBytes(bytes);
+	if (sniffed.kind === "code") return decodeReplay(sniffed.code);
+	const b = new ByteArray(bytes as ArrayBuffer);
+	await b.uncompress();
+	b.position = 0;
+	return decodeReplayFromBytes(b);
 }
 
 /** The decoded demo replay: the recorded motion + the robot parts it animates. */

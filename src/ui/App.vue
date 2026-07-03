@@ -26,6 +26,7 @@ import MobileControlPad from "./components/MobileControlPad.vue";
 import { useIsMobile } from "./useIsMobile";
 import ImportPanel from "./components/panels/ImportPanel.vue";
 import ExportPanel from "./components/panels/ExportPanel.vue";
+import ConvertPanel from "./components/panels/ConvertPanel.vue";
 import SandboxSettingsPanel from "./components/panels/SandboxSettingsPanel.vue";
 import ConditionsPanel from "./components/panels/ConditionsPanel.vue";
 import RestrictionsPanel from "./components/panels/RestrictionsPanel.vue";
@@ -168,6 +169,14 @@ onBeforeUnmount(() => {
 			<div class="workspace">
 				<StagePlaceholder />
 
+				<!-- Uneditable-robot banner (Wave 3a): a loaded robot saved with an
+				     "Uneditable" exposure blocks every editing mutation at the core
+				     funnel. Surface a persistent chip so the disabled edits are
+				     explained rather than mysteriously inert. -->
+				<div v-if="game.edit.editable === false" class="uneditable-banner">
+					🔒 This robot cannot be edited
+				</div>
+
 				<!-- Toolbar pinned to the top, overlaying the canvas. Save Replay
 				     (running/paused) surfaces here; App opens ExportPanel in replay
 				     mode. -->
@@ -235,6 +244,29 @@ onBeforeUnmount(() => {
 		>
 			<template #content>
 				<ImportPanel @close="closePanel" />
+			</template>
+		</UModal>
+
+		<!-- Import And Insert — ImportPanel in robot insert mode (append the loaded
+		     robot's parts to the current robot via game.importRobotInsert). -->
+		<UModal
+			:open="activePanel === 'importInsert'"
+			:ui="{ content: 'ib-modal-content' }"
+			@update:open="(v: boolean) => !v && closePanel()"
+		>
+			<template #content>
+				<ImportPanel :insert="true" @close="closePanel" />
+			</template>
+		</UModal>
+
+		<!-- Convert — code <-> file conversion (both directions). -->
+		<UModal
+			:open="activePanel === 'convert'"
+			:ui="{ content: 'ib-modal-content' }"
+			@update:open="(v: boolean) => !v && closePanel()"
+		>
+			<template #content>
+				<ConvertPanel @close="closePanel" />
 			</template>
 		</UModal>
 
@@ -356,6 +388,27 @@ onBeforeUnmount(() => {
 .workspace > :first-child {
 	position: absolute;
 	inset: 0;
+}
+
+/* Uneditable-robot banner — a persistent chip pinned to the top-center, above
+   the toolbar, in the legacy purple/cream palette. */
+.uneditable-banner {
+	position: absolute;
+	top: 8px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 40;
+	padding: 4px 14px;
+	border: 2px solid #43366f;
+	border-radius: 10px;
+	background: rgba(253, 249, 234, 0.95);
+	color: #43366f;
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: 12px;
+	font-weight: bold;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+	pointer-events: none;
+	white-space: nowrap;
 }
 
 /* Toolbar overlay — pinned across the top, overlaying the canvas. */

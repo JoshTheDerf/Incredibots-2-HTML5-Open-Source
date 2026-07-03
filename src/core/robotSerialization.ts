@@ -25,6 +25,9 @@ import { ByteArray } from "../General/ByteArray";
 import { Util } from "../General/Util";
 import { SandboxSettings } from "../Game/SandboxSettings";
 import { Base64Decoder } from "../mx/utils/Base64Decoder";
+import { DEFAULT_FRICTION, DEFAULT_RESTITUTION, TRIGGER_NONE } from "../Parts/partDefaults";
+import { decodeExposureInt, EXPO_PUBLIC_EDITABLE, type ExposureFlags } from "./exposure";
+import { sniffFileBytes, TYPE_TAG_ROBOT, VERSION_PREFIX, VERSION_STRING } from "./serializationVersion";
 import { Cannon } from "../Parts/Cannon";
 import { Circle } from "../Parts/Circle";
 import { FixedJoint } from "../Parts/FixedJoint";
@@ -45,6 +48,18 @@ export interface DecodedRobot {
 	cameraX: number;
 	cameraY: number;
 	zoomLevel: number;
+	/** Header metadata (Wave 3a). Blob decodes (headerless .dat assets) carry defaults. */
+	name: string;
+	desc: string;
+	/** The embedded "2.33.0.1 ibro"-style version string; null on legacy CE codes. */
+	version: string | null;
+	/** Decoded exposure (SaveWindow enum) — legacy codes map to public+editable. */
+	exposure: ExposureFlags;
+}
+
+/** Default header metadata for headerless blob decodes / legacy fallbacks. */
+function defaultHeaderMeta(): Pick<DecodedRobot, "name" | "desc" | "version" | "exposure"> {
+	return { name: "", desc: "", version: null, exposure: decodeExposureInt(0) };
 }
 
 // --- Part array <-> ByteArray (AMF3 object graph) -------------------------
@@ -58,6 +73,11 @@ export interface DecodedRobot {
 /** Only parts flagged drawAnyway are stored (Database.IsPartOfRobot :1718). */
 function isPartOfRobot(p: Part): boolean {
 	return p.drawAnyway;
+}
+
+/** hasOwnProperty probe for optional AMF part fields (Jaybit's absent-field defaults). */
+function has(od: object, key: string): boolean {
+	return Object.prototype.hasOwnProperty.call(od, key);
 }
 
 function putPartsIntoByteArray(parts: Part[], b: ByteArray): ByteArray {
@@ -112,19 +132,33 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 		if (od.type === "Circle" || od.type === "Rectangle" || od.type === "Triangle" || od.type === "Cannon") {
 			let shape: ShapePart;
 			if (od.type === "Circle") {
-				shape = new Circle(od.centerX, od.centerY, od.radius, false);
+				// checkLimits=true on load, as Jaybit (Database.as:2129; CE passed false).
+				shape = new Circle(od.centerX, od.centerY, od.radius, true);
 			} else if (od.type === "Rectangle") {
-				shape = new Rectangle(od.x, od.y, od.w, od.h, false);
+				shape = new Rectangle(od.x, od.y, od.w, od.h, true);
 			} else if (od.type === "Triangle") {
 				shape = new Triangle(od.x1, od.y1, od.x2, od.y2, od.x3, od.y3);
 			} else {
 				shape = new Cannon(od.x, od.y, od.w);
 				(shape as Cannon).fireKey = od.fireKey;
 				(shape as Cannon).strength = od.strength;
+				(shape as Cannon).triggerList = has(od, "triggerList") ? od.triggerList : "";
 			}
 			shape.angle = od.angle;
 			shape.density = od.density;
+			// Jaybit material / collision-layer / trigger fields, with the exact
+			// absent-property defaults of Database.as ExtractPartsFromByteArray
+			// (:2149-2171): friction 11 / restitution 7 (== CE's fixed 0.4/0.3 after
+			// conversion), collA-D default to the legacy `collide` flag, and
+			// triggerAction defaults to TRIGGER_NONE = 6 (NOT 0 — 0 is a real action).
+			shape.friction = has(od, "friction") ? Number(od.friction) : DEFAULT_FRICTION;
+			shape.restitution = has(od, "restitution") ? Number(od.restitution) : DEFAULT_RESTITUTION;
 			shape.collide = od.collide;
+			shape.collA = has(od, "collA") ? Boolean(od.collA) : Boolean(od.collide);
+			shape.collB = has(od, "collB") ? Boolean(od.collB) : Boolean(od.collide);
+			shape.collC = has(od, "collC") ? Boolean(od.collC) : Boolean(od.collide);
+			shape.collD = has(od, "collD") ? Boolean(od.collD) : Boolean(od.collide);
+			shape.subColl = has(od, "subColl") ? Boolean(od.subColl) : false;
 			shape.isStatic = od.isStatic;
 			shape.isCameraFocus = od.isCameraFocus;
 			shape.red = od.red;
@@ -132,16 +166,23 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 			shape.blue = od.blue;
 			shape.opacity = od.opacity;
 			shape.outline = od.outline;
-			if (Object.prototype.hasOwnProperty.call(od, "terrain")) shape.terrain = od.terrain;
-			if (Object.prototype.hasOwnProperty.call(od, "undragable")) shape.undragable = od.undragable;
+			shape.triggerName = has(od, "triggerName") ? od.triggerName : "";
+			shape.triggerName_2 = has(od, "triggerName_2") ? od.triggerName_2 : "";
+			shape.triggerAction = has(od, "triggerAction") ? Math.trunc(od.triggerAction) : TRIGGER_NONE;
+			shape.triggerAction_2 = has(od, "triggerAction_2") ? Math.trunc(od.triggerAction_2) : TRIGGER_NONE;
+			shape.onGroundHit = has(od, "onGroundHit") ? Boolean(od.onGroundHit) : false;
+			shape.onGroundHit_2 = has(od, "onGroundHit_2") ? Boolean(od.onGroundHit_2) : false;
+			shape.onSameName = has(od, "onSameName") ? Boolean(od.onSameName) : false;
+			shape.onSameName_2 = has(od, "onSameName_2") ? Boolean(od.onSameName_2) : false;
+			if (has(od, "terrain")) shape.terrain = od.terrain;
+			if (has(od, "undragable")) shape.undragable = od.undragable;
 			partData.push(shape);
 		} else if (od.type === "TextPart") {
 			// Legacy passes Main.m_curController; the headless core has no controller
 			// (TextPart never touches `cont` outside rendering), so pass null.
-			// TextPart stores its content in a private `_text` backing field behind a
-			// `text` getter/setter, so AMF serializes it as `_text`; older/AS3 bots use
-			// `text`. Accept both so the round-trip preserves the text content.
-			const textContent = od._text ?? od.text;
+			// Flash writes the content as `text`; pre-Wave-3a builds of this port
+			// emitted the `_text` backing field. Accept both (spec §9).
+			const textContent = od.text ?? od._text;
 			const text = new TextPart(null, od.x, od.y, od.w, od.h, textContent, od.inFront);
 			text.inFront = od.inFront;
 			text.scaleWithZoom = od.scaleWithZoom;
@@ -151,6 +192,7 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 			text.green = od.green;
 			text.blue = od.blue;
 			text.size = od.size;
+			text.triggerList = has(od, "triggerList") ? od.triggerList : "";
 			partData.push(text);
 		} else if (od.type === "Thrusters") {
 			if (od.shapeIndex >= 0) {
@@ -159,6 +201,7 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 				t.angle = od.angle;
 				t.thrustKey = od.thrustKey;
 				t.autoOn = od.autoOn;
+				t.triggerList = has(od, "triggerList") ? od.triggerList : "";
 				partData.push(t);
 			}
 		} else if (od.type === "FixedJoint" || od.type === "RevoluteJoint" || od.type === "PrismaticJoint") {
@@ -215,9 +258,19 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 					pj.opacity = od.opacity;
 					pj.outline = od.outline;
 					pj.collide = od.collide;
-					if (Object.prototype.hasOwnProperty.call(od, "arrayIndex")) pj.arrayIndex = od.arrayIndex;
+					// Jaybit PrismaticJoint collision layers (Database.as:2274-2279),
+					// same collide-derived defaults as ShapePart.
+					pj.collA = has(od, "collA") ? Boolean(od.collA) : Boolean(od.collide);
+					pj.collB = has(od, "collB") ? Boolean(od.collB) : Boolean(od.collide);
+					pj.collC = has(od, "collC") ? Boolean(od.collC) : Boolean(od.collide);
+					pj.collD = has(od, "collD") ? Boolean(od.collD) : Boolean(od.collide);
+					pj.subColl = has(od, "subColl") ? Boolean(od.subColl) : false;
+					if (has(od, "arrayIndex")) pj.arrayIndex = od.arrayIndex;
 					joint = pj;
 				}
+				// triggerList lives on JointPart for all three joint types (Jaybit
+				// JointPart.as; Database.as :2229/:2248/:2287).
+				joint.triggerList = has(od, "triggerList") ? od.triggerList : "";
 				partData.push(joint);
 			}
 		}
@@ -251,6 +304,13 @@ function putRobotIntoByteArray(parts: Part[], settings: SandboxSettings): ByteAr
 	return robotData;
 }
 
+/**
+ * INIT_PHYS_SCALE (ControllerGameGlobals) — the default zoom the camera clamp
+ * falls back to. Duplicated as a literal so the serializer stays free of
+ * controller imports.
+ */
+const INIT_PHYS_SCALE = 30;
+
 function extractRobotFromByteArray(data: ByteArray): DecodedRobot {
 	const parts = extractPartsFromByteArray(data);
 	if (data.position === data.length) {
@@ -260,6 +320,7 @@ function extractRobotFromByteArray(data: ByteArray): DecodedRobot {
 			cameraX: Number.MAX_VALUE,
 			cameraY: Number.MAX_VALUE,
 			zoomLevel: Number.MAX_VALUE,
+			...defaultHeaderMeta(),
 		};
 	}
 	const s = data.readObject() as any;
@@ -270,8 +331,16 @@ function extractRobotFromByteArray(data: ByteArray): DecodedRobot {
 		cameraX = data.readFloat();
 		cameraY = data.readFloat();
 		zoomLevel = data.readFloat();
+		// Jaybit camera-zoom fix (Database.as:3138-3155): writeFloat(MAX_VALUE)
+		// overflows float32 to +Infinity, so a "no camera" sentinel round-trips as
+		// Infinity and CE loaded it verbatim (blank screen / insane zoom). Clamp
+		// non-finite/MAX_VALUE floats to origin + default zoom on LOAD only.
+		if (cameraX === Number.POSITIVE_INFINITY || cameraX === Number.MAX_VALUE) cameraX = 0;
+		if (cameraY === Number.POSITIVE_INFINITY || cameraY === Number.MAX_VALUE) cameraY = 0;
+		if (zoomLevel === Number.POSITIVE_INFINITY || zoomLevel === Number.MAX_VALUE) zoomLevel = INIT_PHYS_SCALE;
 	}
 	return {
+		...defaultHeaderMeta(),
 		parts,
 		settings: new SandboxSettings(
 			s.gravity,
@@ -295,27 +364,71 @@ function extractRobotFromByteArray(data: ByteArray): DecodedRobot {
 const DEFAULT_SETTINGS = () => new SandboxSettings(15.0, 1, 0, 0, 0);
 
 /**
- * Encode a parts array to the legacy robot export string (base64 of a
- * zlib-compressed ByteArray). Byte-compatible with Database.ExportRobot, so
- * the result loads in the legacy game.
+ * Build the compressed robot export blob — the bytes a .ibro FILE holds and
+ * the base64 payload of the text code (they are the same bytes, §3). Header
+ * layout is Jaybit's ExportRobot (Database.as:2081-2107):
+ *
+ *   writeUTF("kezcuvwistoup")            // VERSION_PREFIX sentinel
+ *   writeUTF(VERSION_STRING + " ibro")   // version + type tag
+ *   writeUTF(name); writeUTF(desc)
+ *   writeInt(1)                          // shared (Jaybit's caller always passes 1)
+ *   writeInt(expo + 2)                   // exposure enum + 2 (see exposure.ts)
+ *   writeInt(0)                          // prop (always 0)
+ *   <PutRobotIntoByteArray body>
+ *   compress()
+ */
+async function buildRobotExportBytes(
+	parts: Part[],
+	settings: SandboxSettings,
+	name: string,
+	desc: string,
+	expo: number,
+): Promise<ByteArray> {
+	const partData = putRobotIntoByteArray(parts, settings);
+	const exportData = new ByteArray();
+	exportData.writeUTF(VERSION_PREFIX);
+	exportData.writeUTF(VERSION_STRING + TYPE_TAG_ROBOT);
+	exportData.writeUTF(name);
+	exportData.writeUTF(desc);
+	exportData.writeInt(1); // shared
+	exportData.writeInt(expo + 2); // exposure (Jaybit writes expo + 2)
+	exportData.writeInt(0); // prop
+	partData.position = 0;
+	exportData.writeBytes(partData);
+	await exportData.compress();
+	return exportData;
+}
+
+/**
+ * Encode a parts array to the robot export string (base64 of a zlib-compressed
+ * ByteArray), in the Jaybit 2.33 format (prefix + version header). Loads in
+ * Jaybit and in this port; CE clients cannot read prefixed codes (by design —
+ * Jaybit's own exports have the same limitation).
  */
 export async function encodeRobot(
 	parts: Part[],
 	settings: SandboxSettings = DEFAULT_SETTINGS(),
 	name = "",
 	desc = "",
+	expo: number = EXPO_PUBLIC_EDITABLE,
 ): Promise<string> {
-	const partData = putRobotIntoByteArray(parts, settings);
-	const exportData = new ByteArray();
-	exportData.writeUTF(name);
-	exportData.writeUTF(desc);
-	exportData.writeInt(0); // shared
-	exportData.writeInt(0); // allowEdits
-	exportData.writeInt(0); // prop
-	partData.position = 0;
-	exportData.writeBytes(partData);
-	await exportData.compress();
+	const exportData = await buildRobotExportBytes(parts, settings, name, desc, expo);
 	return exportData.buffer.toString("base64");
+}
+
+/**
+ * Encode a parts array to .ibro FILE bytes — byte-identical to the
+ * base64-decode of encodeRobot's string (files carry no extra framing, §3).
+ */
+export async function exportRobotFile(
+	parts: Part[],
+	settings: SandboxSettings = DEFAULT_SETTINGS(),
+	name = "",
+	desc = "",
+	expo: number = EXPO_PUBLIC_EDITABLE,
+): Promise<Uint8Array> {
+	const exportData = await buildRobotExportBytes(parts, settings, name, desc, expo);
+	return new Uint8Array(exportData.buffer);
 }
 
 /**
@@ -335,20 +448,60 @@ export async function decodeRobotBlob(blob: ArrayBuffer | Uint8Array): Promise<D
 }
 
 /**
- * Decode a legacy robot export string back into parts + settings. Mirrors
- * Database.ImportRobot: base64-decode, zlib-uncompress, skip the header
- * (name/desc/shared/allowEdits/prop), then extract the robot.
+ * Read a robot/challenge/replay-trailer export header from an uncompressed
+ * ByteArray positioned at its start: the sentinel dance of Jaybit's ImportRobot
+ * (Database.as:3159-3188). The first UTF is either the VERSION_PREFIX (Jaybit
+ * format — two extra UTFs precede the name) or the user-typed name (legacy CE
+ * format). Leaves `b` positioned after the name.
+ */
+export function readVersionedNameHeader(b: ByteArray): { name: string; version: string | null } {
+	const first = b.readUTF();
+	if (first === VERSION_PREFIX) {
+		const version = b.readUTF(); // e.g. "2.33.0.1 ibro"
+		const name = b.readUTF();
+		return { name, version };
+	}
+	return { name: first, version: null };
+}
+
+/**
+ * Decode a robot export string back into parts + settings + header metadata.
+ * Mirrors Jaybit's Database.ImportRobot: base64-decode, zlib-uncompress, the
+ * prefix sentinel dance (tolerates BOTH legacy CE codes and Jaybit-prefixed
+ * codes), the shared/exposure/prop ints, then extract the robot.
  */
 export async function decodeRobot(robotStr: string): Promise<DecodedRobot> {
 	const decoder = new Base64Decoder();
 	decoder.decode(robotStr);
 	const b = decoder.toByteArray();
 	await b.uncompress();
+	return decodeRobotFromHeaderedBytes(b);
+}
 
-	b.readUTF(); // name
-	b.readUTF(); // desc
+/** Shared tail of decodeRobot / decodeRobotFile: header dance + extraction. */
+async function decodeRobotFromHeaderedBytes(b: ByteArray): Promise<DecodedRobot> {
+	const { name, version } = readVersionedNameHeader(b);
+	const desc = b.readUTF();
 	b.readInt(); // shared
-	b.readInt(); // allowEdits
+	const exposure = decodeExposureInt(b.readInt());
 	b.readInt(); // prop
-	return extractRobotFromByteArray(b);
+	const robot = extractRobotFromByteArray(b);
+	return { ...robot, name, desc, version, exposure };
+}
+
+/**
+ * Decode a user .ibro FILE (or a text code pasted into a file). Mirrors
+ * ControllerGame.loadRobotBrowseComplete (:1008-1029): bytes starting with
+ * "eN" are a base64 text code (zlib output base64-encodes to "eN…"); anything
+ * else is the raw compressed blob (uncompress + header dance). Unlike
+ * decodeRobotBlob (headerless built-in robot.dat), a user file DOES carry the
+ * name/desc/exposure header.
+ */
+export async function decodeRobotFile(bytes: ArrayBuffer | Uint8Array): Promise<DecodedRobot> {
+	const sniffed = sniffFileBytes(bytes);
+	if (sniffed.kind === "code") return decodeRobot(sniffed.code);
+	const b = new ByteArray(bytes as ArrayBuffer);
+	await b.uncompress();
+	b.position = 0;
+	return decodeRobotFromHeaderedBytes(b);
 }

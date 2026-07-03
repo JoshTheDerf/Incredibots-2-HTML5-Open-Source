@@ -57,10 +57,19 @@ export interface CameraMovement {
 	scale: number;
 }
 
-/** A recorded text-display / cannon-fire key at a frame (src/Game/KeyPress.ts). */
+/**
+ * A recorded text-display / cannon-fire key at a frame (src/Game/KeyPress.ts).
+ * `partIndex` present marks a TriggerPress (Jaybit Game/TriggerPress.as; the
+ * port keeps these as plain records): the key was fired BY A TRIGGER on the part at that
+ * index of the play-time parts array, and playback routes the KeyInput to
+ * exactly that one part instead of fanning out to every part bound to the key.
+ * Serialization (Wave 3a): after `frame:int, key:int`, a TriggerPress writes
+ * sentinel -2 then partIndex (Database.as:3111-3114 / 1880-1902).
+ */
 export interface KeyPress {
 	frame: number;
 	key: number;
+	partIndex?: number;
 }
 
 /** A 2-component position tuple (Util.Vector shape). */
@@ -168,10 +177,13 @@ export function addSyncPoint(
  * Record a text-display / cannon-fire key press (ControllerGame.keyInput
  * :1868-1883). The caller has already verified the key belongs to a TextPart's
  * displayKey or a Cannon's fireKey and that we're NOT playing a replay. At most
- * one KeyPress per keyInput call (the legacy `recorded` guard).
+ * one KeyPress per keyInput call (the legacy `recorded` guard). Passing
+ * `partIndex` records a TriggerPress (a trigger-fired cannon/text event,
+ * ControllerGame.keyInput :2246 `new TriggerPress(frameCounter, key, partIndex)`).
  */
-export function recordKeyPress(rec: RecordingBuffers, frame: number, key: number): void {
-	rec.keyPresses.push({ frame, key });
+export function recordKeyPress(rec: RecordingBuffers, frame: number, key: number, partIndex?: number): void {
+	if (partIndex != null) rec.keyPresses.push({ frame, key, partIndex });
+	else rec.keyPresses.push({ frame, key });
 }
 
 /**
@@ -490,8 +502,12 @@ export interface ReplayTick {
 		| { kind: "hard"; syncPoint: ReplaySyncPoint }
 		| { kind: "interp"; segmentIndex: number; syncPoint1: ReplaySyncPoint; syncPoint2: ReplaySyncPoint }
 		| null;
-	/** Text-display / cannon-fire keys to fire this frame (in order). */
-	keyPresses: number[];
+	/**
+	 * Text-display / cannon-fire key records to fire this frame (in order). A
+	 * record carrying `partIndex` is a TriggerPress — the caller routes it to
+	 * exactly that one part (ControllerGame.keyInput playback :2238-2241).
+	 */
+	keyPresses: KeyPress[];
 	/** True once frame >= numFrames — the caller should pause playback. */
 	done: boolean;
 }
@@ -534,7 +550,7 @@ export function replayUpdate(session: ReplaySession, frame: number): ReplayTick 
 		session.keyPressIndex < data.keyPresses.length &&
 		data.keyPresses[session.keyPressIndex].frame === frame
 	) {
-		tick.keyPresses.push(data.keyPresses[session.keyPressIndex].key);
+		tick.keyPresses.push(data.keyPresses[session.keyPressIndex]);
 		session.keyPressIndex++;
 	}
 

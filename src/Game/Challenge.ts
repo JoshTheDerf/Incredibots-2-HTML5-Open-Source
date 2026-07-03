@@ -21,6 +21,23 @@ export class Challenge {
   public showConditions: boolean = false;
   public minDensity: number = -Number.MAX_VALUE;
   public maxDensity: number = Number.MAX_VALUE;
+  // Jaybit friction/restitution restrictions (Challenge.as:36/:60/:64/:76),
+  // same ∓MAX_VALUE no-limit sentinels as density.
+  public minFriction: number = -Number.MAX_VALUE;
+  public maxFriction: number = Number.MAX_VALUE;
+  public minRestitution: number = -Number.MAX_VALUE;
+  public maxRestitution: number = Number.MAX_VALUE;
+  // Jaybit "Exclude Triggers" restriction (Challenge.as:66). DATA ONLY this
+  // wave; the in-memory default is true (NOTE for the serialization wave: the
+  // LOAD default when the trailing boolean is absent is false — old
+  // challenges forbid triggers).
+  public triggersAllowed: boolean = true;
+  // Jaybit "Exclude Collision Groups" / "Exclude Self-Collisions" restrictions
+  // (Challenge.as:22/:10). In-memory defaults are true; the LOAD defaults when
+  // the trailing bytes are absent are false / true respectively
+  // (Database.as ExtractChallengeFromByteArray :3367-3372).
+  public collisionGroupsAllowed: boolean = true;
+  public subCollisionsAllowed: boolean = true;
   public maxRJStrength: number = Number.MAX_VALUE;
   public maxRJSpeed: number = Number.MAX_VALUE;
   public maxSJStrength: number = Number.MAX_VALUE;

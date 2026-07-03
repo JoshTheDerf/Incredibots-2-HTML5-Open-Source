@@ -35,6 +35,7 @@ function rig(): {
 	const rect = new Rectangle(2, 1, 2, 2); // centre (3, 2)
 	const circle = new Circle(6, 2, 1); // centre (6, 2)
 	const joint = new RevoluteJoint(rect, circle, 5, 2); // anchor (5, 2)
+	joint.triggerList = "boost, launch";
 	joint.enableMotor = true;
 	joint.motorCWKey = 65; // A
 	joint.motorCCWKey = 68; // D
@@ -98,6 +99,10 @@ describe("mirrorParts — horizontal", () => {
 		// The clone joint binds to the CLONED shapes, not the originals.
 		expect(cloneJoint.part1).not.toBe(s.parts[0]);
 		expect(cloneJoint.part2).not.toBe(s.parts[1]);
+
+		// Jaybit mirror fix: the data-only trigger listen list propagates to the
+		// mirrored clone (CE silently reset it).
+		expect(cloneJoint.triggerList).toBe("boost, launch");
 	});
 });
 

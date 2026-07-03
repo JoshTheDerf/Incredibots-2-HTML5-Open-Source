@@ -21,7 +21,10 @@ import { Application, Graphics } from "pixi.js";
 import { Draw } from "../Game/Draw";
 import { ControllerGameGlobals } from "../Game/Globals/ControllerGameGlobals";
 import { Triangle } from "../Parts/Triangle";
+import { JointPart } from "../Parts/JointPart";
 import { useGameStore } from "./gameStore";
+import { useUiPrefs } from "./uiPrefs";
+import { RestrictToSquares, FifteenAngleIncrements, MaxTriangle, SnapToCommonTriangles } from "./snapping";
 import { screenToWorld, worldToScreen, hitTestPart, partsInBox } from "./renderer/sceneRenderer";
 import { SkyRenderer } from "./renderer/skyRenderer";
 import { GroundRenderer } from "./renderer/groundRenderer";
@@ -42,6 +45,25 @@ const shapeKindToCreatingItem: Record<ShapeKind, number> = {
 };
 
 const game = useGameStore();
+const uiPrefs = useUiPrefs();
+
+// --- draw-gesture modifier state (Jaybit polls Input.isKeyDown(16/17); we track
+// shift/ctrl here). Kept as plain module vars — the live preview reads them every
+// ticker frame (drawFrame), where no DOM event is available, so reactivity isn't
+// needed. Updated from every pointer AND key event. `ctrl` folds in metaKey for
+// macOS. Beware: we only preventDefault where necessary (ctrl+arrows for pan),
+// never on plain ctrl+key, so browser shortcuts keep working.
+let shiftDown = false;
+let ctrlDown = false;
+function updateMods(e: PointerEvent | KeyboardEvent): void {
+	shiftDown = e.shiftKey;
+	ctrlDown = e.ctrlKey || e.metaKey;
+}
+
+// Arrow keys currently held for editing-phase camera pan (Ctrl = fast). Applied
+// per ticker frame in drawFrame so pan speed is frame-based like the legacy
+// per-frame m_drawXOff step (ControllerGame.as:6795-6835).
+const heldArrows = new Set<number>();
 
 // Reset the condition pick's first-click + preview whenever a pick starts,
 // finalizes, or is cancelled (the draft's awaiting field changes). Prevents a
@@ -119,7 +141,13 @@ type Gesture =
 	// track the cursor's last angle about it and dispatch the incremental delta,
 	// mirroring ControllerGame's ROTATE branch which reads the mouse angle from
 	// the part centre (ControllerGame.ts:1528).
-	| { kind: "rotate"; pivot: { x: number; y: number }; lastAngle: number }
+	// `lastAngle` is the cursor's previous angle about the pivot (for unwrapped
+	// delta accumulation); `rawTotal` is the total rotation since the grab (matches
+	// the legacy delta from initRotatingAngle); `appliedTotal` is how much we've
+	// already dispatched. Shift snaps rawTotal to 15° multiples RELATIVE TO THE GRAB
+	// (ControllerGame.as:7997-8002) and we dispatch the difference to the snapped
+	// target so the parts land on exact 15° offsets from where they started.
+	| { kind: "rotate"; pivot: { x: number; y: number }; lastAngle: number; rawTotal: number; appliedTotal: number }
 	// Resize the selection's ATTACHED CLUSTER about selectedParts[0]'s anchor.
 	// Faithful to ControllerGame's RESIZING_SHAPES: the core captured the pivot +
 	// per-part baseline on `resizeStart`; here we only track the horizontal world
@@ -274,6 +302,7 @@ function selectionCentroidScreen(canvasW: number, canvasH: number): { x: number;
 
 function onPointerDown(event: PointerEvent): void {
 	if (!app || !container.value) return;
+	updateMods(event);
 
 	const s = screenOf(event);
 
@@ -350,6 +379,10 @@ function onPointerDown(event: PointerEvent): void {
 	// limits and no-ops the create if the point makes a degenerate triangle.
 	if (tool === "newTriangle" && triangleBase) {
 		const { v1, v2 } = triangleBase;
+		// Resolve the apex: MaxTriangle clamp (always) + Shift snapping. The core
+		// still validates side/angle limits and no-ops a degenerate triangle, but
+		// MaxTriangle guarantees the clamped apex is legal.
+		const apex = resolveTriangleApex(v1, v2, world);
 		game.dispatch({
 			type: "createShape",
 			kind: "triangle",
@@ -357,8 +390,8 @@ function onPointerDown(event: PointerEvent): void {
 			y1: v1.y,
 			x2: v2.x,
 			y2: v2.y,
-			x3: world.x,
-			y3: world.y,
+			x3: apex.x,
+			y3: apex.y,
 		});
 		triangleBase = null;
 		return;
@@ -419,10 +452,22 @@ function onPointerDown(event: PointerEvent): void {
 		// axisStart drives the preview line); the >1-overlap first-click path is
 		// intercepted by the disambiguation branch above.
 		if (game.jointGesture?.phase === "prismaticAxis") {
-			game.dispatch({ type: "finishPrismaticJoint", x: world.x, y: world.y });
+			// Shift held → snap the slide-axis endpoint to 15° increments about the
+			// recorded axis-start AND bypass the core's snap-to-center, so the axis
+			// keeps the snapped angle (ui-hotkeys §4.4 / MaybeFinishCreatingPrismaticJoint).
+			const axisStart = game.jointGesture.axisStart;
+			let ex = world.x;
+			let ey = world.y;
+			if (event.shiftKey && axisStart) {
+				[ex, ey] = FifteenAngleIncrements(world.x, world.y, axisStart.x, axisStart.y);
+			}
+			game.dispatch({ type: "finishPrismaticJoint", x: ex, y: ey, bypassSnap: event.shiftKey });
 			overlay?.clear();
 		} else {
-			game.dispatch({ type: "startPrismaticJoint", x: world.x, y: world.y });
+			// Shift held → bypass the core's snap-to-center on the FIRST click too,
+			// so the axis start stays at the raw point (same modifier source as the
+			// second click above).
+			game.dispatch({ type: "startPrismaticJoint", x: world.x, y: world.y, bypassSnap: event.shiftKey });
 		}
 		return;
 	}
@@ -444,7 +489,13 @@ function onPointerDown(event: PointerEvent): void {
 		if (tool === "rotate") {
 			const pivot = selectionCentroidScreen(s.w, s.h);
 			if (!pivot) return;
-			gesture = { kind: "rotate", pivot, lastAngle: Math.atan2(s.y - pivot.y, s.x - pivot.x) };
+			gesture = {
+				kind: "rotate",
+				pivot,
+				lastAngle: Math.atan2(s.y - pivot.y, s.x - pivot.x),
+				rawTotal: 0,
+				appliedTotal: 0,
+			};
 		} else {
 			// Begin the legacy resize gesture: the core snapshots the pivot
 			// (selectedParts[0]'s anchor), the attached cluster, per-part dragOff and
@@ -505,6 +556,7 @@ function onPointerDown(event: PointerEvent): void {
 
 function onPointerMove(event: PointerEvent): void {
 	if (!app || !container.value) return;
+	updateMods(event);
 
 	// --- Two-finger pinch: pan + zoom about the midpoint --------------------
 	// Update the moved pointer, then (while pinching) dispatch the incremental
@@ -579,7 +631,15 @@ function onPointerMove(event: PointerEvent): void {
 	// axis-start to the cursor (ControllerGame draws the in-progress prismatic axis
 	// while actionStep == 1). No button is held between the two clicks.
 	if (game.jointGesture?.phase === "prismaticAxis" && game.jointGesture.axisStart) {
-		drawPrismaticAxisPreview(game.jointGesture.axisStart, world);
+		// Shift held → preview the axis snapped to 15° increments (matches the
+		// committed axis on the second click; ui-hotkeys §4.4 preview :2411-2414).
+		const start = game.jointGesture.axisStart;
+		let end = world;
+		if (event.shiftKey) {
+			const [sx, sy] = FifteenAngleIncrements(world.x, world.y, start.x, start.y);
+			end = { x: sx, y: sy };
+		}
+		drawPrismaticAxisPreview(start, end);
 		return;
 	}
 
@@ -617,13 +677,23 @@ function onPointerMove(event: PointerEvent): void {
 	}
 
 	if (gesture.kind === "rotate") {
-		// Angle of the cursor about the pivot; dispatch the incremental delta.
+		// Accumulate the UNWRAPPED total rotation since the grab, then (with Shift)
+		// snap that total to 15° multiples relative to the grab and dispatch only the
+		// difference to the snapped target. Matches ControllerGame.as:7997-8002 where
+		// the snap is round((angle - initRotatingAngle) / 15°) * 15° + initRotatingAngle.
 		const angle = Math.atan2(s.y - gesture.pivot.y, s.x - gesture.pivot.x);
-		const delta = angle - gesture.lastAngle;
+		let d = angle - gesture.lastAngle;
+		while (d > Math.PI) d -= 2 * Math.PI;
+		while (d < -Math.PI) d += 2 * Math.PI;
+		gesture.lastAngle = angle;
+		gesture.rawTotal += d;
+		const step = Math.PI / 12; // 15°
+		const target = shiftDown ? Math.round(gesture.rawTotal / step) * step : gesture.rawTotal;
+		const delta = target - gesture.appliedTotal;
 		if (delta !== 0) {
 			const partIds = [...game.edit.selection];
 			if (partIds.length > 0) game.dispatch({ type: "rotateParts", partIds, angle: delta });
-			gesture.lastAngle = angle;
+			gesture.appliedTotal += delta;
 		}
 		return;
 	}
@@ -659,6 +729,7 @@ function onPointerMove(event: PointerEvent): void {
 
 function onPointerUp(event: PointerEvent): void {
 	if (!container.value) return;
+	updateMods(event);
 
 	const wasActive = activePointers.delete(event.pointerId);
 
@@ -741,7 +812,10 @@ function onPointerUp(event: PointerEvent): void {
 		}
 		clearMarquee();
 	} else if (gesture.kind === "create") {
-		const { shape, start, current } = gesture;
+		const { shape, start } = gesture;
+		// Resolve the release point with the held modifiers (rect square / triangle
+		// base 15°) so the finalize matches the preview.
+		const current = resolveCreateCurrent(shape, start, gesture.current);
 		if (shape === "triangle") {
 			// FIRST triangle step: commit the base edge. The original clamps the
 			// second point along the drag angle to Triangle's legal side length
@@ -793,7 +867,29 @@ function isTypingTarget(event: KeyboardEvent): boolean {
 	return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t.isContentEditable;
 }
 
+/** Clear held-key state when the window loses focus (no keyup fires otherwise). */
+function onWindowBlur(): void {
+	heldArrows.clear();
+	pressedKeys.clear();
+	shiftDown = false;
+	ctrlDown = false;
+}
+
 function onKeyDown(event: KeyboardEvent): void {
+	updateMods(event);
+	const arrowKey = event.keyCode;
+	// Editing-phase fast camera pan (Ctrl = 3x): track held arrows; drawFrame does
+	// the per-frame pan (ControllerGame.as:6795-6835). preventDefault so the arrows
+	// don't scroll the page. Skipped while typing in a form field.
+	if (
+		game.sim.phase === "editing" &&
+		!isTypingTarget(event) &&
+		(arrowKey === 37 || arrowKey === 38 || arrowKey === 39 || arrowKey === 40)
+	) {
+		heldArrows.add(arrowKey);
+		event.preventDefault();
+		return;
+	}
 	if (game.sim.phase !== "running") return;
 	// keyCode is the code space the legacy parts compare against (motorCWKey etc.).
 	const key = event.keyCode;
@@ -805,7 +901,9 @@ function onKeyDown(event: KeyboardEvent): void {
 }
 
 function onKeyUp(event: KeyboardEvent): void {
+	updateMods(event);
 	const key = event.keyCode;
+	heldArrows.delete(key);
 	pressedKeys.delete(key);
 	if (game.sim.phase === "running") {
 		game.dispatch({ type: "keyInput", key, up: true });
@@ -999,6 +1097,26 @@ function drawFrame(): void {
 	const w = container.value?.clientWidth || app.renderer.width / app.renderer.resolution;
 	const h = container.value?.clientHeight || app.renderer.height / app.renderer.resolution;
 
+	// Editing-phase fast camera pan (ControllerGame.as:6795-6835). Per frame while
+	// an arrow key is held: base 10 px/frame, Ctrl = 30 (3x). NOTE: shipped Jaybit
+	// had a decompiled quirk where LEFT panned 30 but RIGHT/UP/DOWN panned 40 (an
+	// unconditional +10 with no `else`); we port the clear INTENT — a uniform 30 with
+	// Ctrl. panCamera subtracts the screen delta from camera.offset (content follows),
+	// so LEFT/UP use +step and RIGHT/DOWN use -step to scroll the view that way.
+	if (state.sim.phase === "editing" && heldArrows.size > 0) {
+		const step = ctrlDown ? 30 : 10;
+		let dx = 0;
+		let dy = 0;
+		if (heldArrows.has(37)) dx += step; // LEFT
+		if (heldArrows.has(39)) dx -= step; // RIGHT
+		if (heldArrows.has(38)) dy += step; // UP
+		if (heldArrows.has(40)) dy -= step; // DOWN
+		if (dx !== 0 || dy !== 0) game.dispatch({ type: "panCamera", dx, dy, viewW: w, viewH: h });
+	} else if (state.sim.phase !== "editing" && heldArrows.size > 0) {
+		// Leaving the editor (e.g. play pressed with an arrow held) drops the pan.
+		heldArrows.clear();
+	}
+
 	// Draw's screen transform is `worldX * m_drawScale - m_drawXOff` (no implicit
 	// canvas-center offset). To centre the world origin the way the editor camera
 	// expects — screen = canvas/2 + world*scale - offset — set the offsets so the
@@ -1063,6 +1181,20 @@ function drawFrame(): void {
 	const selected = new Set(state.edit.selection);
 	const selectedParts: Part[] = state.parts.filter((p) => selected.has(p.id));
 
+	// Joint visualization (Jaybit HighlightForJoint, ControllerGame.as:2632-2645):
+	// when exactly one JOINT is selected, blink the two shapes it connects (±0.1
+	// fill alpha, applied in Draw). Render-derived, NOT a flag on parts. Gated behind
+	// the "Highlight Parts for Joint" pref (default on).
+	let jvIds: Set<number> | null = null;
+	if (uiPrefs.highlightPartsForJoint.value && selectedParts.length === 1) {
+		const j = selectedParts[0];
+		if (j instanceof JointPart) {
+			jvIds = new Set<number>();
+			if (j.part1) jvIds.add(j.part1.id);
+			if (j.part2) jvIds.add(j.part2.id);
+		}
+	}
+
 	const notStarted = state.sim.phase !== "running";
 	// drawStatic=false — faithful to ControllerGame.ts:640. Static NON-EDITABLE
 	// terrain (both the sandbox ground AND custom challenge/tutorial terrain) has
@@ -1085,7 +1217,9 @@ function drawFrame(): void {
 		/* showOutlines */ state.edit.showOutlines,
 		// Live Challenge (or null): Draw paints win/loss condition zones when the
 		// sim is not started, or always if showConditions is set (Draw.ts:129-164).
-		/* challenge */ game.liveChallenge() as any
+		/* challenge */ game.liveChallenge() as any,
+		// Joint-visualization highlight set (the two shapes of the selected joint).
+		/* highlightForJVIds */ jvIds as any
 	);
 
 	// While a shape-creation drag is in progress, paint the in-progress shape
@@ -1108,24 +1242,21 @@ function drawFrame(): void {
 function drawShapePreview(): void {
 	if (!draw) return;
 
-	// Triangle, second step: base committed, apex tracks the cursor.
+	// Triangle, second step: base committed, apex tracks the cursor. Resolve the
+	// apex with the same MaxTriangle/Shift-snapping the finalize uses so the preview
+	// shows exactly the triangle that will be created.
 	if (triangleBase && pointerWorld) {
 		const { v1, v2 } = triangleBase;
-		draw.DrawTempShape(
-			ControllerGameGlobals.NEW_TRIANGLE,
-			2,
-			v1.x,
-			v1.y,
-			v2.x,
-			v2.y,
-			pointerWorld.x,
-			pointerWorld.y,
-		);
+		const apex = resolveTriangleApex(v1, v2, pointerWorld);
+		draw.DrawTempShape(ControllerGameGlobals.NEW_TRIANGLE, 2, v1.x, v1.y, v2.x, v2.y, apex.x, apex.y);
 		return;
 	}
 
 	if (gesture.kind !== "create") return;
-	const { shape, start, current } = gesture;
+	const { shape, start } = gesture;
+	// Resolve the live cursor with the held modifiers (rect square / triangle base
+	// 15°) so the preview matches the finalize.
+	const current = resolveCreateCurrent(shape, start, gesture.current);
 	const creatingItem = shapeKindToCreatingItem[shape];
 	// circle/rect (actionStep 1) and triangle first step (base-edge segment,
 	// actionStep 1) all use firstClick=start, mouse=current.
@@ -1152,6 +1283,74 @@ function clampTriangleBase(x1: number, y1: number, x2: number, y2: number): { x:
 		return { x: x1 + Triangle.MAX_SIDE_LENGTH * Math.cos(angle), y: y1 - Triangle.MAX_SIDE_LENGTH * Math.sin(angle) };
 	}
 	return { x: x2, y: y2 };
+}
+
+/**
+ * Resolve the live cursor point for a circle/rect/triangle-BASE create gesture,
+ * applying the held modifiers (Jaybit ControllerGame.as:10392 rect square /
+ * :10463 triangle base 15°). Circle is unaffected. Used by both the finalize
+ * dispatch and the preview so they always match.
+ *   - rect + Shift → Util.RestrictToSquares on the (dx,dy) from the anchor.
+ *   - triangle base + Shift → Util.FifteenAngleIncrements about the anchor.
+ */
+function resolveCreateCurrent(
+	shape: ShapeKind,
+	start: { x: number; y: number },
+	current: { x: number; y: number },
+): { x: number; y: number } {
+	if (!shiftDown) return current;
+	if (shape === "rect") {
+		const [dx, dy] = RestrictToSquares(current.x - start.x, current.y - start.y);
+		return { x: start.x + dx, y: start.y + dy };
+	}
+	if (shape === "triangle") {
+		const [x, y] = FifteenAngleIncrements(current.x, current.y, start.x, start.y);
+		return { x, y };
+	}
+	return current;
+}
+
+/**
+ * Resolve a triangle APEX from the raw cursor point (Jaybit ControllerGame.as:
+ * 10496-10500). MaxTriangle clamp is ALWAYS applied (3rd click lands the largest
+ * legal triangle in the cursor direction instead of being rejected). With Shift,
+ * SnapToCommonTriangles overrides it: perpendicular-constrained right/isosceles
+ * (+0.5-unit common-height snap when the "Triangle Snapping" pref is on), or
+ * equilateral with Shift+Ctrl. Uses the committed base (v1,v2) and RAW mouse.
+ */
+function resolveTriangleApex(
+	v1: { x: number; y: number },
+	v2: { x: number; y: number },
+	mouse: { x: number; y: number },
+): { x: number; y: number } {
+	let [ax, ay] = MaxTriangle(
+		mouse.x,
+		mouse.y,
+		v1.x,
+		v1.y,
+		v2.x,
+		v2.y,
+		Triangle.MAX_SIDE_LENGTH,
+		Triangle.MIN_SIDE_LENGTH,
+		Triangle.MIN_TRIANGLE_ANGLE,
+	);
+	if (shiftDown) {
+		[ax, ay] = SnapToCommonTriangles(
+			mouse.x,
+			mouse.y,
+			v1.x,
+			v1.y,
+			v2.x,
+			v2.y,
+			game.camera.scale, // physScale — unused inside, kept for signature fidelity.
+			ctrlDown, // Shift+Ctrl → equilateral.
+			uiPrefs.triangleSnapping.value, // gates the common-triangle height snaps.
+			Triangle.MAX_SIDE_LENGTH,
+			Triangle.MIN_SIDE_LENGTH,
+			Triangle.MIN_TRIANGLE_ANGLE,
+		);
+	}
+	return { x: ax, y: ay };
 }
 
 onMounted(async () => {
@@ -1225,6 +1424,9 @@ onMounted(async () => {
 	// having to hold focus; the handlers no-op unless the sim is running.
 	window.addEventListener("keydown", onKeyDown);
 	window.addEventListener("keyup", onKeyUp);
+	// If focus leaves the window while a key is held, the matching keyup never
+	// fires — clear the held-arrow / modifier state so pan doesn't get stuck.
+	window.addEventListener("blur", onWindowBlur);
 
 	// Keep the Pixi renderer exactly the size of its container. We read the
 	// container's LIVE clientWidth/clientHeight (border-box content area) rather
@@ -1257,6 +1459,7 @@ onBeforeUnmount(() => {
 	}
 	window.removeEventListener("keydown", onKeyDown);
 	window.removeEventListener("keyup", onKeyUp);
+	window.removeEventListener("blur", onWindowBlur);
 	resizeObserver?.disconnect();
 	resizeObserver = null;
 	if (app && tickerFn) app.ticker.remove(tickerFn);

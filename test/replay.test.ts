@@ -248,9 +248,11 @@ describe("Replay.Update cursor mechanics (src/Game/Replay.ts)", () => {
 		let tick = replayUpdate(session, 0);
 		expect(tick.sync?.kind).toBe("hard");
 		// frame 1: between sp[0] and sp[1] -> interp; also fires the key at frame 1.
+		// (Since the trigger wave, ReplayTick carries the full KeyPress records —
+		// a record with partIndex is a TriggerPress routed to exactly one part.)
 		tick = replayUpdate(session, 1);
 		expect(tick.sync?.kind).toBe("interp");
-		expect(tick.keyPresses).toEqual([32]);
+		expect(tick.keyPresses).toEqual([{ frame: 1, key: 32 }]);
 		// frame 3: hard sync to sp[1] and done (frame >= numFrames).
 		tick = replayUpdate(session, 3);
 		expect(tick.sync?.kind).toBe("hard");

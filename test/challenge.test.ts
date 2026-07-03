@@ -23,11 +23,15 @@ import {
 	buildClimbChallenge,
 	buildMonkeyBarsChallenge,
 	challengeOver,
+	challengeSessionFromChallenge,
 	checkIfPartsFit,
+	clampFriction,
+	clampRestitution,
 	createChallengeSession,
 	getScore,
 	lostChallenge,
 	resetConditions,
+	toChallengeState,
 	updateConditions,
 	wonChallenge,
 } from "../src/core/challenge";
@@ -586,6 +590,71 @@ describe("decodeChallengeBlob — Race (resource/race.dat)", () => {
 		// Camera/zoom carried from the blob.
 		expect(c.zoomLevel).toBeCloseTo(21.3333, 3);
 		expect(c.buildAreas.length).toBe(0);
+	});
+});
+
+describe("±MAX_VALUE 'no limit' sentinels (race.dat regression)", () => {
+	// Old-format challenge data carries min = max = +Number.MAX_VALUE for the
+	// absent friction/restitution trailer (the decoder's trailer-absent default).
+	// Jaybit shipped a clamp bug here — CheckFriction raised every value up to the
+	// bogus +MAX "min"; our clamp deliberately treats EITHER MAX pole as no-limit.
+	it("clampFriction/clampRestitution leave defaults alone under race.dat's +MAX min/max", async () => {
+		const challenge = await decodeChallengeBlob(readFileSync("resource/race.dat"));
+		// The empirically decoded sentinel state: min = max = +MAX_VALUE.
+		expect(challenge.minFriction).toBe(Number.MAX_VALUE);
+		expect(challenge.maxFriction).toBe(Number.MAX_VALUE);
+		expect(challenge.minRestitution).toBe(Number.MAX_VALUE);
+		expect(challenge.maxRestitution).toBe(Number.MAX_VALUE);
+		const session = challengeSessionFromChallenge(challenge, "race");
+		// Friction default 11 (0.4 in Box2D) and restitution default 7 survive.
+		expect(clampFriction(session, 11)).toBe(11);
+		expect(clampRestitution(session, 7)).toBe(7);
+		// The read-model projects the sentinels as null ("no limit") for the
+		// RestrictionsPanel / sliders.
+		const restrictions = toChallengeState(session).restrictions;
+		expect(restrictions.minFriction).toBeNull();
+		expect(restrictions.maxFriction).toBeNull();
+		expect(restrictions.minRestitution).toBeNull();
+		expect(restrictions.maxRestitution).toBeNull();
+	});
+
+	it("is robust to the symmetric -MAX pole and still clamps real limits", () => {
+		const session = createChallengeSession();
+		session.challenge.minFriction = -Number.MAX_VALUE; // canonical no-lower-limit
+		session.challenge.maxFriction = -Number.MAX_VALUE; // pathological: no upper limit either
+		expect(clampFriction(session, 25)).toBe(25);
+		session.challenge.minFriction = 5;
+		session.challenge.maxFriction = 20;
+		expect(clampFriction(session, 1)).toBe(5);
+		expect(clampFriction(session, 30)).toBe(20);
+	});
+
+	it("GameCore: the Race challenge projects null limits; creating a shape under +MAX sentinels keeps friction 11", async () => {
+		const core = new GameCore(createInitialState());
+		await core.loadBuiltInChallengeBlob("race", readFileSync("resource/race.dat"));
+		const st = core.getState().challenge!;
+		expect(st.restrictions.minFriction).toBeNull();
+		expect(st.restrictions.maxFriction).toBeNull();
+		expect(st.restrictions.minRestitution).toBeNull();
+		expect(st.restrictions.maxRestitution).toBeNull();
+
+		// Race disallows creating any part type, so exercise the create-time clamp
+		// (clampPartToChallengeLimits) on an authoring challenge carrying the SAME
+		// +MAX sentinel state race.dat decodes to.
+		const core2 = new GameCore(createInitialState());
+		core2.dispatch({ type: "newChallenge" });
+		const live = core2.getLiveChallenge()!;
+		live.minFriction = Number.MAX_VALUE;
+		live.maxFriction = Number.MAX_VALUE;
+		live.minRestitution = Number.MAX_VALUE;
+		live.maxRestitution = Number.MAX_VALUE;
+		core2.dispatch({ type: "createShape", kind: "rect", x1: 0, y1: 0, x2: 3, y2: 3 });
+		const shape = core2.getState().parts.find((p) => p.type === "Rectangle" && p.isEditable) as unknown as {
+			friction: number;
+			restitution: number;
+		};
+		expect(shape.friction).toBe(11); // NOT 1.8e308 (Jaybit shipped that bug)
+		expect(shape.restitution).toBe(7);
 	});
 });
 

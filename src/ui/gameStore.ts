@@ -44,6 +44,14 @@ export const useGameStore = defineStore("game", () => {
 	const replay = computed(() => state.value.replay);
 	// Raw live Part instances — the renderer reads this directly each frame.
 	const parts = computed<readonly Part[]>(() => state.value.parts);
+	// Live physical-shape count for the StatusBar (Jaybit DropDownMenu
+	// shapeCounter). Delegates to the core's single predicate (getShapeCount —
+	// the same one the 750-shape play gate uses) instead of reimplementing it;
+	// reading state.value makes it recompute on every core notify.
+	const shapeCount = computed(() => {
+		void state.value;
+		return core.getShapeCount();
+	});
 	// Plain-data challenge read-model (null for a plain sandbox). The Vue panels
 	// read this for the condition/restriction editors + the score.
 	const challenge = computed(() => state.value.challenge);
@@ -85,12 +93,49 @@ export const useGameStore = defineStore("game", () => {
 	// Robot import/export passthroughs. Export returns the encoded string
 	// (not a dispatched Command — dispatch returns void); import replaces the
 	// parts graph and is undoable. Both are async (ByteArray compression is).
-	function exportRobot(): Promise<string> {
-		return core.exportRobot();
+	function exportRobot(name = "", desc = "", expo?: number): Promise<string> {
+		return core.exportRobot(name, desc, expo);
 	}
 
 	function importRobot(str: string): Promise<void> {
 		return core.importRobot(str);
+	}
+
+	/**
+	 * Tutorial milestone: the user copied the exported robot code (ExportPanel's
+	 * "Copy to Clipboard" — ControllerHomeMovies.copyButton -> 45 "copied").
+	 * Deliberately NOT fired by exportRobot itself, which re-encodes on every
+	 * name/desc keystroke.
+	 */
+	function notifyCodeCopied(): void {
+		core.notifyCodeCopied();
+	}
+
+	/**
+	 * Import And Insert (ControllerGame.importAndInsertButton): decode a robot code
+	 * and APPEND its parts to the current robot instead of replacing. Undoable.
+	 */
+	function importRobotInsert(str: string): Promise<void> {
+		return core.importRobotInsert(str);
+	}
+
+	// --- File (byte) import passthroughs ---------------------------------------
+	// "Load from File": the UI reads bytes from a file input and hands them to the
+	// core, which sniffs raw-blob vs pasted "eN" text-code files itself and stays
+	// node-clean. (Save-to-File derives its bytes from the displayed export CODE via
+	// codeToFileBytes — file === base64-decode(code) — so no export-file passthrough
+	// is needed here.)
+	function importRobotFile(bytes: ArrayBuffer | Uint8Array): Promise<void> {
+		return core.importRobotFile(bytes);
+	}
+	function importRobotFileInsert(bytes: ArrayBuffer | Uint8Array): Promise<void> {
+		return core.importRobotFileInsert(bytes);
+	}
+	function importChallengeFile(bytes: ArrayBuffer | Uint8Array): Promise<void> {
+		return core.importChallengeFile(bytes);
+	}
+	function importReplayFile(bytes: ArrayBuffer | Uint8Array): Promise<void> {
+		return core.importReplayFile(bytes);
 	}
 
 	/**
@@ -105,8 +150,8 @@ export const useGameStore = defineStore("game", () => {
 	 * Encode the current replay recording (+ its robot) to the legacy-compatible
 	 * export string, or null when nothing was recorded. async (compression).
 	 */
-	function exportReplayString(): Promise<string | null> {
-		return core.exportReplayString();
+	function exportReplayString(meta?: import("../core").ReplayMeta): Promise<string | null> {
+		return core.exportReplayString(meta);
 	}
 
 	/** Decode a legacy replay export string and start playing it back. async. */
@@ -135,8 +180,8 @@ export const useGameStore = defineStore("game", () => {
 	 * Encode the live challenge session to the legacy export string, or null when
 	 * no challenge is active. async (compression). Mirrors exportReplayString.
 	 */
-	function exportChallengeString(): Promise<string | null> {
-		return core.exportChallengeString();
+	function exportChallengeString(name = "", desc = "", expo?: number): Promise<string | null> {
+		return core.exportChallengeString(name, desc, expo);
 	}
 
 	// --- UI-only application mode (menu vs editor) ---------------------------
@@ -183,6 +228,7 @@ export const useGameStore = defineStore("game", () => {
 		camera,
 		edit,
 		parts,
+		shapeCount,
 		challenge,
 		conditionDraft,
 		jointGesture,
@@ -191,7 +237,13 @@ export const useGameStore = defineStore("game", () => {
 		liveChallenge,
 		dispatch,
 		exportRobot,
+		notifyCodeCopied,
 		importRobot,
+		importRobotInsert,
+		importRobotFile,
+		importRobotFileInsert,
+		importChallengeFile,
+		importReplayFile,
 		exportReplay,
 		exportReplayString,
 		importReplay,

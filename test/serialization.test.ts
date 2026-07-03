@@ -7,6 +7,8 @@
 
 import { describe, expect, it } from "vitest";
 import { encodeRobot, decodeRobot } from "../src/core/robotSerialization";
+import { VERSION_PREFIX, VERSION_STRING } from "../src/core/serializationVersion";
+import { EXPO_PUBLIC_EDITABLE } from "../src/core/exposure";
 import { Circle } from "../src/Parts/Circle";
 import { Rectangle } from "../src/Parts/Rectangle";
 import { Triangle } from "../src/Parts/Triangle";
@@ -228,7 +230,7 @@ describe("encodeRobot -> decodeRobot round-trip preserves geometry/props/counts"
 	});
 });
 
-describe("legacy byte format (robotSerialization.ts:14-21 / Database.ExportRobot)", () => {
+describe("Jaybit byte format (Database.as ExportRobot :2081-2107)", () => {
 	it("export string is valid base64 that zlib-inflates to the documented header", async () => {
 		const zlib = await import("node:zlib");
 		const str = await encodeRobot(sampleRobot(), undefined, "MyBot", "desc");
@@ -236,25 +238,26 @@ describe("legacy byte format (robotSerialization.ts:14-21 / Database.ExportRobot
 		const compressed = Buffer.from(str, "base64");
 		const raw = zlib.inflateSync(compressed);
 
-		// Header layout (robotSerialization.ts:305-312 / encodeRobot):
-		//   UTF name, UTF desc, int shared=0, int allowEdits=0, int prop=0, ...
-		// AMF UTF string = u16 length prefix + bytes.
+		// Header layout (Wave 3a, matching Jaybit's ExportRobot):
+		//   UTF "kezcuvwistoup", UTF "<version> ibro", UTF name, UTF desc,
+		//   int shared=1, int expo+2 (default 1+2=3), int prop=0, ...
+		// writeUTF = u16 length prefix + bytes.
 		let pos = 0;
-		const nameLen = raw.readUInt16BE(pos);
-		pos += 2;
-		const name = raw.toString("utf8", pos, pos + nameLen);
-		pos += nameLen;
-		expect(name).toBe("MyBot");
+		const readUTF = () => {
+			const len = raw.readUInt16BE(pos);
+			pos += 2;
+			const s = raw.toString("utf8", pos, pos + len);
+			pos += len;
+			return s;
+		};
+		expect(readUTF()).toBe(VERSION_PREFIX); // "kezcuvwistoup"
+		expect(readUTF()).toBe(VERSION_STRING + " ibro");
+		expect(readUTF()).toBe("MyBot");
+		expect(readUTF()).toBe("desc");
 
-		const descLen = raw.readUInt16BE(pos);
-		pos += 2;
-		const desc = raw.toString("utf8", pos, pos + descLen);
-		pos += descLen;
-		expect(desc).toBe("desc");
-
-		// Three big-endian int32 header fields, all 0.
-		expect(raw.readInt32BE(pos)).toBe(0); // shared
-		expect(raw.readInt32BE(pos + 4)).toBe(0); // allowEdits
+		// Three big-endian int32 header fields.
+		expect(raw.readInt32BE(pos)).toBe(1); // shared (Jaybit always writes 1)
+		expect(raw.readInt32BE(pos + 4)).toBe(EXPO_PUBLIC_EDITABLE + 2); // exposure
 		expect(raw.readInt32BE(pos + 8)).toBe(0); // prop
 	});
 

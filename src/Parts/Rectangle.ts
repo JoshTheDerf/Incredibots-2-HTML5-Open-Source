@@ -1,6 +1,6 @@
 import { b2Body, b2BodyDef, b2MassData, b2PolygonDef, b2PolygonShape, b2Vec2, b2World } from "../Box2D";
 import { Util } from "../General/Util"
-import { FixedJoint } from "./FixedJoint"
+import { COLLISION_GROUP_UNSET } from "./partDefaults"
 import { ShapePart } from "./ShapePart"
 
 export class Rectangle extends ShapePart {
@@ -106,6 +106,7 @@ export class Rectangle extends ShapePart {
     rect.outline = this.outline;
     rect.terrain = this.terrain;
     rect.undragable = this.undragable;
+    this.CopyJaybitFieldsTo(rect);
     return rect;
   }
 
@@ -114,8 +115,10 @@ export class Rectangle extends ShapePart {
     super.Init(world);
 
     var sd = new b2PolygonDef();
-    sd.friction = 0.4;
-    sd.restitution = 0.3;
+    // Jaybit adjustable material (Rectangle.as:123-124): defaults 11/7 convert
+    // to CE's hardcoded 0.4/0.3 exactly.
+    sd.friction = Util.ConvertFrictionToBox2D(this.friction);
+    sd.restitution = Util.ConvertRestitutionToBox2D(this.restitution);
 
     //CE PROBLEM
     //sd.density = (Math.max(1, Math.min(30, density)) + 5.0) / 10.0;
@@ -124,7 +127,11 @@ export class Rectangle extends ShapePart {
     sd.density = (this.density + 5.0) / 10.0;
 
     sd.vertexCount = 4;
-    if (this.m_collisionGroup != Number.MIN_VALUE) sd.filter.groupIndex = this.m_collisionGroup;
+    // Collision layers A-D -> category == mask bits (see ShapePart.CollisionBits).
+    var bits: number = this.GetCollisionBits();
+    sd.filter.categoryBits = bits;
+    sd.filter.maskBits = 0xffff & bits;
+    if (this.m_collisionGroup != COLLISION_GROUP_UNSET) sd.filter.groupIndex = this.m_collisionGroup;
     sd.vertices = this.GetVertices();
 
     var bodyStatic:boolean = false;
@@ -168,16 +175,27 @@ export class Rectangle extends ShapePart {
     sd.userData.undragable = this.undragable;
     sd.userData.isPiston = -1;
     sd.userData.isSandbox = this.isSandbox;
+    // Trigger snapshot (Jaybit Rectangle.as, same block as Circle.as:168-182).
+    sd.userData.triggerName = this.triggerName;
+    sd.userData.triggerName_2 = this.triggerName_2;
+    sd.userData.triggerList = this.triggerName.replace(/ /g, "").split(",");
+    sd.userData.triggerList_2 = this.triggerName_2.replace(/ /g, "").split(",");
+    sd.userData.triggerAction = this.triggerAction;
+    sd.userData.triggerAction_2 = this.triggerAction_2;
+    sd.userData.onGroundHit = this.onGroundHit;
+    sd.userData.onGroundHit_2 = this.onGroundHit_2;
+    sd.userData.onSameName = this.onSameName;
+    sd.userData.onSameName_2 = this.onSameName_2;
+    sd.userData.jointsToTrigger = new Array();
+    sd.userData.actionsToTrigger = new Array();
+    sd.userData.isFirstTrigger = new Array();
     this.m_shape = this.m_body.CreateShape(sd);
     if (this.isStatic || bodyStatic) this.m_body.SetMass(new b2MassData());
     else this.m_body.SetMassFromShapes();
 
-    for (i = 0; i < this.m_joints.length; i++) {
-      if (this.m_joints[i].isEnabled && this.m_joints[i] instanceof FixedJoint) {
-        var connectedPart:ShapePart = this.m_joints[i].GetOtherPart(this);
-        if (connectedPart.isEnabled) connectedPart.Init(world, this.m_body);
-      }
-    }
+    // Weld/lock fixed-joint partners (Jaybit Rectangle.as:215 CheckFixedJoints
+    // — replaces CE's inline merge loop; untriggered joints still body-merge).
+    this.CheckFixedJoints(world);
   }
 
   public IntersectsBox(boxX: number, boxY: number, boxW: number, boxH: number): boolean {

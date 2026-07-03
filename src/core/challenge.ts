@@ -81,15 +81,27 @@ export interface RestrictionState {
 	prismatic: boolean;
 	thrusters: boolean;
 	cannons: boolean;
+	// Jaybit trigger permission (Challenge.as:66; RestrictionsWindow "Exclude Triggers").
+	triggers: boolean;
 	// build permissions (Challenge.ts:17-21).
 	mouseDrag: boolean;
 	botControl: boolean;
 	fixate: boolean;
 	nonColliding: boolean;
 	showConditions: boolean;
+	// Jaybit collision-group permissions (Challenge.as:39-40). The legacy UI
+	// disables the A-D boxes on !collisionGroupsAllowed and the subColl box on
+	// !subCollisionsAllowed INDEPENDENTLY (AdvancedPropertiesWindow.as:960-975).
+	collisionGroups: boolean;
+	subCollisions: boolean;
 	// numeric limits; null == the ∓MAX_VALUE "no limit" sentinel.
 	minDensity: number | null;
 	maxDensity: number | null;
+	// Jaybit friction/restitution restrictions (Challenge.as:36/:60/:64/:76).
+	minFriction: number | null;
+	maxFriction: number | null;
+	minRestitution: number | null;
+	maxRestitution: number | null;
 	maxRJStrength: number | null;
 	maxRJSpeed: number | null;
 	maxSJStrength: number | null;
@@ -212,8 +224,22 @@ function conditionSnapshot(c: Condition, isLoss: boolean): ConditionSnapshot {
 	return snap;
 }
 
-function limitToNull(v: number, sentinel: number): number | null {
-	return v === sentinel ? null : v;
+/**
+ * True when a min/max limit field holds a "no limit" sentinel. BOTH MAX_VALUE
+ * poles count: mins nominally use -MAX and maxes +MAX (Challenge.ts:22-32), but
+ * old-format challenge data (e.g. the built-in race.dat) defaults the absent
+ * friction/restitution trailer to +Number.MAX_VALUE for min AND max
+ * (challengeSerialization trailer-absent path, Jaybit Database.as:3367-3372).
+ * NOTE: this deliberately goes beyond Jaybit, which shipped the corresponding
+ * bug — its CheckFriction raised every value up to the bogus +MAX "min".
+ */
+function isNoLimit(v: number): boolean {
+	return v === NO_LIMIT_MAX || v === NO_LIMIT_MIN;
+}
+
+/** Map a limit field to the read-model: null for either "no limit" pole. */
+function limitToNull(v: number): number | null {
+	return isNoLimit(v) ? null : v;
 }
 
 /** Project the live session into the plain-data read-model for the view. */
@@ -235,18 +261,25 @@ export function toChallengeState(session: ChallengeSession): ChallengeState {
 			prismatic: ch.slidingJointsAllowed,
 			thrusters: ch.thrustersAllowed,
 			cannons: ch.cannonsAllowed,
+			triggers: ch.triggersAllowed,
 			mouseDrag: ch.mouseDragAllowed,
 			botControl: ch.botControlAllowed,
 			fixate: ch.fixateAllowed,
 			nonColliding: ch.nonCollidingAllowed,
 			showConditions: ch.showConditions,
-			minDensity: limitToNull(ch.minDensity, NO_LIMIT_MIN),
-			maxDensity: limitToNull(ch.maxDensity, NO_LIMIT_MAX),
-			maxRJStrength: limitToNull(ch.maxRJStrength, NO_LIMIT_MAX),
-			maxRJSpeed: limitToNull(ch.maxRJSpeed, NO_LIMIT_MAX),
-			maxSJStrength: limitToNull(ch.maxSJStrength, NO_LIMIT_MAX),
-			maxSJSpeed: limitToNull(ch.maxSJSpeed, NO_LIMIT_MAX),
-			maxThrusterStrength: limitToNull(ch.maxThrusterStrength, NO_LIMIT_MAX),
+			collisionGroups: ch.collisionGroupsAllowed,
+			subCollisions: ch.subCollisionsAllowed,
+			minDensity: limitToNull(ch.minDensity),
+			maxDensity: limitToNull(ch.maxDensity),
+			minFriction: limitToNull(ch.minFriction),
+			maxFriction: limitToNull(ch.maxFriction),
+			minRestitution: limitToNull(ch.minRestitution),
+			maxRestitution: limitToNull(ch.maxRestitution),
+			maxRJStrength: limitToNull(ch.maxRJStrength),
+			maxRJSpeed: limitToNull(ch.maxRJSpeed),
+			maxSJStrength: limitToNull(ch.maxSJStrength),
+			maxSJSpeed: limitToNull(ch.maxSJSpeed),
+			maxThrusterStrength: limitToNull(ch.maxThrusterStrength),
 		},
 		buildAreas: ch.buildAreas.map((a: b2AABB) => ({
 			minX: a.lowerBound.x,
@@ -434,6 +467,35 @@ export function clampDensity(session: ChallengeSession, value: number): number {
 	let v = value;
 	if (v < ch.minDensity) v = ch.minDensity;
 	if (v > ch.maxDensity) v = ch.maxDensity;
+	return v;
+}
+
+/**
+ * Clamp a friction value against the challenge min/max (Jaybit
+ * ControllerGame.CheckFriction :626-628 / CheckForChallengeLimits :4233-4240).
+ * A ∓MAX_VALUE sentinel on either bound means "no limit" (see isNoLimit): old
+ * challenge data (race.dat) carries min = max = +MAX_VALUE, and clamping up to
+ * that would blow every friction to 1.8e308. DELIBERATELY diverges from Jaybit,
+ * which shipped that exact bug.
+ */
+export function clampFriction(session: ChallengeSession, value: number): number {
+	const ch = session.challenge;
+	let v = value;
+	if (!isNoLimit(ch.minFriction) && v < ch.minFriction) v = ch.minFriction;
+	if (!isNoLimit(ch.maxFriction) && v > ch.maxFriction) v = ch.maxFriction;
+	return v;
+}
+
+/**
+ * Clamp a restitution value against the challenge min/max (Jaybit
+ * ControllerGame.CheckRestitution :6148-6150 / CheckForChallengeLimits :4241-4247).
+ * Same ∓MAX_VALUE "no limit" handling as clampFriction (beyond-Jaybit fix).
+ */
+export function clampRestitution(session: ChallengeSession, value: number): number {
+	const ch = session.challenge;
+	let v = value;
+	if (!isNoLimit(ch.minRestitution) && v < ch.minRestitution) v = ch.minRestitution;
+	if (!isNoLimit(ch.maxRestitution) && v > ch.maxRestitution) v = ch.maxRestitution;
 	return v;
 }
 

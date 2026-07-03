@@ -1,19 +1,58 @@
-import { b2Body, b2Shape, b2World } from "../Box2D";
+import { b2Body, b2RevoluteJointDef, b2Shape, b2Vec2, b2World } from "../Box2D";
 import { Util } from "../General/Util"
 import { FixedJoint } from "./FixedJoint"
 import { JointPart } from "./JointPart"
 import { IllegalOperationError, Part } from "./Part"
-import { DEFAULT_B, DEFAULT_G, DEFAULT_O, DEFAULT_R, MAX_DENSITY, MIN_DENSITY } from "./partDefaults"
+import {
+  COLLISION_GROUP_UNSET,
+  DEFAULT_B,
+  DEFAULT_FRICTION,
+  DEFAULT_G,
+  DEFAULT_O,
+  DEFAULT_R,
+  DEFAULT_RESTITUTION,
+  MAX_DENSITY,
+  MAX_FRICTION,
+  MAX_RESTITUTION,
+  MIN_DENSITY,
+  MIN_FRICTION,
+  MIN_RESTITUTION,
+  TRIGGER_NONE,
+} from "./partDefaults"
 import { Thrusters } from "./Thrusters"
 
 export class ShapePart extends Part {
   public centerX: number;
   public centerY: number;
   public density: number;
+  public friction: number;
+  public restitution: number;
   public angle: number;
   public collide: boolean = true;
+  // Collision layers A-D (Jaybit ShapePart.as; "Advanced" panel checkboxes).
+  // Encoded into 4-bit category==mask groups at Init — see GetCollisionBits().
+  public collA: boolean = true;
+  public collB: boolean = true;
+  public collC: boolean = true;
+  public collD: boolean = true;
+  // "Self-collision": SetCollisionGroup assigns groupIndex 0 instead of the
+  // structure's negative group, so the shape collides with its own robot per
+  // the layer bits (Jaybit ShapePart.as:430-455).
+  public subColl: boolean = false;
+  // --- Trigger fields (Jaybit ShapePart.as:22-80). DATA ONLY this wave:
+  // declared/defaulted/copied for serialization; the trigger runtime lands in
+  // the triggers wave. Two independent slots ("_2" suffix = slot 2).
+  public triggerAction: number = TRIGGER_NONE;
+  public triggerAction_2: number = TRIGGER_NONE;
+  /** comma-separated names this shape EMITS (parsed as a CSV list despite the singular name). */
+  public triggerName: string = "";
+  public triggerName_2: string = "";
+  public onGroundHit: boolean = false;
+  public onGroundHit_2: boolean = false;
+  public onSameName: boolean = false;
+  public onSameName_2: boolean = false;
   public isCameraFocus: boolean = false;
-  public m_collisionGroup: number = Number.MIN_SAFE_INTEGER;
+  public m_collisionGroup: number = COLLISION_GROUP_UNSET;
   public highlightForJoint: boolean = false;
   public isBullet: boolean = false;
   public red: number;
@@ -39,6 +78,24 @@ export class ShapePart extends Part {
       this.density = MAX_DENSITY;
     } else {
       this.density = 15.0;
+    }
+    // Friction/restitution default-clamps mirror density's (Jaybit
+    // ShapePart.as ctor clamps against ControllerGame.minFriction etc.; the
+    // core applies the live challenge limits in GameCore — see
+    // clampFriction/clampRestitution).
+    if (MIN_FRICTION > DEFAULT_FRICTION) {
+      this.friction = MIN_FRICTION;
+    } else if (MAX_FRICTION < DEFAULT_FRICTION) {
+      this.friction = MAX_FRICTION;
+    } else {
+      this.friction = DEFAULT_FRICTION;
+    }
+    if (MIN_RESTITUTION > DEFAULT_RESTITUTION) {
+      this.restitution = MIN_RESTITUTION;
+    } else if (MAX_RESTITUTION < DEFAULT_RESTITUTION) {
+      this.restitution = MAX_RESTITUTION;
+    } else {
+      this.restitution = DEFAULT_RESTITUTION;
     }
     this.angle = 0;
     this.red = DEFAULT_R;
@@ -129,10 +186,134 @@ export class ShapePart extends Part {
   public SetCollisionGroup(grp: number): void {
     if (!this.checkedCollisionGroup) {
       this.checkedCollisionGroup = true;
-      this.m_collisionGroup = grp;
+      // subColl ("Self-collision"): this shape opts out of the structure's
+      // shared negative group — groupIndex 0 defers to the layer bits, so it
+      // collides with its own robot. The flood-fill still propagates the
+      // ORIGINAL id so one subColl shape doesn't break the rest of the
+      // structure (Jaybit ShapePart.as:430-455).
+      if (!this.subColl) this.m_collisionGroup = grp;
+      else this.m_collisionGroup = 0;
       for (var i: number = 0; i < this.m_joints.length; i++) {
         if (this.m_joints[i].isEnabled) {
           this.m_joints[i].GetOtherPart(this).SetCollisionGroup(grp);
+          // NEW in Jaybit: also stamp the PrismaticJoint itself so its shaft
+          // segments can carry the group. Duck-typed (only PrismaticJoint has
+          // SetCollisionGroup) to avoid a ShapePart->PrismaticJoint import cycle.
+          if (typeof this.m_joints[i].SetCollisionGroup === "function") {
+            this.m_joints[i].SetCollisionGroup(grp);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Encode collision layers A-D into Box2D filter bits, 4 bits per layer
+   * (Jaybit Circle.as:96-118 — identical pattern in every ShapePart Init and
+   * PrismaticJoint.Init). Every shape sets category == mask == these bits, so
+   * Box2D's (cat1 & mask2) && (cat2 & mask1) reduces to "collide iff the two
+   * shapes share at least one enabled layer". All-off => 0 => collides with
+   * nothing via the filter (sandbox terrain still hits via the ContactFilter
+   * isSandbox short-circuit).
+   */
+  public static CollisionBits(collA: boolean, collB: boolean, collC: boolean, collD: boolean): number {
+    var bits: number = 0;
+    if (collA) bits += 15; // 0x000F
+    if (collB) bits += 240; // 0x00F0
+    if (collC) bits += 3840; // 0x0F00
+    if (collD) bits += 61440; // 0xF000
+    return bits;
+  }
+
+  /** This shape's layer bits (see CollisionBits). */
+  public GetCollisionBits(): number {
+    return ShapePart.CollisionBits(this.collA, this.collB, this.collC, this.collD);
+  }
+
+  /**
+   * Copy the Jaybit-added persisted ShapePart fields (material, collision
+   * layers, trigger slots) onto `other`. Centralized so every clone path —
+   * each subclass MakeCopy AND GameCore's mirrorParts handlers — inherits
+   * them; this is the root-cause fix for Jaybit's mirror/copy-paste
+   * collision-group bugs (mirrored parts silently reset to defaults for any
+   * field not copied explicitly).
+   */
+  public CopyJaybitFieldsTo(other: ShapePart): void {
+    other.friction = this.friction;
+    other.restitution = this.restitution;
+    other.collA = this.collA;
+    other.collB = this.collB;
+    other.collC = this.collC;
+    other.collD = this.collD;
+    other.subColl = this.subColl;
+    other.triggerAction = this.triggerAction;
+    other.triggerAction_2 = this.triggerAction_2;
+    other.triggerName = this.triggerName;
+    other.triggerName_2 = this.triggerName_2;
+    other.onGroundHit = this.onGroundHit;
+    other.onGroundHit_2 = this.onGroundHit_2;
+    other.onSameName = this.onSameName;
+    other.onSameName_2 = this.onSameName_2;
+  }
+
+  /**
+   * Init this shape's fixed-joint-welded partners (Jaybit
+   * ShapePart.as CheckFixedJoints, diff lines 290-363) — called at the end of
+   * every concrete shape Init, replacing CE's inline merge loop. Normally a
+   * FixedJoint welds the two shapes into ONE b2Body (`other.Init(world,
+   * this.m_body)`). A TRIGGERED fixed joint (non-empty triggerList) instead
+   * gets its own bodies plus a limit-locked b2RevoluteJoint, so that
+   * TRIGGER_DESTROY can break it at runtime.
+   *
+   * First pass pairs up duplicate fixed joints: if two enabled FixedJoints
+   * connect the same part pair and NOT BOTH are triggered, both are "excluded"
+   * — a redundant weld forces the stiff-body path (you can't break one of two
+   * welds). Untriggered joints take the classic same-body weld, keeping the
+   * shared-body origins (and therefore replays) identical to before.
+   */
+  public CheckFixedJoints(world: b2World): void {
+    var excluded: boolean[] = new Array(this.m_joints.length);
+    for (var i: number = 0; i < excluded.length; i++) excluded[i] = false;
+
+    for (i = 0; i < this.m_joints.length - 1; i++) {
+      if (this.m_joints[i].isEnabled && this.m_joints[i] instanceof FixedJoint) {
+        var fj1: FixedJoint = this.m_joints[i] as FixedJoint;
+        for (var j: number = i + 1; j < this.m_joints.length; j++) {
+          if (this.m_joints[j].isEnabled && this.m_joints[j] instanceof FixedJoint) {
+            var fj2: FixedJoint = this.m_joints[j] as FixedJoint;
+            if (
+              ((fj1.part1 == fj2.part1 && fj1.part2 == fj2.part2) ||
+                (fj1.part1 == fj2.part2 && fj1.part2 == fj2.part1)) &&
+              (!fj1.IsTriggered() || !fj2.IsTriggered())
+            ) {
+              excluded[i] = excluded[j] = true;
+            }
+          }
+        }
+      }
+    }
+
+    for (i = 0; i < this.m_joints.length; i++) {
+      if (this.m_joints[i].isEnabled && this.m_joints[i] instanceof FixedJoint) {
+        var connectedPart: ShapePart = this.m_joints[i].GetOtherPart(this);
+        if (connectedPart.isEnabled) {
+          var fj: FixedJoint = this.m_joints[i] as FixedJoint;
+          if (!excluded[i] && fj.IsTriggered()) {
+            if (!fj.triggerInitted) {
+              fj.triggerInitted = true;
+              if (!connectedPart.isInitted) connectedPart.Init(world);
+              var def: b2RevoluteJointDef = new b2RevoluteJointDef();
+              def.enableMotor = false;
+              def.maxMotorTorque = 0;
+              def.enableLimit = true;
+              def.lowerAngle = 0;
+              def.upperAngle = 0;
+              def.Initialize(this.m_body!, connectedPart.GetBody()!, new b2Vec2(fj.anchorX, fj.anchorY));
+              fj.MakeStiffFixedJoint(world.CreateJoint(def));
+            }
+          } else {
+            connectedPart.Init(world, this.m_body);
+          }
         }
       }
     }
@@ -248,8 +429,23 @@ export class ShapePart extends Part {
       this.NumbersEqual(this.centerX, other.centerX) &&
       this.NumbersEqual(this.centerY, other.centerY) &&
       this.NumbersEqual(this.density, other.density) &&
+      this.NumbersEqual(this.friction, other.friction) &&
+      this.NumbersEqual(this.restitution, other.restitution) &&
       this.NumbersEqual(this.angle, other.angle) &&
       this.collide == other.collide &&
+      this.collA == other.collA &&
+      this.collB == other.collB &&
+      this.collC == other.collC &&
+      this.collD == other.collD &&
+      this.subColl == other.subColl &&
+      this.triggerAction == other.triggerAction &&
+      this.triggerAction_2 == other.triggerAction_2 &&
+      this.triggerName == other.triggerName &&
+      this.triggerName_2 == other.triggerName_2 &&
+      this.onGroundHit == other.onGroundHit &&
+      this.onGroundHit_2 == other.onGroundHit_2 &&
+      this.onSameName == other.onSameName &&
+      this.onSameName_2 == other.onSameName_2 &&
       this.red == other.red &&
       this.green == other.green &&
       this.blue == other.blue &&

@@ -69,7 +69,16 @@ export type PartSnapshot = {
 	// --- per-property edit fields (read back from the live Part) ---
 	// Shape (ShapePart: Circle/Rectangle/Triangle/Cannon)
 	density?: number;
+	/** Jaybit adjustable material, 1..30 UI scale like density. */
+	friction?: number;
+	restitution?: number;
 	collide?: boolean;
+	/** Jaybit collision layers A-D + self-collision (ShapePart AND PrismaticJoint). */
+	collA?: boolean;
+	collB?: boolean;
+	collC?: boolean;
+	collD?: boolean;
+	subColl?: boolean;
 	cameraFocus?: boolean;
 	/** "Fixate": maps to Part.isStatic. */
 	fixate?: boolean;
@@ -116,6 +125,24 @@ export type PartSnapshot = {
 	displayKey?: number;
 	alwaysVisible?: boolean;
 	scaleWithZoom?: boolean;
+
+	// --- Triggers (Jaybit AdvancedPropertiesWindow read-model) ---
+	// Trigger SOURCE fields (ShapePart: Circle/Rectangle/Triangle/Cannon) — two
+	// symmetric slots, each a comma-separated name CSV + a TRIGGER_* action
+	// (0-6, TRIGGER_NONE) + "same name hit" / "on ground hit" flags. Exposed so the
+	// group-edit UI can read them uniformly (compute the [varies] sentinel across a
+	// selection) instead of reaching into live Part instances.
+	triggerName?: string;
+	triggerName_2?: string;
+	triggerAction?: number;
+	triggerAction_2?: number;
+	onSameName?: boolean;
+	onSameName_2?: boolean;
+	onGroundHit?: boolean;
+	onGroundHit_2?: boolean;
+	/** Trigger TARGET listen list (joints / thrusters / cannons / text): the
+	 *  comma-separated names this part responds to. */
+	triggerList?: string;
 };
 
 export interface CameraState {

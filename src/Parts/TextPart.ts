@@ -1,5 +1,6 @@
 import { b2Body, b2World } from "../Box2D";
 import { Part } from "./Part"
+import { TRIGGER_FIRE, TRIGGER_NONE } from "./partDefaults"
 
 export class TextPart extends Part {
   public x: number;
@@ -12,6 +13,13 @@ export class TextPart extends Part {
   public scaleWithZoom: boolean = true;
   public displayKey: number = 32;
   public displayKeyPressed: boolean = false;
+  /**
+   * Comma-separated trigger names this text LISTENS to (Jaybit
+   * TextPart.as:37-53; persisted).
+   */
+  public triggerList: string = "";
+  /** Runtime trigger-contact counter (Jaybit TextPart.as:37; NOT persisted). */
+  public triggerTouches: number = 0;
 
   public red: number;
   public green: number;
@@ -25,15 +33,11 @@ export class TextPart extends Part {
   public initH!: number;
   private is_added: boolean = false;
 
-  private _text: string;
-
-  get text(): string {
-    return this._text;
-  }
-
-  set text(value: string) {
-    this._text = value
-  }
+  // A plain own field (not a `_text`-backed accessor) so AMF serializes it as
+  // `text` — Flash/Jaybit readers read `od.text` (Database.as :2190), so an
+  // accessor-backed `_text` would lose the content when a Flash client loads
+  // our exports. Import still accepts both spellings (Wave 3a §9).
+  public text: string;
 
   // Note: `cont` is retained for signature compatibility with existing call
   // sites (and MakeCopy), but TextPart is part of the headless game core and
@@ -53,7 +57,7 @@ export class TextPart extends Part {
     this.y = ny;
     this.w = nw;
     this.h = nh;
-    this._text = str;
+    this.text = str;
     this.red = 0;
     this.green = 0;
     this.blue = 0;
@@ -74,6 +78,34 @@ export class TextPart extends Part {
     if (key == this.displayKey && up) this.displayKeyPressed = !this.displayKeyPressed;
   }
 
+  /**
+   * Only TRIGGER_FIRE is meaningful: count touches then route through
+   * KeyInput via DetermineTriggered (Jaybit TextPart.as:174-193).
+   */
+  public DoTriggerAction(action: number, world: b2World | null = null, isAdd: boolean = true): boolean {
+    if (action == TRIGGER_NONE) return false;
+    if (action == TRIGGER_FIRE) {
+      if (isAdd) ++this.triggerTouches;
+      else if (this.triggerTouches > 0) --this.triggerTouches;
+      this.DetermineTriggered();
+    }
+    return false;
+  }
+
+  /**
+   * Route the trigger state through KeyInput (Jaybit TextPart.as:272-281).
+   * KeyInput toggles displayKeyPressed only on up==true, so the text
+   * visibility toggles when the LAST trigger contact ends (like the cannon's
+   * fire-on-release).
+   */
+  public DetermineTriggered(): void {
+    if (this.triggerTouches > 0) {
+      this.KeyInput(this.displayKey, false, false);
+    } else {
+      this.KeyInput(this.displayKey, true, false);
+    }
+  }
+
   public Update(world: b2World): void {}
 
   public GetAttachedParts(partList: Array<any> | null = null): Array<any> {
@@ -92,6 +124,7 @@ export class TextPart extends Part {
     tPart.green = this.green;
     tPart.blue = this.blue;
     tPart.size = this.size;
+    tPart.triggerList = this.triggerList;
     return tPart;
   }
 
@@ -188,6 +221,8 @@ export class TextPart extends Part {
   }
 
   public Init(world: b2World, body: b2Body | null = null): void {
+    // Per-play trigger runtime reset (Jaybit TextPart.as Init :152-156).
+    this.triggerTouches = 0;
     super.Init(world);
     this.displayKeyPressed = false;
   }

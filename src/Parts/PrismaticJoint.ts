@@ -2,7 +2,19 @@ import { b2Body, b2PolygonDef, b2PolygonShape, b2PrismaticJoint, b2PrismaticJoin
 import { getCollisionGroup } from "./partGlobals"
 import { Util } from "../General/Util"
 import { JointPart } from "./JointPart"
-import { DEFAULT_B, DEFAULT_G, DEFAULT_O, DEFAULT_R, MAX_SJ_SPEED, MAX_SJ_STRENGTH } from "./partDefaults"
+import {
+  COLLISION_GROUP_UNSET,
+  DEFAULT_B,
+  DEFAULT_G,
+  DEFAULT_O,
+  DEFAULT_R,
+  MAX_SJ_SPEED,
+  MAX_SJ_STRENGTH,
+  TRIGGER_CONTRACT,
+  TRIGGER_DESTROY,
+  TRIGGER_EXPAND,
+  TRIGGER_NONE,
+} from "./partDefaults"
 import { ShapePart } from "./ShapePart"
 
 export class PrismaticJoint extends JointPart {
@@ -21,6 +33,20 @@ export class PrismaticJoint extends JointPart {
   public opacity: number;
   public outline: boolean;
   public collide: boolean = true;
+  // Collision layers A-D + self-collision, persisted (Jaybit
+  // PrismaticJoint.as:51-63). The layers drive the shaft segments' filter
+  // bits; `subColl` is DEAD for physics — Init unconditionally overwrites the
+  // segments' groupIndex with part1/part2's (PrismaticJoint.as:247-254) — but
+  // is kept for serialization compatibility.
+  public collA: boolean = true;
+  public collB: boolean = true;
+  public collC: boolean = true;
+  public collD: boolean = true;
+  public subColl: boolean = false;
+  /** Runtime-only (NOT persisted): set by TRIGGER_DESTROY in the triggers wave. */
+  public isDestroyed: boolean = false;
+  /** Runtime-only "not yet assigned" sentinel, like ShapePart.m_collisionGroup. */
+  public m_collisionGroup: number = COLLISION_GROUP_UNSET;
 
   public initInitLength!: number;
   public arrayIndex: number = -1;
@@ -28,6 +54,10 @@ export class PrismaticJoint extends JointPart {
   private isKeyDown2: boolean = false;
   private wasKeyDown1: boolean = false;
   private wasKeyDown2: boolean = false;
+  // Runtime trigger-driven piston flags (Jaybit PrismaticJoint.as:35/:55; NOT
+  // persisted). Recomputed by DetermineTriggered from the touch counters.
+  private triggerMotorExpand: boolean = false;
+  private triggerMotorContract: boolean = false;
   private expanding: boolean = true;
   private targetJointDisp!: number;
   private prevJointDisp!: number;
@@ -95,6 +125,12 @@ export class PrismaticJoint extends JointPart {
     this.opacity = other.opacity;
     this.outline = other.outline;
     this.collide = other.collide;
+    this.collA = other.collA;
+    this.collB = other.collB;
+    this.collC = other.collC;
+    this.collD = other.collD;
+    this.subColl = other.subColl;
+    this.triggerList = other.triggerList;
   }
 
   public RotateAround(xVal: number, yVal: number, curAngle: number): void {
@@ -122,7 +158,81 @@ export class PrismaticJoint extends JointPart {
     j.opacity = this.opacity;
     j.outline = this.outline;
     j.collide = this.collide;
+    j.collA = this.collA;
+    j.collB = this.collB;
+    j.collC = this.collC;
+    j.collD = this.collD;
+    j.subColl = this.subColl;
+    j.triggerList = this.triggerList;
     return j;
+  }
+
+  /**
+   * Stamp this joint with the structure's collision group (called from
+   * ShapePart.SetCollisionGroup's flood-fill; NEW in Jaybit,
+   * PrismaticJoint.as:601-615). Same subColl-or-assign logic as ShapePart but
+   * WITHOUT propagation. NOTE: dead code for physics — Init overwrites the
+   * shaft segments' groupIndex with part1/part2's shape groupIndex — ported
+   * faithfully anyway.
+   */
+  public SetCollisionGroup(grp: number): void {
+    if (!this.checkedCollisionGroup) {
+      this.checkedCollisionGroup = true;
+      if (!this.subColl) this.m_collisionGroup = grp;
+      else this.m_collisionGroup = 0;
+    }
+  }
+
+  /** Plain accessor for the runtime destroyed flag (PrismaticJoint.as:677-680). */
+  public GetDestroyedStatus(): boolean {
+    return this.isDestroyed;
+  }
+
+  /**
+   * TRIGGER_DESTROY (add only) destroys the b2 joint and sets isDestroyed;
+   * EXPAND/CONTRACT count touches then recompute the piston flags (Jaybit
+   * PrismaticJoint.as:442-477).
+   */
+  public DoTriggerAction(action: number, world: b2World | null = null, isAdd: boolean = true): boolean {
+    if (action == TRIGGER_NONE) return false;
+    if (action == TRIGGER_DESTROY && world && isAdd) {
+      return this.DestroyJointPart(world);
+    }
+    if (action == TRIGGER_EXPAND) {
+      if (isAdd) ++this.triggerTouches;
+      else if (this.triggerTouches > 0) --this.triggerTouches;
+      this.DetermineTriggered();
+    } else if (action == TRIGGER_CONTRACT) {
+      if (isAdd) ++this.triggerTouches_2;
+      else if (this.triggerTouches_2 > 0) --this.triggerTouches_2;
+      this.DetermineTriggered();
+    }
+    return false;
+  }
+
+  public DestroyJointPart(world: b2World): boolean {
+    // Sets the runtime destroyed flag before destroying the b2 joint (Jaybit
+    // PrismaticJoint.as:530-537).
+    if (!this.isDestroyed) {
+      this.isDestroyed = true;
+    }
+    return super.DestroyJointPart(world);
+  }
+
+  /**
+   * Recompute the trigger piston flags (Jaybit PrismaticJoint.as:539-553).
+   * Same FAITHFUL latch quirk as RevoluteJoint.DetermineTriggered: only
+   * equality clears both flags.
+   */
+  public DetermineTriggered(): void {
+    if (this.triggerTouches == this.triggerTouches_2) {
+      this.triggerMotorExpand = false;
+      this.triggerMotorContract = false;
+    } else if (this.triggerTouches > this.triggerTouches_2) {
+      this.triggerMotorExpand = true;
+    } else if (this.triggerTouches < this.triggerTouches_2) {
+      this.triggerMotorContract = true;
+    }
   }
 
   public InsideShape(xVal: number, yVal: number, scale: number): boolean {
@@ -161,13 +271,21 @@ export class PrismaticJoint extends JointPart {
   public Init(world: b2World, body: b2Body | null = null): void {
     if (this.isInitted || !this.part1.isInitted || !this.part2.isInitted) return;
     super.Init(world);
+    // Per-play trigger runtime reset (Jaybit PrismaticJoint.as Init :212-216).
+    this.triggerTouches = 0;
+    this.triggerTouches_2 = 0;
+    this.triggerMotorExpand = false;
+    this.triggerMotorContract = false;
+    this.isDestroyed = false;
     this.expanding = true;
 
     this.m_shapes = new Array();
     if (this.part1.GetBody() != this.part2.GetBody()) {
+      // Jaybit removes CE's part1/part2 categoryBits overwrites — the part
+      // shapes keep their own layer bits. The per-piston power-of-two id
+      // survives only as userData.isPiston on the shaft segments
+      // (PrismaticJoint.as:247-254 vs CE :206-220).
       var collisionGroup:number = getCollisionGroup();
-      this.part1.GetShape()!.m_filter.categoryBits = collisionGroup;
-      this.part2.GetShape()!.m_filter.categoryBits = collisionGroup;
 
       var x1:number = this.anchorX - this.axis.x * this.initLength / 2;
       var y1:number = this.anchorY - this.axis.y * this.initLength / 2;
@@ -180,7 +298,17 @@ export class PrismaticJoint extends JointPart {
       sd.restitution = 0.3;
       sd.density = 5.0;
       sd.vertexCount = 4;
-      sd.filter.maskBits = 0xFFFF ^ collisionGroup;
+      // Shaft segments carry the JOINT's own collA-D layer bits; the segment
+      // mask changes from CE's `0xFFFF ^ pistonId` to `0xFFFF & layerBits`
+      // (PrismaticJoint.as:247-254).
+      var bits:number = ShapePart.CollisionBits(this.collA, this.collB, this.collC, this.collD);
+      sd.filter.categoryBits = bits;
+      sd.filter.maskBits = 0xFFFF & bits;
+      // Faithful dead store (PrismaticJoint.as:249-252): the conditional
+      // m_collisionGroup assignment is immediately overwritten below with
+      // part1's shape groupIndex, so the joint's own subColl never reaches
+      // the physics — ported as shipped.
+      if (this.m_collisionGroup != COLLISION_GROUP_UNSET) sd.filter.groupIndex = this.m_collisionGroup;
       sd.filter.groupIndex = this.part1.GetShape()!.m_filter.groupIndex;
       sd.userData = new Object();
       sd.userData.red = this.red;
@@ -373,10 +501,17 @@ export class PrismaticJoint extends JointPart {
     }
   }
 
+  /**
+   * Per-frame piston drive with the Jaybit trigger merge (PrismaticJoint.as
+   * Update :615-670): `isKeyDown || triggerMotor*` drive the piston; the
+   * stiff-hold bookkeeping (wasKeyDown1/2) includes the trigger flags. NOTE:
+   * unlike RevoluteJoint, the legacy prismatic Update has NO explicit
+   * key-overrides-opposing-trigger branches — ported as shipped.
+   */
   public Update(world: b2World): void {
     if (this.m_joint && this.enablePiston) {
       var joint = this.m_joint as b2PrismaticJoint;
-      if (this.isKeyDown1 || this.isKeyDown2) {
+      if (this.isKeyDown1 || this.isKeyDown2 || this.triggerMotorExpand || this.triggerMotorContract) {
         joint.EnableMotor(true);
 
         //CE PROBLEM
@@ -388,7 +523,7 @@ export class PrismaticJoint extends JointPart {
         this.part1.GetBody()!.WakeUp();
         this.part2.GetBody()!.WakeUp();
       }
-      if ((this.isKeyDown1 && !(this.autoOscillate && !this.expanding)) || (this.autoOscillate && this.expanding)) {
+      if (((this.isKeyDown1 || this.triggerMotorExpand) && !(this.autoOscillate && !this.expanding)) || (this.autoOscillate && this.expanding)) {
         //CE PROBLEM
         //joint.SetMotorSpeed(Math.max(1, Math.min(30, pistonSpeed)) * 0.4);
 
@@ -405,7 +540,7 @@ export class PrismaticJoint extends JointPart {
           joint.SetMaxMotorForce(this.pistonStrength * 3000);
         }
         if (joint.GetJointTranslation() > this.initLength - 0.4) this.expanding = false;
-      } else if (this.isKeyDown2 || (this.autoOscillate && !this.expanding)) {
+      } else if (this.isKeyDown2 || this.triggerMotorContract || (this.autoOscillate && !this.expanding)) {
         //CE PROBLEM
         //joint.SetMotorSpeed(-Math.max(1, Math.min(30, pistonSpeed)) * 0.4);
 
@@ -435,8 +570,8 @@ export class PrismaticJoint extends JointPart {
         //CE FIX
         joint.m_maxMotorForce = this.pistonStrength * 3000;
       }
-      this.wasKeyDown1 = this.isKeyDown1;
-      this.wasKeyDown2 = this.isKeyDown2;
+      this.wasKeyDown1 = this.isKeyDown1 || this.triggerMotorExpand;
+      this.wasKeyDown2 = this.isKeyDown2 || this.triggerMotorContract;
       this.prevJointDisp = joint.GetJointTranslation();
     }
   }

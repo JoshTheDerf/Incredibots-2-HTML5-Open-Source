@@ -75,8 +75,13 @@ export type Command =
 	// shape overlaps start, it enters the disambiguation cycle (prismatic1). finish
 	// no-ops without a second shape (excluding shape #1); >1 overlap enters the
 	// cycle (prismatic2).
-	| { type: "startPrismaticJoint"; x: number; y: number }
-	| { type: "finishPrismaticJoint"; x: number; y: number }
+	//
+	// `bypassSnap` (shift held, ui-hotkeys §4.4): skip the core's snap-to-center
+	// (snapJointPoint) so the UI's 15° axis snap on the second click isn't
+	// overridden — the raw (x,y) is used verbatim (MaybeFinishCreatingPrismaticJoint
+	// :4754-4764). Omitted == snap-to-center as normal.
+	| { type: "startPrismaticJoint"; x: number; y: number; bypassSnap?: boolean }
+	| { type: "finishPrismaticJoint"; x: number; y: number; bypassSnap?: boolean }
 	// >2-overlap disambiguation cycle (ControllerGame FINALIZING_JOINT click-cycle
 	// :2435-2473 + drag-to-finalize :1668-1765). cycleJointCandidate advances which
 	// candidate pair/single is highlighted; finalizeJoint commits the current pick;
@@ -126,7 +131,47 @@ export type Command =
 	// (the legacy sliders set the field directly; the Action only recorded a
 	// delta for undo — see ControllerGame.densitySlider/strengthSlider).
 	| { type: "setDensity"; partIds: number[]; value: number }
+	// Friction / restitution: UI-scale 1..30 like density (Jaybit sliders,
+	// ControllerGame.frictionSlider/restitutionSlider; text entry clamped via
+	// CheckFriction/CheckRestitution against the challenge min/max). Converted
+	// to Box2D values only at Init (Util.ConvertFriction/RestitutionToBox2D).
+	| { type: "setFriction"; partIds: number[]; value: number }
+	| { type: "setRestitution"; partIds: number[]; value: number }
 	| { type: "setCollide"; partIds: number[]; value: boolean }
+	// Collision layers A-D + "Self-collision" + "Collides", applied together as
+	// the Jaybit Advanced-properties submit does (ControllerGame triggerText
+	// handler :6985-7041). Applies to ShapeParts AND PrismaticJoints (which
+	// carry their own collA-D/subColl/collide).
+	| {
+			type: "setCollisionGroups";
+			partIds: number[];
+			collA: boolean;
+			collB: boolean;
+			collC: boolean;
+			collD: boolean;
+			subColl: boolean;
+			collide: boolean;
+	  }
+	// --- triggers (Jaybit; AdvancedPropertiesWindow OK -> ControllerGame.triggerText
+	// :6920-7160). setShapeTrigger edits ONE slot (1 or 2) of a trigger SOURCE
+	// shape (ShapePart, not Cannon); every field is optional so multi-edit can
+	// leave "[varies]"/unresolved values unchanged. `name` is the comma-separated
+	// trigger-name CSV (the "Trigger Names" input; `[`/`]` are stripped and the
+	// value clamped to 255 chars, mirroring the input restrict/maxChars);
+	// `action` is a TRIGGER_* constant (0-6, partDefaults). setTriggerList sets
+	// the comma-separated listen list on trigger TARGETS (joints / thrusters /
+	// cannons / text parts). Both are refused (with the legacy dialog) in a
+	// challenge play session with !triggersAllowed.
+	| {
+			type: "setShapeTrigger";
+			partIds: number[];
+			slot: 1 | 2;
+			name?: string;
+			action?: number;
+			onSameName?: boolean;
+			onGroundHit?: boolean;
+	  }
+	| { type: "setTriggerList"; partIds: number[]; value: string }
 	| { type: "setCameraFocus"; partIds: number[]; value: boolean }
 	| { type: "setFixate"; partIds: number[]; value: boolean }
 	| { type: "setOutline"; partIds: number[]; value: boolean }
@@ -212,6 +257,17 @@ export type Command =
 	// --- selection (view state, but routed through the core so it stays authoritative) ---
 	| { type: "select"; partIds: number[]; additive?: boolean }
 	| { type: "clearSelection" }
+	// --- batch (group property edit) ---
+	// Apply an ORDERED list of sub-commands as a SINGLE undoable step (the
+	// MultiEditWindow "OK" equivalent — Actions/MultiActionsAction.as, which holds
+	// an array of Actions and forwards Undo/Redo to each). GameCore pushes ONE
+	// history snapshot for the whole batch and notifies subscribers once, so a group
+	// edit of N fields across M parts collapses to one undo. Sub-commands run
+	// through the same per-command handlers (each still clamps per part), so only
+	// fields the UI actually resolved should be included ("[varies]" / half-checked
+	// fields contribute nothing). Editing-phase only, like the mutations it wraps.
+	// Nested batches are applied in order but do not create extra history steps.
+	| { type: "batch"; commands: Command[] }
 	// --- undo/redo ---
 	| { type: "undo" }
 	| { type: "redo" }
@@ -297,6 +353,10 @@ export type Command =
 			prismatic: boolean;
 			thrusters: boolean;
 			cannons: boolean;
+			// Jaybit "Exclude Triggers" (RestrictionsWindow.as:302-310/:736 —
+			// challenge.triggersAllowed = !box.selected). Optional so pre-Jaybit
+			// dispatch sites keep compiling; omitted == leave unchanged.
+			triggers?: boolean;
 	  }
 	| {
 			type: "setBuildPermissions";
@@ -306,11 +366,17 @@ export type Command =
 			nonColliding: boolean;
 			showConditions: boolean;
 	  }
-	// Numeric limits; null == the ∓Number.MAX_VALUE "no limit" sentinel.
+	// Numeric limits; null == the ∓Number.MAX_VALUE "no limit" sentinel. The
+	// Jaybit friction/restitution limits are optional so pre-Jaybit dispatch
+	// sites keep compiling; omitted == null == no limit.
 	| {
 			type: "setPartLimits";
 			minDensity: number | null;
 			maxDensity: number | null;
+			minFriction?: number | null;
+			maxFriction?: number | null;
+			minRestitution?: number | null;
+			maxRestitution?: number | null;
 			maxRJStrength: number | null;
 			maxRJSpeed: number | null;
 			maxSJStrength: number | null;

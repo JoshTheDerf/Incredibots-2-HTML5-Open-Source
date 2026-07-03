@@ -35,6 +35,19 @@ export class Draw extends b2DebugDraw {
   private static s_staticEditableColor = new b2Color(0.6, 0.8, 0.6);
   private m_world = null;
 
+  /**
+   * Joint-visualization fill-alpha nudge (Jaybit Draw.as:706-712 / :726-732 /
+   * :746-752 / :766-772): a shape connected to the selected joint shifts its fill
+   * alpha by ±0.1 — nearly-transparent shapes get MORE opaque, everything else
+   * slightly LESS — so the two connected shapes visibly "blink" vs their
+   * neighbours. Applies in colour mode only (m_fillAlpha is the colour-mode fill).
+   */
+  private ApplyJointVizNudge(on: boolean): void {
+    if (!on) return;
+    if (this.m_fillAlpha < 0.1) this.m_fillAlpha += 0.1;
+    else this.m_fillAlpha -= 0.1;
+  }
+
   // Visible viewport size in the SAME (CSS-pixel) screen space b2DebugDraw's
   // on-screen culling uses (screen = world * m_drawScale - m_drawOff). The base
   // b2DebugDraw.IsPolygonOnScreen / IsCircleOnScreen hardcode the legacy Flash
@@ -120,7 +133,13 @@ export class Draw extends b2DebugDraw {
     drawStatic: boolean = true,
     showJoints: boolean = true,
     showOutlines: boolean = true,
-    challenge: Challenge = null
+    challenge: Challenge = null,
+    // Joint visualization (Jaybit ControllerGame.jointVisualization / ShapePart.
+    // highlightForJV, applied at Draw.as:705-773): the set of shape part ids to
+    // "blink" while a joint is selected — the two shapes the joint connects. The
+    // renderer derives this from the current selection each frame (render-derived
+    // state, NOT a flag on parts), so passing null disables it. See PORT SPEC §3.
+    highlightForJVIds: Set<number> | null = null
   ): void {
     this.m_world = world
     var i: number;
@@ -215,6 +234,9 @@ export class Draw extends b2DebugDraw {
           if (allParts[i] instanceof ShapePart || allParts[i] instanceof PrismaticJoint) {
             myColor = Draw.s_normalColor;
             isHighlighted = false;
+            // Joint-visualization: this shape is one of the two connected to the
+            // selected joint (see ApplyJointVizNudge).
+            var jvHighlight: boolean = !!(highlightForJVIds && highlightForJVIds.has(allParts[i].id));
             if (this.drawColours) {
               myColor = new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0);
 
@@ -235,7 +257,7 @@ export class Draw extends b2DebugDraw {
 
             if (allParts[i] instanceof Circle) {
               circ = allParts[i] as Circle;
-              if (this.drawColours) this.m_fillAlpha = circ.opacity / 255.0;
+              if (this.drawColours) { this.m_fillAlpha = circ.opacity / 255.0; this.ApplyJointVizNudge(jvHighlight); }
               this.DrawSolidCircle(
                 new b2Vec2(circ.centerX, circ.centerY),
                 circ.radius,
@@ -246,7 +268,7 @@ export class Draw extends b2DebugDraw {
               );
             } else if (allParts[i] instanceof Rectangle) {
               rect = allParts[i] as Rectangle;
-              if (this.drawColours) this.m_fillAlpha = rect.opacity / 255.0;
+              if (this.drawColours) { this.m_fillAlpha = rect.opacity / 255.0; this.ApplyJointVizNudge(jvHighlight); }
               this.DrawSolidPolygon(
                 rect.GetVertices(),
                 4,
@@ -256,7 +278,7 @@ export class Draw extends b2DebugDraw {
               );
             } else if (allParts[i] instanceof Triangle) {
               tri = allParts[i] as Triangle;
-              if (this.drawColours) this.m_fillAlpha = tri.opacity / 255.0;
+              if (this.drawColours) { this.m_fillAlpha = tri.opacity / 255.0; this.ApplyJointVizNudge(jvHighlight); }
               this.DrawSolidPolygon(
                 tri.GetVertices(),
                 3,
@@ -266,7 +288,7 @@ export class Draw extends b2DebugDraw {
               );
             } else if (allParts[i] instanceof Cannon) {
               ca = allParts[i] as Cannon;
-              if (this.drawColours) this.m_fillAlpha = ca.opacity / 255.0;
+              if (this.drawColours) { this.m_fillAlpha = ca.opacity / 255.0; this.ApplyJointVizNudge(jvHighlight); }
               this.DrawSolidCannon(
                 ca.GetVertices(),
                 4,

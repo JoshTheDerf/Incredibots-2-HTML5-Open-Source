@@ -412,6 +412,20 @@ amf3.Writer.prototype.writeDictionary = function (v) {
 	}
 }
 /* 3.17 Map Type. */
+// Runtime-only Part fields that must never be persisted (Wave 3a). Flash
+// serialized these junk public vars too (harmlessly — no reader consumes
+// them), but Cannon.cannonballs holds LIVE b2Body objects after a sim run,
+// which would drag the whole physics graph into the export. The rest are
+// per-play trigger/highlight state.
+const RUNTIME_ONLY_KEYS = new Set([
+	'cannonballs', 'cannonballCounters', 'createCannonball',
+	'checkedCollisionGroup',
+	'triggerTouches', 'triggerTouches_2',
+	'triggerMotorCW', 'triggerMotorCCW', 'triggerMotorExpand', 'triggerMotorContract',
+	'triggerThruster', 'triggerInitted',
+	'isDestroyed', 'isTriggered',
+	'highlightForJV', 'highlightForJoint',
+])
 amf3.Writer.prototype.writeMap = function (v) {
 	this.write(0x0A)
 	if (!this.objectByReference(v)) {
@@ -421,6 +435,8 @@ amf3.Writer.prototype.writeMap = function (v) {
 		for (let key in v) {
 			// FIX: Ignore private properties.
 			if (key.startsWith('m_')) continue;
+			// FIX: Ignore runtime-only part state (see RUNTIME_ONLY_KEYS above).
+			if (RUNTIME_ONLY_KEYS.has(key)) continue;
 			if (key) {
 				this.writeString(key)
 			} else {

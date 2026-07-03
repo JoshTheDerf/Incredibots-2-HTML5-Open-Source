@@ -2,7 +2,14 @@ import { b2Body, b2RevoluteJoint, b2RevoluteJointDef, b2Vec2, b2World } from "..
 import { Util } from "../General/Util"
 import { Circle } from "./Circle"
 import { JointPart } from "./JointPart"
-import { MAX_RJ_SPEED, MAX_RJ_STRENGTH } from "./partDefaults"
+import {
+  MAX_RJ_SPEED,
+  MAX_RJ_STRENGTH,
+  TRIGGER_DESTROY,
+  TRIGGER_NONE,
+  TRIGGER_ROTATECCW,
+  TRIGGER_ROTATECW,
+} from "./partDefaults"
 import { ShapePart } from "./ShapePart"
 
 export class RevoluteJoint extends JointPart {
@@ -21,6 +28,10 @@ export class RevoluteJoint extends JointPart {
   private isKeyDown2: boolean = false;
   private wasKeyDown1: boolean = false;
   private wasKeyDown2: boolean = false;
+  // Runtime trigger-driven motor flags (Jaybit RevoluteJoint.as:22/:36; NOT
+  // persisted). Recomputed by DetermineTriggered from the touch counters.
+  private triggerMotorCW: boolean = false;
+  private triggerMotorCCW: boolean = false;
   private targetJointAngle!: number;
   private prevJointAngle!: number;
 
@@ -60,6 +71,7 @@ export class RevoluteJoint extends JointPart {
     this.isStiff = other.isStiff;
     this.autoCW = other.autoCW;
     this.autoCCW = other.autoCCW;
+    this.triggerList = other.triggerList;
   }
 
   public MakeCopy(p1: ShapePart, p2: ShapePart): JointPart {
@@ -74,12 +86,58 @@ export class RevoluteJoint extends JointPart {
     j.isStiff = this.isStiff;
     j.autoCW = this.autoCW;
     j.autoCCW = this.autoCCW;
+    j.triggerList = this.triggerList;
     return j;
+  }
+
+  /**
+   * TRIGGER_DESTROY (add only) destroys the b2 joint; ROTATECW/CCW count
+   * touches into the two counters then recompute the motor flags (Jaybit
+   * RevoluteJoint.as:82-117).
+   */
+  public DoTriggerAction(action: number, world: b2World | null = null, isAdd: boolean = true): boolean {
+    if (action == TRIGGER_NONE) return false;
+    if (action == TRIGGER_DESTROY && world && isAdd) {
+      return this.DestroyJointPart(world);
+    }
+    if (action == TRIGGER_ROTATECW) {
+      if (isAdd) ++this.triggerTouches;
+      else if (this.triggerTouches > 0) --this.triggerTouches;
+      this.DetermineTriggered();
+    } else if (action == TRIGGER_ROTATECCW) {
+      if (isAdd) ++this.triggerTouches_2;
+      else if (this.triggerTouches_2 > 0) --this.triggerTouches_2;
+      this.DetermineTriggered();
+    }
+    return false;
+  }
+
+  /**
+   * Recompute the trigger motor flags (Jaybit RevoluteJoint.as:155-170).
+   * FAITHFUL QUIRK (port bug-for-bug for replay fidelity): the `>`/`<`
+   * branches set one flag true WITHOUT clearing the other — only equality
+   * clears both. E.g. touches 2/1 then 2/3 leaves BOTH flags true, and
+   * Update()'s branch ordering makes CW win while a player key can override.
+   */
+  public DetermineTriggered(): void {
+    if (this.triggerTouches == this.triggerTouches_2) {
+      this.triggerMotorCW = false;
+      this.triggerMotorCCW = false;
+    } else if (this.triggerTouches > this.triggerTouches_2) {
+      this.triggerMotorCW = true;
+    } else if (this.triggerTouches < this.triggerTouches_2) {
+      this.triggerMotorCCW = true;
+    }
   }
 
   public Init(world: b2World, body: b2Body | null = null): void {
     if (this.isInitted || !this.part1.isInitted || !this.part2.isInitted) return;
     super.Init(world);
+    // Per-play trigger runtime reset (Jaybit RevoluteJoint.as Init :279-282).
+    this.triggerTouches = 0;
+    this.triggerTouches_2 = 0;
+    this.triggerMotorCW = false;
+    this.triggerMotorCCW = false;
 
     if (this.part1.GetBody() != this.part2.GetBody()) {
       var jd = new b2RevoluteJointDef();
@@ -128,10 +186,57 @@ export class RevoluteJoint extends JointPart {
     }
   }
 
+  /** Drive the motor clockwise (Jaybit RevoluteJoint.MotorCW; CE-FIX unclamped values kept). */
+  private MotorCW(joint: b2RevoluteJoint): void {
+    //CE PROBLEM
+    //joint.SetMotorSpeed(Math.max(1, Math.min(30, motorSpeed)));
+
+    //CE FIX
+    joint.SetMotorSpeed(this.motorSpeed);
+
+    if (this.isStiff && this.wasKeyDown1 && joint.GetJointAngle() < this.prevJointAngle) {
+      joint.SetMotorSpeed(0/*(prevJointAngle - joint.GetJointAngle()) * 2*/);
+
+      //CE PROBLEM
+      //joint.m_maxMotorTorque = Math.max(1, Math.min(30, motorStrength)) * 3000;
+
+      //CE FIX
+      joint.m_maxMotorTorque = this.motorStrength * 3000;
+
+    }
+  }
+
+  /** Drive the motor counter-clockwise (Jaybit RevoluteJoint.MotorCCW). */
+  private MotorCCW(joint: b2RevoluteJoint): void {
+    //CE PROBLEM
+    //joint.SetMotorSpeed(-Math.max(1, Math.min(30, motorSpeed)));
+
+    //CE FIX
+    joint.SetMotorSpeed(0.0 - this.motorSpeed);
+
+    if (this.isStiff && this.wasKeyDown2 && joint.GetJointAngle() > this.prevJointAngle) {
+      joint.SetMotorSpeed(0/*(prevJointAngle - joint.GetJointAngle()) * 2*/);
+
+      //CE PROBLEM
+      //joint.m_maxMotorTorque = Math.max(1, Math.min(30, motorStrength)) * 3000;
+
+      //CE FIX
+      joint.m_maxMotorTorque = this.motorStrength * 3000;
+
+    }
+  }
+
+  /**
+   * Per-frame motor drive with the Jaybit "activation priorities" merge
+   * (RevoluteJoint.as Update :187-228): player key OVERRIDES an opposing
+   * trigger; a trigger overrides auto-spin (auto only runs when neither key
+   * nor opposing trigger is active). The stiff-hold bookkeeping
+   * (wasKeyDown1/2) includes the trigger flags.
+   */
   public Update(world: b2World): void {
     if (this.m_joint && this.enableMotor) {
       var joint = (this.m_joint) as b2RevoluteJoint;
-      if (this.isKeyDown1 || this.isKeyDown2) {
+      if (this.isKeyDown1 || this.isKeyDown2 || this.triggerMotorCW || this.triggerMotorCCW) {
         joint.EnableMotor(true);
 
         //CE PROBLEM
@@ -143,42 +248,14 @@ export class RevoluteJoint extends JointPart {
         this.part1.GetBody()!.WakeUp();
         this.part2.GetBody()!.WakeUp();
       }
-      if (this.isKeyDown1 || (this.autoCW && !this.isKeyDown2)) {
-
-        //CE PROBLEM
-        //joint.SetMotorSpeed(Math.max(1, Math.min(30, motorSpeed)));
-
-        //CE FIX
-        joint.SetMotorSpeed(this.motorSpeed);
-
-        if (this.isStiff && this.wasKeyDown1 && joint.GetJointAngle() < this.prevJointAngle) {
-          joint.SetMotorSpeed(0/*(prevJointAngle - joint.GetJointAngle()) * 2*/);
-
-          //CE PROBLEM
-          //joint.m_maxMotorTorque = Math.max(1, Math.min(30, motorStrength)) * 3000;
-
-          //CE FIX
-          joint.m_maxMotorTorque = this.motorStrength * 3000;
-
-        }
-      } else if (this.isKeyDown2 || this.autoCCW) {
-
-        //CE PROBLEM
-        //joint.SetMotorSpeed(-Math.max(1, Math.min(30, motorSpeed)));
-
-        //CE FIX
-        joint.SetMotorSpeed(0.0 - this.motorSpeed);
-
-        if (this.isStiff && this.wasKeyDown2 && joint.GetJointAngle() > this.prevJointAngle) {
-          joint.SetMotorSpeed(0/*(prevJointAngle - joint.GetJointAngle()) * 2*/);
-
-          //CE PROBLEM
-          //joint.m_maxMotorTorque = Math.max(1, Math.min(30, motorStrength)) * 3000;
-
-          //CE FIX
-          joint.m_maxMotorTorque = this.motorStrength * 3000;
-
-        }
+      if (this.isKeyDown1 && this.triggerMotorCCW) {
+        this.MotorCW(joint); // player key overrides the opposing trigger
+      } else if (this.isKeyDown2 && this.triggerMotorCW) {
+        this.MotorCCW(joint);
+      } else if (this.isKeyDown1 || this.triggerMotorCW || (this.autoCW && !this.isKeyDown2 && !this.triggerMotorCCW)) {
+        this.MotorCW(joint);
+      } else if (this.isKeyDown2 || this.triggerMotorCCW || (this.autoCCW && !this.isKeyDown1 && !this.triggerMotorCW)) {
+        this.MotorCCW(joint);
       } else {
         if (this.wasKeyDown1 || this.wasKeyDown2) {
           this.targetJointAngle = joint.GetJointAngle();
@@ -193,8 +270,8 @@ export class RevoluteJoint extends JointPart {
         joint.m_maxMotorTorque = this.motorStrength * 3000;
 
       }
-      this.wasKeyDown1 = this.isKeyDown1;
-      this.wasKeyDown2 = this.isKeyDown2;
+      this.wasKeyDown1 = this.isKeyDown1 || this.triggerMotorCW;
+      this.wasKeyDown2 = this.isKeyDown2 || this.triggerMotorCCW;
       this.prevJointAngle = joint.GetJointAngle();
     }
   }

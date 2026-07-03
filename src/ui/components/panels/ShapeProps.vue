@@ -25,6 +25,26 @@ const density = computed({
 	set: (v: number) => game.dispatch({ type: "setDensity", partIds: ids.value, value: Number(v) }),
 });
 
+// Friction / Restitution — Jaybit added these sliders to the main object panel
+// (PartEditWindow diff: m_frictionSlider y=157 / m_restitutionSlider y=205), NOT
+// to the Advanced window (shapeAdv has no material sliders). Ranges honour the
+// active challenge restrictions; fall back to the 1..30 UI scale.
+const restr = computed(() => game.challenge?.restrictions);
+const frictionMin = computed(() => restr.value?.minFriction ?? 1);
+const frictionMax = computed(() => restr.value?.maxFriction ?? 30);
+const restitutionMin = computed(() => restr.value?.minRestitution ?? 1);
+const restitutionMax = computed(() => restr.value?.maxRestitution ?? 30);
+const frictionLocked = computed(() => frictionMin.value >= frictionMax.value);
+const restitutionLocked = computed(() => restitutionMin.value >= restitutionMax.value);
+const friction = computed({
+	get: () => sel.value?.friction ?? 11,
+	set: (v: number) => game.dispatch({ type: "setFriction", partIds: ids.value, value: Number(v) }),
+});
+const restitution = computed({
+	get: () => sel.value?.restitution ?? 7,
+	set: (v: number) => game.dispatch({ type: "setRestitution", partIds: ids.value, value: Number(v) }),
+});
+
 // Checkboxes (ShapeCheckboxAction / CameraAction).
 const collides = computed({
 	get: () => sel.value?.collide ?? true,
@@ -79,6 +99,20 @@ function applyColour(): void {
 			<div class="slider-row">
 				<USlider v-model="density" :min="densityMin" :max="densityMax" :step="1" size="sm" class="slider" />
 				<UInput v-model.number="density" type="number" size="xs" class="num-input" />
+			</div>
+		</UFormField>
+
+		<UFormField label="Friction" class="field">
+			<div class="slider-row">
+				<USlider v-model="friction" :min="frictionMin" :max="frictionMax" :step="1" size="sm" :disabled="frictionLocked" class="slider" />
+				<UInput v-model.number="friction" type="number" size="xs" :disabled="frictionLocked" class="num-input" />
+			</div>
+		</UFormField>
+
+		<UFormField label="Restitution" class="field">
+			<div class="slider-row">
+				<USlider v-model="restitution" :min="restitutionMin" :max="restitutionMax" :step="1" size="sm" :disabled="restitutionLocked" class="slider" />
+				<UInput v-model.number="restitution" type="number" size="xs" :disabled="restitutionLocked" class="num-input" />
 			</div>
 		</UFormField>
 

@@ -65,6 +65,17 @@ const minDensityNoLimit = ref(false);
 const minDensity = ref("15");
 const maxDensityNoLimit = ref(false);
 const maxDensity = ref("15");
+// Jaybit material limits (physics-features spec §1). Default unlimited: the
+// "No Limit" checkbox starts checked and the field seeds at each property's
+// UI default (friction 11, restitution 7).
+const minFrictionNoLimit = ref(true);
+const minFriction = ref("11");
+const maxFrictionNoLimit = ref(true);
+const maxFriction = ref("11");
+const minRestitutionNoLimit = ref(true);
+const minRestitution = ref("7");
+const maxRestitutionNoLimit = ref(true);
+const maxRestitution = ref("7");
 const maxSJStrengthNoLimit = ref(false);
 const maxSJStrength = ref("15");
 const maxSJSpeedNoLimit = ref(false);
@@ -112,6 +123,14 @@ function seedFromChallenge(): void {
 	if (r.minDensity !== null) minDensity.value = String(r.minDensity);
 	maxDensityNoLimit.value = r.maxDensity === null;
 	if (r.maxDensity !== null) maxDensity.value = String(r.maxDensity);
+	minFrictionNoLimit.value = r.minFriction === null;
+	if (r.minFriction !== null) minFriction.value = String(r.minFriction);
+	maxFrictionNoLimit.value = r.maxFriction === null;
+	if (r.maxFriction !== null) maxFriction.value = String(r.maxFriction);
+	minRestitutionNoLimit.value = r.minRestitution === null;
+	if (r.minRestitution !== null) minRestitution.value = String(r.minRestitution);
+	maxRestitutionNoLimit.value = r.maxRestitution === null;
+	if (r.maxRestitution !== null) maxRestitution.value = String(r.maxRestitution);
 	maxRJStrengthNoLimit.value = r.maxRJStrength === null;
 	if (r.maxRJStrength !== null) maxRJStrength.value = String(r.maxRJStrength);
 	maxRJSpeedNoLimit.value = r.maxRJSpeed === null;
@@ -153,6 +172,19 @@ function applyRestrictions(): boolean {
 			return false;
 		}
 	}
+	// Same min<max guard for the material limits (only when both are real).
+	if (!minFrictionNoLimit.value && !maxFrictionNoLimit.value) {
+		if (Number(clampLimit(minFriction.value)) > Number(clampLimit(maxFriction.value))) {
+			errorMsg.value = "The minimum friction must be less than the maximum friction.";
+			return false;
+		}
+	}
+	if (!minRestitutionNoLimit.value && !maxRestitutionNoLimit.value) {
+		if (Number(clampLimit(minRestitution.value)) > Number(clampLimit(maxRestitution.value))) {
+			errorMsg.value = "The minimum restitution must be less than the maximum restitution.";
+			return false;
+		}
+	}
 	errorMsg.value = "";
 	game.dispatch({
 		type: "setAllowedParts",
@@ -177,6 +209,10 @@ function applyRestrictions(): boolean {
 		type: "setPartLimits",
 		minDensity: limitValue(minDensityNoLimit.value, minDensity.value),
 		maxDensity: limitValue(maxDensityNoLimit.value, maxDensity.value),
+		minFriction: limitValue(minFrictionNoLimit.value, minFriction.value),
+		maxFriction: limitValue(maxFrictionNoLimit.value, maxFriction.value),
+		minRestitution: limitValue(minRestitutionNoLimit.value, minRestitution.value),
+		maxRestitution: limitValue(maxRestitutionNoLimit.value, maxRestitution.value),
 		maxRJStrength: limitValue(maxRJStrengthNoLimit.value, maxRJStrength.value),
 		maxRJSpeed: limitValue(maxRJSpeedNoLimit.value, maxRJSpeed.value),
 		maxSJStrength: limitValue(maxSJStrengthNoLimit.value, maxSJStrength.value),
@@ -320,7 +356,56 @@ function back(): void {
 				/>
 				<UCheckbox v-model="maxSJSpeedNoLimit" label="No Limit" />
 			</div>
-			<span class="grid-spacer" />
+
+			<div class="limit-row">
+				<label class="limit-label">Min Friction:</label>
+				<UInput
+					v-model="minFriction"
+					size="sm"
+					class="limit-input"
+					:disabled="minFrictionNoLimit"
+					maxlength="4"
+					@blur="minFriction = clampLimit(minFriction)"
+				/>
+				<UCheckbox v-model="minFrictionNoLimit" label="No Limit" />
+			</div>
+			<div class="limit-row">
+				<label class="limit-label">Max Friction:</label>
+				<UInput
+					v-model="maxFriction"
+					size="sm"
+					class="limit-input"
+					:disabled="maxFrictionNoLimit"
+					maxlength="4"
+					@blur="maxFriction = clampLimit(maxFriction)"
+				/>
+				<UCheckbox v-model="maxFrictionNoLimit" label="No Limit" />
+			</div>
+
+			<div class="limit-row">
+				<label class="limit-label">Min Restitution:</label>
+				<UInput
+					v-model="minRestitution"
+					size="sm"
+					class="limit-input"
+					:disabled="minRestitutionNoLimit"
+					maxlength="4"
+					@blur="minRestitution = clampLimit(minRestitution)"
+				/>
+				<UCheckbox v-model="minRestitutionNoLimit" label="No Limit" />
+			</div>
+			<div class="limit-row">
+				<label class="limit-label">Max Restitution:</label>
+				<UInput
+					v-model="maxRestitution"
+					size="sm"
+					class="limit-input"
+					:disabled="maxRestitutionNoLimit"
+					maxlength="4"
+					@blur="maxRestitution = clampLimit(maxRestitution)"
+				/>
+				<UCheckbox v-model="maxRestitutionNoLimit" label="No Limit" />
+			</div>
 		</section>
 
 		<p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>

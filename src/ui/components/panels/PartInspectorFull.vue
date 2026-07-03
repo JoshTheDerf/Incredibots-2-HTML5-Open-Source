@@ -16,9 +16,13 @@ import IbButton from "../IbButton.vue";
 import { frameTextures } from "../../assets";
 import ShapeProps from "./ShapeProps.vue";
 import JointProps from "./JointProps.vue";
+import FixedJointProps from "./FixedJointProps.vue";
 import ThrusterProps from "./ThrusterProps.vue";
 import CannonProps from "./CannonProps.vue";
 import TextProps from "./TextProps.vue";
+import MultiEditPanel from "./MultiEditPanel.vue";
+import AdvancedWindow from "./AdvancedWindow.vue";
+import { ref } from "vue";
 
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
 
@@ -35,7 +39,7 @@ const selectionCount = computed(() => game.edit.selection.length);
 // Pick the sub-panel from the selected part's kind, mirroring PartEditWindow.ts
 // ShowObjectPanel / ShowJointPanel / ShowThrustersPanel / ShowCannonPanel /
 // ShowTextPanel. `kind` is the live Part's `type` string.
-type PanelKind = "shape" | "joint" | "thruster" | "cannon" | "text" | null;
+type PanelKind = "shape" | "joint" | "fixedJoint" | "thruster" | "cannon" | "text" | null;
 const panelKind = computed<PanelKind>(() => {
 	const k = game.edit.selectedPart?.kind;
 	switch (k) {
@@ -48,6 +52,10 @@ const panelKind = computed<PanelKind>(() => {
 		case "RevoluteJoint":
 		case "PrismaticJoint":
 			return "joint";
+		// FixedJoint previously fell through to the "shape" default and was
+		// mis-routed to ShapeProps; it has its own minimal (trigger-only) panel.
+		case "FixedJoint":
+			return "fixedJoint";
 		case "Thrusters":
 			return "thruster";
 		case "TextPart":
@@ -56,6 +64,10 @@ const panelKind = computed<PanelKind>(() => {
 			return k ? "shape" : null;
 	}
 });
+
+// >1 part selected -> the group-edit panel replaces the single-part sub-panels
+// (Jaybit's four "Edit Shapes/Joints/Thrusters/Cannons" buttons + MultiEditWindow).
+const isMultiSelect = computed(() => selectionCount.value > 1);
 
 // Header text mirrors the legacy m_shapeHeader/m_jointHeader/etc — the
 // selected part's type name shown at the top of the panel.
@@ -74,6 +86,8 @@ const headerTitle = computed(() => {
 			return "Rotating Joint";
 		case "PrismaticJoint":
 			return "Sliding Joint";
+		case "FixedJoint":
+			return "Fixed Joint";
 		case "Thrusters":
 			return "Thrusters";
 		case "TextPart":
@@ -123,13 +137,18 @@ function rotateSelected(): void {
 function clearSelection(): void {
 	game.dispatch({ type: "clearSelection" });
 }
+
+// The Advanced pop-up window (Jaybit AdvancedPropertiesWindow / AdvancedCannonWindow).
+// Every single-part panel carries an "Advanced" button (m_advancedButton_*); the
+// window's layout is chosen from the selected part kind inside AdvancedWindow.
+const advancedOpen = ref(false);
 </script>
 
 <template>
 	<aside class="inspector" :class="{ 'is-mobile': isMobile }">
 		<div class="inspector-panel ib-panel" :style="panelStyle">
 			<div class="inspector-header">
-				<span class="title">{{ headerTitle }}</span>
+				<span class="title">{{ isMultiSelect ? "Multiple Parts" : headerTitle }}</span>
 				<span v-if="hasSelection" class="badge">{{ selectionCount }}</span>
 			</div>
 
@@ -150,11 +169,22 @@ function clearSelection(): void {
 						<IbButton v-if="showRotate" family="blue" label="Rotate" class="action-btn" @click="rotateSelected" />
 					</div>
 
-					<ShapeProps v-if="panelKind === 'shape'" />
+					<!-- >1 selected: the group-edit panel replaces the single-part
+					     sub-panels (MultiEditWindow). -->
+					<MultiEditPanel v-if="isMultiSelect" />
+					<ShapeProps v-else-if="panelKind === 'shape'" />
 					<JointProps v-else-if="panelKind === 'joint'" />
+					<FixedJointProps v-else-if="panelKind === 'fixedJoint'" />
 					<ThrusterProps v-else-if="panelKind === 'thruster'" />
 					<CannonProps v-else-if="panelKind === 'cannon'" />
 					<TextProps v-else-if="panelKind === 'text'" />
+
+					<!-- Advanced pop-up trigger (all single-part panels; the
+					     legacy per-panel "Advanced" button). Hidden for multi-select
+					     (the group-edit panel has no Advanced window). -->
+					<div v-if="!isMultiSelect" class="advanced-row">
+						<IbButton family="blue" label="Advanced" class="action-btn" @click="advancedOpen = true" />
+					</div>
 
 					<div class="actions">
 						<IbButton family="purple" label="Clear Selection" class="action-btn" @click="clearSelection" />
@@ -163,6 +193,19 @@ function clearSelection(): void {
 			</div>
 		</div>
 	</aside>
+
+	<!-- Advanced properties pop-up window. #content is rendered only while open;
+	     the extra v-if guarantees AdvancedWindow remounts (and re-seeds its local
+	     edit buffer from the current selection) on every open. -->
+	<UModal
+		:open="advancedOpen"
+		:ui="{ content: 'ib-modal-content' }"
+		@update:open="(v: boolean) => !v && (advancedOpen = false)"
+	>
+		<template #content>
+			<AdvancedWindow v-if="advancedOpen" @close="advancedOpen = false" />
+		</template>
+	</UModal>
 </template>
 
 <style scoped>
@@ -241,6 +284,17 @@ function clearSelection(): void {
 }
 
 .top-actions :deep(.ib-btn) {
+	width: 100%;
+}
+
+.advanced-row {
+	display: flex;
+	flex-direction: column;
+	margin: 8px 12px 0;
+	flex-shrink: 0;
+}
+
+.advanced-row :deep(.ib-btn) {
 	width: 100%;
 }
 

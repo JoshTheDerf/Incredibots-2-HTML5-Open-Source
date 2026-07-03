@@ -1,7 +1,7 @@
 import { b2Body, b2BodyDef, b2CircleDef, b2CircleShape, b2MassData, b2PolygonDef, b2Vec2, b2World } from "../Box2D";
 import { getCannonballs, getMainMenuCannonballs } from "./partGlobals"
 import { Util } from "../General/Util"
-import { FixedJoint } from "./FixedJoint"
+import { COLLISION_GROUP_UNSET, TRIGGER_DESTROY, TRIGGER_FIRE } from "./partDefaults"
 import { ShapePart } from "./ShapePart"
 
 export class Cannon extends ShapePart {
@@ -10,6 +10,16 @@ export class Cannon extends ShapePart {
   public w: number;
   public fireKey: number;
   public strength: number;
+  /**
+   * Comma-separated trigger names this cannon LISTENS to (Jaybit
+   * Cannon.as:26-32; persisted — a Cannon is a trigger TARGET, not a source,
+   * so it does not read the inherited triggerName/Action fields).
+   */
+  public triggerList: string = "";
+  /** Runtime trigger-contact counter (Jaybit Cannon.as:26; NOT persisted). */
+  public triggerTouches: number = 0;
+  /** Runtime destroyed flag set by TRIGGER_DESTROY (Cannon.as:22; NOT persisted). */
+  public isDestroyed: boolean = false;
 
   private createCannonball: boolean = false;
   public initW!: number;
@@ -118,16 +128,64 @@ export class Cannon extends ShapePart {
     c.undragable = this.undragable;
     c.fireKey = this.fireKey;
     c.strength = this.strength;
+    c.triggerList = this.triggerList;
+    this.CopyJaybitFieldsTo(c);
     return c;
   }
 
+  /**
+   * TRIGGER_DESTROY (add only) marks the cannon destroyed (fires once);
+   * TRIGGER_FIRE counts touches then routes through KeyInput via
+   * DetermineTriggered (Jaybit Cannon.as:76-95).
+   */
+  public DoTriggerAction(action: number, world: b2World | null = null, isAdd: boolean = true): boolean {
+    if (action == TRIGGER_DESTROY && world && isAdd) {
+      return this.DestroyCannon(world);
+    }
+    if (action == TRIGGER_FIRE) {
+      if (isAdd) ++this.triggerTouches;
+      else if (this.triggerTouches > 0) --this.triggerTouches;
+      this.DetermineTriggered();
+    }
+    return false;
+  }
+
+  /** Destroy-once: sets isDestroyed, true only the first time (Cannon.as:97-104). */
+  public DestroyCannon(world: b2World): boolean {
+    if (!this.isDestroyed) {
+      this.isDestroyed = true;
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Route the trigger state through KeyInput (Jaybit Cannon.as:354-364).
+   * Since KeyInput arms createCannonball only on up==true, a triggered cannon
+   * FIRES WHEN ITS LAST TOUCHING TRIGGER CONTACT ENDS (touch-and-release) —
+   * intended legacy behaviour, not a bug.
+   */
+  public DetermineTriggered(): void {
+    if (this.triggerTouches > 0) {
+      this.KeyInput(this.fireKey, false, false);
+    } else {
+      this.KeyInput(this.fireKey, true, false);
+    }
+  }
+
   public Init(world: b2World, body: b2Body | null = null): void {
+    // Per-play trigger runtime reset BEFORE the isInitted guard (Jaybit
+    // Cannon.as Init :112-113 resets unconditionally).
+    this.triggerTouches = 0;
+    this.isDestroyed = false;
     if (this.isInitted) return;
     super.Init(world);
 
     var sd:b2PolygonDef = new b2PolygonDef();
-    sd.friction = 0.4;
-    sd.restitution = 0.3;
+    // Jaybit adjustable material (Cannon.as:137-139): defaults 11/7 convert to
+    // CE's hardcoded 0.4/0.3 exactly.
+    sd.friction = Util.ConvertFrictionToBox2D(this.friction);
+    sd.restitution = Util.ConvertRestitutionToBox2D(this.restitution);
 
     //CE PROBLEM
     //sd.density = (Math.max(1, Math.min(30, density)) + 5.0) / 10.0;
@@ -136,7 +194,11 @@ export class Cannon extends ShapePart {
     sd.density = (this.density + 5.0) / 10.0;
 
     sd.vertexCount = 4;
-    if (this.m_collisionGroup != Number.MIN_VALUE) sd.filter.groupIndex = this.m_collisionGroup;
+    // Collision layers A-D -> category == mask bits (see ShapePart.CollisionBits).
+    var bits: number = this.GetCollisionBits();
+    sd.filter.categoryBits = bits;
+    sd.filter.maskBits = 0xffff & bits;
+    if (this.m_collisionGroup != COLLISION_GROUP_UNSET) sd.filter.groupIndex = this.m_collisionGroup;
     sd.vertices = this.GetVertices();
 
     var bodyStatic:boolean = false;
@@ -175,23 +237,35 @@ export class Cannon extends ShapePart {
     this.cannonballs.length = 0;
     this.cannonballCounters.length = 0;
 
-    for (i = 0; i < this.m_joints.length; i++) {
-      if (this.m_joints[i].isEnabled && this.m_joints[i] instanceof FixedJoint) {
-        var connectedPart:ShapePart = this.m_joints[i].GetOtherPart(this);
-        if (connectedPart.isEnabled) connectedPart.Init(world, this.m_body);
-      }
-    }
+    // Weld/lock fixed-joint partners (Jaybit Cannon.as:195 CheckFixedJoints —
+    // replaces CE's inline merge loop; untriggered joints still body-merge).
+    this.CheckFixedJoints(world);
+    this.createCannonball = false;
 
     this.relativeCannonPos = Util.Vector(this.centerX, this.centerY);
     this.relativeCannonPos.Subtract(this.m_body.GetPosition());
 }
+
+  /**
+   * Jaybit Cannon.as:428-433 (no CE equivalent — this is the "cannonballs
+   * leaking into saves" fix): clear the fired-ball arrays on sim stop so the
+   * live b2Body references never survive into an AMF export (and are freed).
+   * Our writer also excludes `cannonballs` by field name (AMF3.js
+   * RUNTIME_ONLY_KEYS) — belt and braces per the port spec §6.
+   */
+  public UnInit(world: b2World): void {
+    this.cannonballs.length = 0;
+    this.cannonballCounters.length = 0;
+    super.UnInit(world);
+  }
 
   public KeyInput(key: number, up: boolean, replay: boolean): void {
     if (key == this.fireKey && up) this.createCannonball = true;
   }
 
   public Update(world: b2World): void {
-    if (this.isInitted && this.createCannonball && this.cannonballs.length < 50) {
+    // A trigger-destroyed cannon no longer fires (Jaybit Cannon.as:332).
+    if (this.isInitted && this.createCannonball && this.cannonballs.length < 50 && !this.isDestroyed) {
       this.CreateCannonball(world);
     }
     this.createCannonball = false;
@@ -205,8 +279,10 @@ export class Cannon extends ShapePart {
   private CreateCannonball(world: b2World): void {
     var circ = new b2CircleDef();
     circ.radius = this.w / 6;
-    circ.friction = 0.4;
-    circ.restitution = 0.3;
+    // Cannonballs inherit the CANNON's material (Cannon.as:242-244) — CE
+    // hardcoded 0.4/0.3 here.
+    circ.friction = Util.ConvertFrictionToBox2D(this.friction);
+    circ.restitution = Util.ConvertRestitutionToBox2D(this.restitution);
 
     //CE PROBLEM
     //circ.density = (Math.max(1, Math.min(30, density)) + 5.0) / 10.0;
@@ -214,7 +290,14 @@ export class Cannon extends ShapePart {
     //CE FIX
     circ.density = (this.density + 5.0) / 10.0;
 
-    if (this.m_collisionGroup != Number.MIN_VALUE) circ.filter.groupIndex = this.m_collisionGroup;
+    // The ball copies the cannon's layer bits, EXCEPT all-four-off makes the
+    // ball collide with every layer (bits = 0xFFFF, Cannon.as:214-243) — a
+    // no-layer cannon still fires solid balls.
+    var bits: number = this.GetCollisionBits();
+    if (!this.collA && !this.collB && !this.collC && !this.collD) bits = 65535;
+    circ.filter.categoryBits = bits;
+    circ.filter.maskBits = 0xffff & bits;
+    if (this.m_collisionGroup != COLLISION_GROUP_UNSET) circ.filter.groupIndex = this.m_collisionGroup;
     var bd:b2BodyDef = new b2BodyDef();
     var localPoint:b2Vec2 = this.GetSpawnPoint();
     localPoint.Subtract(Util.Vector(this.centerX, this.centerY));
@@ -336,6 +419,7 @@ export class Cannon extends ShapePart {
       this.w == (other as Cannon).w &&
       this.fireKey == (other as Cannon).fireKey &&
       this.strength == (other as Cannon).strength &&
+      this.triggerList == (other as Cannon).triggerList &&
       super.equals(other)
     );
   }

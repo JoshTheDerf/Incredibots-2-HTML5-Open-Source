@@ -29,6 +29,10 @@ import { ByteArray } from "../General/ByteArray";
 import { Base64Decoder } from "../mx/utils/Base64Decoder";
 import { Util } from "../General/Util";
 import { Challenge } from "../Game/Challenge";
+import { DEFAULT_FRICTION, DEFAULT_RESTITUTION, TRIGGER_NONE } from "../Parts/partDefaults";
+import { decodeExposureInt, EXPO_PUBLIC_EDITABLE, type ExposureFlags } from "./exposure";
+import { readVersionedNameHeader } from "./robotSerialization";
+import { sniffFileBytes, TYPE_TAG_CHALLENGE, VERSION_PREFIX, VERSION_STRING } from "./serializationVersion";
 import { SandboxSettings } from "../Game/SandboxSettings";
 import { WinCondition } from "../Game/WinCondition";
 import { LossCondition } from "../Game/LossCondition";
@@ -53,6 +57,11 @@ import { Triangle } from "../Parts/Triangle";
 // (Kept as its own copy rather than imported from robotSerialization to keep the
 // two serializers independently faithful to their Database source functions.)
 
+/** hasOwnProperty probe for optional AMF part fields (Jaybit's absent-field defaults). */
+function has(od: object, key: string): boolean {
+	return Object.prototype.hasOwnProperty.call(od, key);
+}
+
 // The challenge blob is a sequence of independent top-level writeObject() sections
 // (parts, settings, buildAreas, each condition list). ByteArray.readObject now
 // resets its AMF reference tables per top-level read (matching AS3's per-message
@@ -67,19 +76,31 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 		if (od.type === "Circle" || od.type === "Rectangle" || od.type === "Triangle" || od.type === "Cannon") {
 			let shape: ShapePart;
 			if (od.type === "Circle") {
-				shape = new Circle(od.centerX, od.centerY, od.radius, false);
+				// checkLimits=true on load, as Jaybit (Database.as:2129; CE passed false).
+				shape = new Circle(od.centerX, od.centerY, od.radius, true);
 			} else if (od.type === "Rectangle") {
-				shape = new Rectangle(od.x, od.y, od.w, od.h, false);
+				shape = new Rectangle(od.x, od.y, od.w, od.h, true);
 			} else if (od.type === "Triangle") {
 				shape = new Triangle(od.x1, od.y1, od.x2, od.y2, od.x3, od.y3);
 			} else {
 				shape = new Cannon(od.x, od.y, od.w);
 				(shape as Cannon).fireKey = od.fireKey;
 				(shape as Cannon).strength = od.strength;
+				(shape as Cannon).triggerList = has(od, "triggerList") ? od.triggerList : "";
 			}
 			shape.angle = od.angle;
 			shape.density = od.density;
+			// Jaybit material / collision-layer / trigger fields, with the exact
+			// absent-property defaults of Database.as ExtractPartsFromByteArray
+			// (:2149-2171) — see robotSerialization.extractPartsFromByteArray.
+			shape.friction = has(od, "friction") ? Number(od.friction) : DEFAULT_FRICTION;
+			shape.restitution = has(od, "restitution") ? Number(od.restitution) : DEFAULT_RESTITUTION;
 			shape.collide = od.collide;
+			shape.collA = has(od, "collA") ? Boolean(od.collA) : Boolean(od.collide);
+			shape.collB = has(od, "collB") ? Boolean(od.collB) : Boolean(od.collide);
+			shape.collC = has(od, "collC") ? Boolean(od.collC) : Boolean(od.collide);
+			shape.collD = has(od, "collD") ? Boolean(od.collD) : Boolean(od.collide);
+			shape.subColl = has(od, "subColl") ? Boolean(od.subColl) : false;
 			shape.isStatic = od.isStatic;
 			shape.isCameraFocus = od.isCameraFocus;
 			shape.red = od.red;
@@ -87,14 +108,22 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 			shape.blue = od.blue;
 			shape.opacity = od.opacity;
 			shape.outline = od.outline;
-			if (Object.prototype.hasOwnProperty.call(od, "terrain")) shape.terrain = od.terrain;
-			if (Object.prototype.hasOwnProperty.call(od, "undragable")) shape.undragable = od.undragable;
+			shape.triggerName = has(od, "triggerName") ? od.triggerName : "";
+			shape.triggerName_2 = has(od, "triggerName_2") ? od.triggerName_2 : "";
+			shape.triggerAction = has(od, "triggerAction") ? Math.trunc(od.triggerAction) : TRIGGER_NONE;
+			shape.triggerAction_2 = has(od, "triggerAction_2") ? Math.trunc(od.triggerAction_2) : TRIGGER_NONE;
+			shape.onGroundHit = has(od, "onGroundHit") ? Boolean(od.onGroundHit) : false;
+			shape.onGroundHit_2 = has(od, "onGroundHit_2") ? Boolean(od.onGroundHit_2) : false;
+			shape.onSameName = has(od, "onSameName") ? Boolean(od.onSameName) : false;
+			shape.onSameName_2 = has(od, "onSameName_2") ? Boolean(od.onSameName_2) : false;
+			if (has(od, "terrain")) shape.terrain = od.terrain;
+			if (has(od, "undragable")) shape.undragable = od.undragable;
 			partData.push(shape);
 		} else if (od.type === "TextPart") {
 			// Legacy passes Main.m_curController; the headless core has no controller
-			// (TextPart never touches `cont` outside rendering), so pass null. Accept
-			// both the `_text` backing field and `text` (see robotSerialization).
-			const textContent = od._text ?? od.text;
+			// (TextPart never touches `cont` outside rendering), so pass null. Flash
+			// writes `text`; older builds of this port wrote `_text`. Accept both.
+			const textContent = od.text ?? od._text;
 			const text = new TextPart(null, od.x, od.y, od.w, od.h, textContent, od.inFront);
 			text.inFront = od.inFront;
 			text.scaleWithZoom = od.scaleWithZoom;
@@ -104,6 +133,7 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 			text.green = od.green;
 			text.blue = od.blue;
 			text.size = od.size;
+			text.triggerList = has(od, "triggerList") ? od.triggerList : "";
 			partData.push(text);
 		} else if (od.type === "Thrusters") {
 			if (od.shapeIndex >= 0) {
@@ -112,6 +142,7 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 				t.angle = od.angle;
 				t.thrustKey = od.thrustKey;
 				t.autoOn = od.autoOn;
+				t.triggerList = has(od, "triggerList") ? od.triggerList : "";
 				partData.push(t);
 			}
 		} else if (od.type === "FixedJoint" || od.type === "RevoluteJoint" || od.type === "PrismaticJoint") {
@@ -168,9 +199,17 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 					pj.opacity = od.opacity;
 					pj.outline = od.outline;
 					pj.collide = od.collide;
-					if (Object.prototype.hasOwnProperty.call(od, "arrayIndex")) pj.arrayIndex = od.arrayIndex;
+					// Jaybit PrismaticJoint collision layers (Database.as:2274-2279).
+					pj.collA = has(od, "collA") ? Boolean(od.collA) : Boolean(od.collide);
+					pj.collB = has(od, "collB") ? Boolean(od.collB) : Boolean(od.collide);
+					pj.collC = has(od, "collC") ? Boolean(od.collC) : Boolean(od.collide);
+					pj.collD = has(od, "collD") ? Boolean(od.collD) : Boolean(od.collide);
+					pj.subColl = has(od, "subColl") ? Boolean(od.subColl) : false;
+					if (has(od, "arrayIndex")) pj.arrayIndex = od.arrayIndex;
 					joint = pj;
 				}
+				// triggerList lives on JointPart for all three joint types.
+				joint.triggerList = has(od, "triggerList") ? od.triggerList : "";
 				partData.push(joint);
 			}
 		}
@@ -251,16 +290,26 @@ function isShape(p: Part): boolean {
 
 // --- Challenge <- ByteArray -----------------------------------------------
 //
-// Verbatim port of Database.ExtractChallengeFromByteArray (Database.ts:1814-1912).
-// Reads, in order: parts (AMF3) -> settings (AMF3 object) -> 10 permission
-// booleans -> 7 numeric limit doubles -> buildAreas (AMF3 array of {lowerBound,
-// upperBound}) -> winConditions (AMF3 array) -> lossConditions (AMF3 array) ->
-// winConditionsAnded boolean -> (optional) cameraX/Y/zoom floats -> (optional)
-// nonColliding/showConditions booleans -> (optional) cannons boolean, defaulted
-// from the other flags when absent.
+// Jaybit version dispatch (Database.as): the challenge body is
+// position-dependent (raw booleans/doubles, not AMF), so 2.33 dispatches by
+// PARSE FAILURE, not by the embedded version string. Prefix-less codes/blobs
+// go straight to the CE-layout reader (Legacy2_24, :989-1100); prefixed codes
+// use the 2.33 reader (:3246-3378), whose exception falls back through
+// Legacy2_31 (:1221-1352 — 2.31.x stored min/maxFriction + min/maxRestitution
+// INLINE between maxDensity and maxRJStrength, hence incompatible) to
+// Legacy2_30 (:1107-1219 — plain CE layout re-read). Each retry rewinds to the
+// pre-parts position (`lastDataPos`, :3258 / :1234 / :1112).
+//
+// The common body reads, in order: settings (AMF3 object) -> 10 permission
+// booleans -> minDensity/maxDensity [-> 4 inline friction doubles, 2.31 only]
+// -> 5 limit doubles -> buildAreas -> winConditions -> lossConditions ->
+// winConditionsAnded -> (optional) camera floats (clamped, §5) -> (optional)
+// nonColliding/showConditions -> (optional) cannons, defaulted when absent.
 
-function extractChallengeFromByteArray(data: ByteArray): Challenge {
-	const partData = extractPartsFromByteArray(data);
+/** INIT_PHYS_SCALE (ControllerGameGlobals) — camera-clamp fallback zoom. */
+const INIT_PHYS_SCALE = 30;
+
+function readChallengeBodyAfterParts(data: ByteArray, partData: Part[], inlineFriction: boolean): Challenge {
 	const settings = data.readObject() as any;
 	const c = new Challenge(
 		new SandboxSettings(
@@ -287,6 +336,13 @@ function extractChallengeFromByteArray(data: ByteArray): Challenge {
 	c.botControlAllowed = data.readBoolean();
 	c.minDensity = data.readDouble();
 	c.maxDensity = data.readDouble();
+	if (inlineFriction) {
+		// 2.31.x-only inline material limits (Database.as:1253-1256).
+		c.minFriction = data.readDouble();
+		c.maxFriction = data.readDouble();
+		c.minRestitution = data.readDouble();
+		c.maxRestitution = data.readDouble();
+	}
 	c.maxRJStrength = data.readDouble();
 	c.maxRJSpeed = data.readDouble();
 	c.maxSJStrength = data.readDouble();
@@ -338,6 +394,11 @@ function extractChallengeFromByteArray(data: ByteArray): Challenge {
 		c.cameraX = data.readFloat();
 		c.cameraY = data.readFloat();
 		c.zoomLevel = data.readFloat();
+		// Camera-zoom fix (§5): every Jaybit challenge reader clamps the three
+		// floats on load (Database.as:1067-1085 / :1186-1204 / :1315-1332 / :3334-3352).
+		if (c.cameraX === Number.POSITIVE_INFINITY || c.cameraX === Number.MAX_VALUE) c.cameraX = 0;
+		if (c.cameraY === Number.POSITIVE_INFINITY || c.cameraY === Number.MAX_VALUE) c.cameraY = 0;
+		if (c.zoomLevel === Number.POSITIVE_INFINITY || c.zoomLevel === Number.MAX_VALUE) c.zoomLevel = INIT_PHYS_SCALE;
 	}
 	if (data.position !== data.length) {
 		c.nonCollidingAllowed = data.readBoolean();
@@ -354,6 +415,57 @@ function extractChallengeFromByteArray(data: ByteArray): Challenge {
 			c.thrustersAllowed;
 	}
 	return c;
+}
+
+/**
+ * The 2.33 reader (Database.as:3246-3378): CE body + the seven appended
+ * fields, each guarded by end-of-stream so pre-2.33 blobs default exactly as
+ * Jaybit (:3367-3372 — note triggersAllowed defaults FALSE on old data, while
+ * the in-memory Challenge constructor default is true). Parts are read outside
+ * the try (as Jaybit); a body parse failure falls back to Legacy2_31.
+ */
+function extractChallengeFromByteArray(data: ByteArray): Challenge {
+	const lastDataPos = data.position;
+	const partData = extractPartsFromByteArray(data);
+	try {
+		const c = readChallengeBodyAfterParts(data, partData, false);
+		c.triggersAllowed = data.position !== data.length ? data.readBoolean() : false;
+		c.collisionGroupsAllowed = data.position !== data.length ? data.readBoolean() : false;
+		c.minFriction = data.position !== data.length ? data.readDouble() : Number.MAX_VALUE;
+		c.maxFriction = data.position !== data.length ? data.readDouble() : Number.MAX_VALUE;
+		c.minRestitution = data.position !== data.length ? data.readDouble() : Number.MAX_VALUE;
+		c.maxRestitution = data.position !== data.length ? data.readDouble() : Number.MAX_VALUE;
+		c.subCollisionsAllowed = data.position !== data.length ? data.readBoolean() : true;
+		return c;
+	} catch {
+		return extractChallengeFromByteArrayLegacy2_31(data, lastDataPos);
+	}
+}
+
+/** 2.31.x layout: inline friction doubles + a single trailing triggersAllowed (:1221-1352). */
+function extractChallengeFromByteArrayLegacy2_31(data: ByteArray, lastDataPos: number): Challenge {
+	data.position = lastDataPos;
+	const partData = extractPartsFromByteArray(data);
+	try {
+		const c = readChallengeBodyAfterParts(data, partData, true);
+		c.triggersAllowed = data.position !== data.length ? data.readBoolean() : false;
+		return c;
+	} catch {
+		return extractChallengeFromByteArrayLegacy2_30(data, lastDataPos);
+	}
+}
+
+/** 2.30 layout: plain CE body re-read after a rewind (:1107-1219). */
+function extractChallengeFromByteArrayLegacy2_30(data: ByteArray, lastDataPos: number): Challenge {
+	data.position = lastDataPos;
+	const partData = extractPartsFromByteArray(data);
+	return readChallengeBodyAfterParts(data, partData, false);
+}
+
+/** Plain CE layout, no rewind — the reader for prefix-less codes (:989-1100). */
+function extractChallengeFromByteArrayLegacy2_24(data: ByteArray): Challenge {
+	const partData = extractPartsFromByteArray(data);
+	return readChallengeBodyAfterParts(data, partData, false);
 }
 
 // --- Challenge -> ByteArray -----------------------------------------------
@@ -445,57 +557,142 @@ function putChallengeIntoByteArray(challenge: Challenge): ByteArray {
 	b.writeBoolean(challenge.nonCollidingAllowed);
 	b.writeBoolean(challenge.showConditions);
 	b.writeBoolean(challenge.cannonsAllowed);
+	// The seven Jaybit-appended fields, in the exact 2.33 order
+	// (PutChallengeIntoByteArray, Database.as:3622-3628).
+	b.writeBoolean(challenge.triggersAllowed);
+	b.writeBoolean(challenge.collisionGroupsAllowed);
+	b.writeDouble(challenge.minFriction);
+	b.writeDouble(challenge.maxFriction);
+	b.writeDouble(challenge.minRestitution);
+	b.writeDouble(challenge.maxRestitution);
+	b.writeBoolean(challenge.subCollisionsAllowed);
 	return b;
 }
 
+/** A decoded challenge export: the Challenge plus its header metadata. */
+export interface DecodedChallenge {
+	challenge: Challenge;
+	name: string;
+	desc: string;
+	/** The embedded "2.33.0.1 ibch"-style version string; null on legacy CE codes. */
+	version: string | null;
+	/** Decoded exposure (SaveWindow enum) — legacy codes map to public+editable. */
+	exposure: ExposureFlags;
+}
+
 /**
- * Decode a challenge EXPORT STRING (the base64 string Database.ExportChallenge
- * produces / ImportChallenge consumes) into a live Challenge. Faithful port of
- * Database.ImportChallenge (Database.ts:1274-1287): base64-decode -> uncompress
- * -> skip the leading name/desc/shared/allowEdits header, then extract the
- * challenge body exactly as decodeChallengeBlob does (shared extraction). Unlike
- * ImportRobot (which reads a 5th "prop" int) the challenge header is only
- * UTF name, UTF desc, int shared, int allowEdits — matching ExportChallenge's
- * writeUTF/writeUTF/writeInt/writeInt wrapper (Database.ts:283-286). Node-clean.
+ * Decode a challenge EXPORT STRING into a Challenge + header metadata.
+ * Faithful port of Jaybit's Database.ImportChallenge (:275-308): base64-decode
+ * -> uncompress -> the prefix sentinel dance -> shared/exposure ints (the
+ * challenge header has NO "prop" int, unlike robots) -> then PREFIXED codes go
+ * to the 2.33 reader (whose parse failure falls through the Legacy2_31 ->
+ * Legacy2_30 chain) while prefix-less legacy codes go straight to the CE-layout
+ * Legacy2_24 reader. Node-clean.
  */
-export async function decodeChallenge(challengeStr: string): Promise<Challenge> {
+export async function decodeChallengeWithMeta(challengeStr: string): Promise<DecodedChallenge> {
 	const decoder = new Base64Decoder();
 	decoder.decode(challengeStr);
 	const b = decoder.toByteArray();
 	await b.uncompress();
+	return decodeChallengeFromHeaderedBytes(b);
+}
 
-	b.readUTF(); // name
-	b.readUTF(); // desc
+/** Shared tail of decodeChallengeWithMeta / decodeChallengeFile. */
+function decodeChallengeFromHeaderedBytes(b: ByteArray): DecodedChallenge {
+	const { name, version } = readVersionedNameHeader(b);
+	const desc = b.readUTF();
 	b.readInt(); // shared
-	b.readInt(); // allowEdits
-	return extractChallengeFromByteArray(b);
+	const exposure = decodeExposureInt(b.readInt());
+	const challenge = version !== null ? extractChallengeFromByteArray(b) : extractChallengeFromByteArrayLegacy2_24(b);
+	return { challenge, name, desc, version, exposure };
 }
 
 /**
- * Encode a Challenge to the legacy export STRING (base64 of a zlib-compressed
- * ByteArray). Byte-compatible with Database.ExportChallenge (Database.ts:273-295):
- * writeUTF(name)/writeUTF(desc)/writeInt(shared)/writeInt(allowEdits) header,
- * then the PutChallengeIntoByteArray body, then compress + base64. Round-trips
- * with decodeChallenge. Node-clean.
+ * Decode a challenge EXPORT STRING into a live Challenge (metadata discarded —
+ * see decodeChallengeWithMeta for the header-aware variant).
  */
-export async function encodeChallenge(challenge: Challenge, name = "", desc = "", shared = 0, allowEdits = 0): Promise<string> {
+export async function decodeChallenge(challengeStr: string): Promise<Challenge> {
+	return (await decodeChallengeWithMeta(challengeStr)).challenge;
+}
+
+/**
+ * Decode a user .ibch FILE (or a text code pasted into a file): bytes starting
+ * with "eN" are a base64 text code; anything else is the raw compressed blob
+ * WITH the name/desc/exposure header (unlike the headerless built-in .dat
+ * blobs — keep decodeChallengeBlob for those). Mirrors Jaybit's
+ * LoadChallengeFromFileBytes (:1575-1608).
+ */
+export async function decodeChallengeFile(bytes: ArrayBuffer | Uint8Array): Promise<DecodedChallenge> {
+	const sniffed = sniffFileBytes(bytes);
+	if (sniffed.kind === "code") return decodeChallengeWithMeta(sniffed.code);
+	const b = new ByteArray(bytes as ArrayBuffer);
+	await b.uncompress();
+	b.position = 0;
+	return decodeChallengeFromHeaderedBytes(b);
+}
+
+/**
+ * Build the compressed challenge export blob (= .ibch file bytes = the base64
+ * payload of the text code). Header layout is Jaybit's ExportChallenge
+ * (Database.as:1948-1974): prefix UTF, version + " ibch" UTF, name, desc,
+ * writeInt(1) shared, writeInt(expo + 2) — NO third int (robots have "prop",
+ * challenges do not) — then the PutChallengeIntoByteArray body, compressed.
+ */
+async function buildChallengeExportBytes(
+	challenge: Challenge,
+	name: string,
+	desc: string,
+	expo: number,
+): Promise<ByteArray> {
 	const challengeData = putChallengeIntoByteArray(challenge);
 	const exportData = new ByteArray();
+	exportData.writeUTF(VERSION_PREFIX);
+	exportData.writeUTF(VERSION_STRING + TYPE_TAG_CHALLENGE);
 	exportData.writeUTF(name);
 	exportData.writeUTF(desc);
-	exportData.writeInt(shared);
-	exportData.writeInt(allowEdits);
+	exportData.writeInt(1); // shared
+	exportData.writeInt(expo + 2); // exposure (Jaybit writes expo + 2)
 	challengeData.position = 0;
 	exportData.writeBytes(challengeData);
 	await exportData.compress();
+	return exportData;
+}
+
+/**
+ * Encode a Challenge to the export STRING (base64 of the zlib-compressed
+ * Jaybit-format blob). Round-trips with decodeChallenge / loads in Jaybit.
+ */
+export async function encodeChallenge(
+	challenge: Challenge,
+	name = "",
+	desc = "",
+	expo: number = EXPO_PUBLIC_EDITABLE,
+): Promise<string> {
+	const exportData = await buildChallengeExportBytes(challenge, name, desc, expo);
 	return exportData.buffer.toString("base64");
+}
+
+/**
+ * Encode a Challenge to .ibch FILE bytes — byte-identical to the base64-decode
+ * of encodeChallenge's string (files carry no extra framing, §3).
+ */
+export async function exportChallengeFile(
+	challenge: Challenge,
+	name = "",
+	desc = "",
+	expo: number = EXPO_PUBLIC_EDITABLE,
+): Promise<Uint8Array> {
+	const exportData = await buildChallengeExportBytes(challenge, name, desc, expo);
+	return new Uint8Array(exportData.buffer);
 }
 
 /**
  * Decode a built-in challenge blob (race.dat / spaceship.dat bytes) into a live
  * Challenge. Mirrors the ControllerRace / ControllerSpaceship ctor path
  * (ControllerRace.ts:19-20): construct a ByteArray from the compressed bytes,
- * uncompress it, then ExtractChallengeFromByteArray. `blob` is the raw asset
+ * uncompress it, then ExtractChallengeFromByteArray — the 2.33 reader, exactly
+ * as Jaybit's built-in loaders, so the CE-era blobs pick up the Jaybit
+ * absent-trailer defaults (triggersAllowed=false etc.). `blob` is the raw asset
  * bytes (from `fetch(resource).arrayBuffer()` in the browser, or `readFileSync`
  * in tests). async because ByteArray.uncompress() is async.
  */

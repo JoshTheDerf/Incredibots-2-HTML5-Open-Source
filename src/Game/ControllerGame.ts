@@ -2779,7 +2779,7 @@ export class ControllerGame extends Controller {
       } else {
         this.m_fader.visible = true;
         if (!this.partsFit) this.ShowDialog3("You must fit your robot inside the starting box first!");
-        else if (tooManyShapes) this.ShowDialog3("Your robot contains too many shapes!  (Limit 500)");
+        else if (tooManyShapes) this.ShowDialog3("Your robot contains too many shapes!  (Limit 750)");
         this.m_progressDialog.ShowOKButton();
         this.m_progressDialog.StopTimer();
       }
@@ -6639,8 +6639,11 @@ export class ControllerGame extends Controller {
     return new b2Vec2(0.0, 15.0);
   }
 
+  // Jaybit: 500 -> 750, and sandbox terrain parts no longer count
+  // (ControllerGame.as:2138-2141 PartIsPhysicalAndNotSandBox). Kept in sync
+  // with GameCore.tooManyShapes.
   private TooManyShapes(): boolean {
-    return this.allParts.filter(this.PartIsPhysical).length > 500;
+    return this.allParts.filter(this.PartIsPhysicalAndNotSandbox).length > 750;
   }
 
   protected IsPartOfRobot(p: Part, index: number, array: Array<any>): boolean {
@@ -6657,6 +6660,10 @@ export class ControllerGame extends Controller {
 
   private PartIsPhysical(p: Part, index: number, array: Array<any>): boolean {
     return p instanceof ShapePart || p instanceof PrismaticJoint;
+  }
+
+  private PartIsPhysicalAndNotSandbox(p: Part, index: number, array: Array<any>): boolean {
+    return !p.isSandbox && (p instanceof ShapePart || p instanceof PrismaticJoint);
   }
 
   protected FindCenterOfRobot(): ShapePart {

@@ -1681,7 +1681,10 @@ export function buildNewFeaturesScene(): Part[] {
   p.red = red;
   p.terrain = true;
   parts.push(p);
-  let j = new FixedJoint(ears, parts[parts.length - 3], 9.3, -3.7);
+  // Typed as the JointPart base: `j` is reused for FixedJoints AND
+  // RevoluteJoints below (FixedJoint now carries trigger-only members that
+  // RevoluteJoint lacks, so the old inferred-FixedJoint type no longer unifies).
+  let j: import("../Parts/JointPart").JointPart = new FixedJoint(ears, parts[parts.length - 3], 9.3, -3.7);
   parts.push(j);
   j = new FixedJoint(parts[parts.length - 4], parts[parts.length - 2], 10.5, -4.4);
   parts.push(j);

@@ -20,7 +20,19 @@ import { FixedJoint } from "../Parts/FixedJoint";
 import { JointPart } from "../Parts/JointPart";
 import type { Part } from "../Parts/Part";
 import { PrismaticJoint } from "../Parts/PrismaticJoint";
-import { DEFAULT_B, DEFAULT_G, DEFAULT_O, DEFAULT_R, MAX_DENSITY, MIN_DENSITY } from "../Parts/partDefaults";
+import {
+	DEFAULT_B,
+	DEFAULT_G,
+	DEFAULT_O,
+	DEFAULT_R,
+	MAX_DENSITY,
+	MAX_FRICTION,
+	MAX_RESTITUTION,
+	MIN_DENSITY,
+	MIN_FRICTION,
+	MIN_RESTITUTION,
+	TRIGGER_NONE,
+} from "../Parts/partDefaults";
 import { Rectangle } from "../Parts/Rectangle";
 import { RevoluteJoint } from "../Parts/RevoluteJoint";
 import { ShapePart } from "../Parts/ShapePart";
@@ -30,9 +42,14 @@ import { Triangle } from "../Parts/Triangle";
 import type { Command, ShapeKind } from "./Command";
 import { GameState, PartSnapshot, createInitialState } from "./GameState";
 import type { CameraState } from "./GameState";
-import { decodeRobot, encodeRobot } from "./robotSerialization";
-import { decodeChallengeBlob, decodeChallenge, encodeChallenge } from "./challengeSerialization";
-import { encodeReplay, decodeReplay, decodeDemoReplay } from "./replaySerialization";
+import { decodeRobot, decodeRobotFile, encodeRobot } from "./robotSerialization";
+import type { DecodedRobot } from "./robotSerialization";
+import { processTriggers, triggerDirectionSwitch, wireTriggers } from "./triggers";
+import type { TriggerUserData } from "./triggers";
+import { decodeChallengeBlob, decodeChallenge, decodeChallengeFile, encodeChallenge } from "./challengeSerialization";
+import { encodeReplay, decodeReplay, decodeReplayFile, decodeDemoReplay } from "./replaySerialization";
+import type { DecodedReplay, ReplayMeta, ReplayRobot } from "./replaySerialization";
+import { EXPO_PUBLIC_EDITABLE } from "./exposure";
 import { buildTerrainParts, computeBounds } from "./sandboxEnvironment";
 import {
 	ChallengeSession,
@@ -44,6 +61,8 @@ import {
 	challengeOver,
 	checkIfPartsFit,
 	clampDensity,
+	clampFriction,
+	clampRestitution,
 	clampRJ,
 	clampSJ,
 	clampThruster,
@@ -58,6 +77,7 @@ import {
 } from "./challenge";
 import { WinCondition } from "../Game/WinCondition";
 import { LossCondition } from "../Game/LossCondition";
+import type { Challenge } from "../Game/Challenge";
 import { SandboxSettings } from "../Game/SandboxSettings";
 import { b2ContactListener } from "../Box2D";
 import {
@@ -141,6 +161,8 @@ interface HistorySnapshot {
 	parts: Part[];
 	selection: number[];
 	tool: string;
+	/** Robot-exposure lock (curRobotEditable) so undoing an uneditable import unlocks. */
+	editable: boolean;
 }
 
 /** Max number of undo steps retained (older snapshots are dropped). */
@@ -167,9 +189,10 @@ const MAX_JOINT_VALUE = 30;
 // DEVIATION) so the paste is visibly offset from the original.
 const PASTE_OFFSET = 1.0;
 
-// Max physical shapes a robot may have before play is refused
-// (ControllerGame.TooManyShapes: `... .length > 500`).
-const MAX_SHAPES = 500;
+// Max physical shapes a robot may have before play is refused (Jaybit
+// ControllerGame.as:2138-2141 TooManyShapes: `allParts.filter(
+// PartIsPhysicalAndNotSandBox).length > 750`; CE was 500).
+const MAX_SHAPES = 750;
 
 // Zoom factor + clamps, ported from ControllerGame.Zoom (:6705) and
 // ControllerGameGlobals MIN/MAX_ZOOM_VAL (:33-34). Zoom in multiplies the scale
@@ -236,6 +259,14 @@ export class GameCore {
 	/** Undo / redo stacks of editable-state snapshots (see HistorySnapshot). */
 	private undoStack: HistorySnapshot[] = [];
 	private redoStack: HistorySnapshot[] = [];
+	/**
+	 * ControllerGame.curRobotEditable: false after loading a robot saved with an
+	 * "uneditable" exposure (SaveWindow enum, Wave 3a). Gates every mutating
+	 * command at the dispatch funnel — honor-system, exactly like Jaybit's ~20
+	 * `!curRobotEditable` editor-entry guards. Reset to true by newRobot /
+	 * clearAll / loading an editable robot.
+	 */
+	private curRobotEditable = true;
 	/**
 	 * The live challenge session (ControllerChallenge's role): the domain
 	 * Challenge object + play/edit orchestration. null for a plain sandbox
@@ -392,6 +423,22 @@ export class GameCore {
 		for (const l of this.messageListeners) l(message);
 	}
 
+	/**
+	 * Single writer for the robot-EXPOSURE lock: keeps the private
+	 * curRobotEditable gate (enforced at apply()) and the state.edit.editable
+	 * read-model (the App.vue banner) in lockstep so they can never desync.
+	 * This flag means "the loaded robot was saved with an uneditable exposure" —
+	 * NOT the challenge play-mode lock, which is expressed via
+	 * state.challenge.playMode + the parts' own isEditable flags.
+	 */
+	private setRobotEditable(v: boolean): void {
+		this.curRobotEditable = v;
+		if (this.state.edit.editable !== v) {
+			this.state = { ...this.state, edit: { ...this.state.edit, editable: v } };
+			this.markChanged();
+		}
+	}
+
 	/** The single entry point for all mutations. */
 	dispatch(command: Command): void {
 		this.notifyDepth++;
@@ -421,13 +468,25 @@ export class GameCore {
 	// game's Database.ExportRobot / ImportRobot).
 
 	/**
-	 * Encode the current parts to a legacy-compatible robot export string.
+	 * Encode the current parts to a Jaybit-compatible robot export string.
 	 * async because ByteArray.compress() is async. Ignores selection/sim state.
+	 * `expo` is the SaveWindow exposure enum (src/core/exposure.ts); uneditable
+	 * exposures make the code load locked in Jaybit and in this port.
 	 */
-	async exportRobot(): Promise<string> {
-		// Tutorial milestone (ControllerHomeMovies.copyButton -> 45 "copied").
+	async exportRobot(name = "", desc = "", expo: number = EXPO_PUBLIC_EDITABLE): Promise<string> {
+		// NOTE: no tutorial milestone here — encoding is a pure read the ExportPanel
+		// re-runs on every keystroke. The "copied" milestone fires when the user
+		// actually copies the code (notifyCodeCopied) or the selection (copyParts).
+		return encodeRobot(this.state.parts, undefined, name, desc, expo);
+	}
+
+	/**
+	 * Tutorial milestone hook for the Export panel's "Copy to Clipboard" button
+	 * (ControllerHomeMovies.copyButton -> 45 "copied"). A read-side notification,
+	 * not a Command — the UI calls it when the user copies the exported code.
+	 */
+	notifyCodeCopied(): void {
 		if (this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "copied" });
-		return encodeRobot(this.state.parts);
 	}
 
 	/**
@@ -435,11 +494,134 @@ export class GameCore {
 	 * fresh ids, clear selection, and push an undo snapshot so the import is
 	 * undoable. No-op during simulation (editing-phase only, like other
 	 * mutations). Throws if the string can't be decoded — callers should catch.
+	 * Accepts both legacy CE and Jaybit-prefixed codes; a Jaybit "uneditable"
+	 * exposure locks the editor (curRobotEditable) until another robot loads.
 	 */
 	async importRobot(robotStr: string): Promise<void> {
 		if (this.state.sim.phase !== "editing") return;
 		const decoded = await decodeRobot(robotStr);
+		this.applyImportedRobot(decoded);
+	}
+
+	/**
+	 * Load a robot from user .ibro FILE bytes (or a text code pasted into a
+	 * file — the "eN" sniffer routes both). Otherwise identical to importRobot.
+	 */
+	async importRobotFile(bytes: ArrayBuffer | Uint8Array): Promise<void> {
+		if (this.state.sim.phase !== "editing") return;
+		const decoded = await decodeRobotFile(bytes);
+		this.applyImportedRobot(decoded);
+	}
+
+	/**
+	 * Import And Insert — ControllerGame.importAndInsertButton (:1798) +
+	 * processLoadedRobot's `loadAndInsert` branch (:8548-8611). Decode a robot code
+	 * and APPEND its (non-terrain) parts to the current robot — concat with fresh
+	 * ids, NO position offset, preserving relative z-order (the legacy
+	 * `allParts.concat`) — rather than replacing the graph like importRobot. Fresh
+	 * parts are clamped to the active challenge's material limits. Undoable.
+	 * Editing-phase only; blocked when the loaded robot is uneditable
+	 * (curRobotEditable, matching the button's own gate).
+	 */
+	async importRobotInsert(robotStr: string): Promise<void> {
+		if (this.state.sim.phase !== "editing") return;
+		const decoded = await decodeRobot(robotStr);
+		this.applyInsertedRobot(decoded);
+	}
+
+	/**
+	 * Import And Insert from user .ibro FILE bytes (or a pasted text code — the
+	 * "eN" sniffer routes both). Otherwise identical to importRobotInsert.
+	 */
+	async importRobotFileInsert(bytes: ArrayBuffer | Uint8Array): Promise<void> {
+		if (this.state.sim.phase !== "editing") return;
+		const decoded = await decodeRobotFile(bytes);
+		this.applyInsertedRobot(decoded);
+	}
+
+	/** Shared tail of importRobotInsert / importRobotFileInsert (append, not replace). */
+	private applyInsertedRobot(decoded: DecodedRobot): void {
+		// The button is only reachable on an editable robot (importAndInsertButton
+		// gate `curRobotEditable`); enforce it here too so the store passthrough is safe.
+		if (!this.curRobotEditable) return;
+		// Robot files carry no terrain, but guard against isSandbox parts anyway so
+		// an insert can never duplicate the ground.
+		const incoming = decoded.parts.filter((p) => !(p as { isSandbox?: boolean }).isSandbox);
+		if (incoming.length === 0) return;
+
+		// Challenge restriction gate (processLoadedRobot :8611): refuse if the robot
+		// carries a part type the active challenge disallows. Mirrors the paste gate.
+		if (this.challenge) {
+			for (const p of incoming) {
+				const kind = this.clipboardPartKind(p);
+				if (kind && !partTypeAllowed(this.challenge, kind)) {
+					this.emitMessage("Sorry, that robot contains parts that are not allowed in this challenge!");
+					return;
+				}
+			}
+		}
+		// Trigger gate (matching the paste gate): in a challenge play session with
+		// !triggersAllowed, refuse a robot carrying any trigger config.
+		if (this.challenge && this.challenge.playMode && !this.challenge.challenge.triggersAllowed) {
+			if (incoming.some((p) => this.partCarriesTriggers(p))) {
+				this.emitMessage("Sorry, triggers are not allowed in this challenge!");
+				return;
+			}
+		}
+
+		// Insert KEEPS the existing parts, so the fresh ids must clear the current
+		// max id (unlike a replacing import, where old ids vanish).
+		for (const p of this.state.parts) this.nextId = Math.max(this.nextId, p.id ?? 0);
+		for (const p of incoming) p.id = ++this.nextId;
+		for (const p of incoming) this.clampPartToChallengeLimits(p);
+
+		this.notifyDepth++;
+		try {
+			this.pushHistory();
+			this.state = {
+				...this.state,
+				parts: [...this.state.parts, ...incoming],
+				edit: { ...this.state.edit, ...this.undoRedoFlags() },
+			};
+			this.markChanged();
+			if (this.challenge) this.syncChallenge();
+			if (this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "pasted" });
+		} finally {
+			this.notifyDepth--;
+			if (this.notifyDepth === 0 && this.dirty) {
+				this.dirty = false;
+				const snapshot = this.state;
+				for (const l of this.listeners) l(snapshot);
+			}
+		}
+	}
+
+	/** Shared tail of importRobot / importRobotFile (post-decode application). */
+	private applyImportedRobot(decoded: DecodedRobot): void {
+		// Challenge restriction gates, matching the insert/paste siblings
+		// (applyInsertedRobot / pasteParts — processLoadedRobot :8611): a WHOLE-LOAD
+		// refusal when the robot carries a disallowed part type, or any trigger
+		// config in a play session with !triggersAllowed. Same dialog strings.
+		if (this.challenge) {
+			for (const p of decoded.parts) {
+				const kind = this.clipboardPartKind(p);
+				if (kind && !partTypeAllowed(this.challenge, kind)) {
+					this.emitMessage("Sorry, that robot contains parts that are not allowed in this challenge!");
+					return;
+				}
+			}
+			if (this.challenge.playMode && !this.challenge.challenge.triggersAllowed) {
+				if (decoded.parts.some((p) => this.partCarriesTriggers(p))) {
+					this.emitMessage("Sorry, triggers are not allowed in this challenge!");
+					return;
+				}
+			}
+		}
+
 		for (const p of decoded.parts) p.id = ++this.nextId;
+		// Robot-load enforcement of the challenge material limits
+		// (ControllerGame.CheckForChallengeLimits per loaded part, Jaybit :4212+).
+		for (const p of decoded.parts) this.clampPartToChallengeLimits(p);
 
 		this.notifyDepth++;
 		try {
@@ -457,6 +639,11 @@ export class GameCore {
 					...this.undoRedoFlags(),
 				},
 			};
+			// DetermineExposure equivalent: copy the decoded editable flag to the
+			// exposure lock (ControllerGame :8640-8652) — the funnel gate in apply()
+			// enforces it. AFTER pushHistory so undoing the import restores the
+			// pre-import (unlocked) flag.
+			this.setRobotEditable(decoded.exposure.isEditable);
 			this.markChanged();
 			// Tutorial milestone (ControllerHomeMovies.Update paste -> 46 "pasted").
 			if (this.tutorialMachine) this.notifyTutorial({ type: "progress", key: "pasted" });
@@ -526,6 +713,10 @@ export class GameCore {
 			if (challenge.zoomLevel !== Number.MAX_VALUE) {
 				this.state = { ...this.state, camera: { ...this.state.camera, scale: challenge.zoomLevel } };
 			}
+			// Loading a challenge REPLACES the robot, so any exposure lock from a
+			// previously loaded uneditable robot is lifted (Jaybit recomputes
+			// curRobotEditable on every load).
+			this.setRobotEditable(true);
 			this.markChanged();
 			this.syncChallenge();
 		} finally {
@@ -552,6 +743,21 @@ export class GameCore {
 	async importChallenge(challengeStr: string): Promise<void> {
 		if (this.state.sim.phase !== "editing") return;
 		const challenge = await decodeChallenge(challengeStr);
+		this.applyImportedChallenge(challenge);
+	}
+
+	/**
+	 * Load a challenge from user .ibch FILE bytes (or a text code pasted into a
+	 * file — the "eN" sniffer routes both). Otherwise identical to importChallenge.
+	 */
+	async importChallengeFile(bytes: ArrayBuffer | Uint8Array): Promise<void> {
+		if (this.state.sim.phase !== "editing") return;
+		const decoded = await decodeChallengeFile(bytes);
+		this.applyImportedChallenge(decoded.challenge);
+	}
+
+	/** Shared tail of importChallenge / importChallengeFile (post-decode application). */
+	private applyImportedChallenge(challenge: Challenge): void {
 		this.challenge = challengeSessionFromChallenge(challenge, null);
 
 		const parts = challenge.allParts as Part[];
@@ -582,6 +788,9 @@ export class GameCore {
 			if (challenge.zoomLevel !== Number.MAX_VALUE) {
 				this.state = { ...this.state, camera: { ...this.state.camera, scale: challenge.zoomLevel } };
 			}
+			// Loading a challenge replaces the robot — lift any exposure lock
+			// (Jaybit recomputes curRobotEditable on every load).
+			this.setRobotEditable(true);
 			this.markChanged();
 			this.syncChallenge();
 		} finally {
@@ -599,7 +808,18 @@ export class GameCore {
 	 * zlib-compressed ByteArray), byte-compatible with Database.ExportChallenge.
 	 * Returns null when no challenge session is active. async (compression).
 	 */
-	async exportChallengeString(): Promise<string | null> {
+	async exportChallengeString(name = "", desc = "", expo: number = EXPO_PUBLIC_EDITABLE): Promise<string | null> {
+		const challenge = this.prepareChallengeForExport();
+		if (!challenge) return null;
+		return encodeChallenge(challenge, name, desc, expo);
+	}
+
+	/**
+	 * Snapshot the live parts/settings into the challenge object before an
+	 * export (shared by the string + file exporters). Returns null when no
+	 * challenge session is active.
+	 */
+	private prepareChallengeForExport(): Challenge | null {
 		if (!this.challenge) return null;
 		// Legacy ExportChallenge encodes ControllerGameGlobals.challenge, whose
 		// allParts is the authored terrain + robot. In authoring (not-yet-played)
@@ -626,7 +846,7 @@ export class GameCore {
 				sb.backgroundB,
 			);
 		}
-		return encodeChallenge(this.challenge.challenge);
+		return this.challenge.challenge;
 	}
 
 	/** Look up a live Part by its stable id. */
@@ -726,7 +946,14 @@ export class GameCore {
 	 * is no active recording. async because ByteArray.compress() is async. The
 	 * result interops with the legacy game (Database.ExportReplay / ImportReplay).
 	 */
-	async exportReplayString(): Promise<string | null> {
+	async exportReplayString(meta: ReplayMeta = {}): Promise<string | null> {
+		const bundle = this.prepareReplayForExport();
+		if (!bundle) return null;
+		return encodeReplay(bundle.data, bundle.robot, meta);
+	}
+
+	/** Shared head of the replay string exporter: replay + bundled robot. */
+	private prepareReplayForExport(): { data: ReplayData; robot: ReplayRobot } | null {
 		const data = this.exportReplay();
 		if (!data) return null;
 		// Bundle the current robot (non-sandbox parts) + sandbox settings, matching
@@ -743,7 +970,7 @@ export class GameCore {
 			s.backgroundG,
 			s.backgroundB,
 		);
-		return encodeReplay(data, { parts: robotParts, settings });
+		return { data, robot: { parts: robotParts, settings } };
 	}
 
 	/**
@@ -755,22 +982,56 @@ export class GameCore {
 	 */
 	async importReplay(replayStr: string): Promise<void> {
 		if (this.state.sim.phase !== "editing") return;
-		// A replay export bundles BOTH the recorded motion AND the robot it animates
-		// (Database.ExportReplay). Playback replays body sync points indexed by the
-		// order of the dynamic ShapeParts (replayBodies), so the bundled robot must be
-		// loaded into the parts graph BEFORE playback — otherwise there is nothing to
-		// animate (the bug: the robot half was decoded but discarded). Load it exactly
-		// like importRobot (keep the sandbox terrain, assign fresh ids); the prepended
-		// static terrain doesn't shift replayBodies indices (statics are skipped), and
-		// encodeRobot preserves dynamic-shape order, so the sync indices stay aligned.
-		const { replay, robot } = await decodeReplay(replayStr);
+		const decoded = await decodeReplay(replayStr);
+		this.applyImportedReplay(decoded);
+	}
+
+	/**
+	 * Load + play a replay from user .ibre FILE bytes (or a text code pasted
+	 * into a file — the "eN" sniffer routes both). Otherwise identical to
+	 * importReplay.
+	 */
+	async importReplayFile(bytes: ArrayBuffer | Uint8Array): Promise<void> {
+		if (this.state.sim.phase !== "editing") return;
+		const decoded = await decodeReplayFile(bytes);
+		this.applyImportedReplay(decoded);
+	}
+
+	/** Shared tail of importReplay / importReplayFile (post-decode application). */
+	private applyImportedReplay(decoded: DecodedReplay): void {
+		// A replay export bundles the recorded motion, the robot it animates AND the
+		// SandboxSettings it ran under (Database.ExportReplay). Playback replays body
+		// sync points indexed by the order of the dynamic ShapeParts (replayBodies),
+		// and TriggerPress key records index into state.parts DIRECTLY — so the
+		// terrain must be rebuilt from the BUNDLED settings (exactly like Jaybit's
+		// `ControllerSandbox.settings = robot.settings` on replay load), not left as
+		// whatever this session's sandbox happens to be. Otherwise a differing
+		// terrain part count shifts every TriggerPress partIndex off its part.
+		const { replay, robot } = decoded;
+		const s = robot.settings;
+		const sandbox = {
+			gravity: s.gravity,
+			size: s.size,
+			terrainType: s.terrainType,
+			terrainTheme: s.terrainTheme,
+			background: s.background,
+			backgroundR: s.backgroundR,
+			backgroundG: s.backgroundG,
+			backgroundB: s.backgroundB,
+			bounds: computeBounds({ size: s.size, terrainType: s.terrainType }),
+		};
+		const terrain = buildTerrainParts(sandbox);
+		for (const p of terrain) p.id = ++this.nextId;
 		for (const p of robot.parts) p.id = ++this.nextId;
-		const terrain = this.state.parts.filter((p) => (p as { isSandbox?: boolean }).isSandbox);
 		this.state = {
 			...this.state,
+			sandbox,
 			parts: [...terrain, ...robot.parts],
 			edit: { ...this.state.edit, selection: [], selectedPart: null },
 		};
+		// Loading a replay replaces the robot — lift any exposure lock (Jaybit
+		// recomputes curRobotEditable on every load).
+		this.setRobotEditable(true);
 		this.markChanged();
 		this.dispatch({ type: "playReplay", data: replay });
 	}
@@ -851,11 +1112,21 @@ export class GameCore {
 			}
 		}
 
-		// Key presses (KeyInput :1868-1883): forward to every part so text/cannon
-		// parts react at the recorded frame.
-		for (const key of tick.keyPresses) {
+		// Key presses (KeyInput :1868-1883): a plain KeyPress fans out to every
+		// part so text/cannon parts react at the recorded frame; a TriggerPress
+		// (partIndex present) routes to EXACTLY the recorded part — legacy
+		// playback keyInput's `param4 == -1 || param4 == i` gate (:2238-2241),
+		// so a triggered cannon fires only the one cannon the trigger fired.
+		for (const kp of tick.keyPresses) {
+			if (kp.partIndex != null) {
+				const p = this.state.parts[kp.partIndex] as
+					| { KeyInput?: (k: number, up: boolean, replay: boolean) => void }
+					| undefined;
+				p?.KeyInput?.(kp.key, true, true);
+				continue;
+			}
 			for (const p of this.state.parts) {
-				(p as unknown as { KeyInput?: (k: number, up: boolean, replay: boolean) => void }).KeyInput?.(key, true, true);
+				(p as unknown as { KeyInput?: (k: number, up: boolean, replay: boolean) => void }).KeyInput?.(kp.key, true, true);
 			}
 		}
 	}
@@ -1283,6 +1554,7 @@ export class GameCore {
 			parts: this.cloneParts(this.state.parts),
 			selection: [...this.state.edit.selection],
 			tool: this.state.edit.tool,
+			editable: this.curRobotEditable,
 		};
 	}
 
@@ -1305,6 +1577,10 @@ export class GameCore {
 	private restoreSnapshot(snap: HistorySnapshot): void {
 		const live = new Set(snap.parts.map((p) => p.id));
 		const selection = snap.selection.filter((id) => live.has(id));
+		// Restore the robot-exposure lock so undoing an uneditable import unlocks
+		// the editor again (and redo re-locks it). Keep curRobotEditable +
+		// edit.editable in lockstep via the single setter.
+		this.setRobotEditable(snap.editable);
 		this.state = {
 			...this.state,
 			parts: snap.parts,
@@ -1364,12 +1640,29 @@ export class GameCore {
 				opacity: part.opacity / 255,
 				angle: part.angle,
 				density: part.density,
+				friction: part.friction,
+				restitution: part.restitution,
 				collide: part.collide,
+				collA: part.collA,
+				collB: part.collB,
+				collC: part.collC,
+				collD: part.collD,
+				subColl: part.subColl,
 				cameraFocus: part.isCameraFocus,
 				fixate: part.isStatic, // "Fixate" == Part.isStatic
 				outline: part.outline,
 				outlineBehind: part.terrain, // "Outlines Behind" == terrain
 				undragable: part.undragable,
+				// Trigger SOURCE fields (two symmetric slots) — read uniformly so the
+				// group-edit UI can compute [varies] without touching live parts.
+				triggerName: part.triggerName,
+				triggerName_2: part.triggerName_2,
+				triggerAction: part.triggerAction,
+				triggerAction_2: part.triggerAction_2,
+				onSameName: part.onSameName,
+				onSameName_2: part.onSameName_2,
+				onGroundHit: part.onGroundHit,
+				onGroundHit_2: part.onGroundHit_2,
 			};
 			if (part instanceof Circle) snap.radius = part.radius;
 			if (part instanceof Rectangle) {
@@ -1380,6 +1673,8 @@ export class GameCore {
 				snap.w = part.w;
 				snap.strength = part.strength;
 				snap.fireKey = part.fireKey;
+				// Cannon is also a trigger TARGET (fires on a named trigger).
+				snap.triggerList = part.triggerList;
 			}
 			return snap;
 		}
@@ -1406,6 +1701,28 @@ export class GameCore {
 				autoCW: part.autoCW,
 				autoCCW: part.autoCCW,
 				stiff: part.isStiff,
+				// Rotating joint is a trigger TARGET (a triggerList drives/destroys it).
+				triggerList: part.triggerList,
+			};
+		}
+
+		// --- FixedJoint ("Fixed Joint") — minimal props; a trigger TARGET only ---
+		// A fixed joint carries no motor/material; its only editable property is the
+		// triggerList (a non-empty list makes it a breakable "triggered" joint —
+		// FixedJoint.IsTriggered). Snapshotted so the FixedJoint inspector + group
+		// edit read it uniformly (previously FixedJoint fell through to the empty
+		// default, and the inspector mis-routed it to the shape panel).
+		if (part instanceof FixedJoint) {
+			return {
+				id: part.id,
+				kind,
+				x: part.anchorX,
+				y: part.anchorY,
+				red: 0,
+				green: 0,
+				blue: 0,
+				opacity: 1,
+				triggerList: part.triggerList,
 			};
 		}
 
@@ -1429,7 +1746,14 @@ export class GameCore {
 				stiff: part.isStiff,
 				initialLength: part.initLength,
 				collide: part.collide,
+				collA: part.collA,
+				collB: part.collB,
+				collC: part.collC,
+				collD: part.collD,
+				subColl: part.subColl,
 				outline: part.outline,
+				// Sliding joint is a trigger TARGET too.
+				triggerList: part.triggerList,
 			};
 		}
 
@@ -1447,6 +1771,8 @@ export class GameCore {
 				strength: part.strength,
 				thrustKey: part.thrustKey,
 				autoOn: part.autoOn,
+				// Thrusters are a trigger TARGET (thrust while a named trigger touches).
+				triggerList: part.triggerList,
 			};
 		}
 
@@ -1468,6 +1794,8 @@ export class GameCore {
 				displayKey: part.displayKey,
 				alwaysVisible: part.alwaysVisible,
 				scaleWithZoom: part.scaleWithZoom,
+				// Text parts are a trigger TARGET (display while a named trigger touches).
+				triggerList: part.triggerList,
 			};
 		}
 
@@ -1745,6 +2073,18 @@ export class GameCore {
 	 * (:3692-3722). The port has no paste-drag; we place the clones at their
 	 * mirrored positions, append them with fresh ids, and select them.
 	 */
+	/**
+	 * HORIZONTAL mirror swaps a shape's rotation-direction trigger actions
+	 * (CW<->CCW via TriggerDirectionSwitch, jaybit mirrorHorizontal :3798-3865);
+	 * vertical mirror copies the actions unchanged (:1443-1508). Applied to the
+	 * Circle/Rectangle/Triangle clones only — Cannon is not a trigger source.
+	 */
+	private mirrorTriggerActions(clone: ShapePart, horizontal: boolean): void {
+		if (!horizontal) return;
+		clone.triggerAction = triggerDirectionSwitch(clone.triggerAction);
+		clone.triggerAction_2 = triggerDirectionSwitch(clone.triggerAction_2);
+	}
+
 	private handleMirror(partIds: number[], axis: "horizontal" | "vertical"): void {
 		const h = axis === "horizontal";
 		const selectedParts = partIds
@@ -1780,6 +2120,11 @@ export class GameCore {
 				c.outline = sp.outline;
 				c.terrain = sp.terrain;
 				c.undragable = sp.undragable;
+				// Jaybit mirror fix: material/collision-layer/trigger fields propagate
+				// to the mirrored clone (centralized in ShapePart.CopyJaybitFieldsTo —
+				// CE-mirrored parts silently reset any field not copied explicitly).
+				sp.CopyJaybitFieldsTo(c);
+				this.mirrorTriggerActions(c, h);
 				newParts.push(c);
 				partMapping.push(c);
 			} else if (sp instanceof Rectangle) {
@@ -1797,6 +2142,8 @@ export class GameCore {
 				r.outline = sp.outline;
 				r.terrain = sp.terrain;
 				r.undragable = sp.undragable;
+				sp.CopyJaybitFieldsTo(r); // Jaybit mirror fix (see Circle above)
+				this.mirrorTriggerActions(r, h);
 				newParts.push(r);
 				partMapping.push(r);
 			} else if (sp instanceof Triangle) {
@@ -1828,6 +2175,8 @@ export class GameCore {
 				t.outline = sp.outline;
 				t.terrain = sp.terrain;
 				t.undragable = sp.undragable;
+				sp.CopyJaybitFieldsTo(t); // Jaybit mirror fix (see Circle above)
+				this.mirrorTriggerActions(t, h);
 				newParts.push(t);
 				partMapping.push(t);
 			} else if (sp instanceof Cannon) {
@@ -1847,6 +2196,8 @@ export class GameCore {
 				ca.undragable = sp.undragable;
 				ca.fireKey = sp.fireKey;
 				ca.strength = sp.strength;
+				ca.triggerList = sp.triggerList;
+				sp.CopyJaybitFieldsTo(ca); // Jaybit mirror fix (see Circle above)
 				newParts.push(ca);
 				partMapping.push(ca);
 			} else if (sp instanceof TextPart) {
@@ -1861,6 +2212,8 @@ export class GameCore {
 				te.inFront = sp.inFront;
 				te.scaleWithZoom = sp.scaleWithZoom;
 				te.displayKey = sp.displayKey;
+				// Jaybit mirror fix: the data-only trigger listen list propagates.
+				te.triggerList = sp.triggerList;
 				newParts.push(te);
 				partMapping.push(-1);
 			} else if (sp instanceof JointPart || sp instanceof Thrusters) {
@@ -1892,6 +2245,8 @@ export class GameCore {
 				const fj = h
 					? new FixedJoint(p1, p2, centerX - (sp.anchorX - centerX), sp.anchorY)
 					: new FixedJoint(p1, p2, sp.anchorX, centerY - (sp.anchorY - centerY));
+				// Jaybit mirror fix: the data-only trigger listen list propagates.
+				fj.triggerList = sp.triggerList;
 				newParts.push(fj);
 			} else if (sp instanceof RevoluteJoint) {
 				const p1 = partMapping[index1];
@@ -1910,6 +2265,8 @@ export class GameCore {
 				rj.isStiff = sp.isStiff;
 				rj.autoCW = sp.autoCCW;
 				rj.autoCCW = sp.autoCW;
+				// Jaybit mirror fix: the data-only trigger listen list propagates.
+				rj.triggerList = sp.triggerList;
 				newParts.push(rj);
 			} else if (sp instanceof PrismaticJoint) {
 				const p1 = partMapping[index1];
@@ -1936,6 +2293,14 @@ export class GameCore {
 				pj.opacity = sp.opacity;
 				pj.outline = sp.outline;
 				pj.collide = sp.collide;
+				// Jaybit mirror fix: the piston's collision layers + subColl (+ the
+				// data-only trigger list) propagate to the mirrored clone.
+				pj.collA = sp.collA;
+				pj.collB = sp.collB;
+				pj.collC = sp.collC;
+				pj.collD = sp.collD;
+				pj.subColl = sp.subColl;
+				pj.triggerList = sp.triggerList;
 				newParts.push(pj);
 			} else if (sp instanceof Thrusters) {
 				const parent = partMapping[index1];
@@ -1947,6 +2312,8 @@ export class GameCore {
 				th.strength = sp.strength;
 				th.thrustKey = sp.thrustKey;
 				th.autoOn = sp.autoOn;
+				// Jaybit mirror fix: the data-only trigger listen list propagates.
+				th.triggerList = sp.triggerList;
 				newParts.push(th);
 			}
 		}
@@ -2096,6 +2463,17 @@ export class GameCore {
 			}
 		}
 
+		// Trigger restriction gate (jaybit pasteButton :9183-9256): in challenge
+		// play mode with !triggersAllowed, pasting parts carrying ANY trigger
+		// config (a shape with a trigger name/action, or a joint/thruster/cannon
+		// with a triggerList) is rejected with the legacy dialog.
+		if (this.challenge && this.challenge.playMode && !this.challenge.challenge.triggersAllowed) {
+			if (this.clipboard.some((p) => this.partCarriesTriggers(p))) {
+				this.emitMessage("Sorry, triggers are not allowed in this challenge!");
+				return;
+			}
+		}
+
 		const offX = dx ?? PASTE_OFFSET;
 		const offY = dy ?? PASTE_OFFSET;
 
@@ -2186,6 +2564,30 @@ export class GameCore {
 		if (p instanceof PrismaticJoint) return "prismatic";
 		if (p instanceof Thrusters) return "thrusters";
 		return null;
+	}
+
+	/**
+	 * Whether a part carries ANY trigger configuration — a source shape with a
+	 * trigger name/action (or a Cannon with a listen list), or a joint/thruster
+	 * with a triggerList. Used by the paste + import-and-insert trigger gates
+	 * (jaybit pasteButton :9183-9256 / processLoadedRobot :8611).
+	 */
+	private partCarriesTriggers(p: Part): boolean {
+		if (p instanceof ShapePart) {
+			if (
+				p.triggerName !== "" ||
+				p.triggerName_2 !== "" ||
+				p.triggerAction !== TRIGGER_NONE ||
+				p.triggerAction_2 !== TRIGGER_NONE
+			) {
+				return true;
+			}
+			if (p instanceof Cannon && p.triggerList !== "") return true;
+			return false;
+		}
+		if (p instanceof JointPart) return p.triggerList !== "";
+		if (p instanceof Thrusters) return p.triggerList !== "";
+		return false;
 	}
 
 	// --- Z-order (move to front / back) ------------------------------------
@@ -2371,10 +2773,13 @@ export class GameCore {
 
 	/**
 	 * Build a fresh b2World, mirroring ControllerGame.CreateWorld()
-	 * (ControllerGame.ts:6628). We attach the vendored ContactFilter (which honours
-	 * each shape's `collide` / group flags) but omit the ControllerGame-bound
-	 * ContactListener — that only drives cannonball / challenge callbacks the
-	 * headless editor has no use for; basic rigid-body simulation is unaffected.
+	 * (ControllerGame.ts:6628). Attaches the vendored ContactFilter (which honours
+	 * each shape's `collide` / group flags) and a b2ContactListener whose
+	 * Add/Remove drive (a) challenge "touching/touched" conditions and (b) the
+	 * Jaybit trigger dispatcher (ProcessTriggers) — both run synchronously inside
+	 * world.Step. Condition callbacks run FIRST, matching the legacy
+	 * ControllerChallenge.ContactAdded which evaluates conditions then calls
+	 * super.ContactAdded -> ProcessTriggers (jaybit ControllerChallenge.as:305-319).
 	 */
 	private createWorld(): b2World {
 		const worldAABB = new b2AABB();
@@ -2386,23 +2791,71 @@ export class GameCore {
 		// setSandboxSettings therefore takes effect only on the NEXT play (spec §4).
 		const world = new b2World(worldAABB, new b2Vec2(GRAVITY.x, this.state.sandbox.gravity), true);
 		world.SetContactFilter(new ContactFilter());
-		// Challenge "touching"/"touched" conditions (obj 5/6) need Box2D contact
-		// events. The vendored b2World invokes `listener.Add(cp)` for each new
-		// contact point (b2CircleContact.ts:94 etc.), where `cp.shape1/shape2` are
-		// the touching b2Shapes — exactly what Condition.ContactAdded matches
-		// against. Faithful mirror of ControllerGame.CreateWorld's
-		// SetContactListener (ControllerGame.ts:6634-6635) via ControllerChallenge.
-		// ContactAdded (:207-214). Only attached when a challenge is active.
-		if (this.challenge) {
-			const session = this.challenge;
-			const listener = new b2ContactListener();
-			listener.Add = (point: unknown): void => {
-				conditionsContactAdded(session, point, this.state.parts, this.cannonballs);
-			};
-			world.SetContactListener(listener);
-		}
+		// Challenge "touching"/"touched" conditions (obj 5/6) and the trigger
+		// runtime both need Box2D contact events. The vendored b2World invokes
+		// `listener.Add(cp)` for each new contact point (b2CircleContact.ts:94
+		// etc.) and `listener.Remove(cp)` when one goes away
+		// (b2CircleContact.ts:128, b2ContactManager.ts:180), where
+		// `cp.shape1/shape2` are the touching b2Shapes. The listener is ALWAYS
+		// attached now (jaybit ControllerGame.CreateWorld wires its
+		// ContactListener unconditionally); condition matching only runs while a
+		// challenge session exists.
+		const listener = new b2ContactListener();
+		type ContactPoint = {
+			shape1: { GetUserData(): unknown };
+			shape2: { GetUserData(): unknown };
+		};
+		listener.Add = (point: unknown): void => {
+			// Conditions FIRST (legacy ControllerChallenge.ContactAdded order).
+			if (this.challenge) {
+				conditionsContactAdded(this.challenge, point, this.state.parts, this.cannonballs);
+			}
+			// Trigger dispatch (jaybit ControllerGame.ContactAdded :2462 ->
+			// ProcessTriggers(ud1, ud2, true)).
+			const cp = point as ContactPoint;
+			processTriggers(
+				this.state.parts,
+				world,
+				cp.shape1.GetUserData() as TriggerUserData,
+				cp.shape2.GetUserData() as TriggerUserData,
+				true,
+				this.triggerKeyInput,
+			);
+		};
+		listener.Remove = (point: unknown): void => {
+			// jaybit ControllerGame.ContactRemoved :1257 -> ProcessTriggers(..., false).
+			const cp = point as ContactPoint;
+			processTriggers(
+				this.state.parts,
+				world,
+				cp.shape1.GetUserData() as TriggerUserData,
+				cp.shape2.GetUserData() as TriggerUserData,
+				false,
+				this.triggerKeyInput,
+			);
+		};
+		world.SetContactListener(listener);
 		return world;
 	}
+
+	/**
+	 * ProcessTriggers' cannon/text FIRE side-effect channel — the port of
+	 * `ControllerGame.keyInput(key, up, fromTrigger=true, partIndex)`
+	 * (:2225-2251) for the live sim. The part itself already reacted inside its
+	 * DetermineTriggered, so this call ONLY records: when `up` (only up-events
+	 * persist — a cannon's fire IS its up-event) and the part at partIndex is a
+	 * TextPart/Cannon bound to `key`, push a TriggerPress record
+	 * ({frame, key, partIndex}) into the recording stream. Never fires during
+	 * replay playback (the world is not stepped there, so no contacts arrive).
+	 * Bound as an arrow so it can be handed to processTriggers directly.
+	 */
+	private triggerKeyInput = (key: number, up: boolean, partIndex: number): void => {
+		if (!up || this.replaySession || !this.recording) return;
+		const part = this.state.parts[partIndex];
+		if ((part instanceof TextPart && key === part.displayKey) || (part instanceof Cannon && key === part.fireKey)) {
+			recordKeyPress(this.recording, this.state.sim.frame, key, partIndex);
+		}
+	};
 
 	/**
 	 * play: create the world, snapshot each part's edit transform (for reset),
@@ -2435,7 +2888,7 @@ export class GameCore {
 				return;
 			}
 			if (tooManyShapes) {
-				this.emitMessage("Your robot contains too many shapes!  (Limit 500)");
+				this.emitMessage("Your robot contains too many shapes!  (Limit 750)");
 				return;
 			}
 		}
@@ -2497,6 +2950,13 @@ export class GameCore {
 		for (const p of this.state.parts) {
 			if (p instanceof JointPart || p instanceof Thrusters) p.Init(world);
 		}
+
+		// Trigger wiring pass (jaybit playButton :8760-8845): build each source
+		// shape's dispatch table (targetPartIndex, action, slot) on its shape
+		// userData from CSV token matching. The legacy interleaves this with the
+		// two Init loops above; running it after ALL parts are Init'd is
+		// equivalent (the pushed part indices index state.parts, our allParts).
+		wireTriggers(this.state.parts);
 
 		// Replay recording / playback setup (ControllerGame.ts:2728-2746). During a
 		// normal sim we seed fresh recording buffers (frame 0, +Infinity camera
@@ -2599,16 +3059,72 @@ export class GameCore {
 	 * only used by CenterOnLoadedRobot for the initial editor framing).
 	 */
 	/**
-	 * TooManyShapes (ControllerGame.ts:TooManyShapes → `allParts.filter(PartIsPhysical).length > 500`).
-	 * PartIsPhysical counts ShapePart OR PrismaticJoint instances only (NOT text,
-	 * NOT other joint types, NOT thrusters). The legacy limit is 500.
+	 * TooManyShapes (Jaybit ControllerGame.as:2138-2141 → `allParts.filter(
+	 * PartIsPhysicalAndNotSandBox).length > 750`). PartIsPhysicalAndNotSandBox
+	 * (:4109-4112) counts non-sandbox ShapePart OR PrismaticJoint instances only
+	 * (NOT text, NOT other joint types, NOT thrusters; pistons count as a shape;
+	 * cannonballs are not parts and never count). CE counted sandbox terrain too
+	 * and capped at 500.
 	 */
 	private tooManyShapes(): boolean {
+		return this.getShapeCount() > MAX_SHAPES;
+	}
+
+	/**
+	 * Live physical-shape count for the UI's shape counter (Jaybit
+	 * ControllerGame.as:6516 `m_guiMenu.shapeCounter.text`): non-sandbox
+	 * ShapeParts + PrismaticJoints, the same predicate the 750-limit play gate
+	 * uses (see tooManyShapes).
+	 */
+	public getShapeCount(): number {
 		let count = 0;
 		for (const p of this.state.parts) {
+			if (p.isSandbox) continue;
 			if (p instanceof ShapePart || p instanceof PrismaticJoint) count++;
 		}
-		return count > MAX_SHAPES;
+		return count;
+	}
+
+	/**
+	 * CheckForChallengeLimits equivalent for friction/restitution (Jaybit
+	 * ControllerGame.as:4212+, clamp block :4233-4247): clamp a ShapePart's
+	 * material to the live challenge's min/max. Applied at construction
+	 * (createShape/createCannon — the Jaybit ShapePart ctor clamps its defaults
+	 * against the challenge statics) and on robot load (importRobot); text/
+	 * slider entry is clamped in the setFriction/setRestitution handlers.
+	 * Density is deliberately NOT touched — our port keeps its existing density
+	 * handling (clamped only in setDensity).
+	 */
+	private clampPartToChallengeLimits(part: Part): void {
+		if (!this.challenge || !(part instanceof ShapePart)) return;
+		part.friction = clampFriction(this.challenge, part.friction);
+		part.restitution = clampRestitution(this.challenge, part.restitution);
+	}
+
+	/**
+	 * Trigger-editing gate: in a challenge PLAY session whose author excluded
+	 * triggers (challenge.triggersAllowed=false, Jaybit Challenge.as:66 /
+	 * RestrictionsWindow "Exclude Triggers"), the trigger commands are refused
+	 * with the legacy paste-dialog string (jaybit ControllerGame.as:9250-9256;
+	 * the legacy UI also disables the inputs, AdvancedPropertiesWindow.as:943-976
+	 * — the core never trusts the UI). Edit/authoring mode is not gated,
+	 * matching the playChallengeMode check.
+	 */
+	private triggersBlocked(): boolean {
+		if (this.challenge && this.challenge.playMode && !this.challenge.challenge.triggersAllowed) {
+			this.emitMessage("Sorry, triggers are not allowed in this challenge!");
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Sanitize a trigger-name CSV: strip `[` and `]` (the inputs' restrict
+	 * `"^[]"` — protecting the `[varies]` multi-edit sentinel) and clamp to the
+	 * 255-char maxChars (Gui/AdvancedPropertiesWindow.as trigger inputs).
+	 */
+	private sanitizeTriggerText(value: string): string {
+		return value.replace(/[\[\]]/g, "").slice(0, 255);
 	}
 
 	private cameraFocusPart(): ShapePart | null {
@@ -3538,7 +4054,12 @@ export class GameCore {
 			case "movePartsToBack":
 			case "setColour":
 			case "setDensity":
+			case "setFriction":
+			case "setRestitution":
 			case "setCollide":
+			case "setCollisionGroups":
+			case "setShapeTrigger":
+			case "setTriggerList":
 			case "setCameraFocus":
 			case "setFixate":
 			case "setOutline":
@@ -3563,6 +4084,10 @@ export class GameCore {
 			case "setTextAlwaysVisible":
 			case "setTextScaleWithZoom":
 				return true;
+			// A batch is mutating iff it wraps at least one mutating sub-command, so a
+			// group edit pushes exactly one history snapshot (MultiActionsAction).
+			case "batch":
+				return command.commands.some((c) => this.isMutating(c));
 			default:
 				return false;
 		}
@@ -3574,6 +4099,12 @@ export class GameCore {
 	}
 
 	private apply(command: Command): void {
+		// Uneditable-robot enforcement (Wave 3a): a robot loaded with an
+		// uneditable exposure blocks every editing mutation at the funnel
+		// (mirrors Jaybit's !curRobotEditable guards). Non-mutating commands
+		// (sim controls, selection, camera) and robot-replacing entry points
+		// (newRobot/clearAll/import*) still pass.
+		if (!this.curRobotEditable && this.isMutating(command)) return;
 		// Snapshot the pre-mutation editable state for undo before any mutating
 		// command runs (editing phase only). The handler that follows rebuilds
 		// `edit`, so we fold the refreshed canUndo/canRedo flags in afterwards.
@@ -3626,7 +4157,12 @@ export class GameCore {
 				case "setColour":
 				case "setTool":
 				case "setDensity":
+				case "setFriction":
+				case "setRestitution":
 				case "setCollide":
+				case "setCollisionGroups":
+				case "setShapeTrigger":
+				case "setTriggerList":
 				case "setCameraFocus":
 				case "setFixate":
 				case "setOutline":
@@ -3650,6 +4186,7 @@ export class GameCore {
 				case "setTextDisplayKey":
 				case "setTextAlwaysVisible":
 				case "setTextScaleWithZoom":
+				case "batch":
 				case "undo":
 				case "redo":
 				case "loadRobot":
@@ -3757,6 +4294,9 @@ export class GameCore {
 				// end != start :2288). pushHistory already ran, but with no state
 				// change undo just restores the identical graph, which is harmless.
 				if (!part) return;
+				// Challenge material limits clamp the new shape's friction/restitution
+				// defaults (Jaybit ShapePart ctor vs ControllerGame.min/maxFriction).
+				this.clampPartToChallengeLimits(part);
 				// New shapes adopt the current default colour (ControllerGameGlobals.
 				// defaultR/G/B/O, settable via colourButton makeDefault). The ShapePart
 				// ctor seeds partDefaults; override with the live default here.
@@ -3835,11 +4375,25 @@ export class GameCore {
 				return;
 			}
 			case "moveParts": {
-				const move = new Set(command.partIds);
+				// Drag moves the CONNECTED CLUSTER, not just the selection: legacy
+				// MouseDrag seeds draggingParts with the union of every selected part's
+				// GetAttachedParts() — RemoveDuplicates over the concatenation
+				// (ControllerGame.ts:1443-1449 / CE ControllerGame.as:6121-6127) — so a
+				// shape drags its joints and everything jointed through them (a joint
+				// drags both its shapes' clusters; a TextPart drags only itself). The
+				// legacy computed the set at drag START; the parts graph cannot change
+				// mid-drag, so expanding on each relative moveParts is equivalent.
+				const selected = command.partIds
+					.map((id) => this.findPart(id))
+					.filter((p): p is Part => p !== undefined);
+				const cluster = new Set<Part>();
+				for (const sel of selected) {
+					for (const p of sel.GetAttachedParts() as Part[]) cluster.add(p);
+				}
 				for (const p of this.state.parts) {
-					if (!move.has(p.id)) continue;
-					// ShapePart stores centerX/centerY; TextPart stores x/y. Both expose
-					// those as the anchor the createX/x fields report, so read them back.
+					if (!cluster.has(p)) continue;
+					// ShapePart stores centerX/centerY; JointPart anchorX/anchorY;
+					// TextPart x/y. currentXY reads back what each type's Move() sets.
 					const cur = this.currentXY(p);
 					p.Move(cur.x + command.dx, cur.y + command.dy);
 				}
@@ -3917,6 +4471,95 @@ export class GameCore {
 				// checks carBody.density < 15; cursor-gated so any shape's density
 				// crossing below 15 emits it faithfully.
 				if (this.tutorialMachine && v < 15) this.notifyTutorial({ type: "progress", key: "densityDecreased" });
+				return;
+			}
+			// Friction / restitution: 1..30 UI scale like density (Jaybit
+			// frictionSlider/restitutionSlider; text entry clamped like
+			// CheckFriction/CheckRestitution against the challenge min/max).
+			case "setFriction": {
+				let v = Math.max(MIN_FRICTION, Math.min(MAX_FRICTION, command.value));
+				if (this.challenge) v = clampFriction(this.challenge, v);
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof ShapePart) p.friction = v;
+				});
+				return;
+			}
+			case "setRestitution": {
+				let v = Math.max(MIN_RESTITUTION, Math.min(MAX_RESTITUTION, command.value));
+				if (this.challenge) v = clampRestitution(this.challenge, v);
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof ShapePart) p.restitution = v;
+				});
+				return;
+			}
+			// Collision layers A-D + subColl + collide, applied together as the
+			// Jaybit Advanced-properties submit does (ControllerGame triggerText
+			// handler :6985-7041). Lives on ShapePart AND PrismaticJoint.
+			// Challenge restriction gate (only in PLAY mode, like triggersBlocked):
+			// !collisionGroupsAllowed refuses the A-D changes and
+			// !subCollisionsAllowed refuses the subColl change, INDEPENDENTLY —
+			// the permitted half still goes through, mirroring the legacy UI which
+			// disables the two groups of checkboxes separately
+			// (AdvancedPropertiesWindow.as:960-975).
+			case "setCollisionGroups": {
+				const inPlay = this.challenge !== null && this.challenge.playMode;
+				const groupsBlocked = inPlay && !this.challenge!.challenge.collisionGroupsAllowed;
+				const subCollBlocked = inPlay && !this.challenge!.challenge.subCollisionsAllowed;
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof ShapePart || p instanceof PrismaticJoint) {
+						if (!groupsBlocked) {
+							p.collA = command.collA;
+							p.collB = command.collB;
+							p.collC = command.collC;
+							p.collD = command.collD;
+						}
+						if (!subCollBlocked) p.subColl = command.subColl;
+						p.collide = command.collide;
+					}
+				});
+				return;
+			}
+			// --- Triggers (Jaybit AdvancedPropertiesWindow OK -> triggerText :6920-7160) ---
+			// Edit one trigger slot of the selected SOURCE shapes. Omitted fields are
+			// left unchanged (multi-edit "[varies]"/unresolved). Cannons are excluded
+			// as sources (they only carry a triggerList). Undo comes from the
+			// command journal (isMutating).
+			case "setShapeTrigger": {
+				if (this.triggersBlocked()) return;
+				const name = command.name === undefined ? undefined : this.sanitizeTriggerText(command.name);
+				// Action must be a TRIGGER_* constant (0..6); anything else is
+				// ignored (leave unchanged), mirroring the combo's fixed item list.
+				const action =
+					command.action !== undefined && Number.isInteger(command.action) && command.action >= 0 && command.action <= 6
+						? command.action
+						: undefined;
+				this.editParts(command.partIds, (p) => {
+					if (!(p instanceof ShapePart) || p instanceof Cannon) return;
+					if (command.slot === 1) {
+						if (name !== undefined) p.triggerName = name;
+						if (action !== undefined) p.triggerAction = action;
+						if (command.onSameName !== undefined) p.onSameName = command.onSameName;
+						if (command.onGroundHit !== undefined) p.onGroundHit = command.onGroundHit;
+					} else {
+						if (name !== undefined) p.triggerName_2 = name;
+						if (action !== undefined) p.triggerAction_2 = action;
+						if (command.onSameName !== undefined) p.onSameName_2 = command.onSameName;
+						if (command.onGroundHit !== undefined) p.onGroundHit_2 = command.onGroundHit;
+					}
+				});
+				return;
+			}
+			// Set the comma-separated listen list on trigger TARGETS (joints /
+			// thrusters / cannons / text parts).
+			case "setTriggerList": {
+				if (this.triggersBlocked()) return;
+				const value = this.sanitizeTriggerText(command.value);
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof Cannon) p.triggerList = value;
+					else if (p instanceof JointPart) p.triggerList = value;
+					else if (p instanceof Thrusters) p.triggerList = value;
+					else if (p instanceof TextPart) p.triggerList = value;
+				});
 				return;
 			}
 			// Collide lives on ShapePart AND PrismaticJoint (ShapeCheckboxAction COLLIDE_TYPE).
@@ -4336,6 +4979,8 @@ export class GameCore {
 				// A Cannon is a free-standing ShapePart (NEW_CANNON flow :2274); the
 				// legacy drag sizes its width, the click-to-create core uses a default.
 				const cannon = new Cannon(command.x, command.y, DEFAULT_RECT_SIZE);
+				// Challenge material limits clamp the defaults (see createShape).
+				this.clampPartToChallengeLimits(cannon);
 				// New parts adopt the current default colour (see createShape).
 				cannon.red = this.defaultRed;
 				cannon.green = this.defaultGreen;
@@ -4378,7 +5023,9 @@ export class GameCore {
 			case "startPrismaticJoint": {
 				// Two-click prismatic, click 1 (MaybeStartCreatingPrismaticJoint :6844).
 				if (this.challenge && !partTypeAllowed(this.challenge, "prismatic")) return;
-				const pt = this.snapJointPoint(command.x, command.y);
+				// Shift held (bypassSnap): use the raw point so the UI's 15° axis snap
+				// isn't overridden by snap-to-center (ui-hotkeys §4.4).
+				const pt = command.bypassSnap ? { x: command.x, y: command.y } : this.snapJointPoint(command.x, command.y);
 				const hits = this.shapesAt(pt.x, pt.y);
 				if (hits.length === 0) {
 					// No shape under click 1 — abort (:6864-6866).
@@ -4400,7 +5047,11 @@ export class GameCore {
 			case "finishPrismaticJoint": {
 				// Two-click prismatic, click 2 (MaybeFinishCreatingPrismaticJoint :6884).
 				if (!this.pendingPrismatic) return;
-				const pt = this.snapJointPoint(command.x, command.y, this.pendingPrismatic.part1);
+				// Shift held (bypassSnap): use the raw point so the UI's 15° axis snap on
+				// the second click isn't overridden by snap-to-center (ui-hotkeys §4.4).
+				const pt = command.bypassSnap
+					? { x: command.x, y: command.y }
+					: this.snapJointPoint(command.x, command.y, this.pendingPrismatic.part1);
 				// Candidates exclude shape #1 (:6896).
 				const hits = this.shapesAt(pt.x, pt.y).filter((p) => p !== this.pendingPrismatic!.part1);
 				if (hits.length === 0) {
@@ -4428,6 +5079,15 @@ export class GameCore {
 				this.cancelJointGesture();
 				return;
 			}
+			// Group property edit (MultiActionsAction): run each sub-command through
+			// the SAME per-command handler in order. apply() already pushed a single
+			// history snapshot for the whole batch (isMutating("batch")), and dispatch()
+			// coalesces the notify, so the group edit is one undo step + one emit. Each
+			// sub still clamps per part; skip nested batch history by going through
+			// applyCommand (not apply/dispatch).
+			case "batch":
+				for (const sub of command.commands) this.applyCommand(sub);
+				return;
 			case "undo":
 				this.handleUndo();
 				return;
@@ -4628,6 +5288,9 @@ export class GameCore {
 				ch.slidingJointsAllowed = command.prismatic;
 				ch.thrustersAllowed = command.thrusters;
 				ch.cannonsAllowed = command.cannons;
+				// Jaybit "Exclude Triggers" (RestrictionsWindow.as:736). Optional so
+				// pre-Jaybit dispatch sites leave the flag untouched.
+				if (command.triggers !== undefined) ch.triggersAllowed = command.triggers;
 				this.syncChallenge();
 				// ChallengeEditor milestones (ControllerChallengeEditor.Update :385-390):
 				// opening the Restrictions dialog -> 103 "clickedRestrictions" (no dedicated
@@ -4667,6 +5330,12 @@ export class GameCore {
 				// null == the ∓Number.MAX_VALUE "no limit" sentinel (Challenge.ts:22-28).
 				ch.minDensity = command.minDensity === null ? NO_LIMIT_MIN : command.minDensity;
 				ch.maxDensity = command.maxDensity === null ? NO_LIMIT_MAX : command.maxDensity;
+				// Jaybit friction/restitution limits (optional in the command payload;
+				// omitted == no limit).
+				ch.minFriction = command.minFriction == null ? NO_LIMIT_MIN : command.minFriction;
+				ch.maxFriction = command.maxFriction == null ? NO_LIMIT_MAX : command.maxFriction;
+				ch.minRestitution = command.minRestitution == null ? NO_LIMIT_MIN : command.minRestitution;
+				ch.maxRestitution = command.maxRestitution == null ? NO_LIMIT_MAX : command.maxRestitution;
 				ch.maxRJStrength = command.maxRJStrength === null ? NO_LIMIT_MAX : command.maxRJStrength;
 				ch.maxRJSpeed = command.maxRJSpeed === null ? NO_LIMIT_MAX : command.maxRJSpeed;
 				ch.maxSJStrength = command.maxSJStrength === null ? NO_LIMIT_MAX : command.maxSJStrength;
@@ -4711,10 +5380,14 @@ export class GameCore {
 				this.challenge.challenge.allParts = robot;
 				this.challenge.playMode = true;
 				for (const p of robot) p.isEditable = false;
+				// NOTE: edit.editable is the robot-EXPOSURE lock (setRobotEditable),
+				// deliberately NOT touched here — the challenge play-mode lock is
+				// expressed via state.challenge.playMode + the parts' isEditable
+				// flags, so the two locks can't desync.
 				this.state = {
 					...this.state,
 					parts: [...this.state.parts],
-					edit: { ...this.state.edit, editable: false, selection: [], selectedPart: null },
+					edit: { ...this.state.edit, selection: [], selectedPart: null },
 				};
 				this.markChanged();
 				this.syncChallenge();
@@ -4727,10 +5400,11 @@ export class GameCore {
 				if (this.challenge.playOnly) return; // "This challenge is uneditable!"
 				this.challenge.playMode = false;
 				for (const p of this.challenge.savedRobot) p.isEditable = true;
+				// edit.editable (the exposure lock) deliberately untouched — see
+				// enterChallengePlay.
 				this.state = {
 					...this.state,
 					parts: [...this.state.parts],
-					edit: { ...this.state.edit, editable: true },
 				};
 				this.markChanged();
 				this.syncChallenge();
@@ -4741,7 +5415,9 @@ export class GameCore {
 			case "clearAll":
 				// File -> New Robot / Edit -> Clear All: drop editable robot parts, keep
 				// terrain (ControllerGame.clearButton :4845). Editing-phase only (gated
-				// by the no-op-during-sim switch above).
+				// by the no-op-during-sim switch above). Starting fresh unlocks an
+				// uneditable loaded robot (curRobotEditable, Wave 3a).
+				this.setRobotEditable(true);
 				this.clearRobot();
 				return;
 

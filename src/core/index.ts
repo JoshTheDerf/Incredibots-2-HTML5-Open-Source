@@ -6,9 +6,39 @@
 
 export { GameCore } from "./GameCore";
 export type { Unsubscribe, StateListener, SoundEvent, SoundListener, MessageListener } from "./GameCore";
-export { encodeRobot, decodeRobot } from "./robotSerialization";
+export { encodeRobot, decodeRobot, decodeRobotFile, exportRobotFile } from "./robotSerialization";
 export type { DecodedRobot } from "./robotSerialization";
-export { decodeChallengeBlob, decodeChallenge, encodeChallenge } from "./challengeSerialization";
+export {
+	decodeChallengeBlob,
+	decodeChallenge,
+	decodeChallengeWithMeta,
+	decodeChallengeFile,
+	encodeChallenge,
+	exportChallengeFile,
+} from "./challengeSerialization";
+export type { DecodedChallenge } from "./challengeSerialization";
+export {
+	VERSION_PREFIX,
+	VERSION_STRING,
+	checkVersionNumber,
+	SAME_VERSION,
+	NEWER_VERSION,
+	OLDER_VERSION,
+	codeToFileBytes,
+	fileBytesToCode,
+	isEncryptedText,
+	sniffFileBytes,
+	sanitizeFileName,
+} from "./serializationVersion";
+export {
+	EXPO_PUBLIC_UNEDITABLE,
+	EXPO_PUBLIC_EDITABLE,
+	EXPO_PRIVATE_UNEDITABLE,
+	EXPO_PRIVATE_EDITABLE,
+	EXPO_PRIVATE_NOSHARE,
+	determineExposure,
+} from "./exposure";
+export type { ExposureFlags } from "./exposure";
 export type {
 	GameState,
 	SimState,
@@ -24,8 +54,8 @@ export type {
 export { createInitialState } from "./GameState";
 export type { ReplayData, CameraMovement, KeyPress, ReplaySyncPoint } from "./replay";
 export { REPLAY_SYNC_FRAMES, VERSION_STRING_FOR_REPLAYS } from "./replay";
-export { encodeReplay, decodeReplay } from "./replaySerialization";
-export type { DecodedReplay, ReplayRobot } from "./replaySerialization";
+export { encodeReplay, decodeReplay, decodeReplayFile, exportReplayFile } from "./replaySerialization";
+export type { DecodedReplay, ReplayRobot, ReplayMeta } from "./replaySerialization";
 export { TUTORIAL_MESSAGES, TUTORIAL_LEVELS, tutorialLevel, resolveMessage, tutorialWindowHeight, clampTutorialPosition, levelDoneIndexForControllerType } from "./tutorials";
 export type { TutorialLevel } from "./tutorials";
 export {

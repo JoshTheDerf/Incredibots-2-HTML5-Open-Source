@@ -7,6 +7,12 @@ import { useIsMobile } from "../useIsMobile";
 
 const game = useGameStore();
 
+// Shape counter (Jaybit DropDownMenu shapeCounter, ControllerGame.UpdateShapeCounter
+// :6512-6519). Comes from the store's shapeCount getter, which delegates to the
+// core's GameCore.getShapeCount — the single predicate the 750-shape play gate
+// (TooManyShapes) also uses — and recomputes on every state emit.
+const shapeCount = computed(() => game.shapeCount);
+
 // On mobile the status line drops the lower-priority items (frame counter, the
 // sim-status phrase) and wraps so it fits a narrow screen. Desktop is unchanged.
 const isMobile = useIsMobile();
@@ -44,6 +50,10 @@ const simStatus = computed(() => {
 		<span>Tool: <strong id="current-tool-value">{{ currentTool }}</strong></span>
 		<span class="sep">|</span>
 		<span>Selected: <strong id="selection-count-value">{{ selectionCount }}</strong></span>
+		<span class="sep">|</span>
+		<!-- Shape counter: full label on desktop, compact icon+count on mobile. -->
+		<span v-if="!isMobile">Shapes: <strong id="shape-count-value">{{ shapeCount }}</strong></span>
+		<span v-else title="Number of Shapes">▲ <strong id="shape-count-value">{{ shapeCount }}</strong></span>
 		<span class="sep">|</span>
 		<span>Phase: <strong id="sim-phase-value">{{ phase }}</strong></span>
 		<!-- Frame counter is desktop-only detail; hidden on mobile to save room. -->

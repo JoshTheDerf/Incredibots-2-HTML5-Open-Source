@@ -35,7 +35,10 @@ export class b2Settings{
 	// Collision
 	public static b2_maxManifoldPoints:number = 2;
 	public static b2_maxPolygonVertices:number = 4;
-	public static b2_maxProxies:number = 1024;				// this must be a power of two
+	// Jaybit raised this 1024 -> 4096 (b2Settings.as:16) to fit the 750-shape
+	// limit + piston segments + cannonballs in the broad-phase (b2_maxPairs
+	// below is derived, so it scales 8192 -> 32768 automatically).
+	public static b2_maxProxies:number = 4096;				// this must be a power of two
 	public static b2_maxPairs:number = 8 * b2Settings.b2_maxProxies;	// this must be a power of two
 
 

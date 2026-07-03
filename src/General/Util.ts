@@ -45,6 +45,32 @@ export class Util {
     }
   }
 
+  // --- Jaybit material conversions (General/Util.as:33/:161/:146) ---
+  // UI-scale 1..30 values -> Box2D fixture values. The defaults (friction 11,
+  // restitution 7) map to 0.4 / 0.3 — CE's hardcoded values — so a
+  // default-valued Jaybit shape is physically identical to a CE shape.
+
+  /** Util.as:33 — friction 1..30 -> 0.15..0.875; default 11 -> 0.4. */
+  public static ConvertFrictionToBox2D(friction: number): number {
+    return (Math.max(1, Math.min(30, friction)) + 5) / 40;
+  }
+
+  /** Util.as:161 — restitution 1..30 -> 0.18..0.76; default 7 -> 0.3. */
+  public static ConvertRestitutionToBox2D(restitution: number): number {
+    return (Math.max(1, Math.min(30, restitution)) + 8) / 50;
+  }
+
+  /**
+   * Util.as:146 — density 1..30 -> 0.6..3.5; default 15 -> 2.0. INTENTIONALLY
+   * UNWIRED: our port deliberately keeps CE's unclamped (density + 5) / 10 in
+   * the part Inits (the "CE FIX" comments) so legacy robots with out-of-range
+   * densities keep their behavior. Kept only as a faithful reference for the
+   * Jaybit clamped formula; nothing calls it.
+   */
+  public static ConvertDensityToBox2D(density: number): number {
+    return (Math.max(1, Math.min(30, density)) + 5) / 10;
+  }
+
   public static GetDist(x1: number, y1: number, x2: number, y2: number): number {
     return Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
   }

@@ -1,7 +1,7 @@
 import { b2Body, b2Vec2, b2World } from "../Box2D";
 import { Util } from "../General/Util"
 import { Part } from "./Part"
-import { MAX_THRUSTER_STRENGTH } from "./partDefaults"
+import { MAX_THRUSTER_STRENGTH, TRIGGER_DESTROY, TRIGGER_FIRE, TRIGGER_NONE } from "./partDefaults"
 import { ShapePart } from "./ShapePart"
 
 export class Thrusters extends Part {
@@ -12,6 +12,16 @@ export class Thrusters extends Part {
   public angle: number;
   public thrustKey: number;
   public autoOn: boolean;
+
+  /**
+   * Comma-separated trigger names this thruster LISTENS to (Jaybit
+   * Thrusters.as:16-38; persisted).
+   */
+  public triggerList: string = "";
+  /** Runtime trigger-contact counter (Jaybit Thrusters.as:16; NOT persisted). */
+  public triggerTouches: number = 0;
+  /** Runtime "thrust while touched" flag = triggerTouches > 0 (Thrusters.as:20). */
+  private triggerThruster: boolean = false;
 
   public isBalloon: boolean = false;
   public shapeIndex: number = -1;
@@ -41,6 +51,7 @@ export class Thrusters extends Part {
     t.autoOn = this.autoOn;
     t.thrustKey = this.thrustKey;
     t.angle = this.angle;
+    t.triggerList = this.triggerList;
     return t;
   }
 
@@ -48,9 +59,46 @@ export class Thrusters extends Part {
     return Util.GetDist(this.centerX, this.centerY, xVal, yVal) < (0.25 * 30) / scale;
   }
 
+  /**
+   * TRIGGER_DESTROY (add only) UnInits the thruster; FIRE counts touches then
+   * recomputes triggerThruster (Jaybit Thrusters.as:61-84).
+   */
+  public DoTriggerAction(action: number, world: b2World | null = null, isAdd: boolean = true): boolean {
+    if (action == TRIGGER_NONE) return false;
+    if (action == TRIGGER_DESTROY && world && isAdd) {
+      return this.DestroyThruster(world);
+    }
+    if (action == TRIGGER_FIRE) {
+      if (isAdd) ++this.triggerTouches;
+      else if (this.triggerTouches > 0) --this.triggerTouches;
+      this.DetermineTriggered();
+    }
+    return false;
+  }
+
+  /** Thrust while any trigger contact is live (Jaybit Thrusters.as:155-158). */
+  public DetermineTriggered(): void {
+    this.triggerThruster = this.triggerTouches > 0;
+  }
+
+  /**
+   * TRIGGER_DESTROY effect: UnInit the thruster so it stops applying force
+   * for the rest of the run (Jaybit Thrusters.as:201-208).
+   */
+  public DestroyThruster(world: b2World): boolean {
+    if (this.isInitted) {
+      this.UnInit(world);
+      return true;
+    }
+    return false;
+  }
+
   public Init(world: b2World, body: b2Body | null = null): void {
     if (this.isInitted || !this.shape.isInitted) return;
     super.Init(world);
+    // Per-play trigger runtime reset (Jaybit Thrusters.as Init :170-175).
+    this.triggerThruster = false;
+    this.triggerTouches = 0;
     this.isKeyDown = false;
     this.relativeThrusterPos = Util.Vector(this.centerX, this.centerY);
     this.relativeThrusterPos.Subtract(this.shape.GetBody()!.GetPosition());
@@ -61,7 +109,9 @@ export class Thrusters extends Part {
   }
 
   public Update(world: b2World): void {
-    if (this.isInitted && (this.isKeyDown || this.autoOn)) {
+    // Thrust while the key is held, a trigger contact is live, or auto-on
+    // (Jaybit Thrusters.as Update :141).
+    if (this.isInitted && (this.isKeyDown || this.triggerThruster || this.autoOn)) {
       var forceAngle: number = this.angle + this.shape.GetBody()!.GetAngle();
       if (this.isBalloon) forceAngle = -Math.PI / 2;
 

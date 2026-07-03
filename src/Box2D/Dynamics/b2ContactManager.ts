@@ -234,8 +234,15 @@ export class b2ContactManager extends b2PairCallback
 		}
 
 		// Call the factory.
-		b2Contact.Destroy(c, this.m_world.m_blockAllocator);
-		--this.m_world.m_contactCount;
+		// Jaybit guard (b2ContactManager.as:127-131): CE destroyed/decremented
+		// unconditionally; the guard defends against contact-count underflow /
+		// double-destroy (plausibly hit by destroy-triggered joints removing
+		// bodies mid-step).
+		if (this.m_world.m_contactCount > 0)
+		{
+			b2Contact.Destroy(c, this.m_world.m_blockAllocator);
+			--this.m_world.m_contactCount;
+		}
 	}
 
 

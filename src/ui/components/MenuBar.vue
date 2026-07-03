@@ -17,11 +17,15 @@ import { useGameStore } from "../gameStore";
 import { frameTextures } from "../assets";
 import { soundService } from "../sound";
 import { useIsMobile } from "../useIsMobile";
+import { useUiPrefs } from "../uiPrefs";
 import type { DropdownMenuItem } from "@nuxt/ui";
 
 const logoSrc = frameTextures.logo;
 
 const game = useGameStore();
+// UI-local view prefs (Jaybit "Highlight Parts for Joint" / "Triangle Snapping"
+// View-menu toggles). These are presentation/gesture flags, not core state.
+const uiPrefs = useUiPrefs();
 
 // On mobile the six text menu triggers won't fit a narrow strip, so they
 // collapse into a single ⋯ button opening one grouped dropdown that preserves
@@ -31,6 +35,8 @@ const isMobile = useIsMobile();
 /** Panel keys App.vue knows how to open as modals. */
 export type PanelKey =
 	| "import"
+	| "importInsert"
+	| "convert"
 	| "export"
 	| "importReplay"
 	| "exportReplay"
@@ -62,10 +68,15 @@ const fileMenu = computed<DropdownMenuItem[][]>(() => [
 	[
 		{ label: "Save...", icon: "i-lucide-share", onSelect: () => open("export") },
 		{ label: "Load Robot...", icon: "i-lucide-clipboard-paste", onSelect: () => open("import") },
+		// Jaybit "Import And Insert" (DropDownMenu.as:828) — append a loaded robot's
+		// parts to the current robot instead of replacing (importRobotInsert).
+		{ label: "Import And Insert...", icon: "i-lucide-file-input", onSelect: () => open("importInsert") },
 	],
 	// Replay transport (legacy BuildFileMenu Load Replay / Import Replay). Load
 	// Replay opens ImportPanel in replay mode; importReplay decodes + plays back.
 	[{ label: "Load Replay...", icon: "i-lucide-clapperboard", onSelect: () => open("importReplay") }],
+	// Jaybit Convert window (code <-> file conversion; serialization-compat §4).
+	[{ label: "Convert...", icon: "i-lucide-repeat", onSelect: () => open("convert") }],
 	[
 		{
 			label: soundService.enabled ? "Disable Sound" : "Enable Sound",
@@ -141,6 +152,20 @@ const viewMenu = computed<DropdownMenuItem[][]>(() => {
 			{ label: "Show Joints", icon: check(e.showJoints), onSelect: () => game.dispatch({ type: "toggleShowJoints" }) },
 			{ label: "Show Colors", icon: check(e.showColours), onSelect: () => game.dispatch({ type: "toggleShowColours" }) },
 			{ label: "Show Outlines", icon: check(e.showOutlines), onSelect: () => game.dispatch({ type: "toggleShowOutlines" }) },
+		],
+		// Jaybit View-menu additions (DropDownMenu.as:420/423). UI-local prefs, not
+		// core state — highlightForJointBox / triangleSnappingBox.
+		[
+			{
+				label: "Highlight Parts for Joint",
+				icon: check(uiPrefs.highlightPartsForJoint.value),
+				onSelect: () => uiPrefs.toggleHighlightPartsForJoint(),
+			},
+			{
+				label: "Triangle Snapping",
+				icon: check(uiPrefs.triangleSnapping.value),
+				onSelect: () => uiPrefs.toggleTriangleSnapping(),
+			},
 		],
 		// Center on Selection (legacy DropDownMenu.ts:277-286 → centerOnSelectedBox).
 		[

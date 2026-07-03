@@ -4,7 +4,7 @@
 //   M2  Reset restores the pre-play camera (playButton snapshots savedDrawXOff/YOff
 //       :2776-2777; resetButton restores them :2813-2814).
 //   M1  playButton refuses to start + shows a dialog when the robot doesn't fit the
-//       starting box (challenge only) or exceeds 500 shapes (:2719-2721,2781-2782).
+//       starting box (challenge only) or exceeds 750 shapes (Jaybit limit; :2719-2721,2781-2782).
 //   M6  colourButton(..., makeDefault) sets the default colour used by new parts
 //       (ControllerGameGlobals.defaultR/G/B/O — ControllerGame.ts:4454-4461).
 //   L5  View → "Center on Selection" centres the camera on the selection centroid
@@ -92,10 +92,11 @@ describe("Play validation refuses + emits a message (sweep M1)", () => {
 		expect(messages).toEqual([]);
 	});
 
-	it("more than 500 physical shapes refuses play + emits the limit string", () => {
-		// 501 circles — count > 500 (PartIsPhysical = ShapePart || PrismaticJoint).
+	it("more than 750 physical shapes refuses play + emits the limit string", () => {
+		// 751 circles — count > 750 (Jaybit PartIsPhysicalAndNotSandBox =
+		// non-sandbox ShapePart || PrismaticJoint; CE's limit was 500).
 		const circles: Part[] = [];
-		for (let i = 0; i < 501; i++) circles.push(new Circle(0, 0, 1));
+		for (let i = 0; i < 751; i++) circles.push(new Circle(0, 0, 1));
 		const core = coreWith(circles);
 
 		const messages: string[] = [];
@@ -103,15 +104,15 @@ describe("Play validation refuses + emits a message (sweep M1)", () => {
 
 		core.dispatch({ type: "play" });
 		expect(core.getState().sim.phase).toBe("editing"); // refused
-		expect(messages).toEqual(["Your robot contains too many shapes!  (Limit 500)"]);
+		expect(messages).toEqual(["Your robot contains too many shapes!  (Limit 750)"]);
 	});
 
-	it("exactly 500 shapes is allowed (limit is > 500)", () => {
+	it("exactly 750 shapes is allowed (limit is > 750)", () => {
 		// Spread the circles apart so the broadphase doesn't overflow its pair pool
 		// when the world inits — the guard boundary (not physics capacity) is the
 		// subject here.
 		const circles: Part[] = [];
-		for (let i = 0; i < 500; i++) circles.push(new Circle((i % 25) * 5, Math.floor(i / 25) * 5, 1));
+		for (let i = 0; i < 750; i++) circles.push(new Circle((i % 25) * 5, Math.floor(i / 25) * 5, 1));
 		const core = coreWith(circles);
 		const messages: string[] = [];
 		core.onMessage((m) => messages.push(m));
