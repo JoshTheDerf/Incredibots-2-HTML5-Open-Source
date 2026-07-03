@@ -35,6 +35,7 @@ import { Circle } from "../Parts/Circle";
 import { FixedJoint } from "../Parts/FixedJoint";
 import { JointPart } from "../Parts/JointPart";
 import type { Part } from "../Parts/Part";
+import { Polygon } from "../Parts/Polygon";
 import { PrismaticJoint } from "../Parts/PrismaticJoint";
 import { Rectangle } from "../Parts/Rectangle";
 import { RevoluteJoint } from "../Parts/RevoluteJoint";
@@ -146,6 +147,7 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 			od.type === "Circle" ||
 			od.type === "Rectangle" ||
 			od.type === "Triangle" ||
+			od.type === "Polygon" ||
 			od.type === "Cannon" ||
 			od.type === "Bomb"
 		) {
@@ -176,6 +178,14 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 				shape = new Rectangle(od.x, od.y, od.w, od.h, true);
 			} else if (od.type === "Triangle") {
 				shape = new Triangle(od.x1, od.y1, od.x2, od.y2, od.x3, od.y3);
+			} else if (od.type === "Polygon") {
+				// Convex polygon (IB3 PolygonPart import target). AMF serializes the
+				// public `vertices` array as [{x,y}, ...] (b2Vec2 like PrismaticJoint.axis);
+				// rebuild b2Vec2s. The common `shape.angle = od.angle` below restores rotation.
+				const raw = (od.vertices ?? []) as ArrayLike<{ x: number; y: number }>;
+				const verts: b2Vec2[] = [];
+				for (let vi = 0; vi < raw.length; vi++) verts.push(new b2Vec2(Number(raw[vi].x), Number(raw[vi].y)));
+				shape = new Polygon(verts);
 			} else {
 				shape = new Cannon(od.x, od.y, od.w);
 				(shape as Cannon).fireKey = od.fireKey;

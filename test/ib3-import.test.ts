@@ -13,10 +13,12 @@
 // route to the native path).
 
 import { describe, expect, it } from "vitest";
+import { b2Vec2 } from "../src/Box2D";
 import { ByteArray } from "../src/General/ByteArray";
 import { Bomb } from "../src/Parts/Bomb";
 import { Circle } from "../src/Parts/Circle";
 import { FixedJoint } from "../src/Parts/FixedJoint";
+import { Polygon } from "../src/Parts/Polygon";
 import { PrismaticJoint } from "../src/Parts/PrismaticJoint";
 import { Rectangle } from "../src/Parts/Rectangle";
 import { RevoluteJoint } from "../src/Parts/RevoluteJoint";
@@ -203,8 +205,18 @@ describe("IB3 part mapping", () => {
 		}
 	});
 
-	it("fan-triangulates a polygon into welded triangles", () => {
-		// Regular-ish pentagon (5 verts) -> 3 triangles + 2 fixed-joint welds.
+	/** Standard shoelace area of a vertex ring (matches IB3 PolygonPart.GetArea). */
+	function shoelaceArea(v: { x: number; y: number }[]): number {
+		let a = 0;
+		for (let i = 0; i < v.length; i++) {
+			const j = (i + 1) % v.length;
+			a += v[i].x * v[j].y - v[j].x * v[i].y;
+		}
+		return Math.abs(a / 2);
+	}
+
+	it("imports a convex IB3 polygon as ONE Polygon part (no welded triangles, no warning)", () => {
+		// Convex pentagon (5 verts, <= b2_maxPolygonVertices) — a single Polygon now.
 		const verts = [
 			{ x: 0, y: 2 },
 			{ x: 2, y: 0.6 },
@@ -213,16 +225,100 @@ describe("IB3 part mapping", () => {
 			{ x: -2, y: 0.6 },
 		];
 		const { robot, warnings } = decodeIB3FromByteArray(ib3Bytes({ parts: [{ name: "Polygon", x: 0, y: 0, vertices: verts }] }));
-		const tris = robot.parts.filter((p) => p instanceof Triangle) as Triangle[];
-		const welds = robot.parts.filter((p) => p instanceof FixedJoint) as FixedJoint[];
-		expect(tris).toHaveLength(3); // n - 2
-		expect(welds).toHaveLength(2); // n - 3
-		// Every weld connects the fan's first triangle (weld integrity).
-		for (const w of welds) {
-			expect(w.part1).toBe(tris[0]);
-			expect(tris).toContain(w.part2);
+		const polys = robot.parts.filter((p) => p instanceof Polygon) as Polygon[];
+		expect(polys).toHaveLength(1);
+		expect(robot.parts.filter((p) => p instanceof Triangle)).toHaveLength(0);
+		expect(robot.parts.filter((p) => p instanceof FixedJoint)).toHaveLength(0);
+		const poly = polys[0];
+		expect(poly.type).toBe("Polygon");
+		expect(poly.numVertices()).toBe(5);
+		// Area preserved within tolerance; every source vertex is present (winding
+		// may be normalized so the order can differ).
+		expect(poly.GetArea()).toBeCloseTo(shoelaceArea(verts), 4);
+		for (const v of verts) {
+			expect(poly.vertices.some((g) => Math.abs(g.x - v.x) < 1e-6 && Math.abs(g.y - v.y) < 1e-6)).toBe(true);
 		}
-		expect(warnings.some((m) => m.includes("polygon"))).toBe(true);
+		// The two broad v1-approximation warnings are gone.
+		expect(warnings.some((m) => m.includes("fan-triangulated"))).toBe(false);
+		expect(warnings.some((m) => m.includes("v1 approximation"))).toBe(false);
+	});
+
+	it("imports a non-rectangular IB3 'Rectangle' (convex quad) as a Polygon, not welded triangles", () => {
+		// A trapezoid stored under the "Rectangle" name — not axis/rotation-aligned,
+		// so it can't be recovered as a Rectangle, but it IS a convex quad.
+		const verts = [
+			{ x: -2, y: 1 },
+			{ x: 2, y: 1 },
+			{ x: 1, y: -1 },
+			{ x: -1, y: -1 },
+		];
+		const { robot, warnings } = decodeIB3FromByteArray(ib3Bytes({ parts: [{ name: "Rectangle", x: 0, y: 0, vertices: verts }] }));
+		const polys = robot.parts.filter((p) => p instanceof Polygon) as Polygon[];
+		expect(polys).toHaveLength(1);
+		expect(robot.parts.filter((p) => p instanceof Triangle)).toHaveLength(0);
+		expect(polys[0].numVertices()).toBe(4);
+		expect(polys[0].GetArea()).toBeCloseTo(shoelaceArea(verts), 4);
+		expect(warnings.some((m) => m.includes("welded triangles"))).toBe(false);
+	});
+
+	it("falls back to welded triangles ONLY for a concave polygon (narrowed warning)", () => {
+		// Concave arrowhead (the 4th vertex dents inward) — Box2D needs convex, so
+		// this genuinely must fan-triangulate.
+		const verts = [
+			{ x: -2, y: 0 },
+			{ x: 0, y: 2 },
+			{ x: 2, y: 0 },
+			{ x: 0, y: 0.5 }, // reflex dent
+		];
+		const { robot, warnings } = decodeIB3FromByteArray(ib3Bytes({ parts: [{ name: "Polygon", x: 0, y: 0, vertices: verts }] }));
+		expect(robot.parts.filter((p) => p instanceof Polygon)).toHaveLength(0);
+		expect((robot.parts.filter((p) => p instanceof Triangle) as Triangle[]).length).toBe(2); // n - 2
+		expect(robot.parts.filter((p) => p instanceof FixedJoint)).toHaveLength(1); // n - 3
+		expect(warnings.some((m) => m.includes("concave"))).toBe(true);
+	});
+
+	it("falls back to welded triangles for a convex polygon with > b2_maxPolygonVertices verts", () => {
+		// A convex 10-gon exceeds the 8-vertex b2PolygonShape cap.
+		const verts: { x: number; y: number }[] = [];
+		for (let k = 0; k < 10; k++) {
+			verts.push({ x: 3 * Math.cos((k / 10) * 2 * Math.PI), y: 3 * Math.sin((k / 10) * 2 * Math.PI) });
+		}
+		const { robot, warnings } = decodeIB3FromByteArray(ib3Bytes({ parts: [{ name: "Polygon", x: 0, y: 0, vertices: verts }] }));
+		expect(robot.parts.filter((p) => p instanceof Polygon)).toHaveLength(0);
+		expect((robot.parts.filter((p) => p instanceof Triangle) as Triangle[]).length).toBe(8); // n - 2
+		expect(warnings.some((m) => m.includes("vertices"))).toBe(true);
+	});
+});
+
+// --- native Polygon serialization round-trip --------------------------------
+
+describe("Polygon native serialization", () => {
+	it("round-trips a Polygon through the native robot save format", async () => {
+		const src = new Polygon([
+			new b2Vec2(0, 2),
+			new b2Vec2(2, 0.6),
+			new b2Vec2(1.2, -1.6),
+			new b2Vec2(-1.2, -1.6),
+			new b2Vec2(-2, 0.6),
+		]);
+		src.density = 20;
+		src.friction = 9;
+		src.restitution = 5;
+		src.red = 10;
+		src.green = 20;
+		src.blue = 30;
+		src.angle = 0.3;
+		const code = await encodeRobot([src], new SandboxSettings(15, 1, 0, 0, 0), "poly", "d");
+		const decoded = await decodeRobot(code);
+		expect(decoded.parts).toHaveLength(1);
+		const out = decoded.parts[0] as Polygon;
+		expect(out.type).toBe("Polygon");
+		expect(out.numVertices()).toBe(5);
+		expect(out.equals(src)).toBe(true);
+		expect(out.GetArea()).toBeCloseTo(src.GetArea(), 6);
+		expect(out.angle).toBeCloseTo(0.3, 6);
+		expect(out.density).toBe(20);
+		expect([out.red, out.green, out.blue]).toEqual([10, 20, 30]);
 	});
 });
 

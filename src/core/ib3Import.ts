@@ -55,6 +55,7 @@
 //   color(uint)  -> red/green/blue  channel split.
 // ---------------------------------------------------------------------------
 
+import { b2Vec2 } from "../Box2D";
 import { ByteArray } from "../General/ByteArray";
 import { SandboxSettings } from "../Game/SandboxSettings";
 import { Base64Decoder } from "../mx/utils/Base64Decoder";
@@ -63,6 +64,7 @@ import { Circle } from "../Parts/Circle";
 import { FixedJoint } from "../Parts/FixedJoint";
 import { JointPart } from "../Parts/JointPart";
 import type { Part } from "../Parts/Part";
+import { Polygon } from "../Parts/Polygon";
 import { PrismaticJoint } from "../Parts/PrismaticJoint";
 import { Rectangle } from "../Parts/Rectangle";
 import { RevoluteJoint } from "../Parts/RevoluteJoint";
@@ -459,15 +461,42 @@ function buildShape(nm: string, od: Record<string, unknown>, version: string, wa
 			rect.angle = r.angle;
 			return { primary: rect, extra: [] };
 		}
-		warnings.add("A non-rectangular IB3 'Rectangle' was split into welded triangles.");
-		return triangulate(v, cx, cy);
+		// A non-axis-aligned IB3 "Rectangle" is just a convex quad — import it as a
+		// real Polygon (verts are world-space; the Polygon ctor normalizes winding).
+		return buildPolygonOrFallback(v, cx, cy, warnings);
 	}
 	if (nm === "Polygon") {
 		const v = readVerts(od);
-		warnings.add("IB3 polygons were split into fan-triangulated triangles welded with fixed joints (v1 approximation).");
-		return triangulate(v, cx, cy);
+		return buildPolygonOrFallback(v, cx, cy, warnings);
 	}
 	return null;
+}
+
+/**
+ * Import an IB3 convex vertex list as a single Polygon part when the engine can
+ * represent it (3..b2_maxPolygonVertices verts AND convex). The genuine edge
+ * cases — a concave polygon or one with more verts than the b2PolygonShape limit
+ * — still fan-triangulate into welded Triangles, now with a NARROWED warning that
+ * fires only for those cases (Box2D shapes must be convex, and its vertex count
+ * is capped by b2_maxPolygonVertices).
+ */
+function buildPolygonOrFallback(
+	v: { x: number; y: number }[],
+	cx: number,
+	cy: number,
+	warnings: Set<string>,
+): BuiltShape | null {
+	if (v.length >= 3 && v.length <= Polygon.MAX_VERTICES && Polygon.isConvex(v)) {
+		const poly = new Polygon(v.map((p) => new b2Vec2(p.x, p.y)));
+		return { primary: poly, extra: [] };
+	}
+	if (v.length < 3) return triangulate(v, cx, cy);
+	warnings.add(
+		"An IB3 polygon that is concave or has more than " +
+			Polygon.MAX_VERTICES +
+			" vertices was split into welded triangles.",
+	);
+	return triangulate(v, cx, cy);
 }
 
 /** Recover center/width/height/angle from a rectangle's 4 world-space verts. */
