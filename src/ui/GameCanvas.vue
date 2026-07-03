@@ -42,15 +42,18 @@ import { GridRenderer } from "./renderer/gridRenderer";
 import type { ToolMode } from "../core";
 import type { Part } from "../Parts/Part";
 
-type ShapeKind = "circle" | "rect" | "triangle";
+type ShapeKind = "circle" | "rect" | "triangle" | "bomb";
 
 // Map a shape kind to the Draw.DrawTempShape `creatingItem` code so the in-
 // progress preview uses the ORIGINAL renderer's look (fills, outline, default
 // colour). Values mirror ControllerGameGlobals.NEW_CIRCLE/NEW_RECT/NEW_TRIANGLE.
+// A bomb draws exactly like a circle (press = centre, drag = radius — IB3
+// GameControl.CreateBomb), so it reuses the circle preview.
 const shapeKindToCreatingItem: Record<ShapeKind, number> = {
 	circle: ControllerGameGlobals.NEW_CIRCLE,
 	rect: ControllerGameGlobals.NEW_RECT,
 	triangle: ControllerGameGlobals.NEW_TRIANGLE,
+	bomb: ControllerGameGlobals.NEW_CIRCLE,
 };
 
 const game = useGameStore();
@@ -282,10 +285,11 @@ function abortSinglePointerGesture(): void {
 	}
 }
 
-const toolToShapeKind: Partial<Record<ToolMode, "circle" | "rect" | "triangle">> = {
+const toolToShapeKind: Partial<Record<ToolMode, "circle" | "rect" | "triangle" | "bomb">> = {
 	newCircle: "circle",
 	newRect: "rect",
 	newTriangle: "triangle",
+	newBomb: "bomb",
 };
 
 /** Canvas-relative screen coords + current canvas size for an event. */

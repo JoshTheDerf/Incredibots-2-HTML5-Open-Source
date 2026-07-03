@@ -17,6 +17,7 @@
 // callbacks — there is no per-frame trigger scan.
 
 import type { b2World } from "../Box2D";
+import { Bomb } from "../Parts/Bomb";
 import { Cannon } from "../Parts/Cannon";
 import { JointPart } from "../Parts/JointPart";
 import type { Part } from "../Parts/Part";
@@ -95,6 +96,11 @@ export function wireTriggers(parts: Part[]): void {
 		const t = parts[i];
 		let tokens: string[];
 		if (t instanceof Cannon && t.triggerList !== "") {
+			tokens = t.triggerList.replace(/ /g, "").split(",");
+		} else if (t instanceof Bomb && t.triggerList !== "") {
+			// Bomb detonate list (IB3 Bomb.as triggerList — a bomb is a trigger
+			// TARGET like a cannon; contacts count into triggerTouches, consumed by
+			// Bomb.CheckTriggerDetonation each frame).
 			tokens = t.triggerList.replace(/ /g, "").split(",");
 		} else if (t instanceof JointPart && t.triggerList !== "") {
 			tokens = t.triggerList.replace(/ /g, "").split(",");
@@ -265,6 +271,10 @@ export function processTriggers(
 				let destroyed = false;
 				if (target instanceof JointPart) {
 					destroyed = target.DoTriggerAction(actions[k], world, true);
+				} else if (target instanceof Bomb) {
+					// Detonate touch begins (IB3 TriggerSystem -> DETONATE_TRIGGER;
+					// Bomb.DoTriggerAction counts it, CheckTriggerDetonation arms).
+					destroyed = target.DoTriggerAction(actions[k], world, true);
 				} else if (target instanceof Thrusters) {
 					destroyed = target.DoTriggerAction(actions[k], world, true);
 				} else if (target instanceof Cannon) {
@@ -286,6 +296,9 @@ export function processTriggers(
 				}
 			} else {
 				if (target instanceof JointPart) {
+					target.DoTriggerAction(actions[k], world, false);
+				} else if (target instanceof Bomb) {
+					// Detonate touch ends.
 					target.DoTriggerAction(actions[k], world, false);
 				} else if (target instanceof Thrusters) {
 					target.DoTriggerAction(actions[k], world, false);

@@ -69,6 +69,8 @@ const row2Tools: ToolDef[] = [
 // preserve wiring without disturbing the two build rows.
 const partsRow1: ToolDef[] = [
 	{ tool: "newThrusters", label: "Thrusters", family: "blue", icon: "i-lucide-flame" },
+	// IB3 Bomb (P2 port) — drawn like a circle (press = centre, drag = radius).
+	{ tool: "newBomb", label: "Bomb", family: "blue", icon: "i-lucide-bomb" },
 	{ tool: "rotate", label: "Rotate", family: "pink", icon: "i-lucide-rotate-3d" },
 ];
 const partsRow2: ToolDef[] = [

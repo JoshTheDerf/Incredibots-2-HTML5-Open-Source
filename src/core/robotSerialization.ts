@@ -28,6 +28,7 @@ import { Base64Decoder } from "../mx/utils/Base64Decoder";
 import { DEFAULT_FRICTION, DEFAULT_RESTITUTION, TRIGGER_NONE } from "../Parts/partDefaults";
 import { decodeExposureInt, EXPO_PUBLIC_EDITABLE, type ExposureFlags } from "./exposure";
 import { sniffFileBytes, TYPE_TAG_ROBOT, VERSION_PREFIX, VERSION_STRING } from "./serializationVersion";
+import { Bomb } from "../Parts/Bomb";
 import { Cannon } from "../Parts/Cannon";
 import { Circle } from "../Parts/Circle";
 import { FixedJoint } from "../Parts/FixedJoint";
@@ -129,11 +130,36 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 
 	for (let i = 0; i < objectData.length; i++) {
 		const od = objectData[i];
-		if (od.type === "Circle" || od.type === "Rectangle" || od.type === "Triangle" || od.type === "Cannon") {
+		if (
+			od.type === "Circle" ||
+			od.type === "Rectangle" ||
+			od.type === "Triangle" ||
+			od.type === "Cannon" ||
+			od.type === "Bomb"
+		) {
 			let shape: ShapePart;
 			if (od.type === "Circle") {
 				// checkLimits=true on load, as Jaybit (Database.as:2129; CE passed false).
 				shape = new Circle(od.centerX, od.centerY, od.radius, true);
+			} else if (od.type === "Bomb") {
+				// IB3 Bomb (P2 port). Every bomb field is optional-guarded so a code
+				// missing them still loads with the Bomb.as defaults. NOTE: legacy
+				// Jaybit/CE clients do not know the "Bomb" type tag and silently DROP
+				// bombs from codes exported here — accepted (same one-way
+				// compatibility as other Jaybit-only additions).
+				const bomb = new Bomb(od.centerX, od.centerY, od.radius, has(od, "blastRadius") ? Number(od.blastRadius) : 4, true);
+				if (has(od, "strength")) bomb.strength = Number(od.strength);
+				if (has(od, "delay")) bomb.delay = Math.trunc(od.delay);
+				if (has(od, "delayAfterTrigger")) bomb.delayAfterTrigger = Boolean(od.delayAfterTrigger);
+				if (has(od, "explodeOnImpact")) bomb.explodeOnImpact = Boolean(od.explodeOnImpact);
+				if (has(od, "delayAfterImpact")) bomb.delayAfterImpact = Boolean(od.delayAfterImpact);
+				if (has(od, "repeat")) bomb.repeat = Math.trunc(od.repeat);
+				if (has(od, "repeatable")) bomb.repeatable = Boolean(od.repeatable);
+				if (has(od, "sensitive")) bomb.sensitive = Boolean(od.sensitive);
+				if (has(od, "sensitivity")) bomb.sensitivity = Number(od.sensitivity);
+				if (has(od, "deflect")) bomb.deflect = Boolean(od.deflect);
+				bomb.triggerList = has(od, "triggerList") ? od.triggerList : "";
+				shape = bomb;
 			} else if (od.type === "Rectangle") {
 				shape = new Rectangle(od.x, od.y, od.w, od.h, true);
 			} else if (od.type === "Triangle") {

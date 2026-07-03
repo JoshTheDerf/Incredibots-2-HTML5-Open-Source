@@ -55,7 +55,11 @@ export class b2CircleShape extends b2Shape
 		//b2Vec2 position = transform.position + b2Mul(transform.R, m_localPosition);
 		var tMat:b2Mat22 = transform.R;
 		var positionX:number = transform.position.x + (tMat.col1.x * this.m_localPosition.x + tMat.col2.x * this.m_localPosition.y);
-		var positionY:number = transform.position.x + (tMat.col1.y * this.m_localPosition.x + tMat.col2.y * this.m_localPosition.y);
+		// PORT FIX: the TS port read transform.position.X here (a transcription
+		// typo — upstream Box2DFlash 2.0.2 uses position.y), which broke every
+		// ray cast against circles. Dormant until the Bomb explosion rays
+		// (src/Parts/Bomb.ts) started using TestSegment.
+		var positionY:number = transform.position.y + (tMat.col1.y * this.m_localPosition.x + tMat.col2.y * this.m_localPosition.y);
 
 		//b2Vec2 s = segment.p1 - position;
 		var sX:number = segment.p1.x - positionX;

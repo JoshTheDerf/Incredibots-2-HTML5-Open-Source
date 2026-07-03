@@ -121,6 +121,22 @@ export type PartSnapshot = {
 	/** Cannon.fireKey code. */
 	fireKey?: number;
 
+	// Bomb (IB3 port — src/Parts/Bomb.ts; `strength` above carries bomb strength).
+	/** Blast reach in world units (0..50). */
+	blastRadius?: number;
+	/** Arm-to-explode delay in ms (Bomb.delay; named bombDelay to avoid clashing). */
+	bombDelay?: number;
+	delayAfterTrigger?: boolean;
+	explodeOnImpact?: boolean;
+	delayAfterImpact?: boolean;
+	repeatable?: boolean;
+	/** Max re-explosions when repeatable (0 == unlimited). */
+	repeat?: number;
+	sensitive?: boolean;
+	/** Jolt sensitivity 0..100. */
+	sensitivity?: number;
+	deflect?: boolean;
+
 	// Text
 	displayKey?: number;
 	alwaysVisible?: boolean;
