@@ -22,6 +22,9 @@ import { SandboxSettings } from "../src/Game/SandboxSettings";
 import { Circle } from "../src/Parts/Circle";
 import { Rectangle } from "../src/Parts/Rectangle";
 import { PrismaticJoint } from "../src/Parts/PrismaticJoint";
+import { RevoluteJoint } from "../src/Parts/RevoluteJoint";
+import { Thrusters } from "../src/Parts/Thrusters";
+import { TextPart } from "../src/Parts/TextPart";
 import { ShapePart } from "../src/Parts/ShapePart";
 import type { Part } from "../src/Parts/Part";
 
@@ -109,6 +112,94 @@ describe("IB3 fields round-trip through the native robot format", () => {
 		expect(a.equals(b)).toBe(true);
 		b.buoyant = false;
 		expect(a.equals(b)).toBe(false);
+	});
+});
+
+// --- New IB3-direct fields (fixedRotation / joint keys+auto / thruster+text) --
+
+/** A bot exercising every new IB3-direct field at a non-default value. */
+function directFieldsRobot(): Part[] {
+	const c = new Circle(1, 2, 1.5);
+	c.fixedRotation = true;
+	const r = new Rectangle(5, 5, 3, 2);
+	const rj = new RevoluteJoint(c, r, 1, 1);
+	rj.enableKeyCW = false;
+	rj.enableKeyCCW = false;
+	const pj = new PrismaticJoint(c, r, 2, 2, 4, 4);
+	pj.autoExpand = true;
+	pj.autoRetract = false;
+	pj.beginExpanded = true;
+	pj.enableKeyExpand = false;
+	pj.enableKeyRetract = false;
+	const th = new Thrusters(c, 1, 1);
+	th.enableKey = false;
+	const t = new TextPart(null, 3, 3, 5, 2, "hi");
+	t.angle = 0.7;
+	t.alwaysVisible = false;
+	t.visibleOnStart = true;
+	return [c, r, t, rj, pj, th];
+}
+
+describe("new IB3-direct fields round-trip through the native robot format", () => {
+	it("preserves fixedRotation, joint key-enables/auto/begin-expanded, thruster+text", async () => {
+		const decoded = await decodeRobot(await encodeRobot(directFieldsRobot(), waterySettings(), "d", "b"));
+		const circle = decoded.parts.find((p) => p instanceof Circle) as Circle;
+		expect(circle.fixedRotation).toBe(true);
+		const rj = decoded.parts.find((p) => p instanceof RevoluteJoint) as RevoluteJoint;
+		expect(rj.enableKeyCW).toBe(false);
+		expect(rj.enableKeyCCW).toBe(false);
+		const pj = decoded.parts.find((p) => p instanceof PrismaticJoint) as PrismaticJoint;
+		expect(pj.autoExpand).toBe(true);
+		expect(pj.autoRetract).toBe(false);
+		expect(pj.beginExpanded).toBe(true);
+		expect(pj.enableKeyExpand).toBe(false);
+		expect(pj.enableKeyRetract).toBe(false);
+		const th = decoded.parts.find((p) => p instanceof Thrusters) as Thrusters;
+		expect(th.enableKey).toBe(false);
+		const t = decoded.parts.find((p) => p instanceof TextPart) as TextPart;
+		expect(t.angle).toBeCloseTo(0.7);
+		expect(t.visibleOnStart).toBe(true);
+	});
+
+	it("XLarge size + Island terrain round-trip", async () => {
+		const s = new SandboxSettings(15, SandboxSettings.SIZE_XLARGE, SandboxSettings.TERRAIN_ISLAND, 0, 0);
+		const decoded = await decodeRobot(await encodeRobot([new Circle(0, 0, 1)], s, "x", "l"));
+		expect(decoded.settings.size).toBe(SandboxSettings.SIZE_XLARGE);
+		expect(decoded.settings.terrainType).toBe(SandboxSettings.TERRAIN_ISLAND);
+	});
+
+	it("fixedRotation participates in ShapePart.equals()", () => {
+		const a = new Circle(1, 2, 1.5);
+		const b = new Circle(1, 2, 1.5);
+		expect(a.equals(b)).toBe(true);
+		b.fixedRotation = true;
+		expect(a.equals(b)).toBe(false);
+	});
+
+	it("codes missing the new props load with defaults (fixedRotation false, enable-keys true)", async () => {
+		const parts = directFieldsRobot();
+		// Strip the new own-properties so the AMF payload looks pre-IB3-direct.
+		// `angle`/`visibleOnStart` are new only for TextPart (shapes always carry angle).
+		for (const p of parts) {
+			for (const k of ["fixedRotation", "enableKeyCW", "enableKeyCCW", "autoExpand", "autoRetract", "beginExpanded", "enableKeyExpand", "enableKeyRetract", "enableKey"]) {
+				delete (p as any)[k];
+			}
+			if (p instanceof TextPart) {
+				delete (p as any).angle;
+				delete (p as any).visibleOnStart;
+			}
+		}
+		const decoded = await decodeRobot(await encodeRobot(parts, waterySettings(), "old", "bot"));
+		const circle = decoded.parts.find((p) => p instanceof Circle) as Circle;
+		expect(circle.fixedRotation).toBe(false);
+		const rj = decoded.parts.find((p) => p instanceof RevoluteJoint) as RevoluteJoint;
+		expect(rj.enableKeyCW).toBe(true);
+		expect(rj.enableKeyCCW).toBe(true);
+		const pj = decoded.parts.find((p) => p instanceof PrismaticJoint) as PrismaticJoint;
+		expect(pj.enableKeyExpand).toBe(true);
+		expect(pj.enableKeyRetract).toBe(true);
+		const th = decoded.parts.find((p) => p instanceof Thrusters) as Thrusters;
+		expect(th.enableKey).toBe(true);
 	});
 });
 

@@ -486,6 +486,93 @@ describe("IB3 sandbox settings", () => {
 	});
 });
 
+// --- formerly-warned features now map DIRECTLY (warnings removed) ------------
+
+describe("IB3 features that previously degraded now import directly", () => {
+	const shapes = [circle({ x: 0 }), circle({ x: 2 })];
+
+	it("maps ShapePart.fixedRotation directly (no 'fixed rotation' warning)", () => {
+		const { robot, warnings } = decodeIB3FromByteArray(ib3Bytes({ parts: [circle({ fixedRotation: true })] }));
+		expect((robot.parts[0] as Circle).fixedRotation).toBe(true);
+		expect(warnings.some((m) => m.toLowerCase().includes("fixed rotation"))).toBe(false);
+	});
+
+	it("maps rotating-joint per-direction key enable directly (no warning)", () => {
+		const parts = [
+			...shapes,
+			{ name: "Rotating joint", x: 1, y: 0, part1Index: 0, part2Index: 1, enableKeyCW: false, enableKeyCCW: true },
+		];
+		const { robot, warnings } = decodeIB3FromByteArray(ib3Bytes({ parts }));
+		const rj = robot.parts.find((p) => p instanceof RevoluteJoint) as RevoluteJoint;
+		expect(rj.enableKeyCW).toBe(false);
+		expect(rj.enableKeyCCW).toBe(true);
+		expect(warnings.some((m) => m.includes("per-direction key enable"))).toBe(false);
+	});
+
+	it("maps sliding-joint one-directional auto + begin-expanded + key enable directly (no warnings)", () => {
+		const parts = [
+			...shapes,
+			{
+				name: "Sliding joint",
+				anchor1x: 0, anchor1y: 0, anchor2x: 2, anchor2y: 0,
+				part1Index: 0, part2Index: 1,
+				autoExpand: true, autoRetract: false,
+				beginExpanded: true,
+				enableKeyExpand: false, enableKeyRetract: true,
+			},
+		];
+		const { robot, warnings } = decodeIB3FromByteArray(ib3Bytes({ parts }));
+		const pj = robot.parts.find((p) => p instanceof PrismaticJoint) as PrismaticJoint;
+		expect(pj.autoExpand).toBe(true);
+		expect(pj.autoRetract).toBe(false);
+		expect(pj.autoOscillate).toBe(false); // only both directions == oscillation
+		expect(pj.beginExpanded).toBe(true);
+		expect(pj.enableKeyExpand).toBe(false);
+		expect(pj.enableKeyRetract).toBe(true);
+		expect(warnings.some((m) => m.includes("one-directional"))).toBe(false);
+		expect(warnings.some((m) => m.includes("begin expanded"))).toBe(false);
+		expect(warnings.some((m) => m.includes("per-direction key enable"))).toBe(false);
+	});
+
+	it("maps both auto directions to autoOscillate", () => {
+		const parts = [
+			...shapes,
+			{ name: "Sliding joint", anchor1x: 0, anchor1y: 0, anchor2x: 2, anchor2y: 0, part1Index: 0, part2Index: 1, autoExpand: true, autoRetract: true },
+		];
+		const { robot } = decodeIB3FromByteArray(ib3Bytes({ parts }));
+		const pj = robot.parts.find((p) => p instanceof PrismaticJoint) as PrismaticJoint;
+		expect(pj.autoOscillate).toBe(true);
+	});
+
+	it("maps Thrusters.enableKey directly (no 'enable key' warning)", () => {
+		const parts = [circle(), { name: "Thrusters", x: 0, y: 0, partIndex: 0, angle: 0, strength: 16, thrustKey: 38, enableKey: false }];
+		const { robot, warnings } = decodeIB3FromByteArray(ib3Bytes({ parts }));
+		const t = robot.parts.find((p) => p instanceof Thrusters) as Thrusters;
+		expect(t.enableKey).toBe(false);
+		expect(warnings.some((m) => m.toLowerCase().includes("enable key"))).toBe(false);
+	});
+
+	it("maps TextPart.angle + visibleOnStart directly (no rotation/visible warnings)", () => {
+		const parts = [{ name: "TextPart", x: 1, y: 2, width: 6, height: 3, text: "hi", enableKey: true, visibleOnStart: true, angle: 0.5 }];
+		const { robot, warnings } = decodeIB3FromByteArray(ib3Bytes({ parts }));
+		const t = robot.parts[0] as TextPart;
+		expect(t.angle).toBeCloseTo(0.5);
+		expect(t.alwaysVisible).toBe(false); // enableKey true
+		expect(t.visibleOnStart).toBe(true);
+		expect(warnings.some((m) => m.includes("rotation"))).toBe(false);
+		expect(warnings.some((m) => m.includes("visible on start"))).toBe(false);
+	});
+
+	it("maps XLarge size + Island ground directly (no size/ground/theme warnings)", () => {
+		const { robot, warnings } = decodeIB3FromByteArray(ib3Bytes({ settings: { size: 3, groundType: 1, theme: 2 } }));
+		expect(robot.settings.size).toBe(3);
+		expect(robot.settings.terrainType).toBe(SandboxSettings.TERRAIN_ISLAND);
+		expect(warnings.some((m) => m.includes("XLarge"))).toBe(false);
+		expect(warnings.some((m) => m.includes("Island"))).toBe(false);
+		expect(warnings.some((m) => m.toLowerCase().includes("theme"))).toBe(false);
+	});
+});
+
 // --- type variants + errors -------------------------------------------------
 
 describe("IB3 type variants + errors", () => {

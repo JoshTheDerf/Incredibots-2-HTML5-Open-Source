@@ -382,9 +382,8 @@ function mapParts(arr: unknown[], version: string, warnings: Set<string>): Part[
 		}
 		if (has(od, "thrustKey")) t.thrustKey = trunc(od.thrustKey);
 		if (has(od, "autoOn")) t.autoOn = Boolean(od.autoOn);
-		if (has(od, "enableKey") && !od.enableKey) {
-			warnings.add("IB3 thruster 'enable key' toggle has no IB2 equivalent (thruster always keyed).");
-		}
+		// IB3 Thrusters.enableKey maps directly (IB3 Thrusters.as:24).
+		if (has(od, "enableKey")) t.enableKey = Boolean(od.enableKey);
 		if (has(od, "triggerList") && String(od.triggerList).replace(/[, ]/g, "") !== "") {
 			warnings.add("IB3 trigger wiring is not imported.");
 		}
