@@ -45,9 +45,9 @@ export const useGameStore = defineStore("game", () => {
 	// Raw live Part instances — the renderer reads this directly each frame.
 	const parts = computed<readonly Part[]>(() => state.value.parts);
 	// Live physical-shape count for the StatusBar (Jaybit DropDownMenu
-	// shapeCounter). Delegates to the core's single predicate (getShapeCount —
-	// the same one the 750-shape play gate uses) instead of reimplementing it;
-	// reading state.value makes it recompute on every core notify.
+	// shapeCounter). Delegates to the core's single predicate (getShapeCount;
+	// informational only — the legacy 750-shape play limit is removed) instead
+	// of reimplementing it; reading state.value recomputes on every core notify.
 	const shapeCount = computed(() => {
 		void state.value;
 		return core.getShapeCount();
@@ -197,12 +197,15 @@ export const useGameStore = defineStore("game", () => {
 	const appMode = ref<AppMode>("menu");
 
 	/**
-	 * Enter the editor. When `fresh` is true (Build a Robot / Sandbox from the
-	 * menu) we also start a clean robot via the real `newRobot` command — the
-	 * safe dispatch wrapper warns instead of crashing if it isn't migrated yet.
+	 * Enter the editor. When `fresh` is true (Sandbox Mode / Advanced Sandbox from
+	 * the menu) we start a completely clean sandbox via `newSandbox` — a full
+	 * fresh-controller reset that clears any prior challenge/tutorial/replay session,
+	 * undo history, running sim, and restores the default environment. (Plain
+	 * `newRobot` only drops the robot within the current session, which let the
+	 * previous mode's content stick when re-entering the sandbox from the menu.)
 	 */
 	function goToEditor(fresh = false): void {
-		if (fresh) dispatch({ type: "newRobot" });
+		if (fresh) dispatch({ type: "newSandbox" });
 		appMode.value = "editor";
 	}
 
@@ -218,6 +221,11 @@ export const useGameStore = defineStore("game", () => {
 	 * challenge commands active; a later agent wires the App shell + menus to it.
 	 */
 	function goToChallengeEditor(): void {
+		// Fresh-controller reset first (clear any prior challenge/tutorial/sandbox
+		// session + history + running sim), then start a clean authoring challenge on
+		// top of the default sandbox — so the challenge editor never opens with the
+		// previous mode's parts or a lingering tutorial dialog.
+		dispatch({ type: "newSandbox" });
 		dispatch({ type: "newChallenge" });
 		appMode.value = "challengeEditor";
 	}

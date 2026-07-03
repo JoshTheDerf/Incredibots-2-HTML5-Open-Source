@@ -194,11 +194,6 @@ const MAX_JOINT_VALUE = 30;
 // DEVIATION) so the paste is visibly offset from the original.
 const PASTE_OFFSET = 1.0;
 
-// Max physical shapes a robot may have before play is refused (Jaybit
-// ControllerGame.as:2138-2141 TooManyShapes: `allParts.filter(
-// PartIsPhysicalAndNotSandBox).length > 750`; CE was 500).
-const MAX_SHAPES = 750;
-
 // Zoom factor + clamps, ported from ControllerGame.Zoom (:6705) and
 // ControllerGameGlobals MIN/MAX_ZOOM_VAL (:33-34). Zoom in multiplies the scale
 // by 4/3, out by 3/4, clamped to [12, 75]; the view centre is held fixed.
@@ -675,6 +670,9 @@ export class GameCore {
 	 */
 	async loadBuiltInChallengeBlob(name: "race" | "spaceship", blob: ArrayBuffer | Uint8Array): Promise<void> {
 		const challenge = await decodeChallengeBlob(blob);
+		// Fresh-controller reset (see resetSessionForLoad): drop the previous mode's
+		// parts / challenge / tutorial / history before this challenge becomes live.
+		this.resetSessionForLoad();
 		this.challenge = challengeSessionFromChallenge(challenge, name);
 
 		// The decoded parts (terrain + author robot) become the live parts graph,
@@ -746,7 +744,9 @@ export class GameCore {
 	 * ByteArray.uncompress() is async. Throws if the string can't be decoded.
 	 */
 	async importChallenge(challengeStr: string): Promise<void> {
-		if (this.state.sim.phase !== "editing") return;
+		// No editing-phase guard: applyImportedChallenge resets the session (which
+		// forces the editing phase), so a challenge can be loaded even while a
+		// previous challenge/tutorial run is still paused or running.
 		const decoded = await decodeChallengeWithMeta(challengeStr);
 		this.applyImportedChallenge(decoded.challenge, decoded.exposure.isEditable);
 	}
@@ -756,7 +756,8 @@ export class GameCore {
 	 * file — the "eN" sniffer routes both). Otherwise identical to importChallenge.
 	 */
 	async importChallengeFile(bytes: ArrayBuffer | Uint8Array): Promise<void> {
-		if (this.state.sim.phase !== "editing") return;
+		// No editing-phase guard (see importChallenge): the session reset forces
+		// editing, so a mid-run switch loads cleanly.
 		const decoded = await decodeChallengeFile(bytes);
 		this.applyImportedChallenge(decoded.challenge, decoded.exposure.isEditable);
 	}
@@ -771,6 +772,9 @@ export class GameCore {
 	 * ImportChallenge :291-303 sets potentialChallengeEditable=true for them).
 	 */
 	private applyImportedChallenge(challenge: Challenge, editable: boolean): void {
+		// Fresh-controller reset (see resetSessionForLoad) so no prior parts /
+		// challenge / tutorial / history bleed into the imported challenge.
+		this.resetSessionForLoad();
 		this.challenge = challengeSessionFromChallenge(challenge, null, editable);
 
 		const parts = challenge.allParts as Part[];
@@ -1160,6 +1164,7 @@ export class GameCore {
 				currentMessageId: null,
 				currentMessage: null,
 				levelsDone: [...this.levelsDone],
+				won: false,
 			};
 		}
 		let message = null as TutorialState["currentMessage"];
@@ -1185,6 +1190,8 @@ export class GameCore {
 			currentMessageId: current ? current.id : null,
 			currentMessage: message,
 			levelsDone: [...this.levelsDone],
+			// Latches on the tutorial "won" event; drives the App congrats popup.
+			won: this.tutorialWonFired,
 		};
 	}
 
@@ -2886,22 +2893,18 @@ export class GameCore {
 		}
 
 		// Refuse the start when the robot is invalid, mirroring playButton's guard
-		// (ControllerGame.ts:2719-2721,2781-2782): CheckIfPartsFit() then
-		// TooManyShapes(), starting only when `(partsFit && !tooManyShapes) ||
-		// playingReplay`. The fit-check is a no-op outside challenge play mode
-		// (checkIfPartsFit returns true unless session.playMode + build areas). A
-		// replay playback bypasses both checks. The refuse path shows the exact
-		// legacy dialog string and does NOT transition to running.
+		// (ControllerGame.ts:2719-2721): CheckIfPartsFit(), starting only when
+		// `partsFit || playingReplay`. The fit-check is a no-op outside challenge
+		// play mode (checkIfPartsFit returns true unless session.playMode + build
+		// areas). A replay playback bypasses the check. The refuse path shows the
+		// exact legacy dialog string and does NOT transition to running.
+		// DEVIATION: the legacy 750-shape limit (TooManyShapes) is intentionally
+		// removed — a robot of any shape count may play.
 		if (!this.replaySession) {
 			// partsFit only applies in a challenge (checkIfPartsFit no-ops otherwise).
 			const partsFit = this.challenge ? checkIfPartsFit(this.challenge, this.state.parts) : true;
-			const tooManyShapes = this.tooManyShapes();
 			if (!partsFit) {
 				this.emitMessage("You must fit your robot inside the starting box first!");
-				return;
-			}
-			if (tooManyShapes) {
-				this.emitMessage("Your robot contains too many shapes!  (Limit 750)");
 				return;
 			}
 		}
@@ -3072,22 +3075,13 @@ export class GameCore {
 	 * only used by CenterOnLoadedRobot for the initial editor framing).
 	 */
 	/**
-	 * TooManyShapes (Jaybit ControllerGame.as:2138-2141 → `allParts.filter(
-	 * PartIsPhysicalAndNotSandBox).length > 750`). PartIsPhysicalAndNotSandBox
-	 * (:4109-4112) counts non-sandbox ShapePart OR PrismaticJoint instances only
-	 * (NOT text, NOT other joint types, NOT thrusters; pistons count as a shape;
-	 * cannonballs are not parts and never count). CE counted sandbox terrain too
-	 * and capped at 500.
-	 */
-	private tooManyShapes(): boolean {
-		return this.getShapeCount() > MAX_SHAPES;
-	}
-
-	/**
 	 * Live physical-shape count for the UI's shape counter (Jaybit
 	 * ControllerGame.as:6516 `m_guiMenu.shapeCounter.text`): non-sandbox
-	 * ShapeParts + PrismaticJoints, the same predicate the 750-limit play gate
-	 * uses (see tooManyShapes).
+	 * ShapeParts + PrismaticJoints — Jaybit's PartIsPhysicalAndNotSandBox
+	 * predicate (:4109-4112; NOT text, NOT other joint types, NOT thrusters;
+	 * pistons count as a shape; cannonballs are not parts and never count).
+	 * The legacy 750-shape play limit (TooManyShapes) is intentionally removed;
+	 * the count is informational only.
 	 */
 	public getShapeCount(): number {
 		let count = 0;
@@ -3537,7 +3531,12 @@ export class GameCore {
 	 * yet, activates the session with no dialog (framework still usable).
 	 */
 	private handleLoadTutorial(levelIndex: number): void {
-		if (this.state.sim.phase !== "editing") return;
+		// Fully reset the previous session first — the legacy game `new`-ed a fresh
+		// ControllerTutorial per level, so no prior parts/challenge/history survive.
+		// This also drops any running sim (the user may have played the previous mode
+		// then returned to the menu), replacing the old phase-guard early-return that
+		// silently left the stale scene in place.
+		this.resetSessionForLoad();
 		const level = tutorialLevel(levelIndex);
 		this.tutorialMachine = createTutorialMachine(levelIndex);
 		this.tutorialWonFired = false;
@@ -3554,7 +3553,7 @@ export class GameCore {
 				background: s.background,
 			};
 			sandbox.bounds = computeBounds(sandbox);
-			this.state = { ...this.state, sandbox, parts: [...this.state.parts] };
+			this.state = { ...this.state, sandbox };
 		}
 		if (this.tutorialMachine) {
 			const cam = this.tutorialMachine.initialCamera;
@@ -3577,18 +3576,19 @@ export class GameCore {
 			};
 		}
 
-		// Load the tutorial's prebuilt scene (baked terrain + prefab bot). When the
-		// tutorial provides one, it replaces the current parts (fresh ids); tutorials
-		// with no prebuilt scene return [] and leave the current scene untouched.
+		// Load the tutorial's prebuilt scene (baked terrain + prefab bot). Tutorials
+		// 0-9 supply a scene; the rest return []. Either way the parts graph is
+		// REPLACED wholesale (never appended to the previous session's scene): a
+		// scene-less tutorial gets a clean sandbox terrain built from its own
+		// settings, so no stale parts from the prior mode can persist.
 		const setupParts = getTutorialSetup(levelIndex);
-		if (setupParts.length > 0) {
-			for (const p of setupParts) p.id = ++this.nextId;
-			this.state = {
-				...this.state,
-				parts: setupParts,
-				edit: { ...this.state.edit, selection: [], selectedPart: null },
-			};
-		}
+		const parts = setupParts.length > 0 ? setupParts : buildTerrainParts(this.state.sandbox);
+		for (const p of parts) p.id = ++this.nextId;
+		this.state = {
+			...this.state,
+			parts,
+			edit: { ...this.state.edit, selection: [], selectedPart: null },
+		};
 
 		// Init() -> first dialog.
 		const first = this.tutorialMachine ? this.tutorialMachine.init() : null;
@@ -3690,6 +3690,68 @@ export class GameCore {
 		this.markChanged();
 		// A cleared robot changes whether parts fit the challenge build area.
 		if (this.challenge) this.syncChallenge();
+	}
+
+	/**
+	 * Bring the core to a clean editing baseline before loading a NEW session
+	 * (tutorial / challenge / import). The legacy client constructed a fresh
+	 * Controller for every mode switch (each ControllerTank / ControllerRace / …
+	 * was `new`-ed via Main.SwitchController), so no prior parts, challenge,
+	 * tutorial, replay, camera-follow, or undo history could ever bleed through.
+	 * The port keeps a single long-lived GameCore across menu navigations, so each
+	 * load entry point must reproduce that fresh-controller reset explicitly —
+	 * otherwise whatever was loaded last lingers (the "stale content on switch"
+	 * bug: opening a tutorial after the sandbox, or switching between challenges,
+	 * kept the previous scene).
+	 *
+	 * Tears down any live world, clears the challenge/tutorial/replay sessions, the
+	 * undo/redo history and clipboard-independent play buffers, and resets the sim
+	 * to editing / frame 0 with selection + gesture drafts cleared. `parts`,
+	 * `sandbox`, and `camera` are intentionally NOT touched here — every caller
+	 * supplies its own immediately after (the tutorial's baked scene, the
+	 * challenge's decoded parts, etc.).
+	 */
+	private resetSessionForLoad(): void {
+		// Tear down a live world so no running bodies survive the switch (mirrors
+		// handleReset's UnInit loop). editSnapshots would restore stale transforms,
+		// so drop them too.
+		const world = this.state.world;
+		if (world) {
+			for (const p of this.state.parts) p.UnInit(world);
+		}
+		this.mouseJoint = null;
+		this.editSnapshots = [];
+		this.cameraSnapshot = null;
+		this.recording = null;
+		this.replaySession = null;
+		this.cannonballs = [];
+		this.challenge = null;
+		this.tutorialMachine = null;
+		this.tutorialWonFired = false;
+		this.undoStack = [];
+		this.redoStack = [];
+		this.curRobotEditable = true;
+
+		this.state = {
+			...this.state,
+			world: null,
+			sim: { phase: "editing", frame: 0 },
+			replay: { recording: false, playing: false, frame: 0, numFrames: null, canSave: true, finished: false },
+			tutorial: null,
+			challenge: null,
+			conditionDraft: null,
+			jointGesture: null,
+			edit: {
+				...this.state.edit,
+				selection: [],
+				selectedPart: null,
+				tool: "select",
+				editable: true,
+				canUndo: false,
+				canRedo: false,
+			},
+		};
+		this.markChanged();
 	}
 
 	/**
@@ -4207,7 +4269,6 @@ export class GameCore {
 				case "clearAll":
 				case "setSandboxSettings":
 				case "newChallenge":
-				case "loadBuiltInChallenge":
 				case "exitChallenge":
 				case "addWinCondition":
 				case "addLossCondition":
@@ -5159,15 +5220,16 @@ export class GameCore {
 			case "loadBuiltInChallenge": {
 				// Faithful port of ControllerClimb / ControllerMonkeyBars ctors: bake
 				// the terrain + conditions + restrictions, mark playOnly + playMode,
-				// and seed the terrain into the parts graph (behind any robot parts).
+				// and seed the terrain into the parts graph. Reset the session first
+				// (fresh-controller semantics) so the previous mode's robot/terrain,
+				// challenge, tutorial, and history don't survive the switch — the old
+				// code retained editable robot parts, which is exactly the "stale
+				// content on switch" bug when moving between challenges.
+				this.resetSessionForLoad();
 				this.challenge = createChallengeSession();
 				const terrain = buildBuiltInChallenge(command.name, this.challenge);
 				for (const p of terrain) p.id = ++this.nextId;
-				// Keep any existing robot parts (unlikely on a fresh load) after terrain.
-				const robotParts = this.state.parts.filter(
-					(p) => !(p as { isSandbox?: boolean }).isSandbox && p.isEditable,
-				);
-				this.state = { ...this.state, parts: [...terrain, ...robotParts] };
+				this.state = { ...this.state, parts: terrain };
 				this.markChanged();
 				this.syncChallenge();
 				return;
@@ -5433,6 +5495,26 @@ export class GameCore {
 				this.setRobotEditable(true);
 				this.clearRobot();
 				return;
+
+			case "newSandbox": {
+				// Menu "Sandbox Mode" / "Advanced Sandbox": a full fresh-controller
+				// reset (legacy sandboxButton -> new ControllerSandbox). Drop every
+				// prior session (challenge/tutorial/replay/history/running sim), then
+				// restore the DEFAULT sandbox environment, terrain, and camera so no
+				// leftover parts, settings, or tutorial dialog bleed in from the
+				// previous mode. Passes through during a running sim (not a no-op).
+				this.resetSessionForLoad();
+				const fresh = createInitialState();
+				for (const p of fresh.parts) p.id = ++this.nextId;
+				this.state = {
+					...this.state,
+					parts: fresh.parts,
+					sandbox: fresh.sandbox,
+					camera: fresh.camera,
+				};
+				this.markChanged();
+				return;
+			}
 
 			case "loadRobot":
 				throw new Error(`GameCore: command "${command.type}" not yet migrated from ControllerGame`);

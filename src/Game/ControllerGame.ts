@@ -2717,8 +2717,9 @@ export class ControllerGame extends Controller {
 
     if (!ControllerGameGlobals.adStarted) {
       this.CheckIfPartsFit();
-      var tooManyShapes: boolean = this.TooManyShapes();
-      if ((this.partsFit && !tooManyShapes) || ControllerGameGlobals.playingReplay) {
+      // DEVIATION: the legacy 750-shape limit (TooManyShapes) is removed — any
+      // shape count may play. Only the fit-check gate remains.
+      if (this.partsFit || ControllerGameGlobals.playingReplay) {
         this.m_guiPanel.ShowGamePanel();
         this.m_sidePanel.visible = false;
         this.selectedParts = new Array();
@@ -2779,7 +2780,6 @@ export class ControllerGame extends Controller {
       } else {
         this.m_fader.visible = true;
         if (!this.partsFit) this.ShowDialog3("You must fit your robot inside the starting box first!");
-        else if (tooManyShapes) this.ShowDialog3("Your robot contains too many shapes!  (Limit 750)");
         this.m_progressDialog.ShowOKButton();
         this.m_progressDialog.StopTimer();
       }
@@ -6637,13 +6637,6 @@ export class ControllerGame extends Controller {
 
   protected GetGravity(): b2Vec2 {
     return new b2Vec2(0.0, 15.0);
-  }
-
-  // Jaybit: 500 -> 750, and sandbox terrain parts no longer count
-  // (ControllerGame.as:2138-2141 PartIsPhysicalAndNotSandBox). Kept in sync
-  // with GameCore.tooManyShapes.
-  private TooManyShapes(): boolean {
-    return this.allParts.filter(this.PartIsPhysicalAndNotSandbox).length > 750;
   }
 
   protected IsPartOfRobot(p: Part, index: number, array: Array<any>): boolean {

@@ -58,6 +58,23 @@ export class Draw extends b2DebugDraw {
   public m_screenHeight: number = 600;
 
   /**
+   * Optional render-interpolation hook. When set, the running-sim draw path
+   * resolves each body's transform through it instead of body.GetXForm(),
+   * letting the Vue renderer draw bodies at 30fps-step-interpolated poses on
+   * faster displays. Null (the default) draws raw body transforms — the legacy
+   * Pixi entry (src/index.ts) never sets it and is unaffected. The hook must
+   * return a b2XForm-shaped {position, R}; bodies unknown to the interpolator
+   * (e.g. cannonballs created mid-step) fall back to their raw transform
+   * inside the hook itself.
+   */
+  public getRenderXForm: ((body: any) => any) | null = null;
+
+  /** A body's transform for drawing: interpolated when the hook is set, raw otherwise. */
+  private RenderXForm(body: any): any {
+    return this.getRenderXForm ? this.getRenderXForm(body) : body.GetXForm();
+  }
+
+  /**
    * On-screen test for a polygon, overriding b2DebugDraw's 800x600-hardcoded
    * version to use the live viewport size (m_screenWidth/Height). Keeps the base
    * class's -5 / +5 screen-edge margins; a polygon is on screen if ANY vertex
@@ -493,7 +510,7 @@ export class Draw extends b2DebugDraw {
         for (i = 0; i < allParts.length; i++) {
           if (!allParts[i].isStatic || allParts[i].isEditable || drawStatic || allParts[i].drawAnyway) {
             if (allParts[i] instanceof ShapePart && allParts[i].terrain && allParts[i].outline) {
-              xf = allParts[i].GetBody().GetXForm();
+              xf = this.RenderXForm(allParts[i].GetBody());
               if (allParts[i] instanceof Cannon)
                 this.DrawCannonForOutline(
                   allParts[i].GetShape(),
@@ -515,7 +532,7 @@ export class Draw extends b2DebugDraw {
       for (i = 0; i < allParts.length; i++) {
         if (!allParts[i].isStatic || allParts[i].isEditable || drawStatic || allParts[i].drawAnyway) {
           if (allParts[i] instanceof ShapePart) {
-            xf = allParts[i].GetBody().GetXForm();
+            xf = this.RenderXForm(allParts[i].GetBody());
             if (this.drawColours) {
               if (allParts[i] instanceof Cannon)
                 this.DrawCannon(
@@ -573,7 +590,7 @@ export class Draw extends b2DebugDraw {
             var shapes = allParts[i].GetShapes();
             for (j = 0; j < shapes.length; j++) {
               const f = shapes[j];
-              xf = shapes[j].GetBody().GetXForm();
+              xf = this.RenderXForm(shapes[j].GetBody());
               if (this.drawColours) {
                 this.DrawShape(
                   shapes[j],
@@ -594,7 +611,7 @@ export class Draw extends b2DebugDraw {
         if (allParts[i] instanceof Cannon) {
           for (j = 0; j < allParts[i].cannonballs.length; j++) {
             const cannonballBody = allParts[i].cannonballs[j];
-            xf = cannonballBody.GetXForm();
+            xf = this.RenderXForm(cannonballBody);
             if (this.drawColours) {
               this.DrawShape(
                 allParts[i].cannonballs[j].GetShapeList(),

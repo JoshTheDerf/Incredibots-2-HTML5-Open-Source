@@ -18,17 +18,18 @@
 //
 // appMode lives ONLY in the UI layer (gameStore.appMode) — GameCore has no
 // screen concept. Sandbox Mode / Challenge Editor enter the editor with a fresh
-// robot (goToEditor(true) -> dispatches `newRobot`), matching the original
-// sandboxButton()/editorButton() which jump into the build controller. Options
-// that need a mode GameCore lacks (tutorials, challenges, replays, high scores,
-// online load) open a ported panel as a modal and/or carry an <IbTodo/> flag —
-// exactly as the legacy buttons that were `disabled = true`.
+// session (goToEditor(true) -> dispatches `newSandbox`), matching the original
+// sandboxButton()/editorButton() which `new`-ed a fresh build controller. The
+// Load buttons open the OS file picker (saved .ibro/.ibre/.ibch files) since there
+// is no server to stream from; Import buttons paste an exported code. Features the
+// port genuinely can't provide (accounts / high scores) are left disabled.
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import { Application, Graphics } from "pixi.js";
 import { useGameStore } from "../gameStore";
 import { frameTextures } from "../assets";
 import { SkyRenderer } from "../renderer/skyRenderer";
 import { GroundRenderer } from "../renderer/groundRenderer";
+import { RenderInterpolator } from "../renderer/interpolation";
 import { soundService } from "../sound";
 import { GameCore } from "../../core/GameCore";
 import { createInitialState } from "../../core/GameState";
@@ -40,9 +41,9 @@ import spaceshipDatUrl from "../../../resource/spaceship.dat";
 import type { CameraState, SandboxState } from "../../core";
 import type { Part } from "../../Parts/Part";
 import IbButton from "./IbButton.vue";
-import IbTodo from "./IbTodo.vue";
 import TutorialSelectPanel from "./panels/TutorialSelectPanel.vue";
 import ImportPanel from "./panels/ImportPanel.vue";
+import { readFileBytes, fileAccept } from "../fileIo";
 
 const game = useGameStore();
 
@@ -97,6 +98,35 @@ let demoSprite: Graphics | null = null;
 // rate — MainEditPanel.SetTimer uses 30fps), not the display rate.
 const DEMO_FRAME_MS = 1000 / 30;
 let demoAccMs = 0;
+// Render interpolation between the demo's fixed 30fps replay steps (same scheme
+// as GameCanvas): bodies AND the follow camera are drawn at prev + alpha*(curr -
+// prev) each display frame, so the menu robot + camera pan are smooth on 60Hz+.
+const demoInterpolator = new RenderInterpolator();
+let demoAlpha = 1;
+
+/**
+ * Advance the demo replay at the FIXED 30 steps/sec (accumulating ticker time),
+ * snapshotting body poses before each step for render interpolation, and loop
+ * when the recorded motion ends (ControllerMainMenu.Update). Must run BEFORE
+ * demoCamera() each ticker frame so the follow camera reads the stepped +
+ * interpolated pose.
+ */
+function advanceDemo(): void {
+	if (!demoCore) return;
+	demoAccMs += bgApp?.ticker.deltaMS ?? DEMO_FRAME_MS;
+	let steps = 0;
+	while (demoAccMs >= DEMO_FRAME_MS && steps < 4) {
+		if (demoCore.getState().sim.phase === "running") {
+			const world = demoCore.getState().world;
+			if (world) demoInterpolator.snapshot(world);
+			demoCore.dispatch({ type: "step" });
+		}
+		if (demoCore.getState().replay.finished) demoCore.dispatch({ type: "viewReplayAgain" });
+		demoAccMs -= DEMO_FRAME_MS;
+		steps++;
+	}
+	demoAlpha = Math.min(1, Math.max(0, demoAccMs / DEMO_FRAME_MS));
+}
 
 /**
  * The shared menu-background camera. The legacy ControllerMainMenu follows the
@@ -113,11 +143,13 @@ function demoCamera(w: number, h: number): CameraState {
 	const parts = demoCore?.getState().parts;
 	if (parts) {
 		for (const p of parts) {
-			const sp = p as unknown as { isCameraFocus?: boolean; GetBody?: () => { GetWorldCenter: () => { x: number; y: number } } | null };
+			const sp = p as unknown as { isCameraFocus?: boolean; GetBody?: () => import("../../Box2D").b2Body | null };
 			if (sp.isCameraFocus && sp.GetBody) {
 				const body = sp.GetBody();
 				if (body) {
-					const wc = body.GetWorldCenter();
+					// Follow the INTERPOLATED world centre (same pose the robot is drawn
+					// at this display frame) so the pan is as smooth as the motion.
+					const wc = demoInterpolator.worldCenter(body, demoAlpha);
 					return { scale: DEMO_SCALE, offsetX: wc.x * DEMO_SCALE, offsetY: wc.y * DEMO_SCALE };
 				}
 			}
@@ -157,6 +189,45 @@ function closeModal(): void {
 function onImported(): void {
 	closeModal();
 	game.goToEditor(false);
+}
+
+// --- Load-from-FILE buttons (Load Bot / Load Replay / Load Challenge) ---------
+// The legacy "Load" buttons streamed a saved item from the server; with no server
+// the faithful stand-in is loading the user's saved .ibro/.ibre/.ibch FILE (the
+// same bytes the Save-to-File flow produced). Each button opens the OS file picker
+// via a hidden <input>, hands the raw bytes to the matching core file-import
+// (which sniffs raw-blob vs pasted "eN" text-code itself), then drops the user
+// into the editor with the loaded content (onImported). Challenge files reset the
+// session + open the editor/play view per their exposure (applyImportedChallenge).
+const robotFileInput = ref<HTMLInputElement | null>(null);
+const replayFileInput = ref<HTMLInputElement | null>(null);
+const challengeFileInput = ref<HTMLInputElement | null>(null);
+
+function pickRobotFile(): void {
+	robotFileInput.value?.click();
+}
+function pickReplayFile(): void {
+	replayFileInput.value?.click();
+}
+function pickChallengeFile(): void {
+	challengeFileInput.value?.click();
+}
+
+async function onFileChosen(event: Event, type: "robot" | "replay" | "challenge"): Promise<void> {
+	const input = event.target as HTMLInputElement;
+	const file = input.files?.[0];
+	// Reset so re-picking the same file fires change again.
+	input.value = "";
+	if (!file) return;
+	try {
+		const bytes = await readFileBytes(file);
+		if (type === "robot") await game.importRobotFile(bytes);
+		else if (type === "replay") await game.importReplayFile(bytes);
+		else await game.importChallengeFile(bytes);
+		onImported();
+	} catch (err) {
+		console.error(`[MainMenu] load ${type} file failed:`, err);
+	}
 }
 
 // Challenge Editor (legacy editorButton → straightToChallengeEditor): start a
@@ -254,17 +325,12 @@ async function loadDemo(): Promise<void> {
 function drawDemoFrame(w: number, h: number, camera: CameraState): void {
 	if (!demoCore || !demoDraw) return;
 
-	// Advance sim-free playback at a FIXED 60fps (accumulate ticker time), so the
-	// recorded-at-60fps replay plays at real speed regardless of the monitor's
-	// refresh rate. Loop when the recorded motion ends (ControllerMainMenu.Update).
-	demoAccMs += bgApp?.ticker.deltaMS ?? DEMO_FRAME_MS;
-	let steps = 0;
-	while (demoAccMs >= DEMO_FRAME_MS && steps < 4) {
-		if (demoCore.getState().sim.phase === "running") demoCore.dispatch({ type: "step" });
-		if (demoCore.getState().replay.finished) demoCore.dispatch({ type: "viewReplayAgain" });
-		demoAccMs -= DEMO_FRAME_MS;
-		steps++;
-	}
+	// Stepping happens in advanceDemo() (called by bgTicker BEFORE the camera is
+	// computed); here we only paint. Bodies draw at the interpolated pose for this
+	// display frame — the same blend the follow camera used.
+	demoDraw.getRenderXForm = demoInterpolator.hasSnapshot()
+		? (body) => demoInterpolator.getXForm(body, demoAlpha)
+		: null;
 
 	// Draw through the SHARED follow camera (same one the sky/ground use), so the
 	// robot stays aligned with the ground. screen = canvas/2 + world*scale - offset.
@@ -336,6 +402,9 @@ onMounted(async () => {
 		if (!bgApp || !bgContainer.value) return;
 		const w = bgContainer.value.clientWidth || 1;
 		const h = bgContainer.value.clientHeight || 1;
+		// Advance the demo replay FIRST (fixed 30 steps/sec + interpolation blend
+		// factor), THEN read the follow camera from the stepped/interpolated pose.
+		advanceDemo();
 		// One shared camera that follows the demo robot's cameraPart (falls back to
 		// the static hill framing before the demo loads). Sky, ground, and the demo
 		// robot all render through it, so they pan together and stay aligned.
@@ -395,9 +464,7 @@ onBeforeUnmount(() => {
 		     absolute coordinates. -->
 		<div class="top-bar">
 			<div class="welcome">Welcome, Guest</div>
-			<IbButton family="blue" class="corner-btn login" disabled>
-				Log In <IbTodo label="no accounts" />
-			</IbButton>
+			<IbButton family="blue" class="corner-btn login" label="Log In" disabled />
 		</div>
 
 		<!-- Scaled-down logo near the top-centre, mirroring the
@@ -408,9 +475,7 @@ onBeforeUnmount(() => {
 			<!-- BOX 1 — primary modes (PINK), 2x2 grid. -->
 			<div class="ib-panel box box-modes" :style="panelStyle">
 				<div class="modes-grid">
-					<IbButton family="pink" class="mode-btn" @click="modal = 'tutorials'">
-						Tutorial Levels <IbTodo label="preview" />
-					</IbButton>
+					<IbButton family="pink" class="mode-btn" label="Tutorial Levels" @click="modal = 'tutorials'" />
 					<IbButton family="pink" class="mode-btn" label="Sandbox Mode" @click="enterEditor" />
 					<IbButton family="pink" class="mode-btn" label="Challenge Editor" @click="enterChallengeEditor" />
 					<IbButton family="pink" class="mode-btn" label="Advanced Sandbox" @click="emit('advancedSandbox')" />
@@ -427,18 +492,37 @@ onBeforeUnmount(() => {
 					</div>
 					<div class="loadsave-col">
 						<IbButton family="blue" class="ls-btn" label="Load Challenge" @click="modal = 'loadChallenge'" />
-						<IbButton family="blue" class="ls-btn" disabled>
-							Load Replay <IbTodo label="no online" />
-						</IbButton>
-						<IbButton family="blue" class="ls-btn" disabled>
-							Load Bot <IbTodo label="no online" />
-						</IbButton>
-						<IbButton family="red" class="ls-btn" disabled>
-							High Scores <IbTodo label="no online" />
-						</IbButton>
+						<IbButton family="blue" class="ls-btn" label="Load Replay" @click="pickReplayFile" />
+						<IbButton family="blue" class="ls-btn" label="Load Bot" @click="pickRobotFile" />
+						<IbButton family="red" class="ls-btn" label="High Scores" disabled />
 					</div>
 				</div>
 			</div>
+
+			<!-- Hidden native file inputs driven by the Load buttons above (and the
+			     Load Challenge picker's "Load from File"). Load = open a saved
+			     .ibro/.ibre/.ibch file (no server to stream from). -->
+			<input
+				ref="robotFileInput"
+				type="file"
+				:accept="fileAccept('robot')"
+				class="file-input"
+				@change="(e) => onFileChosen(e, 'robot')"
+			/>
+			<input
+				ref="replayFileInput"
+				type="file"
+				:accept="fileAccept('replay')"
+				class="file-input"
+				@change="(e) => onFileChosen(e, 'replay')"
+			/>
+			<input
+				ref="challengeFileInput"
+				type="file"
+				:accept="fileAccept('challenge')"
+				class="file-input"
+				@change="(e) => onFileChosen(e, 'challenge')"
+			/>
 
 			<!-- OTHER BOX — info buttons (BLUE). Enabled in the original. -->
 			<div class="ib-panel box box-info" :style="panelStyle">
@@ -446,9 +530,7 @@ onBeforeUnmount(() => {
 				     (the legacy Instructions link went to the now-dead site). -->
 				<IbButton family="blue" class="info-btn" label="Instructions" @click="modal = 'tutorials'" />
 				<IbButton family="blue" class="info-btn" label="Credits" @click="modal = 'credits'" />
-				<IbButton family="blue" class="info-btn" disabled>
-					Suggestions? <IbTodo label="external link gone" />
-				</IbButton>
+				<IbButton family="blue" class="info-btn" label="Suggestions?" disabled />
 			</div>
 		</div>
 
@@ -550,6 +632,7 @@ onBeforeUnmount(() => {
 					<IbButton family="blue" class="picker-btn" label="Monkey Bars" @click="loadBuiltIn('monkeyBars')" />
 					<IbButton family="blue" class="picker-btn" label="Race" @click="loadBuiltInBlob('race')" />
 					<IbButton family="blue" class="picker-btn" label="Spaceship" @click="loadBuiltInBlob('spaceship')" />
+					<IbButton family="orange" class="picker-btn" label="Load from File" @click="pickChallengeFile" />
 					<IbButton family="purple" class="picker-btn" label="Cancel" @click="closeModal" />
 				</div>
 			</template>
@@ -576,6 +659,11 @@ onBeforeUnmount(() => {
 	overflow: auto;
 	padding: 14px 16px;
 	box-sizing: border-box;
+}
+
+/* Hidden native file inputs (driven by the Load buttons). */
+.file-input {
+	display: none;
 }
 
 /* Full-bleed pixi backdrop (sky + ground) behind all menu content. */

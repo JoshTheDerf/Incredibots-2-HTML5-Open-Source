@@ -277,6 +277,13 @@ export type Command =
 	// Clear All (Edit menu) — same effect as New Robot: drop all editable robot
 	// parts, keep the sandbox terrain (ControllerGame.clearButton :4845).
 	| { type: "clearAll" }
+	// Start a completely fresh sandbox session (the menu's "Sandbox Mode" /
+	// "Advanced Sandbox" — legacy sandboxButton -> new ControllerSandbox). Unlike
+	// newRobot/clearAll (which only drop the robot within the CURRENT session),
+	// this fully resets: it clears any challenge/tutorial/replay session, undo
+	// history, and running sim, and restores the DEFAULT sandbox environment +
+	// camera. Passes through even during a running sim (fresh-controller switch).
+	| { type: "newSandbox" }
 	// --- challenge mode (ported from ControllerChallenge + Conditions/RestrictionsWindow) ---
 	// Start a new empty authoring challenge (creates ChallengeState) or load a
 	// built-in one (Climb / MonkeyBars) with its baked terrain + conditions.

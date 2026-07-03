@@ -341,9 +341,13 @@ describe("ContactFilter.ShouldCollide (Jaybit ContactFilter.as:14-45)", () => {
 	});
 });
 
-// --- §3 Shape limit 500 -> 750 --------------------------------------------
+// --- §3 Shape counting rule (limit removed) --------------------------------
+// The legacy play gate (CE 500 -> Jaybit 750, TooManyShapes) is intentionally
+// REMOVED in this port: play is never refused for shape count. The counting
+// predicate itself (PartIsPhysicalAndNotSandBox) survives for the UI's shape
+// counter (getShapeCount) and keeps its Jaybit semantics.
 
-describe("shape limit 750 + counting rule (ControllerGame.as:2138-2141/:4109-4112)", () => {
+describe("shape counting rule (ControllerGame.as:4109-4112) + no play limit", () => {
 	it("getShapeCount counts ShapeParts + PrismaticJoints, excluding sandbox/text/other joints", () => {
 		const c1 = new Circle(0, 0, 1);
 		const c2 = new Circle(3, 0, 1);
@@ -355,18 +359,18 @@ describe("shape limit 750 + counting rule (ControllerGame.as:2138-2141/:4109-411
 		const { core } = coreWithParts(c1, c2, pj, fj, text, sandbox);
 		expect(core.getShapeCount()).toBe(3); // 2 circles + 1 piston
 	});
-	it("play refuses at 751 physical shapes with the Limit 750 dialog", () => {
+	it("play is NOT refused at 751 physical shapes (legacy 750 limit removed)", () => {
 		const parts = [];
 		for (let i = 0; i < 751; i++) parts.push(new Circle(i * 0.1, 0, 0.2));
 		const { core } = coreWithParts(...parts);
+		expect(core.getShapeCount()).toBe(751);
 		const messages: string[] = [];
 		core.onMessage((m) => messages.push(m));
 		core.dispatch({ type: "play" });
-		expect(core.getState().sim.phase).toBe("editing");
-		expect(messages).toContain("Your robot contains too many shapes!  (Limit 750)");
+		expect(core.getState().sim.phase).toBe("running");
+		expect(messages).toEqual([]);
 	});
-	it("sandbox terrain does not count toward the limit (NEW exclusion in Jaybit)", () => {
-		// 750 robot shapes + sandbox terrain would have tripped CE's counter.
+	it("sandbox terrain does not count toward the shape counter (NEW exclusion in Jaybit)", () => {
 		const parts = [];
 		for (let i = 0; i < 750; i++) parts.push(new Circle(i * 0.1, 0, 0.2));
 		const terrain = new Circle(0, 10, 1);

@@ -4,7 +4,8 @@
 //   M2  Reset restores the pre-play camera (playButton snapshots savedDrawXOff/YOff
 //       :2776-2777; resetButton restores them :2813-2814).
 //   M1  playButton refuses to start + shows a dialog when the robot doesn't fit the
-//       starting box (challenge only) or exceeds 750 shapes (Jaybit limit; :2719-2721,2781-2782).
+//       starting box (challenge only; :2719-2721,2781). The legacy 750-shape limit
+//       is intentionally REMOVED in this port — any shape count may play.
 //   M6  colourButton(..., makeDefault) sets the default colour used by new parts
 //       (ControllerGameGlobals.defaultR/G/B/O — ControllerGame.ts:4454-4461).
 //   L5  View → "Center on Selection" centres the camera on the selection centroid
@@ -92,32 +93,19 @@ describe("Play validation refuses + emits a message (sweep M1)", () => {
 		expect(messages).toEqual([]);
 	});
 
-	it("more than 750 physical shapes refuses play + emits the limit string", () => {
-		// 751 circles — count > 750 (Jaybit PartIsPhysicalAndNotSandBox =
-		// non-sandbox ShapePart || PrismaticJoint; CE's limit was 500).
+	it("more than 750 physical shapes still plays (the legacy shape limit is removed)", () => {
+		// 751 circles — count > the old Jaybit limit. Spread them apart so the
+		// broadphase doesn't overflow its pair pool when the world inits — the
+		// absence of a shape-count guard (not physics capacity) is the subject.
 		const circles: Part[] = [];
-		for (let i = 0; i < 751; i++) circles.push(new Circle(0, 0, 1));
+		for (let i = 0; i < 751; i++) circles.push(new Circle((i % 25) * 5, Math.floor(i / 25) * 5, 1));
 		const core = coreWith(circles);
 
 		const messages: string[] = [];
 		core.onMessage((m) => messages.push(m));
 
 		core.dispatch({ type: "play" });
-		expect(core.getState().sim.phase).toBe("editing"); // refused
-		expect(messages).toEqual(["Your robot contains too many shapes!  (Limit 750)"]);
-	});
-
-	it("exactly 750 shapes is allowed (limit is > 750)", () => {
-		// Spread the circles apart so the broadphase doesn't overflow its pair pool
-		// when the world inits — the guard boundary (not physics capacity) is the
-		// subject here.
-		const circles: Part[] = [];
-		for (let i = 0; i < 750; i++) circles.push(new Circle((i % 25) * 5, Math.floor(i / 25) * 5, 1));
-		const core = coreWith(circles);
-		const messages: string[] = [];
-		core.onMessage((m) => messages.push(m));
-		core.dispatch({ type: "play" });
-		expect(messages).toEqual([]); // not refused for shape count
+		expect(messages).toEqual([]); // no refusal at any count
 		expect(core.getState().sim.phase).toBe("running");
 	});
 

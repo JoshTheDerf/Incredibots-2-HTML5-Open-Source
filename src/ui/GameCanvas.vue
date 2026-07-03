@@ -26,6 +26,8 @@ import { useGameStore } from "./gameStore";
 import { useUiPrefs } from "./uiPrefs";
 import { RestrictToSquares, FifteenAngleIncrements, MaxTriangle, SnapToCommonTriangles } from "./snapping";
 import { screenToWorld, worldToScreen, hitTestPart, partsInBox } from "./renderer/sceneRenderer";
+import { RenderInterpolator } from "./renderer/interpolation";
+import { ShapePart } from "../Parts/ShapePart";
 import { SkyRenderer } from "./renderer/skyRenderer";
 import { GroundRenderer } from "./renderer/groundRenderer";
 import { TutorialGroundRenderer } from "./renderer/tutorialGroundRenderer";
@@ -126,6 +128,14 @@ let tickerFn: (() => void) | null = null;
 // we accumulate elapsed ticker time and step at 30Hz regardless of refresh rate.
 const SIM_FRAME_MS = 1000 / 30;
 let simAccMs = 0;
+
+// Render interpolation between the fixed 30fps sim steps: drawFrame snapshots
+// every body's pose BEFORE each step and draws at prev + alpha*(curr - prev),
+// alpha being the accumulator leftover (0..1). Physics stepping is untouched
+// (replay determinism); this is purely how the in-between render frames look.
+// Cleared whenever the sim isn't running so nothing lerps from stale poses
+// after reset/play/load.
+const interpolator = new RenderInterpolator();
 
 // --- interaction state -----------------------------------------------------
 // A gesture begins on pointer-down and ends on pointer-up. Exactly one of
@@ -1067,7 +1077,7 @@ function drawConditionPreview(first: { x: number; y: number }, cur: { x: number;
 /** Draw a single frame via the original Draw renderer. */
 function drawFrame(): void {
 	if (!app || !draw) return;
-	const state = game.state;
+	let state = game.state;
 
 	// While running, advance the physics at a FIXED 30 steps/sec (the legacy stage
 	// rate) via a wall-time accumulator, so playback speed is independent of the
@@ -1077,14 +1087,34 @@ function drawFrame(): void {
 		simAccMs += app.ticker.deltaMS;
 		let steps = 0;
 		while (simAccMs >= SIM_FRAME_MS && steps < 4) {
+			// Snapshot every body's pose BEFORE the step — the "previous" state the
+			// interpolated draw blends from. On multi-step catch-up frames only the
+			// last capture survives, i.e. prev is always exactly one step behind.
+			if (state.world) interpolator.snapshot(state.world);
 			game.dispatch({ type: "step" });
 			simAccMs -= SIM_FRAME_MS;
 			steps++;
 		}
+		// Re-read the state: stepping replaced the core's immutable snapshot
+		// (sim frame, camera follow, challenge outcome...).
+		state = game.state;
 	} else {
-		// Not running: drop any accumulated time so the next play starts fresh.
+		// Not running: drop any accumulated time so the next play starts fresh, and
+		// drop the interpolation snapshots so nothing lerps from stale poses after
+		// a reset/play/load (edit + paused draw raw body transforms).
 		simAccMs = 0;
+		interpolator.clear();
 	}
+
+	// Blend factor for this render frame: the accumulator leftover after stepping,
+	// 0 = previous step's pose, 1 = current. Clamped for post-hitch frames where
+	// the 4-step catch-up cap leaves more than one sim frame accumulated. Only
+	// interpolate while running AND a pre-step snapshot exists; otherwise draw raw
+	// (edit/paused, and the very first frame of a run).
+	const running = state.sim.phase === "running";
+	const alpha = Math.min(1, Math.max(0, simAccMs / SIM_FRAME_MS));
+	draw.getRenderXForm =
+		running && interpolator.hasSnapshot() ? (body) => interpolator.getXForm(body, alpha) : null;
 
 	// Use the container's CSS-pixel size as the single source of truth for the
 	// draw transform — the SAME size (getBoundingClientRect) the pointer math and
@@ -1122,7 +1152,30 @@ function drawFrame(): void {
 	// expects — screen = canvas/2 + world*scale - offset — set the offsets so the
 	// two transforms are identical. This keeps hit-testing (screenToWorld, which
 	// uses the canvas/2 convention) aligned with what Draw paints.
-	const camera = state.camera;
+	//
+	// Camera-follow smoothing: the core's handleCamera re-centres the camera on
+	// the focused part once per 30fps STEP, which stutters when rendering at the
+	// display rate. While running (and not replaying — the replay owns the camera
+	// stream then), derive the follow offset RENDER-side each frame from the SAME
+	// interpolated body pose the shapes are drawn at, so the pan is exactly as
+	// smooth as the robot. Zoom/limits and the core's camera commands are intact —
+	// this only re-derives the per-frame follow offset from the focus part.
+	let camera = state.camera;
+	if (running && !state.replay.playing) {
+		// Same pick as GameCore.cameraFocusPart: the LAST enabled focus ShapePart.
+		let focus: ShapePart | null = null;
+		for (const p of state.parts) {
+			if (p instanceof ShapePart && p.isCameraFocus && p.isEnabled) focus = p;
+		}
+		const body = focus?.GetBody();
+		if (body) {
+			const c = interpolator.worldCenter(body, alpha);
+			const nx = c.x * camera.scale;
+			const ny = c.y * camera.scale;
+			// NaN guard mirrors GameCore.handleCamera (:3183).
+			if (!isNaN(nx) && !isNaN(ny)) camera = { ...camera, offsetX: nx, offsetY: ny };
+		}
+	}
 	draw.m_drawScale = camera.scale;
 	draw.m_drawXOff = camera.offsetX - w / 2;
 	draw.m_drawYOff = camera.offsetY - h / 2;

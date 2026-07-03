@@ -9,8 +9,8 @@ const game = useGameStore();
 
 // Shape counter (Jaybit DropDownMenu shapeCounter, ControllerGame.UpdateShapeCounter
 // :6512-6519). Comes from the store's shapeCount getter, which delegates to the
-// core's GameCore.getShapeCount — the single predicate the 750-shape play gate
-// (TooManyShapes) also uses — and recomputes on every state emit.
+// core's GameCore.getShapeCount (the legacy 750-shape play limit is removed;
+// the count is informational only) and recomputes on every state emit.
 const shapeCount = computed(() => game.shapeCount);
 
 // On mobile the status line drops the lower-priority items (frame counter, the

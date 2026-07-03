@@ -40,7 +40,7 @@ import { storeToRefs } from "pinia";
 // GameCore) — 'menu' shows the ported MainMenu, 'editor' shows the editor
 // chrome below. Boots to 'menu', matching the original ControllerMainMenu flow.
 const game = useGameStore();
-const { replay, challenge } = storeToRefs(game);
+const { replay, challenge, tutorial } = storeToRefs(game);
 
 // Mobile gate for all layout/behaviour tweaks below the breakpoint. Desktop is
 // untouched (isMobile === false).
@@ -70,13 +70,23 @@ const inEditor = computed(() => game.appMode === "editor" || game.appMode === "c
 // they don't dispatch a state change (HomeMovies/ChallengeEditor); it resets when
 // a new run starts so the next win/loss shows the panel again.
 const scoreDismissed = ref(false);
+// A tutorial win (state.tutorial.won latches on the "won" event) shows the SAME
+// congratulations panel the challenges use — legacy ControllerGame.Update popped a
+// ScoreWindow on ChallengeOver for both ControllerTutorial and the built-in
+// challenges (ControllerGame.as:2337-2360). ScorePanel's "Main Menu" button then
+// returns to the menu, satisfying the "congrats popup -> main menu" tutorial flow.
+const tutorialWon = computed(() => tutorial.value?.won === true);
 const showScore = computed(
-	() => !scoreDismissed.value && (challenge.value?.outcome === "won" || challenge.value?.outcome === "failed"),
+	() =>
+		!scoreDismissed.value &&
+		(challenge.value?.outcome === "won" || challenge.value?.outcome === "failed" || tutorialWon.value),
 );
 watch(
-	() => challenge.value?.outcome,
-	(o) => {
-		if (o !== "won" && o !== "failed") scoreDismissed.value = false;
+	[() => challenge.value?.outcome, tutorialWon],
+	([o, tw]) => {
+		// Re-arm the panel when a fresh run starts (outcome cleared AND not a
+		// latched tutorial win) so the next win/loss shows it again.
+		if (o !== "won" && o !== "failed" && !tw) scoreDismissed.value = false;
 	},
 );
 

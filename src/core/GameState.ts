@@ -233,6 +233,14 @@ export interface TutorialState {
 	} | null;
 	/** mirrors LSOManager.IsLevelDone(0..13). */
 	levelsDone: boolean[];
+	/**
+	 * Latches true when the active tutorial's win condition is met (the "won"
+	 * event fired this session). Drives the App shell's congratulations popup +
+	 * return-to-menu flow (legacy ControllerGame.Update -> ScoreWindow on
+	 * ChallengeOver for ControllerTutorial, ControllerGame.as:2337-2360). Reset to
+	 * false when a new tutorial is loaded.
+	 */
+	won: boolean;
 }
 
 export interface EditState {

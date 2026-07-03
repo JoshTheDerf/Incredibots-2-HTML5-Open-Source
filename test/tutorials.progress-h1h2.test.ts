@@ -275,6 +275,7 @@ describe("H2 — physics win fires when the robot satisfies the predicate", () =
 		const c = core();
 		c.dispatch({ type: "loadTutorial", levelIndex: 1 });
 		expect(c.getState().tutorial!.levelsDone[1]).toBe(false);
+		expect(c.getState().tutorial!.won).toBe(false);
 
 		// Shapes.ChallengeOver: any editable Circle with -15 < x < -3 && y > 10.
 		// Create the circle inside the zone and fixate it so it stays put under gravity.
@@ -285,7 +286,27 @@ describe("H2 — physics win fires when the robot satisfies the predicate", () =
 		c.dispatch({ type: "play" });
 		c.dispatch({ type: "step", frames: 1 });
 
-		// The win latches the level as done (levelsDone[1] == true).
+		// The win latches the level as done (levelsDone[1] == true) AND sets the
+		// tutorial.won flag that drives the App congratulations popup (bug #2).
 		expect(c.getState().tutorial!.levelsDone[1]).toBe(true);
+		expect(c.getState().tutorial!.won).toBe(true);
+	});
+
+	it("tutorial.won is cleared when a fresh tutorial is loaded", () => {
+		const c = core();
+		c.dispatch({ type: "loadTutorial", levelIndex: 1 });
+
+		// Win once (circle fixated inside the pit zone).
+		c.dispatch({ type: "createShape", kind: "circle", x1: -9, y1: 11.5, x2: -8.3, y2: 11.5 });
+		const circle = lastOf(c, (p): p is Circle => p instanceof Circle && p.isEditable);
+		c.dispatch({ type: "setFixate", partIds: [circle.id], value: true });
+		c.dispatch({ type: "play" });
+		c.dispatch({ type: "step", frames: 1 });
+		expect(c.getState().tutorial!.won).toBe(true);
+
+		// Loading another tutorial fully resets the session, clearing the win flag
+		// so the congrats popup doesn't re-appear on the new level.
+		c.dispatch({ type: "loadTutorial", levelIndex: 0 });
+		expect(c.getState().tutorial!.won).toBe(false);
 	});
 });
