@@ -32,8 +32,6 @@ export class b2PrismaticJoint extends b2Joint
 		this.m_K = new b2Mat33();
 		this.m_impulse = new b2Vec3();
 
-		super(def);
-
 		this.m_localAnchor1.SetV(def.localAnchorA);
 		this.m_localAnchor2.SetV(def.localAnchorB);
 		this.m_localXAxis1.SetV(def.localAxisA);
