@@ -745,6 +745,32 @@ export class ByteArray {
       }
 
       return o;
+    } else if (marker == 13 || marker == 14 || marker == 15 || marker == 16) {
+      // AMF3 Vector (0x0D int / 0x0E uint / 0x0F double / 0x10 object). Flash
+      // exports (e.g. IB3 codes writeObject(Vector.<Part>)) use 0x10; the AMF3
+      // writer this ByteArray pairs with emits the same shape. Decoded as a
+      // plain JS array so downstream length/index access works uniformly.
+      var ref = this.readUInt29();
+
+      if ((ref & 1) == 0) return this.objectTable[ref >> 1];
+
+      var len = ref >> 1;
+      var vec: any[] = [];
+      this.objectTable.push(vec as never);
+      this.readByte(); // fixed-vector flag (writer emits a 1-byte AMF boolean)
+
+      if (marker == 16) {
+        this.readStringAMF3(); // element type name
+        for (var i = 0; i < len; i++) vec.push(this.readObject());
+      } else if (marker == 13) {
+        for (var i = 0; i < len; i++) vec.push(this.readInt());
+      } else if (marker == 14) {
+        for (var i = 0; i < len; i++) vec.push(this.readUnsignedInt());
+      } else {
+        for (var i = 0; i < len; i++) vec.push(this.readDouble());
+      }
+
+      return vec;
     } else if (marker == AMF3Types.kAvmPlusXmlType) {
       var ref = this.readUInt29();
 

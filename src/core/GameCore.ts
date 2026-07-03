@@ -606,6 +606,24 @@ export class GameCore {
 				for (const l of this.listeners) l(snapshot);
 			}
 		}
+		this.surfaceIb3Notice(decoded);
+	}
+
+	/**
+	 * Surface IB3-import provenance + lossy-conversion notes through the same
+	 * message plumbing as the challenge/trigger refusals (P5 wiring). No-op for
+	 * native/Jaybit/CE codes (decoded.ib3 undefined).
+	 */
+	private surfaceIb3Notice(decoded: DecodedRobot): void {
+		if (!decoded.ib3) return;
+		const p = decoded.ib3;
+		const kind = p.type === 1 ? "replay" : p.type === 2 ? "challenge" : "robot";
+		const named = p.name ? ` "${p.name}"` : "";
+		const by = p.creatorName ? ` by ${p.creatorName}` : "";
+		this.emitMessage(`Imported IB3 ${kind}${named}${by} (v${p.version}).`);
+		if (decoded.warnings && decoded.warnings.length > 0) {
+			this.emitMessage("IB3 import notes: " + decoded.warnings.join(" "));
+		}
 	}
 
 	/** Shared tail of importRobot / importRobotFile (post-decode application). */
@@ -667,6 +685,7 @@ export class GameCore {
 				for (const l of this.listeners) l(snapshot);
 			}
 		}
+		this.surfaceIb3Notice(decoded);
 	}
 
 	/**

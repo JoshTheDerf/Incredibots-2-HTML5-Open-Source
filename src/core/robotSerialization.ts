@@ -27,6 +27,7 @@ import { SandboxSettings } from "../Game/SandboxSettings";
 import { Base64Decoder } from "../mx/utils/Base64Decoder";
 import { DEFAULT_FRICTION, DEFAULT_RESTITUTION, TRIGGER_NONE } from "../Parts/partDefaults";
 import { decodeExposureInt, EXPO_PUBLIC_EDITABLE, type ExposureFlags } from "./exposure";
+import { decodeIB3FromByteArray, looksLikeIB3, type IB3Meta } from "./ib3Import";
 import { sniffFileBytes, TYPE_TAG_ROBOT, VERSION_PREFIX, VERSION_STRING } from "./serializationVersion";
 import { Bomb } from "../Parts/Bomb";
 import { Cannon } from "../Parts/Cannon";
@@ -56,6 +57,17 @@ export interface DecodedRobot {
 	version: string | null;
 	/** Decoded exposure (SaveWindow enum) — legacy codes map to public+editable. */
 	exposure: ExposureFlags;
+	/**
+	 * Present ONLY when the code was an IB3 import (see ib3Import.ts): IB3
+	 * provenance (name/creator/version/type) for a UI notice. Undefined for
+	 * native/Jaybit/CE codes.
+	 */
+	ib3?: IB3Meta;
+	/**
+	 * Lossy-conversion notes from an IB3 import (fields IB2 can't represent,
+	 * approximated geometry, clamped materials). Empty/undefined for native codes.
+	 */
+	warnings?: string[];
 }
 
 /** Default header metadata for headerless blob decodes / legacy fallbacks. */
@@ -534,7 +546,17 @@ export async function decodeRobot(robotStr: string): Promise<DecodedRobot> {
 	decoder.decode(robotStr);
 	const b = decoder.toByteArray();
 	await b.uncompress();
+	b.position = 0;
+	// Try native/Jaybit/CE first (via the sniff); an IB3 code (version-string-first
+	// + int type 0..2) falls back to the IB3 importer (PLAN.md P5).
+	if (looksLikeIB3(b)) return fromIB3(b);
 	return decodeRobotFromHeaderedBytes(b);
+}
+
+/** Adapt an IB3 decode into the DecodedRobot contract (attaches provenance + warnings). */
+function fromIB3(b: ByteArray): DecodedRobot {
+	const res = decodeIB3FromByteArray(b);
+	return { ...res.robot, ib3: res.ib3, warnings: res.warnings };
 }
 
 /** Shared tail of decodeRobot / decodeRobotFile: header dance + extraction. */
@@ -562,5 +584,6 @@ export async function decodeRobotFile(bytes: ArrayBuffer | Uint8Array): Promise<
 	const b = new ByteArray(bytes as ArrayBuffer);
 	await b.uncompress();
 	b.position = 0;
+	if (looksLikeIB3(b)) return fromIB3(b);
 	return decodeRobotFromHeaderedBytes(b);
 }
