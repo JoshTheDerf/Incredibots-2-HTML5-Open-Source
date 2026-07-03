@@ -664,24 +664,20 @@ function mapSettings(s: Record<string, unknown>, version: string, warnings: Set<
 	// gravityY is an IB3 1..40 UI value; convert to the raw m/s^2 IB2 uses.
 	const gravity = has(s, "gravityY") ? num(s.gravityY, 16) / GRAVITY_DIVISOR : 15.0;
 
+	// IB3 world size SMALL..XLARGE (0..3, Ground.as:19-25) maps 1:1 to IB2.
 	let size = 0;
-	if (has(s, "size")) {
-		const raw = trunc(s.size);
-		size = clamp(0, 2, raw);
-		if (raw > 2) warnings.add("IB3 'XLarge' world size was mapped to Large.");
-	}
+	if (has(s, "size")) size = clamp(0, 3, trunc(s.size));
 
-	// IB3 groundType SHORE(0)/ISLAND(1) -> IB2 terrainType LAND(0) (best-effort).
+	// IB3 groundType SHORE(0) -> IB2 LAND; ISLAND(1) -> IB2 ISLAND (Ground.as:15-17).
 	let terrainType = SandboxSettings.TERRAIN_LAND;
-	if (has(s, "groundType")) {
-		if (trunc(s.groundType) === 1) warnings.add("IB3 'Island' ground was approximated as land terrain.");
-		terrainType = SandboxSettings.TERRAIN_LAND;
+	if (has(s, "groundType") && trunc(s.groundType) === 1) {
+		terrainType = SandboxSettings.TERRAIN_ISLAND;
 	}
 
-	const terrainTheme = 0; // IB3 `theme` has no IB2 terrainTheme mapping.
-	if (has(s, "theme") && trunc(s.theme) !== 0) {
-		warnings.add("IB3 ground theme has no IB2 equivalent and was ignored.");
-	}
+	// IB3 `theme` picks a decor gradient BY groundType (Ground.TYPEGRADIENTS is
+	// indexed by type, not by `theme`), so the field drives no rendering or
+	// physics in IB3; there is nothing to lose and no warning is needed.
+	const terrainTheme = 0;
 
 	// skyType/skyColor -> background (+RGB when custom/solid).
 	let background = SandboxSettings.BACKGROUND_SKY;

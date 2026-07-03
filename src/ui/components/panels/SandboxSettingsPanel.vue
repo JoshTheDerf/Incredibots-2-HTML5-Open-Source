@@ -41,8 +41,9 @@ const gravity = ref(sb.gravity);
 // Plain label lists paired with index refs — mirrors the ShapeProps.vue
 // convention (USelect + separate index state) rather than object items,
 // since these are purely cosmetic placeholders until a real command exists.
-const sizeLabels = ["Small", "Medium", "Large"];
-const shapeLabels = ["Flat Land", "Box", "Empty"];
+// Index-aligned with SandboxSettings.SIZE_*/TERRAIN_* enums (XLarge=3, Island=3).
+const sizeLabels = ["Small", "Medium", "Large", "XLarge"];
+const shapeLabels = ["Flat Land", "Box", "Empty", "Island"];
 const themeLabels = ["Grass", "Dirt", "Sand", "Rock", "Snow", "Moon", "Mars"];
 const bgLabels = ["Sky", "Space", "Night", "Dusk", "Mars", "Sunset", "Solid Color"];
 

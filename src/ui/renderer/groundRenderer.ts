@@ -30,9 +30,11 @@ import type { CameraState, SandboxState } from "../../core";
 const SIZE_SMALL = 0;
 const SIZE_MEDIUM = 1;
 const SIZE_LARGE = 2;
+const SIZE_XLARGE = 3; // IB3 Ground.XLARGE
 const TERRAIN_LAND = 0;
 const TERRAIN_BOX = 1;
 // TERRAIN_EMPTY = 2 draws nothing.
+const TERRAIN_ISLAND = 3; // IB3 Ground.ISLAND — rendered like LAND (centered platform).
 
 // --- Theme colour arrays, ported verbatim from ControllerSandbox.ts:15-25. ---
 // Indexed by terrainTheme (0 grass, 1 dirt, 2 sand, 3 rock, 4 snow, 5 moon, 6 mars).
@@ -171,7 +173,7 @@ export class GroundRenderer {
 		const g = new Graphics();
 		this.gfx = g;
 
-		if (sandbox.terrainType === TERRAIN_LAND) {
+		if (sandbox.terrainType === TERRAIN_LAND || sandbox.terrainType === TERRAIN_ISLAND) {
 			this.anchor = this.buildLand(g, sandbox.size);
 		} else if (sandbox.terrainType === TERRAIN_BOX) {
 			this.anchor = this.buildBox(g, sandbox.size);
@@ -190,7 +192,11 @@ export class GroundRenderer {
 		// the world anchors/width from Update().
 		let wGeo: number;
 		let anchor: Anchor;
-		if (size === SIZE_LARGE) {
+		if (size === SIZE_XLARGE) {
+			// LARGE geometry scaled ~1.5x horizontally (matches sandboxEnvironment).
+			wGeo = 18000;
+			anchor = { leftX: -377.85, topY: 12.06, widthW: 755.7 };
+		} else if (size === SIZE_LARGE) {
 			wGeo = 12000;
 			anchor = { leftX: -253.55, topY: 12.06, widthW: 507.7 };
 		} else if (size === SIZE_MEDIUM) {
@@ -306,7 +312,15 @@ export class GroundRenderer {
 		let thicknessY: number;
 		let outlineThickness: number;
 		let anchor: Anchor;
-		if (size === SIZE_LARGE) {
+		if (size === SIZE_XLARGE) {
+			// LARGE box scaled ~1.5x (matches sandboxEnvironment).
+			W = 6000;
+			H = 1896;
+			thicknessX = 750;
+			thicknessY = 300;
+			outlineThickness = 1.5;
+			anchor = { leftX: -519.75, topY: -261.75, widthW: 1039.5 };
+		} else if (size === SIZE_LARGE) {
 			W = 4000;
 			H = 1264;
 			thicknessX = 500;
