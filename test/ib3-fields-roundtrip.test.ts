@@ -217,6 +217,37 @@ describe("IB3 fields round-trip through the native challenge format", () => {
 	});
 });
 
+// --- physicsEngine round-trip (P1.5b-2b) -------------------------------------
+
+describe("physicsEngine round-trips through the native formats", () => {
+	it("robot: non-default engine 1 is preserved; old codes default to 0", async () => {
+		const s = new SandboxSettings(15, 0, 0, 0, 0);
+		s.physicsEngine = 1; // IB3 (2.1a)
+		const decoded = await decodeRobot(await encodeRobot([new Circle(0, 0, 1)], s, "e", "1"));
+		expect(decoded.settings.physicsEngine).toBe(1);
+
+		// A code whose AMF payload lacks the field (pre-P1.5b) loads as engine 0.
+		const legacy = new SandboxSettings(15, 0, 0, 0, 0);
+		delete (legacy as any).physicsEngine;
+		const decodedLegacy = await decodeRobot(await encodeRobot([new Circle(0, 0, 1)], legacy, "e", "0"));
+		expect(decodedLegacy.settings.physicsEngine).toBe(0);
+	});
+
+	it("challenge: non-default engine 1 is preserved", async () => {
+		const s = new SandboxSettings(15, 0, 0, 0, 0);
+		s.physicsEngine = 1;
+		const c = new Challenge(s);
+		c.allParts = [new Circle(0, 0, 1)];
+		const decoded = await decodeChallenge(await encodeChallenge(c, "e", "1"));
+		expect(decoded.settings.physicsEngine).toBe(1);
+	});
+
+	it("pre-existing fixtures decode with engine 0", async () => {
+		expect((await decodeRobotBlob(robotBlob())).settings.physicsEngine).toBe(0);
+		expect((await decodeChallengeBlob(raceBlob())).settings.physicsEngine).toBe(0);
+	});
+});
+
 // --- 3. Codes WITHOUT the IB3 props load with defaults -----------------------
 
 describe("codes missing the IB3 AMF props load with defaults", () => {

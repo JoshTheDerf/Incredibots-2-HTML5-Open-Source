@@ -39,6 +39,20 @@ export class SandboxSettings {
   /** WaterControl.TILTOSCSPEED_DEFAULT (WaterControl.as:37). */
   public waterTiltOscSpeed: number = 1;
 
+  // --- Physics engine selection (P1.5b-2b). Which Box2D backend a design
+  // simulates on: 0 = IB2 (Box2DFlash 2.0.2, the default, src/Box2D) |
+  // 1 = IB3 (Box2DFlash 2.1a, src/Box2D21) | 2 = Box2D 3.x (box2d3-wasm) —
+  // RESERVED, not yet implemented (see .agents/ib3-merge/ENGINE-BOX2D3-PLAN.md),
+  // falls back to engine 1 at play time. Serialized with the settings object
+  // (AMF writes all public fields); absent on old / IB2 / CE / Jaybit codes, so
+  // loaders hasOwnProperty-guard it to 0 — those codes keep the classic engine.
+  // IB3 imports set it to 1 (their bots were tuned on 2.1a).
+  public physicsEngine: number = SandboxSettings.ENGINE_IB2;
+
+  public static ENGINE_IB2: number = 0;
+  public static ENGINE_IB3: number = 1;
+  public static ENGINE_BOX2D3: number = 2;
+
   public static WATER_TYPE_TIDE: number = 0;
   public static WATER_TYPE_WAVE: number = 1;
 

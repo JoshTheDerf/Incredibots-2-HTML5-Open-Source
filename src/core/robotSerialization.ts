@@ -406,6 +406,9 @@ function applyWaterSettings(settings: SandboxSettings, s: any): SandboxSettings 
 	if (has(s, "waterHeightOscSpeed")) settings.waterHeightOscSpeed = Math.trunc(s.waterHeightOscSpeed);
 	if (has(s, "waterTiltOsc")) settings.waterTiltOsc = Number(s.waterTiltOsc);
 	if (has(s, "waterTiltOscSpeed")) settings.waterTiltOscSpeed = Number(s.waterTiltOscSpeed);
+	// Physics-engine selection (P1.5b-2b). Optional-guarded like the water fields:
+	// absent on IB2/CE/Jaybit/pre-merge codes -> keep the default 0 (classic 2.0.2).
+	if (has(s, "physicsEngine")) settings.physicsEngine = Math.trunc(s.physicsEngine);
 	return settings;
 }
 
