@@ -10,6 +10,30 @@
 //   SnapToCommonTriangles  :398-563
 // See PORT SPEC "Editor/UI improvements and hotkeys" §4.
 
+/**
+ * Snap a world coordinate to the nearest grid line.
+ *
+ * Ported from IB3's grid quantization (ib3-decompiled/scripts/Control/Graphics/
+ * GridControl.as:116-117: `Math.round(v / gridSpacing) * gridSpacing` — the
+ * round-to-spacing math GridControl uses to land its line labels exactly on
+ * grid multiples). IB3 declared the matching gesture flag
+ * (GameControl.as:269 `snapToGrid = true`) but never wired it up; here it
+ * drives the actual editor gestures, applied at the same FINAL-geometry funnel
+ * as the other helpers in this module (before GameCore.dispatch, keeping the
+ * core modifier-agnostic).
+ *
+ * A non-positive spacing disables snapping (returns v unchanged).
+ */
+export function SnapToGrid(v: number, spacing: number): number {
+	if (!(spacing > 0)) return v;
+	return Math.round(v / spacing) * spacing;
+}
+
+/** Snap a world point to the nearest grid intersection (SnapToGrid per axis). */
+export function SnapPointToGrid(x: number, y: number, spacing: number): [number, number] {
+	return [SnapToGrid(x, spacing), SnapToGrid(y, spacing)];
+}
+
 function GetDist(x1: number, y1: number, x2: number, y2: number): number {
 	return Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
 }

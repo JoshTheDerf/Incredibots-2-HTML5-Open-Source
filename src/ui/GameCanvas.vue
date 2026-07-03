@@ -24,7 +24,13 @@ import { Triangle } from "../Parts/Triangle";
 import { JointPart } from "../Parts/JointPart";
 import { useGameStore } from "./gameStore";
 import { useUiPrefs } from "./uiPrefs";
-import { RestrictToSquares, FifteenAngleIncrements, MaxTriangle, SnapToCommonTriangles } from "./snapping";
+import {
+	RestrictToSquares,
+	FifteenAngleIncrements,
+	MaxTriangle,
+	SnapToCommonTriangles,
+	SnapToGrid,
+} from "./snapping";
 import { screenToWorld, worldToScreen, hitTestPart, partsInBox } from "./renderer/sceneRenderer";
 import { RenderInterpolator } from "./renderer/interpolation";
 import { ShapePart } from "../Parts/ShapePart";
@@ -32,6 +38,7 @@ import { SkyRenderer } from "./renderer/skyRenderer";
 import { GroundRenderer } from "./renderer/groundRenderer";
 import { TutorialGroundRenderer } from "./renderer/tutorialGroundRenderer";
 import { ChallengeGroundRenderer } from "./renderer/challengeGroundRenderer";
+import { GridRenderer } from "./renderer/gridRenderer";
 import type { ToolMode } from "../core";
 import type { Part } from "../Parts/Part";
 
@@ -115,6 +122,10 @@ let ground: GroundRenderer | null = null;
 // (Tank/Shapes/Car/Jumpbot/Dumpbot/Catapult, levelIndex 0-5) is active.
 let tutorialGround: TutorialGroundRenderer | null = null;
 let challengeGround: ChallengeGroundRenderer | null = null;
+// Renderer-only editor grid (IB3 GridControl.as port). Mounted ABOVE the
+// terrain visuals but BELOW the Draw sprite so parts render over the grid;
+// drawn only while editing with the gridEnabled pref on.
+let grid: GridRenderer | null = null;
 // Lightweight overlay Graphics for the marquee rectangle — kept separate from
 // the Draw sprite so it never fights Draw.ts's per-frame clear/repaint.
 let overlay: Graphics | null = null;
@@ -294,6 +305,21 @@ function screenOf(event: PointerEvent): { x: number; y: number; w: number; h: nu
  * the gesture reads angle/distance about the same point the core rotates around.
  * Returns null if nothing is selected.
  */
+/**
+ * Grid-snap a world-space gesture point when grid snapping is active (grid
+ * shown + "Snap to Grid" pref on — IB3 keyed its snapToGrid flag
+ * (GameControl.as:269) to the grid the same way, and the grid itself only
+ * exists in the editor). Applied at the same FINAL-geometry funnel as the
+ * Shift-modifier helpers: shape create anchors/cursors and part drags, before
+ * GameCore.dispatch. Joint/thruster placement is NOT grid-snapped — IB3 never
+ * grid-snapped those (they use snap-to-center, handled in the core).
+ */
+function snapGesturePoint(p: { x: number; y: number }): { x: number; y: number } {
+	if (!uiPrefs.gridEnabled.value || !uiPrefs.gridSnap.value) return p;
+	const spacing = uiPrefs.gridSpacing.value;
+	return { x: SnapToGrid(p.x, spacing), y: SnapToGrid(p.y, spacing) };
+}
+
 function selectionCentroidScreen(canvasW: number, canvasH: number): { x: number; y: number } | null {
 	const sel = new Set(game.edit.selection);
 	const parts = game.parts.filter((p) => sel.has(p.id));
@@ -413,11 +439,14 @@ function onPointerDown(event: PointerEvent): void {
 	// NEW_CIRCLE/NEW_RECT/NEW_TRIANGLE press-drag-release (mouseClick :2190-2380).
 	// For a triangle this first press-drag-release fixes the BASE edge only.
 	if (shapeKind) {
+		// Grid snapping (IB3 grid port): anchor the create gesture on the nearest
+		// grid intersection when the grid + snap prefs are on.
+		const anchor = snapGesturePoint({ x: world.x, y: world.y });
 		gesture = {
 			kind: "create",
 			shape: shapeKind,
-			start: { x: world.x, y: world.y },
-			current: { x: world.x, y: world.y },
+			start: { x: anchor.x, y: anchor.y },
+			current: { x: anchor.x, y: anchor.y },
 		};
 		container.value.setPointerCapture(event.pointerId);
 		return;
@@ -544,8 +573,12 @@ function onPointerDown(event: PointerEvent): void {
 		} else if (!alreadySelected) {
 			game.dispatch({ type: "select", partIds: [hit.id] });
 		}
-		// Begin dragging. Delta is measured incrementally from here.
-		gesture = { kind: "drag", lastWorld: { x: world.x, y: world.y } };
+		// Begin dragging. Delta is measured incrementally from here. With grid
+		// snapping active the reference point is grid-quantized (as every move
+		// point is), so the drag proceeds in whole grid steps and the parts keep
+		// their offset relative to the grid.
+		const dragFrom = snapGesturePoint({ x: world.x, y: world.y });
+		gesture = { kind: "drag", lastWorld: { x: dragFrom.x, y: dragFrom.y } };
 		container.value.setPointerCapture(event.pointerId);
 		return;
 	}
@@ -674,14 +707,18 @@ function onPointerMove(event: PointerEvent): void {
 		// the per-move delta keeps the selection tracking the cursor 1:1 —
 		// equivalent to ControllerGame's Part.Move(mouseWorld - dragOff) at
 		// :1517. Skip zero-delta moves to avoid redundant dispatches.
-		const dx = world.x - gesture.lastWorld.x;
-		const dy = world.y - gesture.lastWorld.y;
+		// Grid snapping: quantize the cursor to the grid so the deltas come out
+		// in whole grid steps (the pointer-down reference was quantized the same
+		// way) — parts move grid cell by grid cell, keeping their grid offset.
+		const dragWorld = snapGesturePoint({ x: world.x, y: world.y });
+		const dx = dragWorld.x - gesture.lastWorld.x;
+		const dy = dragWorld.y - gesture.lastWorld.y;
 		if (dx !== 0 || dy !== 0) {
 			const partIds = [...game.edit.selection];
 			if (partIds.length > 0) {
 				game.dispatch({ type: "moveParts", partIds, dx, dy });
 			}
-			gesture.lastWorld = { x: world.x, y: world.y };
+			gesture.lastWorld = { x: dragWorld.x, y: dragWorld.y };
 		}
 		return;
 	}
@@ -1230,6 +1267,19 @@ function drawFrame(): void {
 		challengeGround.view.visible = builtIn === "climb" || builtIn === "monkeyBars";
 	}
 
+	// Editor grid: redraw for the current camera each frame. Edit-mode only —
+	// IB3 only ever shows the grid in the editor (GameControl.gridButton
+	// :4235-4241; the sim screens never enable it).
+	if (grid) {
+		grid.update(
+			camera,
+			w,
+			h,
+			uiPrefs.gridEnabled.value && state.sim.phase === "editing",
+			uiPrefs.gridSpacing.value,
+		);
+	}
+
 	// Map selection ids -> live Part instances for highlight.
 	const selected = new Set(state.edit.selection);
 	const selectedParts: Part[] = state.parts.filter((p) => selected.has(p.id));
@@ -1351,6 +1401,11 @@ function resolveCreateCurrent(
 	start: { x: number; y: number },
 	current: { x: number; y: number },
 ): { x: number; y: number } {
+	// Grid snapping first (IB3 grid port): quantize the raw cursor to the grid,
+	// then let the explicit Shift modifiers act on the snapped point — the
+	// square restriction preserves grid alignment (grid-multiple deltas stay
+	// grid multiples); the 15° base snap intentionally wins over the grid.
+	current = snapGesturePoint(current);
 	if (!shiftDown) return current;
 	if (shape === "rect") {
 		const [dx, dy] = RestrictToSquares(current.x - start.x, current.y - start.y);
@@ -1376,6 +1431,10 @@ function resolveTriangleApex(
 	v2: { x: number; y: number },
 	mouse: { x: number; y: number },
 ): { x: number; y: number } {
+	// Grid snapping (IB3 grid port): quantize the raw cursor before the
+	// legality clamp/modifier snaps, so an in-range apex lands on the grid while
+	// MaxTriangle/SnapToCommonTriangles keep the final say on legal geometry.
+	mouse = snapGesturePoint(mouse);
 	let [ax, ay] = MaxTriangle(
 		mouse.x,
 		mouse.y,
@@ -1456,6 +1515,12 @@ onMounted(async () => {
 	challengeGround = new ChallengeGroundRenderer();
 	app.stage.addChild(challengeGround.view);
 
+	// Editor grid (IB3 GridControl.as port), above the terrain visuals and below
+	// the world Draw sprite so parts render over the grid lines. Drawn per frame
+	// in drawFrame, only while editing with the gridEnabled pref on.
+	grid = new GridRenderer();
+	app.stage.addChild(grid.view);
+
 	drawSprite = new Graphics();
 	app.stage.addChild(drawSprite);
 	draw = new Draw();
@@ -1527,6 +1592,8 @@ onBeforeUnmount(() => {
 	tutorialGround = null;
 	challengeGround?.destroy();
 	challengeGround = null;
+	grid?.destroy();
+	grid = null;
 	if (app) {
 		app.destroy(true, { children: true });
 		app = null;
