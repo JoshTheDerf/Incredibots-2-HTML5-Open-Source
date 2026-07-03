@@ -108,12 +108,76 @@ export interface BodyTransform {
 	angle: number;
 }
 
+// --- water / buoyancy controllers ---
+//
+// The two Box2DFlash ports (engines 0/1) both ship the 2.1a buoyancy/tide/wave
+// controller framework (src/Box2D + src/Box2D21 /Dynamics/Controllers), and both
+// worlds Step every registered controller at the top of Solve. WaterSystem owns
+// the WaterState -> controller-params projection (density scale, surface offset,
+// the tide/wave surface-animation closures) and the buoyant-flag / addedToWater
+// bookkeeping; the backend only CREATES the engine's controller, REGISTERS a body
+// on it, and reads the live surface back for the renderer — the three ops whose
+// concrete classes/handles differ per engine. Water type ints mirror
+// SandboxSettings.WATER_TYPE_* / IB3 WaterControl.TYPE_* (Control/WaterControl.as
+// :19-21).
+
+/** Water surface type: a tide controller (animated height/tilt). */
+export const WATER_TYPE_TIDE = 0;
+/** Water surface type: a continuous-wave controller. */
+export const WATER_TYPE_WAVE = 1;
+
+/**
+ * Plain-data description of a water controller, projected from WaterState by
+ * WaterSystem (the single owner of the surface-animation math + unit scaling).
+ * Mirrors IB3 WaterControl.Init (Control/WaterControl.as :99-136): TYPE_TIDE ->
+ * b2TideController with tideFunc/normalXFunc closures; TYPE_WAVE ->
+ * b2WaveController with the fixed continuous generator.
+ */
+export interface WaterControllerDef {
+	/** WATER_TYPE_TIDE (0) / WATER_TYPE_WAVE (1). */
+	type: number;
+	/** Fluid density, ALREADY Box2D-scaled (Util.DensityToBox2D) by WaterSystem. */
+	density: number;
+	/** Surface offset along the (0,-1) normal = -height (WaterControl.Init :116/129). */
+	surfaceOffset: number;
+	/** Linear drag co-efficient (WaterControl.Init :117/130). */
+	linearDrag: number;
+	/** Angular drag co-efficient (WaterControl.Init :118/131). */
+	angularDrag: number;
+	/**
+	 * Tide-only: offset delta as a function of accumulated sim seconds (the
+	 * b2TideController stepTracker). null for wave. WaterSystem supplies the
+	 * closed-form closure so the math has one home for BOTH engines.
+	 */
+	tideFunc: ((t: number) => number) | null;
+	/** Tide-only: normal.x delta as a function of accumulated sim seconds. null for wave. */
+	normalXFunc: ((t: number) => number) | null;
+}
+
+/** One live travelling wave, for the renderer's surface profile (wave type only). */
+export interface WaterWaveSample {
+	x: number;
+	amplitude: number;
+	width: number;
+	fn: "sin" | "cos";
+}
+
+/** Live water-surface read-back for the renderer, refreshed after each step. */
+export interface WaterSurfaceReadback {
+	/** Current controller offset (tide-animated; -height when static). */
+	offset: number;
+	/** Current surface normal.x (tilt); 0 = level. */
+	normalX: number;
+	/** Live travelling waves (wave type only). */
+	waves: WaterWaveSample[];
+}
+
 /**
  * The physics engine seam. Generic over its four opaque handle types so a
  * concrete adapter can pin them to its own representation (engine 0: the b2*
  * objects; engine 2: WASM id wrappers) while callers treat them as opaque.
  */
-export interface PhysicsBackend<W = unknown, B = unknown, S = unknown, J = unknown> {
+export interface PhysicsBackend<W = unknown, B = unknown, S = unknown, J = unknown, C = unknown> {
 	// --- world lifecycle ---
 	/** Build a fresh world. Contact filter/listener are wired by the caller. */
 	createWorld(def: WorldDef): W;
@@ -183,4 +247,17 @@ export interface PhysicsBackend<W = unknown, B = unknown, S = unknown, J = unkno
 	// --- contact wiring (each engine installs its own filter + listener) ---
 	/** Wire this engine's contact filter + a listener that drives `hooks`. */
 	installContactHandlers(world: W, hooks: ContactHooks): void;
+
+	// --- water / buoyancy (controllers stepped by this engine's world.Step) ---
+	/**
+	 * Build + register a buoyancy/tide/wave controller on the world from the
+	 * WaterState-derived def. The returned controller is an OPAQUE handle
+	 * (engine 0: the src/Box2D controller; engine 1: the src/Box2D21 controller);
+	 * callers pass it back to addWaterBody / waterSurface only.
+	 */
+	createWaterController(world: W, def: WaterControllerDef): C;
+	/** Register a body with the water controller (once — WaterSystem dedups). */
+	addWaterBody(controller: C, body: B): void;
+	/** Read the live surface (tide offset/tilt + any live waves) for the renderer. */
+	waterSurface(controller: C): WaterSurfaceReadback;
 }

@@ -7,9 +7,15 @@
 // settings: TYPE_TIDE (0) builds a b2TideController with a sinusoidal surface
 // height (heightOsc/heightOscSpeed) + tilt (tiltOsc/tiltOscSpeed) oscillation;
 // TYPE_WAVE (1) builds a b2WaveController with a continuous sin-wave generator
-// (WaterControl.Init :140 — ContinuousWaves(0, 0, 1, 5, 0.1, 0, "sin")). This
-// port targets the 2.0.2 engine's controller backport in
-// src/Box2D/Dynamics/Controllers (P1.5's 2.1a engine port is deferred).
+// (WaterControl.Init :140 — ContinuousWaves(0, 0, 1, 5, 0.1, 0, "sin")).
+//
+// ENGINE-AGNOSTIC (P1.5b-3): this system owns the WaterState -> controller-params
+// projection (the density scale + surface-offset + tide/wave surface-animation
+// closures below) and the addedToWater / buoyant-flag bookkeeping, but the three
+// engine-specific ops — CREATE the controller, REGISTER a body, READ the surface
+// back — route through the active PhysicsBackend. So the SAME WaterState drives
+// the src/Box2D controllers on engine 0 and the native src/Box2D21 controllers on
+// engine 1; both worlds Step every registered controller at the top of Solve.
 //
 // UNIT CONVERSIONS (WaterControl.as -> here):
 // - waterHeight `h` is entered/stored directly in WORLD units (metres): the
@@ -37,8 +43,10 @@
 //   (tiltOscSpeed is in oscillations per second — WaterControl.normalXFunc's
 //   t/timeStep/frameRate collapses to seconds the same way.)
 
-import { b2Body, b2BuoyancyController, b2TideController, b2WaveController, b2World } from "../Box2D";
+import type { b2Body, b2World } from "../Box2D";
 import { SandboxSettings } from "../Game/SandboxSettings";
+import { getPhysicsBackend } from "../Parts/partGlobals";
+import type { WaterControllerDef } from "./physics";
 
 const PI2 = Math.PI * 2;
 
@@ -142,7 +150,12 @@ function densityToBox2D(density: number): number {
  */
 export class WaterSystem {
 	private readonly settings: WaterState;
-	private controller: b2BuoyancyController | b2WaveController | null = null;
+	/**
+	 * The active backend's opaque water-controller handle (engine 0: an
+	 * src/Box2D controller; engine 1: an src/Box2D21 controller). Never method-
+	 * called here — only passed back to the backend's addWaterBody / waterSurface.
+	 */
+	private controller: unknown = null;
 	/** WaterControl.AddBody's userData.addedToWater guard, as a Set. */
 	private readonly added = new Set<b2Body>();
 
@@ -150,37 +163,30 @@ export class WaterSystem {
 		this.settings = settings;
 	}
 
-	/** WaterControl.Init (:99-142): build + register the controller. */
+	/**
+	 * WaterControl.Init (:99-142): project the settings into a controller def
+	 * (the surface-animation math + density scale live HERE, once, for both
+	 * engines) and let the active backend build + register the engine's
+	 * controller on the world.
+	 */
 	init(world: b2World): void {
 		const s = this.settings;
 		if (!s.enabled) return;
-		if (s.type === SandboxSettings.WATER_TYPE_WAVE) {
-			const wave = new b2WaveController();
-			wave.useDensity = true;
-			wave.density = densityToBox2D(s.density);
-			wave.normal.Set(0, -1);
-			wave.offset = -s.height;
-			wave.linearDrag = s.linearDrag;
-			wave.angularDrag = s.angularDrag;
-			// WaterControl.Init :140 — the fixed continuous generator.
-			wave.ContinuousWaves(0, 0, 1, 5, 0.1, 0, "sin");
-			this.controller = wave;
-		} else {
-			const tide = new b2TideController();
-			tide.useDensity = true;
-			tide.density = densityToBox2D(s.density);
-			tide.normal.Set(0, -1);
-			tide.offset = -s.height;
-			tide.linearDrag = s.linearDrag;
-			tide.angularDrag = s.angularDrag;
-			// tideFunc/normalXFunc closed forms — see the unit-conversion notes
-			// in the file header (t is dt-accumulated sim seconds).
-			const heightOscMult = s.heightOscSpeed > 0 ? (PI2 * 1000) / s.heightOscSpeed : 0;
-			tide.tideFunc = (t: number) => s.heightOsc * Math.sin(t * heightOscMult);
-			tide.normalXFunc = (t: number) => s.tiltOsc * Math.sin(PI2 * s.tiltOscSpeed * t);
-			this.controller = tide;
-		}
-		world.AddController(this.controller);
+		// tideFunc/normalXFunc closed forms — see the unit-conversion notes in the
+		// file header (t is dt-accumulated sim seconds). Only meaningful for the
+		// tide type; null for wave (the backend ignores them there).
+		const isWave = s.type === SandboxSettings.WATER_TYPE_WAVE;
+		const heightOscMult = s.heightOscSpeed > 0 ? (PI2 * 1000) / s.heightOscSpeed : 0;
+		const def: WaterControllerDef = {
+			type: s.type,
+			density: densityToBox2D(s.density),
+			surfaceOffset: -s.height,
+			linearDrag: s.linearDrag,
+			angularDrag: s.angularDrag,
+			tideFunc: isWave ? null : (t: number) => s.heightOsc * Math.sin(t * heightOscMult),
+			normalXFunc: isWave ? null : (t: number) => s.tiltOsc * Math.sin(PI2 * s.tiltOscSpeed * t),
+		};
+		this.controller = getPhysicsBackend().createWaterController(world, def);
 	}
 
 	/**
@@ -190,26 +196,16 @@ export class WaterSystem {
 	 * !fixated parts; forces on a static body are no-ops anyway).
 	 */
 	addBody(body: b2Body | null | undefined): void {
-		if (!body || !this.controller || this.added.has(body) || body.IsStatic()) return;
-		this.controller.AddBody(body);
+		if (!body || this.controller == null || this.added.has(body) || getPhysicsBackend().bodyIsStatic(body)) return;
+		getPhysicsBackend().addWaterBody(this.controller, body);
 		this.added.add(body);
 	}
 
 	/** Current surface geometry for the renderer (GameState.water). */
 	surface(): WaterSurfaceState {
-		const c = this.controller;
-		if (!c) {
+		if (this.controller == null) {
 			return { offset: -this.settings.height, normalX: 0, waves: [] };
 		}
-		const waves =
-			c instanceof b2WaveController
-				? c.waves.map((w) => ({
-						x: w.position.x,
-						amplitude: w.amplitude,
-						width: w.width,
-						fn: (w.waveFunc === Math.cos ? "cos" : "sin") as "sin" | "cos",
-					}))
-				: [];
-		return { offset: c.offset, normalX: c.normal.x, waves };
+		return getPhysicsBackend().waterSurface(this.controller);
 	}
 }

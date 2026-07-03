@@ -45,6 +45,7 @@ import {
 	b2AABB,
 	b2Body,
 	b2BodyDef as b2BodyDef21,
+	b2BuoyancyController,
 	b2CircleShape,
 	b2FixtureDef,
 	b2MouseJointDef as b2MouseJointDef21,
@@ -53,12 +54,27 @@ import {
 	b2RayCastInput,
 	b2RayCastOutput,
 	b2RevoluteJointDef as b2RevoluteJointDef21,
+	b2TideController,
 	b2Vec2,
+	b2WaveController,
 	b2World,
 } from "../../Box2D21";
 import type { b2Contact, b2Fixture, b2Joint, b2MassData as b2MassData21 } from "../../Box2D21";
 import { installBox2D21Contacts } from "./Box2D21Contacts";
-import type { BodyTransform, ContactHooks, PhysicsBackend, SegmentHit, Vec2Like, WorldDef } from "./PhysicsBackend";
+import type {
+	BodyTransform,
+	ContactHooks,
+	PhysicsBackend,
+	SegmentHit,
+	Vec2Like,
+	WaterControllerDef,
+	WaterSurfaceReadback,
+	WorldDef,
+} from "./PhysicsBackend";
+import { WATER_TYPE_WAVE } from "./PhysicsBackend";
+
+/** The engine-1 water controllers (a tide or a wave; both extend b2BuoyancyController). */
+type WaterController21 = b2BuoyancyController | b2WaveController;
 
 export class Box2D21Backend implements PhysicsBackend<b2World, b2Body, b2Fixture, b2Joint> {
 	createWorld(def: WorldDef): b2World {
@@ -304,6 +320,66 @@ export class Box2D21Backend implements PhysicsBackend<b2World, b2Body, b2Fixture
 
 	installContactHandlers(world: b2World, hooks: ContactHooks): void {
 		installBox2D21Contacts(world, hooks);
+	}
+
+	// --- water / buoyancy: the NATIVE 2.1a controllers (src/Box2D21/Dynamics/
+	//     Controllers, ported in P1.5a), built to mirror IB3 WaterControl.Init
+	//     (Control/WaterControl.as :110-135). The 2.1a b2World.Solve steps every
+	//     registered controller at the top of the solve (src/Box2D21 b2World.ts
+	//     Solve :654-658), same as engine 0 — so the tide/wave forces run inside
+	//     the normal world.Step with no extra plumbing. The density is ALREADY
+	//     Util.DensityToBox2D-scaled on the def (same scale as engine 0), and the
+	//     tide/wave surface closures come from WaterSystem — this adapter only
+	//     news the concrete 2.1a controller. ---
+	createWaterController(world: b2World, def: WaterControllerDef): WaterController21 {
+		let controller: WaterController21;
+		if (def.type === WATER_TYPE_WAVE) {
+			// WaterControl.Init :123-133 (TYPE_WAVE).
+			const wave = new b2WaveController();
+			wave.useDensity = true;
+			wave.density = def.density;
+			wave.normal.Set(0, -1);
+			wave.offset = def.surfaceOffset;
+			wave.linearDrag = def.linearDrag;
+			wave.angularDrag = def.angularDrag;
+			// WaterControl.Init :132 — the fixed continuous generator.
+			wave.ContinuousWaves(0, 0, 1, 5, 0.1, 0, "sin");
+			controller = wave;
+		} else {
+			// WaterControl.Init :110-122 (TYPE_TIDE).
+			const tide = new b2TideController();
+			tide.useDensity = true;
+			tide.density = def.density;
+			tide.normal.Set(0, -1);
+			tide.offset = def.surfaceOffset;
+			tide.linearDrag = def.linearDrag;
+			tide.angularDrag = def.angularDrag;
+			// WaterControl.Init :119-120 — tideFunc/normalXFunc (closures from WaterSystem).
+			tide.tideFunc = def.tideFunc;
+			tide.normalXFunc = def.normalXFunc;
+			controller = tide;
+		}
+		// WaterControl.Init :135 — physics.world.AddController(m_water).
+		world.AddController(controller);
+		return controller;
+	}
+
+	addWaterBody(controller: WaterController21, body: b2Body): void {
+		// WaterControl.AddBody :164 — m_water.AddBody(part.GetBody()).
+		controller.AddBody(body);
+	}
+
+	waterSurface(controller: WaterController21): WaterSurfaceReadback {
+		const waves =
+			controller instanceof b2WaveController
+				? controller.waves.map((w) => ({
+						x: w.position.x,
+						amplitude: w.amplitude,
+						width: w.width,
+						fn: (w.waveFunc === Math.cos ? "cos" : "sin") as "sin" | "cos",
+					}))
+				: [];
+		return { offset: controller.offset, normalX: controller.normal.x, waves };
 	}
 }
 

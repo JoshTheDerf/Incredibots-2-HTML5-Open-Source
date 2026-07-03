@@ -6,10 +6,24 @@
 // same fixtures/userData). Near-zero overhead. This is the ONLY backend wired
 // in P1.5b-1; engines 1/2 land in later sub-phases.
 
-import { b2AABB, b2ContactListener, b2Segment, b2Vec2, b2World } from "../../Box2D";
+import { b2AABB, b2BuoyancyController, b2ContactListener, b2Segment, b2TideController, b2Vec2, b2WaveController, b2World } from "../../Box2D";
 import type { b2Body, b2BodyDef, b2JointDef, b2Joint, b2MassData, b2Shape, b2ShapeDef, b2XForm } from "../../Box2D";
 import { ContactFilter } from "../../Game/ContactFilter";
-import type { BodyTransform, ContactHooks, ContactPointLike, PhysicsBackend, SegmentHit, Vec2Like, WorldDef } from "./PhysicsBackend";
+import type {
+	BodyTransform,
+	ContactHooks,
+	ContactPointLike,
+	PhysicsBackend,
+	SegmentHit,
+	Vec2Like,
+	WaterControllerDef,
+	WaterSurfaceReadback,
+	WorldDef,
+} from "./PhysicsBackend";
+import { WATER_TYPE_WAVE } from "./PhysicsBackend";
+
+/** The engine-0 water controllers (a tide or a wave; both extend b2BuoyancyController). */
+type WaterController20 = b2BuoyancyController | b2WaveController;
 
 export class Box2D20Backend implements PhysicsBackend<b2World, b2Body, b2Shape, b2Joint> {
 	createWorld(def: WorldDef): b2World {
@@ -150,6 +164,56 @@ export class Box2D20Backend implements PhysicsBackend<b2World, b2Body, b2Shape, 
 		listener.Add = (point: unknown): void => hooks.onAdd(point as ContactPointLike);
 		listener.Remove = (point: unknown): void => hooks.onRemove(point as ContactPointLike);
 		world.SetContactListener(listener);
+	}
+
+	// --- water / buoyancy (verbatim move of the pre-seam WaterSystem.init body:
+	//     the src/Box2D controllers, built EXACTLY as before so engine-0 water is
+	//     behaviour-identical; the tide/wave surface math + density scale arrive
+	//     pre-computed on the def) ---
+	createWaterController(world: b2World, def: WaterControllerDef): WaterController20 {
+		let controller: WaterController20;
+		if (def.type === WATER_TYPE_WAVE) {
+			const wave = new b2WaveController();
+			wave.useDensity = true;
+			wave.density = def.density;
+			wave.normal.Set(0, -1);
+			wave.offset = def.surfaceOffset;
+			wave.linearDrag = def.linearDrag;
+			wave.angularDrag = def.angularDrag;
+			// WaterControl.Init :132 — the fixed continuous generator.
+			wave.ContinuousWaves(0, 0, 1, 5, 0.1, 0, "sin");
+			controller = wave;
+		} else {
+			const tide = new b2TideController();
+			tide.useDensity = true;
+			tide.density = def.density;
+			tide.normal.Set(0, -1);
+			tide.offset = def.surfaceOffset;
+			tide.linearDrag = def.linearDrag;
+			tide.angularDrag = def.angularDrag;
+			tide.tideFunc = def.tideFunc;
+			tide.normalXFunc = def.normalXFunc;
+			controller = tide;
+		}
+		world.AddController(controller);
+		return controller;
+	}
+
+	addWaterBody(controller: WaterController20, body: b2Body): void {
+		controller.AddBody(body);
+	}
+
+	waterSurface(controller: WaterController20): WaterSurfaceReadback {
+		const waves =
+			controller instanceof b2WaveController
+				? controller.waves.map((w) => ({
+						x: w.position.x,
+						amplitude: w.amplitude,
+						width: w.width,
+						fn: (w.waveFunc === Math.cos ? "cos" : "sin") as "sin" | "cos",
+					}))
+				: [];
+		return { offset: controller.offset, normalX: controller.normal.x, waves };
 	}
 }
 
