@@ -282,15 +282,24 @@ export class Draw extends b2DebugDraw {
                 new b2Vec2(Math.cos(circ.angle), Math.sin(circ.angle)),
                 myColor,
                 isHighlighted,
-                circ.outline && (!circ.terrain || !this.drawColours) && showOutlines
+                circ.outline && (!circ.terrain || !this.drawColours) && showOutlines,
+                // A Bomb is a plain circle + X-cross in IB3 (Draw2D.as DrawBomb
+                // :516-637) — no rim spokes, so reuse the cannonball no-spokes path.
+                circ instanceof Bomb
               );
-              // Bomb (extends Circle): inner emblem marking + a blast-radius
-              // preview ring while selected in edit mode (IB3 bomb look).
-              if (circ instanceof Bomb) {
-                this.DrawBombEmblem(new b2Vec2(circ.centerX, circ.centerY), circ.radius, myColor);
-                if (Util.ObjectInArray(allParts[i], selectedParts)) {
-                  this.DrawCircle(new b2Vec2(circ.centerX, circ.centerY), (circ as Bomb).blastRadius, myColor);
-                }
+              // Bomb (extends Circle): IB3 marks bombs with an X-cross across the
+              // full diameter, rotated 45° off the part angle (Draw2D.as:615-635;
+              // at edit time the cross is full-radius — the sim-time fuse shrink is
+              // Draw2D.as:620). IB3 has NO blast-radius preview ring in edit mode
+              // (blastRadius is only used for off-screen culling, Draw2D.as:675).
+              if (circ instanceof Bomb && circ.outline && showOutlines) {
+                this.DrawBombCross(
+                  new b2Vec2(circ.centerX, circ.centerY),
+                  circ.radius,
+                  circ.angle,
+                  myColor,
+                  isHighlighted
+                );
               }
             } else if (allParts[i] instanceof Rectangle) {
               rect = allParts[i] as Rectangle;
@@ -540,8 +549,16 @@ export class Draw extends b2DebugDraw {
       }
       for (i = 0; i < allParts.length; i++) {
         if (!allParts[i].isStatic || allParts[i].isEditable || drawStatic || allParts[i].drawAnyway) {
+          // Bomb explosion FIRST, at the bomb's own slot in the part order
+          // (IB3 DrawBomb calls DrawBombExplosion before drawing the body,
+          // Draw2D.as:537-540, inside the bottom-parts pass at Draw2D.as:123-125)
+          // — so every part drawn after this one occludes the blast rays.
+          if (allParts[i] instanceof Bomb) {
+            this.DrawBombExplosion(allParts[i] as Bomb);
+          }
           // An exploded Bomb has no shape/body left (Bomb.Explode destroys
-          // them mid-sim) — skip the shape pass; its flash is drawn below.
+          // them mid-sim) — skip the shape pass (IB3 skips destroyed bombs the
+          // same way, Draw2D.as:541-544).
           if (allParts[i] instanceof ShapePart && (allParts[i] as ShapePart).GetShape() != null) {
             xf = this.RenderXForm(allParts[i].GetBody());
             if (this.drawColours) {
@@ -645,12 +662,32 @@ export class Draw extends b2DebugDraw {
           }
         }
 
-        // Bomb runtime overlays (sim only): the emblem on a live bomb and the
-        // explosion flash after it goes off (IB3 renders the blast ray fan for
-        // GetExplosionDelay() frames; we render an expanding fading disc over
-        // the same lifetime).
+        // Bomb X-cross over the live body (IB3 Draw2D.as:615-635). During the
+        // sim the cross doubles as the FUSE TIMER: once armed, its arm length
+        // shrinks from the full radius to zero as the delay counter runs out
+        // (Draw2D.as:620). Rotates with the body like IB3's axis vector
+        // (Draw2D.as:579-580).
         if (allParts[i] instanceof Bomb) {
-          this.DrawBombRuntime(allParts[i] as Bomb);
+          var bomb: Bomb = allParts[i] as Bomb;
+          var bombShape = bomb.GetShape();
+          var bombBody = bomb.GetBody();
+          if (bombShape != null && bombBody != null && bomb.outline && showOutlines) {
+            var bombXf = this.RenderXForm(bombBody);
+            var bombCenter = b2Math.b2MulX(bombXf, (bombShape as any).GetLocalPosition());
+            var bombAngle: number = Util.NormalizeAngle(
+              Math.atan2(bombXf.R.col1.y, bombXf.R.col1.x) + bomb.angle
+            );
+            var crossRadius: number =
+              bomb.delay > 0 && bomb.GetDelayInFrames() > 0
+                ? bomb.radius * ((bomb.GetDelayInFrames() - bomb.GetDelayCounter()) / bomb.GetDelayInFrames())
+                : bomb.radius;
+            var bombColor: b2Color = this.drawColours
+              ? new b2Color(bomb.red / 255.0, bomb.green / 255.0, bomb.blue / 255.0)
+              : bomb.isStatic
+                ? Draw.s_staticColor
+                : Draw.s_normalColor;
+            this.DrawBombCross(bombCenter, crossRadius, bombAngle, bombColor, false);
+          }
         }
       }
     }
@@ -803,7 +840,9 @@ export class Draw extends b2DebugDraw {
             color,
             false,
             circle.GetUserData().outline && (!this.drawColours || !circle.GetUserData().terrain) && showOutlines,
-            cannonball
+            // Bombs draw as a plain circle (no rim spokes) + X-cross in IB3
+            // (Draw2D.as DrawBomb :516-637); the cross is added by the caller.
+            cannonball || !!circle.GetUserData().isBomb
           );
         }
         break;
@@ -861,49 +900,97 @@ export class Draw extends b2DebugDraw {
   }
 
   /**
-   * Bomb inner marking: a darker solid disc at 45% of the bomb radius so a
-   * Bomb reads differently from a plain Circle (IB3 bombs carry a distinct
-   * emblem; a simple inner disc per the P2 plan).
+   * The IB3 bomb marking (Draw2D.as:615-635): two diameter strokes through the
+   * bomb centre at partAngle+45° and +135° — an X-cross — drawn with the same
+   * line thickness / darkened-colour stroke as the body outline (the AS code
+   * reuses the circle's active lineStyle, set at Draw2D.as:601-604). At edit
+   * time crossRadius is the full radius; during the sim the caller shrinks it
+   * with the fuse (Draw2D.as:620), making the cross the visible fuse timer.
    */
-  public DrawBombEmblem(center: b2Vec2, radius: number, baseColor: b2Color): void {
-    var prevAlpha: number = this.m_fillAlpha;
-    this.m_fillAlpha = 0.85;
-    this.DrawSolidCircle(
-      center,
-      radius * 0.45,
-      new b2Vec2(1, 0),
-      Draw.DarkenColour(Draw.DarkenColour(baseColor)),
-      false,
-      false
-    );
-    this.m_fillAlpha = prevAlpha;
+  public DrawBombCross(
+    center: b2Vec2,
+    crossRadius: number,
+    angle: number,
+    color: b2Color,
+    isHighlighted: boolean = false
+  ): void {
+    if (crossRadius <= 0) return;
+    var outlineColour: b2Color = Draw.DarkenColour(color);
+    var arm: number = Util.NormalizeAngle(angle + Math.PI / 4); // Draw2D.as:621
+    for (var k: number = 0; k < 2; k++) {
+      var c: number = Math.cos(arm);
+      var s: number = Math.sin(arm);
+      this.m_sprite.moveTo(
+        (center.x + c * crossRadius) * this.m_drawScale - this.m_drawXOff,
+        (center.y + s * crossRadius) * this.m_drawScale - this.m_drawYOff
+      );
+      this.m_sprite.lineTo(
+        (center.x - c * crossRadius) * this.m_drawScale - this.m_drawXOff,
+        (center.y - s * crossRadius) * this.m_drawScale - this.m_drawYOff
+      );
+      arm = Util.NormalizeAngle(arm + Math.PI / 2); // Draw2D.as:626
+    }
+    this.m_sprite.stroke({
+      width: this.m_lineThickness * this.m_drawScale,
+      color: this.drawColours
+        ? Util.b2ColorToHex(isHighlighted ? Draw.DarkenColour(outlineColour) : outlineColour)
+        : Util.b2ColorToHex(color),
+      alpha: this.m_alpha,
+    });
   }
 
   /**
-   * Sim-time bomb visuals: the emblem tracking the live body pose, and the
-   * explosion flash — an expanding disc that fades over the bomb's explosion
-   * lifetime (Bomb.GetExplosionCounter()/GetExplosionDelay(), the counter IB3
-   * uses to age its blast-ray rendering).
+   * IB3's bomb explosion (Draw2D.as DrawBombExplosion :639-732): the stored
+   * blast-ray endpoints (Bomb.GetExplosionVectors()) are joined into a single
+   * filled fan — every point of ray 0 issues a moveTo, every later point a
+   * lineTo (Draw2D.as:697-708) — with no stroke (lineStyle(0,0,0),
+   * Draw2D.as:717). Over GetExplosionDelay() frames the fill fades and grows:
+   *   fade   = ((counter/delay) - 1)^2            (1 → 0, Draw2D.as:668,672)
+   *   growth = 1 - fade                            (world units, Draw2D.as:673)
+   * each vertex is pushed `growth` further out along its ray from the blast
+   * centre (Draw2D.as:692-695), and the fill colour/alpha are the bomb's
+   * colour and opacity scaled by fade (Draw2D.as:718).
+   * MUST be drawn at the bomb's slot in the part pass, before the body, so
+   * later-drawn parts occlude the blast (Draw2D.as:537-540 within :123-125).
    */
-  public DrawBombRuntime(bomb: Bomb): void {
-    var shape = bomb.GetShape();
-    var body = bomb.GetBody();
-    if (shape != null && body != null) {
-      var xf = this.RenderXForm(body);
-      var center = b2Math.b2MulX(xf, (shape as any).GetLocalPosition());
-      this.DrawBombEmblem(center, bomb.radius, new b2Color(bomb.red / 255.0, bomb.green / 255.0, bomb.blue / 255.0));
-    }
+  public DrawBombExplosion(bomb: Bomb): void {
+    if (!bomb.IsExploding()) return;
     var lastPos = bomb.GetLastPos();
-    if (bomb.IsExploding() && lastPos != null) {
-      var delay: number = bomb.GetExplosionDelay();
-      var progress: number = delay > 0 ? bomb.GetExplosionCounter() / delay : 1;
-      var prevAlpha: number = this.m_fillAlpha;
-      this.m_fillAlpha = 0.5 * (1 - progress);
-      // Grow to the full blast radius over the first third, then just fade.
-      var flashRadius: number = Math.max(bomb.radius, bomb.GetInitBlastRadius() * Math.min(1, progress * 3));
-      this.DrawSolidCircle(lastPos, flashRadius, new b2Vec2(1, 0), new b2Color(1.0, 0.6, 0.1), false, false);
-      this.m_fillAlpha = prevAlpha;
+    var delay: number = bomb.GetExplosionDelay();
+    // Draw2D.as:661 — only while the counter is still running.
+    if (lastPos == null || delay <= 0 || bomb.GetExplosionCounter() >= delay) return;
+    var rays: b2Vec2[][] = bomb.GetExplosionVectors();
+    if (rays == null || rays.length == 0) return;
+    var fade: number = bomb.GetExplosionCounter() / delay;
+    fade = (fade - 1) * (fade - 1); // Draw2D.as:672
+    var growth: number = 1 - fade; // Draw2D.as:673
+    // Off-screen cull over the blast's reach (Draw2D.as:675-679).
+    if (!this.IsCircleOnScreen(lastPos, bomb.radius + bomb.GetInitBlastRadius() + growth)) return;
+    var cx: number = lastPos.x;
+    var cy: number = lastPos.y;
+    for (var r: number = 0; r < rays.length; r++) {
+      var ray: b2Vec2[] = rays[r];
+      for (var p: number = 0; p < ray.length; p++) {
+        // Push the vertex `growth` further out along its ray (Draw2D.as:690-695).
+        var dist: number = Util.GetDist(ray[p].x, ray[p].y, cx, cy) + growth;
+        var ang: number = Math.atan2(ray[p].y - cy, ray[p].x - cx);
+        var vx: number = (cx + Math.cos(ang) * dist) * this.m_drawScale - this.m_drawXOff;
+        var vy: number = (cy + Math.sin(ang) * dist) * this.m_drawScale - this.m_drawYOff;
+        if (r == 0) this.m_sprite.moveTo(vx, vy); // Draw2D.as:698-701
+        else this.m_sprite.lineTo(vx, vy); // Draw2D.as:702-705
+      }
     }
+    // Fill: bomb colour scaled by fade, alpha = fade * opacity, no stroke
+    // (Draw2D.as:716-720; non-colour mode uses the flat fill at alpha=fade,
+    // Draw2D.as:665-666).
+    var baseR: number = this.drawColours ? bomb.red / 255.0 : 0.5;
+    var baseG: number = this.drawColours ? bomb.green / 255.0 : 0.5;
+    var baseB: number = this.drawColours ? bomb.blue / 255.0 : 0.5;
+    var alpha: number = fade * (this.drawColours ? bomb.opacity / 255.0 : 1);
+    this.m_sprite.fill({
+      color: Util.b2ColorToHex(new b2Color(baseR * fade, baseG * fade, baseB * fade)),
+      alpha: alpha,
+    });
   }
 
   public DrawShapeForOutline(shape, xf, color, alpha: number): void {
