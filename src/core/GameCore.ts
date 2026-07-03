@@ -1861,6 +1861,7 @@ export class GameCore {
 				strength: part.strength,
 				thrustKey: part.thrustKey,
 				autoOn: part.autoOn,
+				enableKey: part.enableKey, // IB3 Thrusters.enableKey
 				// Thrusters are a trigger TARGET (thrust while a named trigger touches).
 				triggerList: part.triggerList,
 			};
@@ -1884,6 +1885,8 @@ export class GameCore {
 				displayKey: part.displayKey,
 				alwaysVisible: part.alwaysVisible,
 				scaleWithZoom: part.scaleWithZoom,
+				angle: part.angle, // IB3 TextPart.angle (radians)
+				visibleOnStart: part.visibleOnStart, // IB3 TextPart.visibleOnStart
 				// Text parts are a trigger TARGET (display while a named trigger touches).
 				triggerList: part.triggerList,
 			};
@@ -5053,6 +5056,12 @@ export class GameCore {
 					if (p instanceof Thrusters) p.autoOn = command.value;
 				});
 				return;
+			// IB3 Thrusters.enableKey — whether the thrust key is honored.
+			case "setThrusterEnableKey":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof Thrusters) p.enableKey = command.value;
+				});
+				return;
 
 			// --- Cannon ---
 			case "setCannonStrength": {
@@ -5123,6 +5132,18 @@ export class GameCore {
 			case "setTextScaleWithZoom":
 				this.editParts(command.partIds, (p) => {
 					if (p instanceof TextPart) p.scaleWithZoom = command.value;
+				});
+				return;
+			// IB3 TextPart.angle (radians) — rotates the rendered text.
+			case "setTextAngle":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof TextPart) p.angle = command.value;
+				});
+				return;
+			// IB3 TextPart.visibleOnStart — key-toggled text starts shown.
+			case "setTextVisibleOnStart":
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof TextPart) p.visibleOnStart = command.value;
 				});
 				return;
 

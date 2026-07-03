@@ -39,6 +39,16 @@ const scaleWithZoom = computed({
 	get: () => sel.value?.scaleWithZoom ?? true,
 	set: (v: boolean) => game.dispatch({ type: "setTextScaleWithZoom", partIds: ids.value, value: v }),
 });
+// IB3 TextPart.angle: stored in radians, edited in degrees.
+const angleDeg = computed({
+	get: () => Math.round(((sel.value?.angle ?? 0) * 180) / Math.PI),
+	set: (v: number) => game.dispatch({ type: "setTextAngle", partIds: ids.value, value: (Number(v) * Math.PI) / 180 }),
+});
+// IB3 TextPart.visibleOnStart: a key-toggled text starts shown.
+const visibleOnStart = computed({
+	get: () => sel.value?.visibleOnStart ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setTextVisibleOnStart", partIds: ids.value, value: v }),
+});
 
 const localColour = ref("#242930");
 watch(
@@ -81,6 +91,14 @@ function applyColour(): void {
 
 		<UFormField label="Display Text Key:" class="field">
 			<UInput v-model="displayKey" size="xs" :disabled="alwaysVisible" class="key-input" />
+		</UFormField>
+
+		<div class="checkboxes">
+			<UCheckbox v-model="visibleOnStart" label="Visible on Start" :disabled="alwaysVisible" />
+		</div>
+
+		<UFormField label="Rotation (degrees):" class="field">
+			<UInput v-model.number="angleDeg" type="number" size="xs" class="num-input" />
 		</UFormField>
 
 		<UFormField label="Color" class="field">

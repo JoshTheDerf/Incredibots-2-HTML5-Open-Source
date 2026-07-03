@@ -129,6 +129,8 @@ export type PartSnapshot = {
 	thrustKey?: number;
 	/** Thrusters.autoOn / Cannon has none. */
 	autoOn?: boolean;
+	/** IB3 Thrusters.enableKey — whether the thrust key is honored. */
+	enableKey?: boolean;
 
 	// Cannon
 	/** Cannon.fireKey code. */
@@ -154,6 +156,8 @@ export type PartSnapshot = {
 	displayKey?: number;
 	alwaysVisible?: boolean;
 	scaleWithZoom?: boolean;
+	/** IB3 TextPart.visibleOnStart (angle is carried by the shared `angle` field). */
+	visibleOnStart?: boolean;
 
 	// --- Triggers (Jaybit AdvancedPropertiesWindow read-model) ---
 	// Trigger SOURCE fields (ShapePart: Circle/Rectangle/Triangle/Cannon) — two

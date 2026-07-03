@@ -235,6 +235,9 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 			text.green = od.green;
 			text.blue = od.blue;
 			text.size = od.size;
+			// IB3 text rotation + visible-on-start (IB3 TextPart.as:30/:32); absent -> 0 / false.
+			text.angle = has(od, "angle") ? Number(od.angle) : 0;
+			text.visibleOnStart = has(od, "visibleOnStart") ? Boolean(od.visibleOnStart) : false;
 			text.triggerList = has(od, "triggerList") ? od.triggerList : "";
 			partData.push(text);
 		} else if (od.type === "Thrusters") {
@@ -244,6 +247,8 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 				t.angle = od.angle;
 				t.thrustKey = od.thrustKey;
 				t.autoOn = od.autoOn;
+				// IB3 Thrusters.enableKey (IB3 Thrusters.as:24); absent -> true.
+				t.enableKey = has(od, "enableKey") ? Boolean(od.enableKey) : true;
 				t.triggerList = has(od, "triggerList") ? od.triggerList : "";
 				partData.push(t);
 			}

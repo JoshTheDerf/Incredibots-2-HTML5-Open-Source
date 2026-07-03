@@ -523,15 +523,13 @@ function buildText(od: Record<string, unknown>, warnings: Set<string>): TextPart
 	if (has(od, "size")) t.size = num(od.size, t.size);
 	if (has(od, "scaleWithZoom")) t.scaleWithZoom = Boolean(od.scaleWithZoom);
 	if (has(od, "keyShow")) t.displayKey = trunc(od.keyShow, t.displayKey);
-	// IB3 visible = !enableKey || visibleOnStart; IB2 alwaysVisible == shown-always.
+	// IB3 visible = !enableKey || visibleOnStart; IB2 alwaysVisible == shown-always,
+	// visibleOnStart seeds displayKeyPressed at Init (TextPart.as:61-64 mirrored).
 	const enableKey = has(od, "enableKey") ? Boolean(od.enableKey) : false;
 	t.alwaysVisible = !enableKey;
-	if (enableKey && has(od, "visibleOnStart") && od.visibleOnStart) {
-		warnings.add("IB3 text 'visible on start' with a key toggle is approximated (starts hidden).");
-	}
-	if (has(od, "angle") && num(od.angle) !== 0) {
-		warnings.add("IB3 text rotation is not supported; text imported unrotated.");
-	}
+	if (has(od, "visibleOnStart")) t.visibleOnStart = Boolean(od.visibleOnStart);
+	// IB3 text rotation maps directly (applied in Draw.ts).
+	if (has(od, "angle")) t.angle = num(od.angle);
 	return t;
 }
 
