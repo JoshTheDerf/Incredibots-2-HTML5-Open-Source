@@ -182,21 +182,27 @@ export function createChallengeSession(): ChallengeSession {
 }
 
 /**
- * Wrap an already-decoded `Challenge` (from the Race / Spaceship blob) in a
- * play-only session, mirroring the ControllerRace / ControllerSpaceship ctors
- * (ControllerRace.ts:15-24): playChallengeMode = playOnlyMode = true, and the
- * decoded challenge becomes the live challenge (its allParts are the terrain +
- * author robot the caller seeds into the parts graph). Conditions/restrictions/
- * build areas are already populated by ExtractChallengeFromByteArray.
+ * Wrap an already-decoded `Challenge` (from the Race / Spaceship blob, or a
+ * user import) in a session, mirroring the ControllerRace / ControllerSpaceship
+ * ctors (ControllerRace.ts:15-24) and Database.ImportChallenge +
+ * ControllerGame.processLoadedChallenge (ControllerGame.as:8883-8884):
+ * playChallengeMode = playOnlyMode = !editable. Built-in blobs and uneditable
+ * imports open locked (editable=false → play-only); editable-exposure imports
+ * open in the challenge editor (editable=true → playMode=false, playOnly=false),
+ * so the author can edit conditions/restrictions/terrain. The decoded challenge
+ * becomes the live challenge (its allParts are the terrain + author robot the
+ * caller seeds into the parts graph). Conditions/restrictions/build areas are
+ * already populated by ExtractChallengeFromByteArray.
  */
 export function challengeSessionFromChallenge(
 	challenge: Challenge,
 	builtIn: BuiltInChallengeId = null,
+	editable = false,
 ): ChallengeSession {
 	return {
 		challenge,
-		playMode: true,
-		playOnly: true,
+		playMode: !editable,
+		playOnly: !editable,
 		savedRobot: [],
 		partsFit: true,
 		outcome: null,

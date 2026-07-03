@@ -46,7 +46,12 @@ import { decodeRobot, decodeRobotFile, encodeRobot } from "./robotSerialization"
 import type { DecodedRobot } from "./robotSerialization";
 import { processTriggers, triggerDirectionSwitch, wireTriggers } from "./triggers";
 import type { TriggerUserData } from "./triggers";
-import { decodeChallengeBlob, decodeChallenge, decodeChallengeFile, encodeChallenge } from "./challengeSerialization";
+import {
+	decodeChallengeBlob,
+	decodeChallengeWithMeta,
+	decodeChallengeFile,
+	encodeChallenge,
+} from "./challengeSerialization";
 import { encodeReplay, decodeReplay, decodeReplayFile, decodeDemoReplay } from "./replaySerialization";
 import type { DecodedReplay, ReplayMeta, ReplayRobot } from "./replaySerialization";
 import { EXPO_PUBLIC_EDITABLE } from "./exposure";
@@ -742,8 +747,8 @@ export class GameCore {
 	 */
 	async importChallenge(challengeStr: string): Promise<void> {
 		if (this.state.sim.phase !== "editing") return;
-		const challenge = await decodeChallenge(challengeStr);
-		this.applyImportedChallenge(challenge);
+		const decoded = await decodeChallengeWithMeta(challengeStr);
+		this.applyImportedChallenge(decoded.challenge, decoded.exposure.isEditable);
 	}
 
 	/**
@@ -753,12 +758,20 @@ export class GameCore {
 	async importChallengeFile(bytes: ArrayBuffer | Uint8Array): Promise<void> {
 		if (this.state.sim.phase !== "editing") return;
 		const decoded = await decodeChallengeFile(bytes);
-		this.applyImportedChallenge(decoded.challenge);
+		this.applyImportedChallenge(decoded.challenge, decoded.exposure.isEditable);
 	}
 
-	/** Shared tail of importChallenge / importChallengeFile (post-decode application). */
-	private applyImportedChallenge(challenge: Challenge): void {
-		this.challenge = challengeSessionFromChallenge(challenge, null);
+	/**
+	 * Shared tail of importChallenge / importChallengeFile (post-decode
+	 * application). `editable` comes from the decoded header exposure (Jaybit's
+	 * DetermineExposure → ControllerGame.processLoadedChallenge :8883-8884): an
+	 * editable-exposure challenge opens in the challenge EDITOR (playMode=false),
+	 * an uneditable one opens locked play-only. Legacy prefix-less codes decode
+	 * to editable (decodeExposureInt: header ≤1 ⇒ public/editable — Jaybit's
+	 * ImportChallenge :291-303 sets potentialChallengeEditable=true for them).
+	 */
+	private applyImportedChallenge(challenge: Challenge, editable: boolean): void {
+		this.challenge = challengeSessionFromChallenge(challenge, null, editable);
 
 		const parts = challenge.allParts as Part[];
 		for (const p of parts) p.id = ++this.nextId;

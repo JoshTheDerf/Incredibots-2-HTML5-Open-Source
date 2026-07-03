@@ -17,9 +17,13 @@ import { GameCore } from "../src/core/GameCore";
 import { createInitialState } from "../src/core/GameState";
 import {
 	decodeChallenge,
+	decodeChallengeWithMeta,
 	encodeChallenge,
 	decodeChallengeBlob,
 } from "../src/core/challengeSerialization";
+import { EXPO_PUBLIC_EDITABLE, EXPO_PUBLIC_UNEDITABLE } from "../src/core/exposure";
+import { ByteArray } from "../src/General/ByteArray";
+import { Base64Decoder } from "../src/mx/utils/Base64Decoder";
 import { createChallengeSession } from "../src/core/challenge";
 import { Challenge } from "../src/Game/Challenge";
 import { SandboxSettings } from "../src/Game/SandboxSettings";
@@ -161,7 +165,11 @@ describe("GameCore.importChallenge — string import makes it the live session",
 
 		expect(st.challenge).not.toBeNull();
 		expect(st.challenge!.active).toBe(true);
-		expect(st.challenge!.playMode).toBe(true);
+		// encodeChallenge defaults to EXPO_PUBLIC_EDITABLE, so this import opens in
+		// the challenge EDITOR (playMode=false), matching Jaybit's
+		// processLoadedChallenge: playChallengeMode = !potentialChallengeEditable.
+		expect(st.challenge!.playMode).toBe(false);
+		expect(st.challenge!.playOnly).toBe(false);
 		expect(st.challenge!.winConditions.length).toBe(1);
 		expect(st.challenge!.lossConditions.length).toBe(1);
 		expect(st.challenge!.restrictions.rects).toBe(false);
@@ -191,6 +199,107 @@ describe("GameCore.importChallenge — string import makes it the live session",
 	it("exportChallengeString returns null with no active challenge", async () => {
 		const core = coreWith([]);
 		expect(await core.exportChallengeString()).toBe(null);
+	});
+});
+
+// --- Imported-challenge editability (exposure -> play vs edit mode) ----------
+//
+// Jaybit's Database.ImportChallenge (:275-308) reads the header exposure int and
+// ControllerGame.processLoadedChallenge (:8878-8884) sets
+//   playChallengeMode = playOnlyMode = !potentialChallengeEditable.
+// So an editable-exposure challenge opens in the challenge EDITOR (fully
+// editable), an uneditable one opens locked play-only, and a legacy prefix-less
+// code (allowEdit int <= 1) is treated as editable (:291-303 forces
+// potentialChallengeEditable = true).
+
+/**
+ * Splice a normal (prefixed) challenge export into a LEGACY, prefix-less code:
+ * strip the version prefix + version UTF and write the header int as the CE-era
+ * `allowEdit` value (<= 1). decodeChallengeFromHeaderedBytes then sees version
+ * == null and routes to the Legacy2_24 reader (which reads the CE body and
+ * ignores the appended 2.33 trailer). Faithful to codes exported by pre-Jaybit
+ * clients that carried no VERSION_PREFIX.
+ */
+async function toLegacyPrefixlessCode(challenge: Challenge, allowEdit: number): Promise<string> {
+	const prefixed = await encodeChallenge(challenge, "leg", "d", EXPO_PUBLIC_EDITABLE);
+	const dec = new Base64Decoder();
+	dec.decode(prefixed);
+	const b = dec.toByteArray();
+	await b.uncompress();
+	b.readUTF(); // VERSION_PREFIX
+	b.readUTF(); // version string ("2.xx ibch")
+	const name = b.readUTF();
+	const desc = b.readUTF();
+	b.readInt(); // shared
+	b.readInt(); // exposure (expo + 2)
+	const bodyStart = b.position;
+
+	const out = new ByteArray();
+	out.writeUTF(name); // first UTF != VERSION_PREFIX -> version == null path
+	out.writeUTF(desc);
+	out.writeInt(1); // shared
+	out.writeInt(allowEdit); // legacy allowEdit int
+	out.writeBytes(b, bodyStart, b.length - bodyStart);
+	await out.compress();
+	return out.buffer.toString("base64");
+}
+
+describe("imported challenge editability follows the header exposure", () => {
+	it("editable exposure -> challenge editor (playMode=false) and edit commands apply", async () => {
+		const str = await encodeChallenge(sampleChallenge(), "n", "d", EXPO_PUBLIC_EDITABLE);
+
+		// Header decodes to editable.
+		const meta = await decodeChallengeWithMeta(str);
+		expect(meta.exposure.isEditable).toBe(true);
+
+		const core = new GameCore(createInitialState());
+		await core.importChallenge(str);
+		let st = core.getState();
+		expect(st.challenge!.playMode).toBe(false);
+		expect(st.challenge!.playOnly).toBe(false);
+
+		// A challenge-authoring edit command takes effect (editing session).
+		expect(st.challenge!.restrictions.minDensity).toBe(5); // from sampleChallenge
+		core.dispatch({ type: "setPartLimits", minDensity: 3, maxDensity: 9, maxRJStrength: null });
+		st = core.getState();
+		expect(st.challenge!.restrictions.minDensity).toBe(3);
+		expect(st.challenge!.restrictions.maxDensity).toBe(9);
+	});
+
+	it("uneditable exposure -> locked play-only (playMode=true) and editChallenge is refused", async () => {
+		const str = await encodeChallenge(sampleChallenge(), "n", "d", EXPO_PUBLIC_UNEDITABLE);
+
+		const meta = await decodeChallengeWithMeta(str);
+		expect(meta.exposure.isEditable).toBe(false);
+
+		const core = new GameCore(createInitialState());
+		await core.importChallenge(str);
+		let st = core.getState();
+		expect(st.challenge!.playMode).toBe(true);
+		expect(st.challenge!.playOnly).toBe(true);
+
+		// editChallenge is the play-only "back to editing" affordance; it is
+		// refused for a play-only challenge (ControllerChallenge.editButton guard),
+		// so the session stays in play mode.
+		core.dispatch({ type: "editChallenge" });
+		st = core.getState();
+		expect(st.challenge!.playMode).toBe(true);
+	});
+
+	it("legacy prefix-less code (allowEdit <= 1) opens editable", async () => {
+		const legacy = await toLegacyPrefixlessCode(sampleChallenge(), 1);
+
+		const meta = await decodeChallengeWithMeta(legacy);
+		expect(meta.version).toBe(null); // routed to the Legacy2_24 reader
+		expect(meta.exposure.isEditable).toBe(true);
+
+		const core = new GameCore(createInitialState());
+		await core.importChallenge(legacy);
+		const st = core.getState();
+		expect(st.challenge!.playMode).toBe(false);
+		expect(st.challenge!.playOnly).toBe(false);
+		// Parts still decoded through the legacy reader.
+		expect(st.parts.length).toBe(2);
 	});
 });
 
