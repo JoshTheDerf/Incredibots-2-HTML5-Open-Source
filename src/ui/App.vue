@@ -28,6 +28,7 @@ import ImportPanel from "./components/panels/ImportPanel.vue";
 import ExportPanel from "./components/panels/ExportPanel.vue";
 import ConvertPanel from "./components/panels/ConvertPanel.vue";
 import SandboxSettingsPanel from "./components/panels/SandboxSettingsPanel.vue";
+import WaterSettingsPanel from "./components/panels/WaterSettingsPanel.vue";
 import ConditionsPanel from "./components/panels/ConditionsPanel.vue";
 import RestrictionsPanel from "./components/panels/RestrictionsPanel.vue";
 import ColorPickerPanel from "./components/panels/ColorPickerPanel.vue";
@@ -334,6 +335,17 @@ onBeforeUnmount(() => {
 		>
 			<template #content>
 				<SandboxSettingsPanel @ok="closePanel" @cancel="closePanel" />
+			</template>
+		</UModal>
+
+		<!-- IB3 water settings (Gui/WaterWindow.as) — P6 water panel. -->
+		<UModal
+			:open="activePanel === 'waterSettings'"
+			:ui="{ content: 'ib-modal-content' }"
+			@update:open="(v: boolean) => !v && closePanel()"
+		>
+			<template #content>
+				<WaterSettingsPanel @ok="closePanel" @cancel="closePanel" />
 			</template>
 		</UModal>
 

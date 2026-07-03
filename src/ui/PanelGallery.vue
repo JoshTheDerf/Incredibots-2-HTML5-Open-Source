@@ -10,6 +10,7 @@ import CannonProps from "./components/panels/CannonProps.vue";
 import TextProps from "./components/panels/TextProps.vue";
 import ColorPickerPanel from "./components/panels/ColorPickerPanel.vue";
 import SandboxSettingsPanel from "./components/panels/SandboxSettingsPanel.vue";
+import WaterSettingsPanel from "./components/panels/WaterSettingsPanel.vue";
 import ConditionsPanel from "./components/panels/ConditionsPanel.vue";
 import RestrictionsPanel from "./components/panels/RestrictionsPanel.vue";
 import ScorePanel from "./components/panels/ScorePanel.vue";
@@ -30,6 +31,7 @@ const entries = [
 	{ title: "Text properties", comp: TextProps },
 	{ title: "Colour picker", comp: ColorPickerPanel },
 	{ title: "Advanced sandbox", comp: SandboxSettingsPanel },
+	{ title: "Water settings", comp: WaterSettingsPanel },
 	{ title: "Conditions (challenge)", comp: ConditionsPanel },
 	{ title: "Restrictions (challenge)", comp: RestrictionsPanel },
 	{ title: "Score / results", comp: ScorePanel },
