@@ -849,6 +849,9 @@ function mapSettings(s: Record<string, unknown>, version: string, warnings: Set<
 	// :17) converted (~9.809) — NOT IB2's 15 — so a gravityY-less IB3 code matches how
 	// IB3 itself would load it. (AMF always serializes gravityY, so this is belt-and-suspenders.)
 	const gravity = num(has(s, "gravityY") ? s.gravityY : 16, 16) / GRAVITY_DIVISOR;
+	// IB3 superset: horizontal gravity (same UI->m/s^2 conversion) + restitution mode.
+	const gravityX = has(s, "gravityX") ? num(s.gravityX) / GRAVITY_DIVISOR : 0;
+	const restitutionType = has(s, "restitutionType") ? trunc(s.restitutionType) : 0;
 
 	// IB3 world size SMALL..XLARGE (0..3, Ground.as:19-25) maps 1:1 to IB2.
 	let size = 0;
@@ -911,6 +914,9 @@ function mapSettings(s: Record<string, unknown>, version: string, warnings: Set<
 	// the IB3 physics engine (1) — GameCore runs it on src/Box2D21 at play time
 	// (P1.5b-2b). Native/CE/Jaybit codes never reach here and keep engine 0.
 	settings.physicsEngine = SandboxSettings.ENGINE_IB3;
+	// IB3 superset physics fields (IB2 had neither; default 0/0 = classic behaviour).
+	settings.gravityX = gravityX;
+	settings.restitutionType = restitutionType;
 
 	// IB3 bots are positioned in IB3 WORLD COORDINATES, so they only rest on
 	// IB3-shaped sandbox ground (SHORE/ISLAND, surface at y=-1 — completely

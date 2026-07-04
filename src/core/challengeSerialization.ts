@@ -396,6 +396,9 @@ function applyWaterSettings(settings: SandboxSettings, s: any): SandboxSettings 
 	// IB3-engine fallback so old IB3-engine codes get IB3 ground.
 	if (has(s, "groundStyle")) settings.groundStyle = Math.trunc(s.groundStyle);
 	else if (settings.physicsEngine === SandboxSettings.ENGINE_IB3) settings.groundStyle = SandboxSettings.GROUND_STYLE_IB3;
+	// IB3 superset physics fields; absent on old codes -> keep defaults (0 / 0).
+	if (has(s, "gravityX")) settings.gravityX = Number(s.gravityX);
+	if (has(s, "restitutionType")) settings.restitutionType = Math.trunc(s.restitutionType);
 	return settings;
 }
 

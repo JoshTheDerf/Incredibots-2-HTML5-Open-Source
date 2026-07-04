@@ -209,8 +209,22 @@ export interface SimState {
  *   background:  SKY=0, SPACE=1, NIGHT=2, DUSK=3, MARS=4, SUNSET=5, SOLID_COLOUR=6
  */
 export interface SandboxState {
-	/** downward gravity magnitude; used as b2Vec2(0, gravity). Default 15. */
+	/** downward gravity magnitude; the y of b2Vec2(gravityX, gravity). Default 15. */
 	gravity: number;
+	/**
+	 * HORIZONTAL gravity (IB3 superset — IB3 applies b2Vec2(gravityX, gravityY),
+	 * Control/Physics.as:176; IB2 only ever had vertical). Default 0. Applied at the
+	 * next play like `gravity`.
+	 */
+	gravityX: number;
+	/**
+	 * Restitution COMBINE mode (IB3 superset — b2Settings.useRestitution:
+	 * 0 RES_HIGHEST / 1 RES_AVERAGE / 2 RES_PRODUCT / 3 RES_SQRT / 4 RES_SIN /
+	 * 5 RES_SQRTAVG). Default 0 (highest), which is exactly IB2's fixed behaviour.
+	 * Functional under engine 1 (Box2D 2.1a, which has the combine switch); engine 0
+	 * is hardcoded to highest, engine 2 uses its own solver. Applied at world creation.
+	 */
+	restitutionType: number;
 	/** world size enum (0 small / 1 medium / 2 large). */
 	size: number;
 	/** terrain geometry (0 land / 1 box / 2 empty). */

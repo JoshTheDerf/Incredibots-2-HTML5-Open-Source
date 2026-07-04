@@ -284,6 +284,13 @@ export type Command =
 			 * takes effect at the NEXT play (the backend is chosen at world creation).
 			 */
 			physicsEngine?: number;
+			/**
+			 * IB3 superset (SandboxSettingsPanel): horizontal gravity + restitution
+			 * combine mode. Optional; when absent the current values are preserved.
+			 * Take effect at the NEXT play (applied at world creation).
+			 */
+			gravityX?: number;
+			restitutionType?: number;
 	  }
 	// --- view menu (ControllerGame BuildViewMenu) ---
 	// Display toggles + zoom, ported faithfully. The toggles flip the edit-view

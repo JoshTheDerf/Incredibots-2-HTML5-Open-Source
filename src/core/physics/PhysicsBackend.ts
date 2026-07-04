@@ -99,6 +99,12 @@ export interface WorldDef {
 	gravityX: number;
 	gravityY: number;
 	doSleep: boolean;
+	/**
+	 * Restitution combine mode (IB3 superset — b2Settings.useRestitution). Optional;
+	 * engines that support it (engine 1 / Box2D 2.1a) apply it at world creation,
+	 * others ignore it. 0 = RES_HIGHEST (the default / IB2 behaviour).
+	 */
+	restitutionType?: number;
 }
 
 /** Body pose read-back (for rendering / replay). */

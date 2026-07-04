@@ -1,5 +1,11 @@
 export class SandboxSettings {
   public gravity: number;
+  // IB3 superset: horizontal gravity + restitution combine mode. Serialized with
+  // the settings (AMF writes all public fields); absent on IB2/CE/Jaybit codes ->
+  // loaders guard them to these defaults (0 = no horizontal gravity / RES_HIGHEST,
+  // i.e. IB2's classic behaviour). See GameState.SandboxState for semantics.
+  public gravityX: number = 0;
+  public restitutionType: number = 0;
   public size: number;
   public terrainType: number;
   public terrainTheme: number;

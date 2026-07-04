@@ -729,6 +729,8 @@ export class GameCore {
 					water: waterStateFromSettings(s),
 					physicsEngine: s.physicsEngine,
 					groundStyle: s.groundStyle,
+					gravityX: s.gravityX,
+					restitutionType: s.restitutionType,
 				};
 				terrain = buildTerrainParts(sandbox);
 				for (const p of terrain) p.id = ++this.nextId;
@@ -821,6 +823,9 @@ export class GameCore {
 			// Sandbox ground style (IB2 platform vs IB3 SHORE/ISLAND). Rides on the
 			// SandboxSettings like physicsEngine; drives buildTerrainParts/bounds.
 			groundStyle: s.groundStyle,
+			// IB3 superset physics: horizontal gravity + restitution combine mode.
+			gravityX: s.gravityX,
+			restitutionType: s.restitutionType,
 		};
 
 		this.notifyDepth++;
@@ -923,6 +928,9 @@ export class GameCore {
 			// Sandbox ground style (IB2 platform vs IB3 SHORE/ISLAND). Rides on the
 			// SandboxSettings like physicsEngine; drives buildTerrainParts/bounds.
 			groundStyle: s.groundStyle,
+			// IB3 superset physics: horizontal gravity + restitution combine mode.
+			gravityX: s.gravityX,
+			restitutionType: s.restitutionType,
 		};
 
 		this.notifyDepth++;
@@ -999,6 +1007,8 @@ export class GameCore {
 			);
 			settings.physicsEngine = sb.physicsEngine;
 			settings.groundStyle = sb.groundStyle;
+			settings.gravityX = sb.gravityX;
+			settings.restitutionType = sb.restitutionType;
 			this.challenge.challenge.settings = settings;
 		}
 		return this.challenge.challenge;
@@ -1130,6 +1140,8 @@ export class GameCore {
 		);
 		settings.physicsEngine = s.physicsEngine;
 		settings.groundStyle = s.groundStyle;
+		settings.gravityX = s.gravityX;
+		settings.restitutionType = s.restitutionType;
 		return { data, robot: { parts: robotParts, settings } };
 	}
 
@@ -1189,6 +1201,9 @@ export class GameCore {
 			// Sandbox ground style (IB2 platform vs IB3 SHORE/ISLAND). Rides on the
 			// SandboxSettings like physicsEngine; drives buildTerrainParts/bounds.
 			groundStyle: s.groundStyle,
+			// IB3 superset physics: horizontal gravity + restitution combine mode.
+			gravityX: s.gravityX,
+			restitutionType: s.restitutionType,
 		};
 		const terrain = buildTerrainParts(sandbox);
 		for (const p of terrain) p.id = ++this.nextId;
@@ -3131,9 +3146,12 @@ export class GameCore {
 			lowerY: WORLD_AABB_LOWER.y,
 			upperX: WORLD_AABB_UPPER.x,
 			upperY: WORLD_AABB_UPPER.y,
-			gravityX: GRAVITY.x,
+			// IB3 superset: horizontal gravity (IB2 had none, so this is 0 unless a
+			// design/IB3 import set it) + the restitution combine mode.
+			gravityX: this.state.sandbox.gravityX,
 			gravityY: this.state.sandbox.gravity,
 			doSleep: true,
+			restitutionType: this.state.sandbox.restitutionType,
 		});
 		// Challenge "touching"/"touched" conditions (obj 5/6) and the trigger
 		// runtime both need Box2D contact events. The engine installs its OWN
@@ -4040,6 +4058,10 @@ export class GameCore {
 			// (the backend is chosen at world creation — see applyPlayBackend).
 			physicsEngine: command.physicsEngine ?? this.state.sandbox.physicsEngine,
 			groundStyle: this.state.sandbox.groundStyle,
+			// IB3 superset physics (horizontal gravity + restitution mode): replaced
+			// when the command carries them, preserved otherwise. Take effect next play.
+			gravityX: command.gravityX ?? this.state.sandbox.gravityX,
+			restitutionType: command.restitutionType ?? this.state.sandbox.restitutionType,
 		};
 		// If water is OFF, reseed its (latent, default) surface to the NEW ground's
 		// top so a later enable doesn't flood the terrain (defaultWaterHeight). An

@@ -54,6 +54,7 @@ import {
 	b2RayCastInput,
 	b2RayCastOutput,
 	b2RevoluteJointDef as b2RevoluteJointDef21,
+	b2Settings as b2Settings21,
 	b2TideController,
 	b2Vec2,
 	b2WaveController,
@@ -78,6 +79,10 @@ type WaterController21 = b2BuoyancyController | b2WaveController;
 
 export class Box2D21Backend implements PhysicsBackend<b2World, b2Body, b2Fixture, b2Joint> {
 	createWorld(def: WorldDef): b2World {
+		// IB3 superset: apply the restitution combine mode (b2Settings.useRestitution
+		// is a 2.1a global read by b2Contact when mixing restitution). 0 = RES_HIGHEST
+		// (== engine 0's fixed behaviour), so a default design is unaffected.
+		b2Settings21.useRestitution = def.restitutionType ?? 0;
 		// 2.1a b2World takes gravity + doSleep only — the world AABB bounds (used
 		// by 2.0's fixed broad-phase) are obsolete; the dynamic tree grows freely.
 		return new b2World(new b2Vec2(def.gravityX, def.gravityY), def.doSleep);

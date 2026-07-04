@@ -79,6 +79,9 @@ const TERRAIN_TOP_RGB: ReadonlyArray<readonly [number, number, number]> = [
 /** The canonical sandbox default (createController.ts:37): gravity 15, SMALL, LAND, GRASS, SKY. */
 export const DEFAULT_SANDBOX_SETTINGS = {
 	gravity: 15.0,
+	// IB3 superset, default off/classic: no horizontal gravity, RES_HIGHEST restitution.
+	gravityX: 0,
+	restitutionType: 0,
 	size: SIZE_SMALL,
 	terrainType: TERRAIN_LAND,
 	terrainTheme: 0,

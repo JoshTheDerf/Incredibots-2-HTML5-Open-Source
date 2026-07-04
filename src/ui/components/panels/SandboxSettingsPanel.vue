@@ -37,6 +37,15 @@ const greenValue = ref(sb.backgroundG || 125);
 const blueValue = ref(sb.backgroundB || 255);
 
 const gravity = ref(sb.gravity);
+// IB3 superset: horizontal gravity (m/s^2, may be negative = leftward) and the
+// restitution combine mode. Both default to the classic IB2 behaviour (0 / Highest).
+const gravityX = ref(sb.gravityX);
+const restitutionLabels = ["Highest", "Average", "Product", "Sqrt", "Sin", "Sqrt-Average"];
+const restitutionIndex = ref(sb.restitutionType >= 0 && sb.restitutionType < 6 ? sb.restitutionType : 0);
+const restitutionLabel = computed({
+	get: () => restitutionLabels[restitutionIndex.value] ?? restitutionLabels[0],
+	set: (v: string) => (restitutionIndex.value = Math.max(0, restitutionLabels.indexOf(v))),
+});
 
 // Physics-engine selector (P1.5b-2b / E3-4). 0 = IB2 (classic Box2DFlash 2.0.2,
 // the default) | 1 = IB3 (2.1a) | 2 = Box2D 3 (beta, box2d3-wasm). Seeded from
@@ -106,6 +115,12 @@ function clampGravity(n: number): number {
 	return Math.min(30, Math.max(0, n));
 }
 
+// Horizontal gravity is symmetric (leftward/rightward), so -30..30.
+function clampGravityX(n: number): number {
+	if (Number.isNaN(n)) return 0;
+	return Math.min(30, Math.max(-30, n));
+}
+
 function onOk(): void {
 	// Faithful port of AdvancedSandboxWindow.okButtonPressed: build a fresh
 	// SandboxSettings from the widgets (with the legacy clamps) and apply it.
@@ -120,6 +135,8 @@ function onOk(): void {
 		backgroundG: clampByte(Number(greenValue.value)),
 		backgroundB: clampByte(Number(blueValue.value)),
 		physicsEngine: engineIndex.value,
+		gravityX: clampGravityX(Number(gravityX.value)),
+		restitutionType: restitutionIndex.value,
 	});
 	emit("ok");
 }
@@ -223,6 +240,33 @@ function onCancel(): void {
 					class="gravity-input"
 					@update:model-value="(v) => (gravity = clampGravity(Number(v)))"
 				/>
+			</div>
+
+			<!-- IB3 superset: horizontal gravity (negative = leftward). -->
+			<div class="gravity-block">
+				<label class="field-label gravity-label">Gravity X:</label>
+				<USlider
+					:model-value="gravityX"
+					:min="-30"
+					:max="30"
+					:step="0.1"
+					size="sm"
+					class="gravity-slider"
+					@update:model-value="(v) => (gravityX = clampGravityX(Array.isArray(v) ? v[0] : v))"
+				/>
+				<UInput
+					:model-value="gravityX"
+					type="number"
+					size="xs"
+					class="gravity-input"
+					@update:model-value="(v) => (gravityX = clampGravityX(Number(v)))"
+				/>
+			</div>
+
+			<!-- IB3 superset: restitution (bounce) combine mode. -->
+			<div class="field-row">
+				<label class="field-label" for="sandbox-restitution">Bounce mode:</label>
+				<USelect id="sandbox-restitution" v-model="restitutionLabel" :items="restitutionLabels" size="sm" />
 			</div>
 		</div>
 
