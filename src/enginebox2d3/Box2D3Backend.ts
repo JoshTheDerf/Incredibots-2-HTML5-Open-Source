@@ -78,8 +78,14 @@
 // piston self-collision is already handled by the shared negative groupIndex.
 // (Follow-up; engine 2 is not user-reachable until E3-4.)
 //
-// DEFERRED to later sub-phases (throw with a clear marker):
-//   - createWaterController / addWaterBody / waterSurface — E3-3 (manual buoyancy).
+// WATER / BUOYANCY (E3-3) — v3 has NO controller framework, so createWaterController
+// builds a PLAIN-JS controller (def + registered bodies + animated surface state)
+// and step() applies the buoyancy/tide/wave forces MANUALLY before b2World_Step,
+// porting the b2BuoyancyController/b2TideController/b2WaveController math (src/Box2D21)
+// adapted to v3 shape geometry. Bomb.Explode (engine-agnostic ray fan) runs unchanged
+// through the queryAABB / shapeTestSegment / applyForce seam; the only additions this
+// phase needed were the duck-typed b2Body.GetXForm()/m_shapeCount and b2Shape.
+// GetLocalPosition()/GetFilterData() the shared bomb + ContactFilter code calls.
 //
 // EMBIND: v3 struct getters + `new` structs are heap-backed ClassHandles; each
 // getter returns a FRESH handle. Every transient created here is .delete()d.
@@ -88,6 +94,7 @@
 
 import { b2Joint, b2Shape } from "../Box2D";
 import type { b2BodyDef, b2CircleDef, b2JointDef, b2MassData, b2PolygonDef, b2PrismaticJointDef, b2RevoluteJointDef, b2ShapeDef } from "../Box2D";
+import { WATER_TYPE_WAVE } from "../core/physics/PhysicsBackend";
 import type {
 	BodyTransform,
 	ContactHooks,
@@ -136,10 +143,24 @@ function readVec(v: { x: number; y: number; delete(): void }): Vec2Like {
  */
 export class Box2D3Body {
 	public userData: unknown = null;
+	/**
+	 * The shapes created on this body, in creation order. v3 has no cheap
+	 * per-body shape enumeration off a raw id, so createShape tracks them here
+	 * (populated only on the REAL createBody wrapper; throwaway GetBody()
+	 * wrappers stay empty). Used by (a) the manual buoyancy pass, which iterates
+	 * each registered body's shapes, and (b) Bomb.Explode's `m_shapeCount` weld
+	 * check (b2Body.m_shapeCount in engines 0/1).
+	 */
+	public readonly shapes: Box2D3Shape[] = [];
 	constructor(
 		private readonly m: Box2D3Module,
 		public readonly id: RawBodyId,
 	) {}
+
+	/** 2.0 b2Body.m_shapeCount — used by Bomb.Explode's welded-cluster branch. */
+	public get m_shapeCount(): number {
+		return this.shapes.length;
+	}
 
 	// biome-ignore lint/suspicious/noExplicitAny: matches the 2.0 b2Body.GetUserData() any.
 	public GetUserData(): any {
@@ -200,6 +221,19 @@ export class Box2D3Body {
 		p.delete();
 		r.delete();
 	}
+	/**
+	 * 2.0 b2Body.GetXForm() -> a b2XForm { position, R: b2Mat22 } reconstructed
+	 * from the v3 position + rotation. Bomb.Explode reads xf.position / xf.R.colN
+	 * to map its local circle centre to world; the 2.0 column-major rotation is
+	 * R.col1 = (cos, sin), R.col2 = (-sin, cos).
+	 */
+	public GetXForm(): { position: Vec2Like; R: { col1: Vec2Like; col2: Vec2Like } } {
+		const position = readVec(this.m.b2Body_GetPosition(this.id));
+		const a = this.GetAngle();
+		const c = Math.cos(a);
+		const s = Math.sin(a);
+		return { position, R: { col1: { x: c, y: s }, col2: { x: -s, y: c } } };
+	}
 }
 
 /** A v3 shape wrapper: userData + the filter used at creation (parts read m_filter.groupIndex). */
@@ -216,6 +250,22 @@ export class Box2D3Shape {
 	// biome-ignore lint/suspicious/noExplicitAny: matches the 2.0 shape.GetUserData() any.
 	public GetUserData(): any {
 		return this.userData;
+	}
+	/** 2.0 shape.GetFilterData() — the base b2ContactFilter.ShouldCollide reads this. */
+	public GetFilterData(): { categoryBits: number; maskBits: number; groupIndex: number } {
+		return this.m_filter;
+	}
+	/**
+	 * 2.0 b2CircleShape.GetLocalPosition() — the circle's body-local centre.
+	 * Bomb.Explode calls this on its own (circle) shape; reads the v3 circle geom.
+	 */
+	public GetLocalPosition(): Vec2Like {
+		const circle = this.m.b2Shape_GetCircle(this.id);
+		const center = circle.center;
+		const out = { x: center.x, y: center.y };
+		center.delete();
+		circle.delete();
+		return out;
 	}
 	/** Owning body (2.0 fixture.GetBody()); a throwaway wrapper is fine (reads only). */
 	public GetBody(): Box2D3Body {
@@ -296,6 +346,12 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 	private shapesById = new Map<string, Box2D3Shape>();
 	/** Engine-neutral contact hooks, drained after each step (v3 has no listener). */
 	private contactHooks: ContactHooks | null = null;
+	/**
+	 * Active water controllers for the current world. v3 has NO controller
+	 * framework, so buoyancy/tide/wave are applied MANUALLY here at the top of
+	 * each step() (see the E3-3 block below). Reset with the world.
+	 */
+	private waterControllers: Box2D3WaterController[] = [];
 
 	constructor(module: Box2D3Module) {
 		this.m = module;
@@ -308,6 +364,7 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 		// previous play (the backend is a process-wide singleton).
 		this.shapesById = new Map();
 		this.contactHooks = null;
+		this.waterControllers = [];
 		const wd = m.b2DefaultWorldDef();
 		const g = new m.b2Vec2(def.gravityX, def.gravityY);
 		wd.gravity = g;
@@ -320,6 +377,10 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 	}
 
 	step(world: RawWorldId, dt: number, _iterations: number): void {
+		// v3 has NO controller framework: engines 0/1 step their buoyancy/tide/wave
+		// controllers INSIDE world.Solve (top of the step); we mirror that by
+		// applying the same forces MANUALLY here, BEFORE integration.
+		for (const c of this.waterControllers) this.applyWaterController(c, dt);
 		// v3 auto-clears applied forces each step, so (unlike 2.1a) no ClearForces.
 		this.m.b2World_Step(world, dt, B2_SUB_STEP_COUNT);
 		// v3 has no contact listener: poll begin/end touch events now and drive the
@@ -404,11 +465,14 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 		const shape = new Box2D3Shape(m, raw, filter);
 		if (shapeDef.userData != null) shape.userData = shapeDef.userData;
 		this.shapesById.set(keyOf(raw as IdTriple), shape);
+		body.shapes.push(shape);
 		return shape;
 	}
 
-	destroyShape(_body: Box2D3Body, shape: Box2D3Shape): void {
+	destroyShape(body: Box2D3Body, shape: Box2D3Shape): void {
 		this.shapesById.delete(keyOf(shape.id as IdTriple));
+		const idx = body.shapes.indexOf(shape);
+		if (idx >= 0) body.shapes.splice(idx, 1);
 		// updateBodyMass=true: recompute the owning body's mass after removal.
 		this.m.b2DestroyShape(shape.id, true);
 	}
@@ -732,17 +796,272 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 		else hooks.onRemove(point);
 	}
 
-	// --- water / buoyancy (deferred to E3-3) ---
-	createWaterController(_world: RawWorldId, _def: WaterControllerDef): unknown {
-		throw new Error("Box2D3Backend.createWaterController: water lands in E3-3");
+	// --- water / buoyancy (E3-3: MANUAL per-step force application) ---
+	//
+	// v3 has no b2*Controller framework, so instead of newing a native controller
+	// (engines 0/1) we build a plain JS controller object and apply the ported
+	// b2BuoyancyController / b2TideController / b2WaveController math ourselves in
+	// step() (see applyWaterController). WaterSystem still owns the density scale +
+	// surface-animation closures on the def; this backend only stores the def, the
+	// registered bodies, and the animated surface state. The density is already
+	// Util.DensityToBox2D-scaled (same as engines 0/1).
+	createWaterController(world: RawWorldId, def: WaterControllerDef): Box2D3WaterController {
+		const controller: Box2D3WaterController = {
+			world,
+			def,
+			bodies: new Set<Box2D3Body>(),
+			// 2.1a b2TideController.stepTracker: accumulated sim seconds, feeds
+			// tideFunc/normalXFunc. Starts at 0 (first Step captures origOffset).
+			time: 0,
+			// Current (tide-animated) surface plane. normal is (normalX, -1).
+			origOffset: def.surfaceOffset,
+			offset: def.surfaceOffset,
+			normalX: 0,
+			// Wave state (2.1a b2WaveController). The wave type builds the fixed
+			// ContinuousWaves generator WaterControl.Init used: sin, amp 1, width 5,
+			// speed 0.1 (WaterControl.as :132; box2d21 Backend createWaterController).
+			waves: [],
+			waveGenBase:
+				def.type === WATER_TYPE_WAVE
+					? { x: 0, amplitude: 1, width: 5, speed: 0.1, decay: 0, cos: false, fromGenerator: true }
+					: null,
+			// b2WaveController.ContinuousWaves: waveGenCounter = waveGenBase.width.
+			waveGenCounter: def.type === WATER_TYPE_WAVE ? 5 : 0,
+		};
+		this.waterControllers.push(controller);
+		return controller;
 	}
 
-	addWaterBody(_controller: unknown, _body: Box2D3Body): void {
-		throw new Error("Box2D3Backend.addWaterBody: water lands in E3-3");
+	addWaterBody(controller: Box2D3WaterController, body: Box2D3Body): void {
+		controller.bodies.add(body); // Set dedups (WaterSystem also guards).
 	}
 
-	waterSurface(_controller: unknown): WaterSurfaceReadback {
-		throw new Error("Box2D3Backend.waterSurface: water lands in E3-3");
+	waterSurface(controller: Box2D3WaterController): WaterSurfaceReadback {
+		// Mirror Box2D21Backend.waterSurface: current offset + normal.x, plus any
+		// live travelling waves (wave type only) for the renderer's surface profile.
+		const waves: WaterSurfaceReadback["waves"] = controller.waves.map((w) => ({
+			x: w.x,
+			amplitude: w.amplitude,
+			width: w.width,
+			fn: w.cos ? ("cos" as const) : ("sin" as const),
+		}));
+		return { offset: controller.offset, normalX: controller.normalX, waves };
+	}
+
+	/**
+	 * Apply one step of buoyancy/drag for a water controller BEFORE b2World_Step,
+	 * PORTED from src/Box2D21 b2TideController.Step + b2BuoyancyController.Step
+	 * (tide) and b2WaveController.Step (wave). Advances the controller's sim-time
+	 * so tide/wave animate. The submerged area + centroid per shape is computed by
+	 * the ported b2*Shape.ComputeSubmergedArea math against the current surface.
+	 */
+	private applyWaterController(c: Box2D3WaterController, dt: number): void {
+		const m = this.m;
+		const g = m.b2World_GetGravity(c.world);
+		const gx = g.x;
+		const gy = g.y;
+		g.delete();
+		const isWave = c.def.type === WATER_TYPE_WAVE;
+
+		if (isWave) {
+			this.stepWaveGenerator(c);
+		} else {
+			// b2TideController.Step: offset/normal.x = func(stepTracker) + orig.
+			c.offset = (c.def.tideFunc ? c.def.tideFunc(c.time) : 0) + c.origOffset;
+			c.normalX = c.def.normalXFunc ? c.def.normalXFunc(c.time) : 0;
+		}
+
+		for (const body of c.bodies) {
+			// Skip static bodies (forces are no-ops; WaterSystem already excludes them).
+			if (this.bodyIsStatic(body)) continue;
+			// Per-body surface plane: tide uses the shared animated plane; wave
+			// derives a per-body normal/offset from the waves under the body's x.
+			let nx: number;
+			let ny: number;
+			let offset: number;
+			if (isWave) {
+				const px = m.b2Body_GetPosition(body.id);
+				const bx = px.x;
+				px.delete();
+				const wave = this.waveSurfaceAt(c, body, bx);
+				nx = wave.nx;
+				ny = wave.ny;
+				offset = wave.offset;
+			} else {
+				nx = c.normalX;
+				ny = -1;
+				offset = c.offset;
+			}
+			this.applyBuoyancyToBody(c, body, nx, ny, offset, gx, gy);
+		}
+
+		c.time += dt;
+	}
+
+	/** b2WaveController generator: spawn a wave from the base every width/speed steps. */
+	private stepWaveGenerator(c: Box2D3WaterController): void {
+		const base = c.waveGenBase;
+		if (!base) return;
+		c.waveGenCounter += base.speed;
+		if (c.waveGenCounter > base.width || c.waveGenCounter < -base.width) {
+			c.waves.push({ ...base });
+			c.waveGenCounter = 0;
+		}
+	}
+
+	/**
+	 * b2WaveController.StepAndCheckForWave + waveNormal/waveOffset derivation: step
+	 * every wave once (decay + travel, cull off-screen), then sum the value/normalX
+	 * of the waves overlapping the body's x, and fold into a per-body surface plane.
+	 */
+	private waveSurfaceAt(
+		c: Box2D3WaterController,
+		body: Box2D3Body,
+		bx: number,
+	): { nx: number; ny: number; offset: number } {
+		const MAX_AMP = 500;
+		let val = 0;
+		let normalX = 0;
+		for (let i = c.waves.length - 1; i >= 0; i--) {
+			const w = c.waves[i];
+			if (w.amplitude > MAX_AMP) w.amplitude = MAX_AMP;
+			// b2Wave.Step: decay amplitude, travel by speed.
+			if (w.amplitude > 0) w.amplitude -= w.decay;
+			if (w.amplitude < 0) w.amplitude = 0;
+			w.x += w.speed;
+			if (w.amplitude <= 0) {
+				c.waves.splice(i, 1);
+				continue;
+			}
+			const dist = bx - w.x;
+			const half = w.width / 2;
+			if (dist > -half && dist < half) {
+				val += waveValueAt(w, dist);
+				normalX += waveNormalXAt(w, dist);
+			}
+		}
+		if (val > MAX_AMP) val = MAX_AMP;
+		else if (val < -MAX_AMP) val = -MAX_AMP;
+		if (normalX > 1) normalX = 1;
+		else if (normalX < -1) normalX = -1;
+		// waveNormal = (normalX, -1) normalized; waveOffset per b2WaveController.Step.
+		let wnx = normalX;
+		let wny = -1;
+		const len = Math.hypot(wnx, wny) || 1;
+		wnx /= len;
+		wny /= len;
+		const offset = val - (-wnx / wny) * normalX + c.def.surfaceOffset;
+		return { nx: wnx, ny: wny, offset };
+	}
+
+	/**
+	 * b2BuoyancyController.Step body loop: sum submerged area + centroid over the
+	 * body's shapes against the surface plane (nx,ny · p = offset), then apply the
+	 * buoyancy force (density·area·-gravity at the submerged centroid), linear drag
+	 * (-linearDrag·area·relativeVel) and angular drag (-I/m·area·ω·angularDrag).
+	 */
+	private applyBuoyancyToBody(
+		c: Box2D3WaterController,
+		body: Box2D3Body,
+		nx: number,
+		ny: number,
+		offset: number,
+		gx: number,
+		gy: number,
+	): void {
+		const m = this.m;
+		// Body transform (origin + angle) for the local->world shape geometry.
+		const pos = m.b2Body_GetPosition(body.id);
+		const px = pos.x;
+		const py = pos.y;
+		pos.delete();
+		const angle = body.GetAngle();
+		const cos = Math.cos(angle);
+		const sin = Math.sin(angle);
+
+		let area = 0;
+		let acx = 0;
+		let acy = 0;
+		for (const shape of body.shapes) {
+			// Mixed welded groups: skip a shape explicitly flagged non-buoyant
+			// (b2BuoyancyController.Step: !(ud && !ud.isBuoyant)).
+			const ud = shape.userData as { isBuoyant?: boolean } | null;
+			if (ud && ud.isBuoyant === false) continue;
+			const sub = this.shapeSubmergedArea(shape, px, py, cos, sin, nx, ny, offset);
+			if (!sub) continue;
+			area += sub.area;
+			acx += sub.area * sub.cx;
+			acy += sub.area * sub.cy;
+		}
+		if (area < Number.MIN_VALUE) return;
+		acx /= area;
+		acy /= area;
+
+		// Buoyancy: -gravity * (density * area) at the submerged centroid.
+		const bf = { x: -gx * c.def.density * area, y: -gy * c.def.density * area };
+		this.applyForce(body, bf, { x: acx, y: acy });
+
+		// Linear drag: -linearDrag * area * velocityAtCentroid (controller velocity 0).
+		const cp = new m.b2Vec2(acx, acy);
+		const vpt = m.b2Body_GetWorldPointVelocity(body.id, cp);
+		const dragScale = -c.def.linearDrag * area;
+		const df = { x: vpt.x * dragScale, y: vpt.y * dragScale };
+		vpt.delete();
+		cp.delete();
+		this.applyForce(body, df, { x: acx, y: acy });
+
+		// Angular drag: -I/m * area * angularVelocity * angularDrag.
+		const mass = m.b2Body_GetMass(body.id);
+		if (mass > 0) {
+			const inertia = m.b2Body_GetRotationalInertia(body.id);
+			const omega = m.b2Body_GetAngularVelocity(body.id);
+			const torque = (-inertia / mass) * area * omega * c.def.angularDrag;
+			m.b2Body_ApplyTorque(body.id, torque, true);
+		}
+	}
+
+	/**
+	 * ComputeSubmergedArea for one v3 shape against the world surface plane
+	 * (nx,ny · p = offset), returning submerged area + WORLD centroid, or null if
+	 * dry. PORTS b2CircleShape / b2PolygonShape.ComputeSubmergedArea (src/Box2D21).
+	 */
+	private shapeSubmergedArea(
+		shape: Box2D3Shape,
+		px: number,
+		py: number,
+		cos: number,
+		sin: number,
+		nx: number,
+		ny: number,
+		offset: number,
+	): { area: number; cx: number; cy: number } | null {
+		const m = this.m;
+		const type = m.b2Shape_GetType(shape.id);
+		const isCircle = type.value === m.b2ShapeType.b2_circleShape.value;
+		if (isCircle) {
+			const circle = m.b2Shape_GetCircle(shape.id);
+			const center = circle.center;
+			const lx = center.x;
+			const ly = center.y;
+			const r = circle.radius;
+			center.delete();
+			circle.delete();
+			// World circle centre.
+			const wx = px + cos * lx - sin * ly;
+			const wy = py + sin * lx + cos * ly;
+			return circleSubmergedArea(wx, wy, r, nx, ny, offset);
+		}
+		// polygon
+		const poly = m.b2Shape_GetPolygon(shape.id);
+		const count = poly.count;
+		const verts: Vec2Like[] = [];
+		for (let i = 0; i < count; i++) {
+			const v = poly.GetVertex(i);
+			verts.push({ x: v.x, y: v.y });
+			v.delete();
+		}
+		poly.delete();
+		return polygonSubmergedArea(verts, px, py, cos, sin, nx, ny, offset);
 	}
 }
 
@@ -756,4 +1075,195 @@ function clampLimit(v: number): number {
 /** Free an Embind ClassHandle if it exposes delete() (event handles do). */
 function deleteHandle(h: unknown): void {
 	if (h && typeof (h as { delete?: unknown }).delete === "function") (h as { delete(): void }).delete();
+}
+
+// ---------------------------------------------------------------------------
+// E3-3 water: the plain-JS controller + the ported submerged-area / wave math.
+// v3 has no controller framework, so this is applied manually in step() — see
+// Box2D3Backend.applyWaterController. All math is a direct port of the src/
+// Box2D21 controllers (b2BuoyancyController / b2TideController / b2WaveController
+// + b2*Shape.ComputeSubmergedArea + b2Wave).
+// ---------------------------------------------------------------------------
+
+/** One live travelling wave (2.1a b2Wave), plain data. cos == waveFunc is Math.cos. */
+interface Box2D3Wave {
+	x: number;
+	amplitude: number;
+	width: number;
+	speed: number;
+	decay: number;
+	cos: boolean;
+	fromGenerator: boolean;
+}
+
+/** The engine-2 manual water controller (analogue of the 2.1a b2*Controller). */
+interface Box2D3WaterController {
+	readonly world: RawWorldId;
+	readonly def: WaterControllerDef;
+	readonly bodies: Set<Box2D3Body>;
+	/** Accumulated sim seconds (2.1a b2TideController.stepTracker). */
+	time: number;
+	/** Initial (un-animated) offset — 2.1a b2TideController.origOffset. */
+	readonly origOffset: number;
+	/** Current animated surface offset (tide) / static offset (wave). */
+	offset: number;
+	/** Current animated surface normal.x (tide); 0 for wave (per-body instead). */
+	normalX: number;
+	/** Live travelling waves (wave type). */
+	readonly waves: Box2D3Wave[];
+	/** The continuous-wave generator template (wave type), else null. */
+	readonly waveGenBase: Box2D3Wave | null;
+	/** 2.1a b2WaveController.waveGenCounter. */
+	waveGenCounter: number;
+}
+
+/** b2Wave.valueAt (src/Box2D21 .../WaveController/b2Wave.ts). */
+function waveValueAt(w: Box2D3Wave, x: number): number {
+	const half = w.width / 2;
+	if (x > half || x < -half) return 0;
+	const f = w.cos ? Math.cos : Math.sin;
+	return w.amplitude * f((Math.PI / half) * x) + (w.cos ? w.amplitude : 0);
+}
+
+/** b2Wave.normalXAt (src/Box2D21 .../WaveController/b2Wave.ts). */
+function waveNormalXAt(w: Box2D3Wave, x: number): number {
+	const half = w.width / 2;
+	// waveFunc cos -> derivative uses sin; sin -> uses cos.
+	const f = w.cos ? Math.sin : Math.cos;
+	const val = w.amplitude * f((Math.PI / half) * x);
+	if (!Number.isFinite(val)) return val > 0 ? 0.1 : -0.2;
+	return val * (val > 0 ? 0.1 : 0.2);
+}
+
+/**
+ * b2CircleShape.ComputeSubmergedArea — the world-space circle centre (wx,wy) +
+ * radius against the plane (nx,ny)·p = offset. Returns submerged area + world
+ * centroid, or null if dry.
+ */
+function circleSubmergedArea(
+	wx: number,
+	wy: number,
+	r: number,
+	nx: number,
+	ny: number,
+	offset: number,
+): { area: number; cx: number; cy: number } | null {
+	const l = -(nx * wx + ny * wy - offset);
+	if (l < -r + Number.MIN_VALUE) return null; // fully dry
+	if (l > r) return { area: Math.PI * r * r, cx: wx, cy: wy }; // fully submerged
+	const r2 = r * r;
+	const l2 = l * l;
+	const area = r2 * (Math.asin(l / r) + Math.PI / 2) + l * Math.sqrt(r2 - l2);
+	const com = ((-2 / 3) * (r2 - l2) ** 1.5) / area;
+	return { area, cx: wx + nx * com, cy: wy + ny * com };
+}
+
+/**
+ * b2PolygonShape.ComputeSubmergedArea — clip the body-local polygon (verts) at
+ * the transform (px,py,cos,sin) against the plane (nx,ny)·p = offset. Returns
+ * submerged area + world centroid, or null if dry.
+ */
+function polygonSubmergedArea(
+	verts: Vec2Like[],
+	px: number,
+	py: number,
+	cos: number,
+	sin: number,
+	nx: number,
+	ny: number,
+	offset: number,
+): { area: number; cx: number; cy: number } | null {
+	const count = verts.length;
+	// normalL = MulTMV(R, normal) — rotate the world normal by -angle.
+	const nlx = cos * nx + sin * ny;
+	const nly = -sin * nx + cos * ny;
+	const offsetL = offset - (nx * px + ny * py);
+	const toWorld = (lx: number, ly: number) => ({ x: px + cos * lx - sin * ly, y: py + sin * lx + cos * ly });
+
+	const depths: number[] = new Array(count);
+	let diveCount = 0;
+	let intoIndex = -1;
+	let outoIndex = -1;
+	let lastSubmerged = false;
+	for (let i = 0; i < count; i++) {
+		depths[i] = nlx * verts[i].x + nly * verts[i].y - offsetL;
+		const isSubmerged = depths[i] < -Number.MIN_VALUE;
+		if (i > 0) {
+			if (isSubmerged) {
+				if (!lastSubmerged) {
+					intoIndex = i - 1;
+					diveCount++;
+				}
+			} else if (lastSubmerged) {
+				outoIndex = i - 1;
+				diveCount++;
+			}
+		}
+		lastSubmerged = isSubmerged;
+	}
+	switch (diveCount) {
+		case 0:
+			if (lastSubmerged) {
+				// Fully submerged: whole polygon area + centroid (shoelace).
+				const full = polygonAreaCentroid(verts);
+				const w = toWorld(full.cx, full.cy);
+				return { area: full.area, cx: w.x, cy: w.y };
+			}
+			return null;
+		case 1:
+			if (intoIndex === -1) intoIndex = count - 1;
+			else outoIndex = count - 1;
+			break;
+	}
+	const intoIndex2 = (intoIndex + 1) % count;
+	const outoIndex2 = (outoIndex + 1) % count;
+	const intoLambda = (0 - depths[intoIndex]) / (depths[intoIndex2] - depths[intoIndex]);
+	const outoLambda = (0 - depths[outoIndex]) / (depths[outoIndex2] - depths[outoIndex]);
+	const intoVec = {
+		x: verts[intoIndex].x * (1 - intoLambda) + verts[intoIndex2].x * intoLambda,
+		y: verts[intoIndex].y * (1 - intoLambda) + verts[intoIndex2].y * intoLambda,
+	};
+	const outoVec = {
+		x: verts[outoIndex].x * (1 - outoLambda) + verts[outoIndex2].x * outoLambda,
+		y: verts[outoIndex].y * (1 - outoLambda) + verts[outoIndex2].y * outoLambda,
+	};
+	let area = 0;
+	let cx = 0;
+	let cy = 0;
+	let p2 = verts[intoIndex2];
+	let i = intoIndex2;
+	while (i !== outoIndex2) {
+		i = (i + 1) % count;
+		const p3 = i === outoIndex2 ? outoVec : verts[i];
+		const triangleArea =
+			0.5 * ((p2.x - intoVec.x) * (p3.y - intoVec.y) - (p2.y - intoVec.y) * (p3.x - intoVec.x));
+		area += triangleArea;
+		cx += (triangleArea * (intoVec.x + p2.x + p3.x)) / 3;
+		cy += (triangleArea * (intoVec.y + p2.y + p3.y)) / 3;
+		p2 = p3;
+	}
+	if (area < Number.MIN_VALUE) return null;
+	cx /= area;
+	cy /= area;
+	const w = toWorld(cx, cy);
+	return { area, cx: w.x, cy: w.y };
+}
+
+/** Local polygon area + centroid (shoelace), for the fully-submerged branch. */
+function polygonAreaCentroid(verts: Vec2Like[]): { area: number; cx: number; cy: number } {
+	let area = 0;
+	let cx = 0;
+	let cy = 0;
+	const n = verts.length;
+	for (let i = 0; i < n; i++) {
+		const a = verts[i];
+		const b = verts[(i + 1) % n];
+		const cross = a.x * b.y - b.x * a.y;
+		area += cross;
+		cx += (a.x + b.x) * cross;
+		cy += (a.y + b.y) * cross;
+	}
+	area *= 0.5;
+	const denom = 6 * area;
+	return { area: Math.abs(area), cx: cx / denom, cy: cy / denom };
 }
