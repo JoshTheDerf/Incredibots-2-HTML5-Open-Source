@@ -12,6 +12,13 @@ import type { WaterState } from "./waterSystem";
 
 export type ToolMode =
 	| "select"
+	// "pan" is the DESELECTED state: the Select button toggled OFF, with no other
+	// tool active. There is no legacy IB2 equivalent (ControllerGame always had a
+	// mode); it exists so a single-pointer drag can PAN the world instead of
+	// drawing a selection marquee. The Select tool OWNS the marquee (box multi-
+	// select) — see GameCanvas.onPointerDown — so panning needs its own no-tool
+	// mode, reached by toggling Select off in the ToolPalette.
+	| "pan"
 	| "newCircle"
 	| "newRect"
 	| "newTriangle"

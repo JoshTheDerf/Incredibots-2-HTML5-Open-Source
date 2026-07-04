@@ -85,6 +85,17 @@ const partsRow2: ToolDef[] = [
 const currentTool = computed(() => game.edit.tool);
 
 function selectTool(tool: ToolMode): void {
+	// The Select pointer is a TOGGLE: clicking it while it is already the active
+	// tool turns selection OFF into the "pan" state (no active tool), where a
+	// single-pointer drag pans the world instead of drawing a selection marquee.
+	// The marquee (box multi-select) requires the Select tool ACTIVE — see
+	// GameCanvas.onPointerDown — so pan needs its own deselected mode. Every other
+	// tool is a plain set (no toggle-off). When tool === "pan" no button shows as
+	// pressed, so the palette reflects the deselected state via `:pressed`.
+	if (tool === "select" && game.edit.tool === "select") {
+		game.dispatch({ type: "setTool", tool: "pan" });
+		return;
+	}
 	game.dispatch({ type: "setTool", tool });
 }
 

@@ -622,6 +622,17 @@ function onPointerDown(event: PointerEvent): void {
 		return;
 	}
 
+	// "pan" is the DESELECTED tool (Select toggled off; see Command.ts ToolMode):
+	// there is no active editing tool, so a single-pointer drag simply PANS the
+	// world — no select, no marquee, no part-drag. This is the mode a user drops
+	// into to navigate the sandbox. (Two-finger pinch is handled upstream and is
+	// unaffected; it aborts any single-pointer gesture on the second pointer.)
+	if (tool === "pan") {
+		gesture = { kind: "pan", lastScreen: { x: s.x, y: s.y } };
+		container.value.setPointerCapture(event.pointerId);
+		return;
+	}
+
 	if (tool !== "select") return;
 
 	// Post-creation Polygon point editing: when exactly one Polygon is selected,
@@ -677,17 +688,19 @@ function onPointerDown(event: PointerEvent): void {
 		return;
 	}
 
-	// Pointer-down on empty space (ControllerGame.ts:1466-1486). The legacy splits
-	// on the shift key: with SHIFT held it begins a BOX_SELECTING marquee
-	// (:1466-1469); with NO modifier it PANS the world by dragging (:1471-1476).
-	// Either way the current selection is cleared (:1479). We mirror that split
-	// exactly — a plain empty-drag pans the camera; a shift empty-drag marquees.
+	// Pointer-down on empty space while the SELECT tool is active
+	// (ControllerGame.ts:1466-1486). The legacy editor split on the shift key:
+	// SHIFT held → BOX_SELECTING marquee (:1466-1469); no modifier → PAN by
+	// dragging (:1471-1476). We DEVIATE deliberately: with the Select tool active
+	// the marquee TAKES PRECEDENCE and an empty-space drag ALWAYS draws it,
+	// suppressing pan. This is what makes box multi-select work on touch, where
+	// there is no shift key to hold; panning now lives in the deselected "pan"
+	// tool (handled above — toggle Select off to pan). The current selection is
+	// still cleared first, matching the legacy empty-down (:1479); a modifier no
+	// longer changes the gesture (marquee commit replaces the selection either
+	// way).
 	game.dispatch({ type: "clearSelection" });
-	if (additive) {
-		gesture = { kind: "marquee", origin: { x: world.x, y: world.y }, current: { x: world.x, y: world.y } };
-	} else {
-		gesture = { kind: "pan", lastScreen: { x: s.x, y: s.y } };
-	}
+	gesture = { kind: "marquee", origin: { x: world.x, y: world.y }, current: { x: world.x, y: world.y } };
 	container.value.setPointerCapture(event.pointerId);
 }
 
