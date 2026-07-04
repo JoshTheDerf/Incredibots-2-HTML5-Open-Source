@@ -206,6 +206,16 @@ export interface PhysicsBackend<W = unknown, B = unknown, S = unknown, J = unkno
 	bodyVelocity(body: B): Vec2Like;
 	bodyTransform(body: B): BodyTransform;
 
+	// --- render-side body enumeration ---
+	/**
+	 * Invoke `cb` for every live body in the world — the render interpolator's
+	 * pre-step pose snapshot needs the full body list. Engines 0/1 walk the
+	 * world's native b2Body list (world.GetBodyList()/GetNext()); engine 2 (Box2D
+	 * v3, which has NO body-enumeration API off a raw world id) iterates the
+	 * bodies it tracks itself. Render-only — never touches the deterministic sim.
+	 */
+	forEachBody(world: W, cb: (body: B) => void): void;
+
 	// --- per-frame handle ops whose method names differ across the ports ---
 	/** Wake a sleeping body (2.0 WakeUp / 2.1a SetAwake(true)). */
 	wakeBody(body: B): void;

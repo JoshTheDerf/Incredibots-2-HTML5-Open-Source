@@ -33,6 +33,7 @@ import { RenderInterpolator } from "../renderer/interpolation";
 import { soundService } from "../sound";
 import { GameCore } from "../../core/GameCore";
 import { createInitialState } from "../../core/GameState";
+import { getPhysicsBackend } from "../../Parts/partGlobals";
 import { Draw } from "../../Game/Draw";
 import replayDatUrl from "../../../resource/replay.dat";
 import robotDatUrl from "../../../resource/robot.dat";
@@ -118,7 +119,7 @@ function advanceDemo(): void {
 	while (demoAccMs >= DEMO_FRAME_MS && steps < 4) {
 		if (demoCore.getState().sim.phase === "running") {
 			const world = demoCore.getState().world;
-			if (world) demoInterpolator.snapshot(world);
+			if (world) demoInterpolator.snapshot(world, getPhysicsBackend());
 			demoCore.dispatch({ type: "step" });
 		}
 		if (demoCore.getState().replay.finished) demoCore.dispatch({ type: "viewReplayAgain" });

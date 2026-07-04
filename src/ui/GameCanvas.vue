@@ -35,6 +35,7 @@ import {
 import { screenToWorld, worldToScreen, hitTestPart, partsInBox } from "./renderer/sceneRenderer";
 import { RenderInterpolator } from "./renderer/interpolation";
 import { ShapePart } from "../Parts/ShapePart";
+import { getPhysicsBackend } from "../Parts/partGlobals";
 import { SkyRenderer } from "./renderer/skyRenderer";
 import { GroundRenderer } from "./renderer/groundRenderer";
 import { TutorialGroundRenderer } from "./renderer/tutorialGroundRenderer";
@@ -1218,7 +1219,7 @@ function drawFrame(): void {
 			// Snapshot every body's pose BEFORE the step — the "previous" state the
 			// interpolated draw blends from. On multi-step catch-up frames only the
 			// last capture survives, i.e. prev is always exactly one step behind.
-			if (state.world) interpolator.snapshot(state.world);
+			if (state.world) interpolator.snapshot(state.world, getPhysicsBackend());
 			game.dispatch({ type: "step" });
 			simAccMs -= SIM_FRAME_MS;
 			steps++;

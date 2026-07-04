@@ -170,6 +170,16 @@ export class Box2D3Body {
 		return this.shapes.length;
 	}
 
+	/**
+	 * 2.0 b2Body.GetShapeList() — the FIRST shape on this body (2.0 returns the
+	 * head of the body's shape list). Draw's cannonball path passes it straight to
+	 * DrawShape; a cannonball body has exactly one shape. Returns null if none
+	 * (e.g. a throwaway GetBody() wrapper, whose shapes are never populated).
+	 */
+	public GetShapeList(): Box2D3Shape | null {
+		return this.shapes.length ? this.shapes[0] : null;
+	}
+
 	// biome-ignore lint/suspicious/noExplicitAny: matches the 2.0 b2Body.GetUserData() any.
 	public GetUserData(): any {
 		return this.userData;
@@ -244,16 +254,53 @@ export class Box2D3Body {
 	}
 }
 
-/** A v3 shape wrapper: userData + the filter used at creation (parts read m_filter.groupIndex). */
+/**
+ * Render geometry captured from the plain shape def at creation — the EXACT
+ * local verts / radius (and ORDER) engines 0/1 keep on their b2Shape. Draw's
+ * geometry readers (m_type / GetRadius / GetLocalPosition / GetVertexCount /
+ * GetVertices) return this verbatim, so a shape draws identically on all three
+ * engines. Capturing the DEF (not querying v3) is deliberate: v3's b2ComputeHull
+ * may REORDER/drop polygon vertices, which would skew cannon vertex order and
+ * polygon winding vs engines 0/1.
+ */
+interface ShapeGeom {
+	/** b2Shape.e_circleShape / e_polygonShape. */
+	type: number;
+	/** Circle radius (0 for polygons). */
+	radius: number;
+	/** Circle body-local centre (origin for polygons). */
+	localPosition: Vec2Like;
+	/** Polygon local verts in def order (empty for circles). */
+	vertices: Vec2Like[];
+}
+
+/**
+ * A v3 shape wrapper: userData + the filter used at creation (parts read
+ * m_filter.groupIndex) + the render geometry (see ShapeGeom). It duck-types the
+ * b2Shape read surface the shared Part code AND the pixi renderer (Draw.DrawShape
+ * / DrawCannon via resolveShape) call directly — engines 0/1 hand out the real
+ * b2Shape, so these must answer identically.
+ */
 export class Box2D3Shape {
 	public userData: unknown = null;
 	public readonly m_filter: { categoryBits: number; maskBits: number; groupIndex: number };
+	/**
+	 * b2Shape.e_circleShape / e_polygonShape. Draw.resolveShape treats a handle
+	 * with a defined m_type as a ready-to-read b2Shape (and its switch keys off
+	 * this), so exposing it is what lets engine-2 shapes render through the shared
+	 * Draw path unchanged.
+	 */
+	public readonly m_type: number;
+	private readonly geom: ShapeGeom;
 	constructor(
 		private readonly m: Box2D3Module,
 		public readonly id: RawShapeId,
 		filter: { categoryBits: number; maskBits: number; groupIndex: number },
+		geom: ShapeGeom,
 	) {
 		this.m_filter = filter;
+		this.geom = geom;
+		this.m_type = geom.type;
 	}
 	// biome-ignore lint/suspicious/noExplicitAny: matches the 2.0 shape.GetUserData() any.
 	public GetUserData(): any {
@@ -264,16 +311,23 @@ export class Box2D3Shape {
 		return this.m_filter;
 	}
 	/**
-	 * 2.0 b2CircleShape.GetLocalPosition() — the circle's body-local centre.
-	 * Bomb.Explode calls this on its own (circle) shape; reads the v3 circle geom.
+	 * 2.0 b2CircleShape.GetLocalPosition() — the circle's body-local centre. Read
+	 * by Bomb.Explode + Draw's bomb/circle paths. Backed by the captured def geom.
 	 */
 	public GetLocalPosition(): Vec2Like {
-		const circle = this.m.b2Shape_GetCircle(this.id);
-		const center = circle.center;
-		const out = { x: center.x, y: center.y };
-		center.delete();
-		circle.delete();
-		return out;
+		return this.geom.localPosition;
+	}
+	/** 2.0 b2CircleShape.GetRadius() — Draw's circle path. */
+	public GetRadius(): number {
+		return this.geom.radius;
+	}
+	/** 2.0 b2PolygonShape.GetVertexCount() — Draw's polygon path. */
+	public GetVertexCount(): number {
+		return this.geom.vertices.length;
+	}
+	/** 2.0 b2PolygonShape.GetVertices() — local verts in def order (Draw maps each by the body xform). */
+	public GetVertices(): Vec2Like[] {
+		return this.geom.vertices;
 	}
 	/** Owning body (2.0 fixture.GetBody()); a throwaway wrapper is fine (reads only). */
 	public GetBody(): Box2D3Body {
@@ -419,6 +473,15 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 	private readonly m: Box2D3Module;
 	/** Resolve a v3 shape id (from a contact/sensor event) back to its wrapper. */
 	private shapesById = new Map<string, Box2D3Shape>();
+	/**
+	 * Every live body wrapper this backend created, in creation order. v3 has NO
+	 * body-enumeration API off a raw world id, so we track them here to serve the
+	 * render interpolator's forEachBody snapshot (engines 0/1 walk world.GetBodyList
+	 * instead). Only the REAL createBody wrappers land here (throwaway GetBody()/
+	 * joint-body wrappers don't), so identity matches the bodies parts hand to the
+	 * renderer. Reset with the world; entries removed on destroyBody.
+	 */
+	private bodies = new Set<Box2D3Body>();
 	/** Engine-neutral contact hooks, drained after each step (v3 has no listener). */
 	private contactHooks: ContactHooks | null = null;
 	/**
@@ -438,6 +501,7 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 		// A fresh world starts a fresh sim: drop any stale shape map / hooks from a
 		// previous play (the backend is a process-wide singleton).
 		this.shapesById = new Map();
+		this.bodies = new Set();
 		this.contactHooks = null;
 		this.waterControllers = [];
 		const wd = m.b2DefaultWorldDef();
@@ -493,6 +557,7 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 		bd.delete();
 		const body = new Box2D3Body(m, raw);
 		if (bodyDef.userData != null) body.userData = bodyDef.userData;
+		this.bodies.add(body);
 		return body;
 	}
 
@@ -537,8 +602,11 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 		sd.filter.groupIndex = filter.groupIndex;
 
 		let raw: RawShapeId;
+		let geom: ShapeGeom;
 		if (shapeDef.type === b2Shape.e_circleShape) {
 			const cd = shapeDef as b2CircleDef;
+			// Capture the render geom from the def (see ShapeGeom): exact centre + radius.
+			geom = { type: b2Shape.e_circleShape, radius: cd.radius, localPosition: { x: cd.localPosition.x, y: cd.localPosition.y }, vertices: [] };
 			const circle = new m.b2Circle();
 			const center = new m.b2Vec2(cd.localPosition.x, cd.localPosition.y);
 			circle.center = center;
@@ -550,6 +618,11 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 			// rect / triangle / polygon: build a convex hull from the (already
 			// body-origin-rebased) local verts, then a b2Polygon (radius 0).
 			const pd = shapeDef as b2PolygonDef;
+			// Capture the render geom from the def IN ORIGINAL ORDER — NOT from the v3
+			// hull, whose vertex order/count b2ComputeHull may change (see ShapeGeom).
+			const verts: Vec2Like[] = [];
+			for (let i = 0; i < pd.vertexCount; i++) verts.push({ x: pd.vertices[i].x, y: pd.vertices[i].y });
+			geom = { type: b2Shape.e_polygonShape, radius: 0, localPosition: { x: 0, y: 0 }, vertices: verts };
 			const pts: Array<{ delete(): void }> = [];
 			for (let i = 0; i < pd.vertexCount; i++) pts.push(new m.b2Vec2(pd.vertices[i].x, pd.vertices[i].y));
 			const hull = m.b2ComputeHull(pts);
@@ -560,7 +633,7 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 			poly.delete();
 		}
 		sd.delete();
-		const shape = new Box2D3Shape(m, raw, filter);
+		const shape = new Box2D3Shape(m, raw, filter, geom);
 		if (shapeDef.userData != null) shape.userData = shapeDef.userData;
 		this.shapesById.set(keyOf(raw as IdTriple), shape);
 		body.shapes.push(shape);
@@ -686,6 +759,7 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 	}
 
 	destroyBody(_world: RawWorldId, body: Box2D3Body): void {
+		this.bodies.delete(body);
 		this.m.b2DestroyBody(body.id);
 	}
 
@@ -718,7 +792,11 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 			// Resolve to the stored wrapper so callers get GetUserData()/identity;
 			// fall back to a bare wrapper for any shape we didn't create.
 			const existing = this.shapesById.get(keyOf(result.shapeId as IdTriple));
-			out[count++] = existing ?? new Box2D3Shape(m, result.shapeId, { categoryBits: 0, maskBits: 0, groupIndex: 0 });
+			out[count++] =
+				existing ??
+				// A shape we didn't create (never drawn): benign empty geom, unknown type
+				// so it matches no Draw switch case if it ever reached the renderer.
+				new Box2D3Shape(m, result.shapeId, { categoryBits: 0, maskBits: 0, groupIndex: 0 }, { type: b2Shape.e_unknownShape, radius: 0, localPosition: { x: 0, y: 0 }, vertices: [] });
 			return true;
 		});
 		lower.delete();
@@ -761,6 +839,11 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 		const angle = m.b2Rot_GetAngle(rot);
 		rot.delete();
 		return { x: pos.x, y: pos.y, angle };
+	}
+
+	forEachBody(_world: RawWorldId, cb: (body: Box2D3Body) => void): void {
+		// v3 has no world body list; iterate the wrappers we tracked at createBody.
+		for (const b of this.bodies) cb(b);
 	}
 
 	// --- per-frame handle ops ---

@@ -5,6 +5,8 @@
 import { describe, expect, it } from "vitest";
 import { lerp, lerpAngle, RenderInterpolator } from "../src/ui/renderer/interpolation";
 import { b2AABB, b2BodyDef, b2Vec2, b2World } from "../src/Box2D";
+import { box2d20Backend } from "../src/core/physics";
+import type { PhysicsBackend } from "../src/core/physics";
 
 describe("lerp", () => {
 	it("blends linearly between endpoints", () => {
@@ -69,7 +71,7 @@ describe("RenderInterpolator", () => {
 	it("interpolates a snapshotted body between prev and current pose", () => {
 		const { world, body } = worldWithBody(1, 2, 0.5);
 		const interp = new RenderInterpolator();
-		interp.snapshot(world);
+		interp.snapshot(world, box2d20Backend);
 		// "Step": move the body.
 		body.SetXForm(new b2Vec2(3, 6), 1.0);
 
@@ -87,7 +89,7 @@ describe("RenderInterpolator", () => {
 	it("draws bodies with no snapshot raw (e.g. cannonballs created mid-step)", () => {
 		const { world, body } = worldWithBody(0, 0, 0);
 		const interp = new RenderInterpolator();
-		interp.snapshot(world);
+		interp.snapshot(world, box2d20Backend);
 		// A body created AFTER the snapshot (mid-step cannonball).
 		const bd = new b2BodyDef();
 		bd.position.Set(7, 8);
@@ -101,7 +103,7 @@ describe("RenderInterpolator", () => {
 	it("clear() drops snapshots so everything draws raw", () => {
 		const { world, body } = worldWithBody(1, 1, 0);
 		const interp = new RenderInterpolator();
-		interp.snapshot(world);
+		interp.snapshot(world, box2d20Backend);
 		expect(interp.hasSnapshot()).toBe(true);
 		interp.clear();
 		expect(interp.hasSnapshot()).toBe(false);
@@ -112,10 +114,56 @@ describe("RenderInterpolator", () => {
 	it("worldCenter interpolates the mass centre used by the camera follow", () => {
 		const { world, body } = worldWithBody(0, 0, 0);
 		const interp = new RenderInterpolator();
-		interp.snapshot(world);
+		interp.snapshot(world, box2d20Backend);
 		body.SetXForm(new b2Vec2(10, 0), 0);
 		const c = interp.worldCenter(body, 0.25);
 		expect(c.x).toBeCloseTo(2.5);
 		expect(c.y).toBeCloseTo(0);
+	});
+
+	// Regression for the engine-2 (Box2D v3) crash: "e.GetBodyList is not a
+	// function" thrown by snapshot the first frame after Play. Engine 2's world is
+	// a raw v3 value-handle with NO GetBodyList()/GetNext() (v3 has no body-
+	// enumeration API), so snapshot MUST enumerate through the backend's
+	// forEachBody — never off the world handle directly. This stands in a v3-style
+	// world (a bare object) + a backend that iterates its own tracked bodies.
+	it("snapshots a v3-style world with no GetBodyList via backend.forEachBody", () => {
+		// A duck-typed b2Body: only the reads snapshot/getXForm make.
+		const mkBody = (x: number, y: number, angle: number) => {
+			let px = x;
+			let py = y;
+			let a = angle;
+			return {
+				GetPosition: () => ({ x: px, y: py }),
+				GetWorldCenter: () => ({ x: px, y: py }),
+				GetAngle: () => a,
+				GetXForm: () => ({ position: { x: px, y: py }, R: { col1: { x: Math.cos(a), y: Math.sin(a) }, col2: { x: -Math.sin(a), y: Math.cos(a) } } }),
+				move: (nx: number, ny: number, na: number) => {
+					px = nx;
+					py = ny;
+					a = na;
+				},
+			};
+		};
+		const tracked = [mkBody(1, 2, 0)];
+		// The v3-style world: deliberately has NO GetBodyList — touching it throws.
+		const rawWorld = { __v3: true } as unknown as b2World;
+		const backend = {
+			forEachBody(_world: unknown, cb: (b: unknown) => void) {
+				for (const b of tracked) cb(b);
+			},
+		} as unknown as PhysicsBackend;
+
+		const interp = new RenderInterpolator();
+		// Must NOT throw (the reported crash) even though rawWorld has no GetBodyList.
+		expect(() => interp.snapshot(rawWorld, backend)).not.toThrow();
+		expect(interp.hasSnapshot()).toBe(true);
+
+		// The SAME body handle Draw later passes to getXForm interpolates correctly.
+		const body = tracked[0] as unknown as import("../src/Box2D").b2Body;
+		(tracked[0] as ReturnType<typeof mkBody>).move(3, 6, 0);
+		const xf = interp.getXForm(body, 0.5);
+		expect(xf.position.x).toBeCloseTo(2);
+		expect(xf.position.y).toBeCloseTo(4);
 	});
 });

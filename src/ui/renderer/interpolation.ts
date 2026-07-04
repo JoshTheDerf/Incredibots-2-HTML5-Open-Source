@@ -14,6 +14,7 @@
 
 import { b2XForm } from "../../Box2D";
 import type { b2Body, b2World } from "../../Box2D";
+import type { PhysicsBackend } from "../../core/physics";
 
 /** Linear interpolation. */
 export function lerp(a: number, b: number, t: number): number {
@@ -65,14 +66,22 @@ export class RenderInterpolator {
 	/**
 	 * Capture every body's pose from the live world. Call IMMEDIATELY BEFORE each
 	 * sim step so the map always holds the state one step behind the bodies.
+	 *
+	 * Body enumeration goes through the active physics backend's forEachBody
+	 * rather than world.GetBodyList() directly: engines 0/1 walk the native
+	 * b2Body list, but engine 2 (Box2D v3) has no body-enumeration API off its
+	 * raw world handle, so its backend iterates the bodies it tracks itself. The
+	 * bodies handed here are the SAME handles Draw later passes to getXForm
+	 * (part.GetBody() / cannonball bodies), so the map keys match by identity.
 	 */
-	public snapshot(world: b2World): void {
+	public snapshot(world: b2World, backend: PhysicsBackend): void {
 		const next = new Map<b2Body, BodyPose>();
-		for (let b = world.GetBodyList(); b; b = b.GetNext()) {
+		backend.forEachBody(world, (body) => {
+			const b = body as b2Body;
 			const p = b.GetPosition();
 			const c = b.GetWorldCenter();
 			next.set(b, { x: p.x, y: p.y, angle: b.GetAngle(), cx: c.x, cy: c.y });
-		}
+		});
 		this.prev = next;
 	}
 

@@ -102,6 +102,10 @@ export class Box2D20Backend implements PhysicsBackend<b2World, b2Body, b2Shape, 
 		return { x: p.x, y: p.y, angle: body.GetAngle() };
 	}
 
+	forEachBody(world: b2World, cb: (body: b2Body) => void): void {
+		for (let b: b2Body | null = world.GetBodyList(); b; b = b.GetNext()) cb(b);
+	}
+
 	wakeBody(body: b2Body): void {
 		body.WakeUp();
 	}
