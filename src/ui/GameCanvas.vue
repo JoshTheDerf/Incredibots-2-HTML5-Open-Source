@@ -465,6 +465,35 @@ function onPointerDown(event: PointerEvent): void {
 	const tool = game.edit.tool;
 	const shapeKind = toolToShapeKind[tool as ToolMode];
 
+	// SHIFT-drag ALWAYS marquee-selects, regardless of the active tool — the
+	// desktop power gesture from the original editor (ControllerGame's shift =
+	// BOX_SELECTING, :1466-1469). Holding shift on EMPTY space overrides the
+	// tool's normal drag (pan in "pan" mode, create in a create tool, rotate/
+	// resize/joint placement) and starts a box multi-select instead. Guards:
+	//   • single-pointer only — a second finger already returned above (pinch),
+	//     so shift-marquee can never fight the two-finger pinch-zoom.
+	//   • EMPTY space only (no part under the cursor) so it never hijacks a
+	//     part-drag or the select tool's shift-click-toggle (which lands ON a part).
+	//   • not while a multi-step tool gesture is mid-flight (triangle apex,
+	//     polygon ring, prismatic axis, >2-overlap joint disambiguation) — there
+	//     shift keeps its per-step meaning (angle snap / etc), so we don't steal it.
+	// The Select tool marquees on an empty-space drag even WITHOUT shift (handled
+	// in the empty-space branch below); this block adds the shift path for every
+	// OTHER tool.
+	if (
+		shiftDown &&
+		!triangleBase &&
+		polygonPoints.length === 0 &&
+		game.jointGesture?.phase !== "disambiguate" &&
+		game.jointGesture?.phase !== "prismaticAxis" &&
+		!hitTestPart(game.parts, world.x, world.y, camera.scale)
+	) {
+		game.dispatch({ type: "clearSelection" });
+		gesture = { kind: "marquee", origin: { x: world.x, y: world.y }, current: { x: world.x, y: world.y } };
+		container.value.setPointerCapture(event.pointerId);
+		return;
+	}
+
 	// Triangle SECOND step: the base edge is already committed (triangleBase set),
 	// so this click places the APEX and creates the triangle (ControllerGame
 	// mouseClick NEW_TRIANGLE actionStep==2, :2322-2381). We dispatch on this
