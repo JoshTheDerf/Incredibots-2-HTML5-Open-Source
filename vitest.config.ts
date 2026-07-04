@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 // Vitest harness for the CHARACTERIZATION tests that pin the node-headless
@@ -22,7 +23,23 @@ export default defineConfig({
 	// is asset-free, but shared modules under src/ may import an asset URL).
 	assetsInclude: ["**/*.dat"],
 	resolve: {
-		alias: [{ find: /\.(png|jpg|jpeg|gif|mp3|wav|ogg|dat)$/, replacement: "\0empty-asset" }],
+		alias: [
+			{ find: /\.(png|jpg|jpeg|gif|mp3|wav|ogg|dat)$/, replacement: "\0empty-asset" },
+			// Engine 2's loadBox2D3 has a BROWSER branch `import("box2d3-wasm/compat")`
+			// (guarded by `typeof window`). Vite statically resolves that literal at
+			// transform time even though the node branch is the one that runs under
+			// vitest, and the package's `exports` map doesn't expose the deep
+			// "/compat" subpath — so without this alias the whole test file fails to
+			// load ("./compat is not exported"). Mirror vite.config.ts's alias to the
+			// compat mjs so the specifier resolves; the branch still never executes in
+			// node (window is undefined), so this only satisfies the transform.
+			{
+				find: "box2d3-wasm/compat",
+				replacement: fileURLToPath(
+					new URL("./node_modules/box2d3-wasm/build/dist/es/compat/Box2D.compat.mjs", import.meta.url),
+				),
+			},
+		],
 	},
 	plugins: [
 		{
