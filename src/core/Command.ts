@@ -113,8 +113,9 @@ export type Command =
 	// one-or-more SUBTRAHEND shapes from a TARGET shape, replacing the target with
 	// a new Polygon carrying the target's material/appearance, and deleting the
 	// subtrahends. The result may be concave (Polygon ear-clips it) and may split
-	// into disjoint pieces (the largest-area piece is kept; the rest are dropped,
-	// with a console.warn). Any shape whose geometry is a ring — Circle (sampled
+	// into N disjoint pieces — EVERY piece becomes its own Polygon (largest takes
+	// the target's z-order slot, the rest are appended), all inheriting the
+	// target's material/appearance. Any shape whose geometry is a ring — Circle (sampled
 	// as a 24-gon), Rectangle, Triangle, Polygon — is eligible; Cannon/Bomb and
 	// non-shapes are ignored. The boolean difference runs in WORLD space (see
 	// src/core/polygonBoolean.ts); a degenerate / empty-covering / no-overlap

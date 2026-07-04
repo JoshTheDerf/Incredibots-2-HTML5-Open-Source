@@ -65,7 +65,7 @@ import { encodeReplay, decodeReplay, decodeReplayFile, decodeDemoReplay } from "
 import type { DecodedReplay, ReplayMeta, ReplayRobot } from "./replaySerialization";
 import { EXPO_PUBLIC_EDITABLE } from "./exposure";
 import { buildTerrainParts, computeBounds, defaultWaterHeight } from "./sandboxEnvironment";
-import { polygonDifference, largestPiece, polygonArea } from "./polygonBoolean";
+import { polygonDifference, polygonArea } from "./polygonBoolean";
 import type { Vec2 } from "./polygonBoolean";
 import {
 	ChallengeSession,
@@ -2203,32 +2203,36 @@ export class GameCore {
 		}
 		if (subs.length === 0) return;
 
-		// Subtract each subtrahend in turn, keeping the largest resulting piece.
-		let ring: Vec2[] | null = targetRing;
-		let removedEntirely = false;
-		let multiPieceDropped = false;
+		// Subtract each subtrahend from EVERY current piece, accumulating ALL the
+		// resulting loops (a cut can split a piece into several disjoint polygons —
+		// every one is kept). `rings` is the running set of surviving world rings.
+		let rings: Vec2[][] = [targetRing];
+		let degenerateWarned = false;
 		for (const s of subs) {
-			if (!ring) break;
+			if (rings.length === 0) break;
 			const cutter = this.shapeWorldRing(s)!;
-			const pieces = polygonDifference(ring, cutter);
-			if (pieces === null) {
-				// A degenerate boolean result we couldn't repair — abort cleanly.
-				console.warn("subtractShapes: boolean difference produced an unusable result; leaving target unchanged");
-				return;
+			const next: Vec2[][] = [];
+			for (const r of rings) {
+				const pieces = polygonDifference(r, cutter);
+				if (pieces === null) {
+					// An unrepairable degeneracy for this piece — keep it unchanged.
+					if (!degenerateWarned) {
+						console.warn("subtractShapes: a boolean difference was degenerate; that piece was left unchanged");
+						degenerateWarned = true;
+					}
+					next.push(r);
+					continue;
+				}
+				// [] == this piece is fully covered by the subtrahend → it disappears.
+				for (const p of pieces) next.push(p);
 			}
-			if (pieces.length === 0) {
-				ring = null;
-				removedEntirely = true;
-				break;
-			}
-			if (pieces.length > 1) multiPieceDropped = true;
-			ring = largestPiece(pieces);
+			rings = next;
 		}
 
 		const removeIds = new Set<number>(subs.map((s) => s.id));
 
-		// Full cover: the target is gone too — delete it along with the subtrahends.
-		if (removedEntirely || !ring || ring.length < 3) {
+		// Full cover: every piece was removed — delete the target + the subtrahends.
+		if (rings.length === 0) {
 			removeIds.add(targetId);
 			const parts = this.state.parts.filter((p) => !removeIds.has(p.id));
 			const selection = this.state.edit.selection.filter((sid) => !removeIds.has(sid));
@@ -2241,26 +2245,66 @@ export class GameCore {
 			return;
 		}
 
+		// Clean + validate every surviving piece; keep all usable simple rings,
+		// skip (and warn about) any degenerate one — largest first so the biggest
+		// piece takes the target's z-order slot.
+		const valid: Vec2[][] = [];
+		for (const r of rings) {
+			const clean = this.dedupeRing(r);
+			if (clean.length >= 3 && Polygon.isSimple(clean)) valid.push(clean);
+			else console.warn("subtractShapes: dropping a degenerate result piece");
+		}
+		if (valid.length === 0) {
+			console.warn("subtractShapes: no usable result; leaving target unchanged");
+			return;
+		}
+		valid.sort((a, b) => polygonArea(b) - polygonArea(a));
+
 		// No-op fallback: nothing was actually removed (disjoint shapes, or a
-		// subtrahend strictly interior to the target — an unrepresentable hole).
-		if (Math.abs(polygonArea(ring) - originalArea) < 1e-6) {
+		// subtrahend strictly interior to the target — an unrepresentable hole). A
+		// real removal either splits into 2+ pieces or shrinks the single piece.
+		if (valid.length === 1 && Math.abs(polygonArea(valid[0]) - originalArea) < 1e-6) {
 			console.warn("subtractShapes: shapes do not overlap (or would leave a hole); leaving target unchanged");
 			return;
 		}
 
-		const clean = this.dedupeRing(ring);
-		if (clean.length < 3 || !Polygon.isSimple(clean)) {
-			console.warn("subtractShapes: result is not a usable simple polygon; leaving target unchanged");
-			return;
-		}
-		if (multiPieceDropped) {
-			console.warn("subtractShapes: result split into multiple pieces; keeping the largest");
-		}
+		// Build one Polygon per surviving piece, each carrying the target's material
+		// + appearance, each with a fresh id.
+		const built = valid.map((ring) => this.buildSubtractPolygon(ring, targetPart));
+		for (const p of built) p.id = ++this.nextId;
 
-		// Build the replacement Polygon in world space (baseline == world at angle 0)
-		// and carry over the target's material + appearance (mirrors Polygon.MakeCopy).
+		// The largest piece replaces the target IN PLACE (z-order slot preserved);
+		// the remaining pieces are appended (drawn on top). Subtrahends are dropped.
+		// Every new piece is selected; revert to the Select tool.
+		const primary = built[0];
+		const extras = built.slice(1);
+		const newParts: Part[] = [];
+		for (const p of this.state.parts) {
+			if (p.id === targetId) newParts.push(primary);
+			else if (removeIds.has(p.id)) continue;
+			else newParts.push(p);
+		}
+		for (const e of extras) newParts.push(e);
+		const selection = built.map((p) => p.id);
+		this.state = {
+			...this.state,
+			parts: newParts,
+			edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(primary), tool: "select" },
+		};
+		this.markChanged();
+		this.emitSound("shapeCreated");
+	}
+
+	/**
+	 * Build a result Polygon (world-space baseline, angle 0) for one piece of a
+	 * subtraction, carrying over the target shape's material + appearance
+	 * (mirrors Polygon.MakeCopy): density/friction/restitution, colour/opacity,
+	 * outlines, collision flags, and the IB3 superset fields (via
+	 * CopyJaybitFieldsTo). The id is assigned by the caller.
+	 */
+	private buildSubtractPolygon(ring: Vec2[], targetPart: ShapePart): Polygon {
 		const poly = new Polygon(
-			clean.map((v) => new b2Vec2(v.x, v.y)),
+			ring.map((v) => new b2Vec2(v.x, v.y)),
 			0,
 		);
 		poly.density = targetPart.density;
@@ -2278,24 +2322,7 @@ export class GameCore {
 		// fixedRotation, and the IB3 superset fields (graphicType/borderOpacity/
 		// locked/visualInSim/scaleToZoom).
 		targetPart.CopyJaybitFieldsTo(poly);
-		poly.id = ++this.nextId;
-
-		// Splice the new Polygon into the target's slot (z-order preserved) and drop
-		// the subtrahends; select the new part and revert to the Select tool.
-		const newParts: Part[] = [];
-		for (const p of this.state.parts) {
-			if (p.id === targetId) newParts.push(poly);
-			else if (removeIds.has(p.id)) continue;
-			else newParts.push(p);
-		}
-		const selection = [poly.id];
-		this.state = {
-			...this.state,
-			parts: newParts,
-			edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(poly), tool: "select" },
-		};
-		this.markChanged();
-		this.emitSound("shapeCreated");
+		return poly;
 	}
 
 	// --- Rotate / resize geometry ------------------------------------------

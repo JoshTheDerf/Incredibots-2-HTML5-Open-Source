@@ -122,6 +122,54 @@ describe("subtractShapes", () => {
 		expect(core.getState().parts.find((p) => p.id === cutterId)).toBeUndefined();
 	});
 
+	it("keeps BOTH pieces when a bar cut splits the target in two", () => {
+		// A vertical bar cut across the middle of a wide short rectangle splits it
+		// into a left piece and a right piece — both must survive as separate parts.
+		const target = new Rectangle(0, 0, 6, 2); // area 12
+		const cutter = new Rectangle(2, -1, 2, 4); // full-height bar x in [2,4]
+		const { core, ids } = coreWith(target, cutter);
+		const [targetId, cutterId] = ids;
+		const partsBefore = core.getState().parts.length;
+
+		core.dispatch({ type: "subtractShapes", targetId, subtrahendIds: [cutterId] });
+
+		// Cutter gone; the target became TWO polygons (net +1 part vs. before).
+		expect(core.getState().parts.find((p) => p.id === cutterId)).toBeUndefined();
+		expect(core.getState().parts.find((p) => p.id === targetId)).toBeUndefined();
+		const polys = polygonsOf(core);
+		expect(polys.length).toBe(2);
+		expect(core.getState().parts.length).toBe(partsBefore); // -cutter -rect +2 polys = net 0
+		// Each half is a 2x2 square (area 4); total 8 = 12 − the middle 2x2 band.
+		const areas = polys.map((p) => p.GetArea()).sort((a, b) => a - b);
+		expect(areas[0]).toBeCloseTo(4, 4);
+		expect(areas[1]).toBeCloseTo(4, 4);
+		// Both pieces have distinct fresh ids and are both selected.
+		expect(polys[0].id).not.toBe(polys[1].id);
+		expect(core.getState().edit.selection.length).toBe(2);
+		expect(new Set(core.getState().edit.selection)).toEqual(new Set(polys.map((p) => p.id)));
+	});
+
+	it("each split piece inherits the target's material/appearance", () => {
+		const target = new Rectangle(0, 0, 6, 2);
+		target.red = 10;
+		target.green = 20;
+		target.blue = 30;
+		target.density = 22;
+		const cutter = new Rectangle(2, -1, 2, 4);
+		const { core, ids } = coreWith(target, cutter);
+		const [targetId, cutterId] = ids;
+
+		core.dispatch({ type: "subtractShapes", targetId, subtrahendIds: [cutterId] });
+		const polys = polygonsOf(core);
+		expect(polys.length).toBe(2);
+		for (const p of polys) {
+			expect(p.red).toBe(10);
+			expect(p.green).toBe(20);
+			expect(p.blue).toBe(30);
+			expect(p.density).toBe(22);
+		}
+	});
+
 	it("subtracts multiple subtrahends in one command", () => {
 		const target = new Rectangle(0, 0, 6, 2); // area 12
 		const cutA = new Rectangle(0, 0, 1, 1); // removes 1 (bottom-left corner)
