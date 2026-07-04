@@ -605,12 +605,15 @@ function buildShape(nm: string, od: Record<string, unknown>, version: string, wa
 }
 
 /**
- * Import an IB3 convex vertex list as a single Polygon part when the engine can
- * represent it (3..b2_maxPolygonVertices verts AND convex). The genuine edge
- * cases — a concave polygon or one with more verts than the b2PolygonShape limit
- * — still fan-triangulate into welded Triangles, now with a NARROWED warning that
- * fires only for those cases (Box2D shapes must be convex, and its vertex count
- * is capped by b2_maxPolygonVertices).
+ * Import an IB3 PolygonPart as a SINGLE Polygon part — including concave ones and
+ * ones with more than b2_maxPolygonVertices verts. Polygon.Init ear-clips such a
+ * ring into convex collision fixtures on one body (and the renderer draws its true
+ * outline), so it faithfully reproduces IB3's single PolygonPart with correct
+ * (possibly concave) collision. This replaces the old fan-triangulation fallback,
+ * which was not only N welded parts instead of one but GEOMETRICALLY WRONG for
+ * concave rings (a fan from v0 produces triangles outside a concave polygon).
+ * Only a degenerate (<3 verts) or SELF-INTERSECTING ring — which ear-clipping
+ * can't handle — still falls back to the fan (best effort) with a warning.
  */
 function buildPolygonOrFallback(
 	v: { x: number; y: number }[],
@@ -618,16 +621,12 @@ function buildPolygonOrFallback(
 	cy: number,
 	warnings: Set<string>,
 ): BuiltShape | null {
-	if (v.length >= 3 && v.length <= Polygon.MAX_VERTICES && Polygon.isConvex(v)) {
+	if (v.length >= 3 && Polygon.isSimple(v)) {
 		const poly = new Polygon(v.map((p) => new b2Vec2(p.x, p.y)));
 		return { primary: poly, extra: [] };
 	}
 	if (v.length < 3) return triangulate(v, cx, cy);
-	warnings.add(
-		"An IB3 polygon that is concave or has more than " +
-			Polygon.MAX_VERTICES +
-			" vertices was split into welded triangles.",
-	);
+	warnings.add("An IB3 polygon was self-intersecting and was approximated with welded triangles.");
 	return triangulate(v, cx, cy);
 }
 
@@ -845,8 +844,11 @@ function applyCommonPartFields(p: Part, od: Record<string, unknown>, warnings: S
 // --- sandbox settings ------------------------------------------------------
 
 function mapSettings(s: Record<string, unknown>, version: string, warnings: Set<string>): SandboxSettings {
-	// gravityY is an IB3 1..40 UI value; convert to the raw m/s^2 IB2 uses.
-	const gravity = has(s, "gravityY") ? num(s.gravityY, 16) / GRAVITY_DIVISOR : 15.0;
+	// gravityY is an IB3 1..40 UI value; convert to the raw m/s^2 IB2 uses. When
+	// absent, fall back to IB3's OWN default gravity (GRAVITY_DEF=16, SandboxSettings.as
+	// :17) converted (~9.809) — NOT IB2's 15 — so a gravityY-less IB3 code matches how
+	// IB3 itself would load it. (AMF always serializes gravityY, so this is belt-and-suspenders.)
+	const gravity = num(has(s, "gravityY") ? s.gravityY : 16, 16) / GRAVITY_DIVISOR;
 
 	// IB3 world size SMALL..XLARGE (0..3, Ground.as:19-25) maps 1:1 to IB2.
 	let size = 0;

@@ -288,9 +288,10 @@ describe("IB3 part mapping", () => {
 		expect(warnings.some((m) => m.includes("welded triangles"))).toBe(false);
 	});
 
-	it("falls back to welded triangles ONLY for a concave polygon (narrowed warning)", () => {
-		// Concave arrowhead (the 4th vertex dents inward) — Box2D needs convex, so
-		// this genuinely must fan-triangulate.
+	it("imports a CONCAVE IB3 polygon as ONE Polygon (ear-clipped collision, no welded fan)", () => {
+		// Concave arrowhead (the 4th vertex dents inward). Polygon.Init ear-clips the
+		// collision internally, so this is now a single faithful Polygon — NOT a
+		// geometrically-wrong fan of welded triangles.
 		const verts = [
 			{ x: -2, y: 0 },
 			{ x: 0, y: 2 },
@@ -298,22 +299,28 @@ describe("IB3 part mapping", () => {
 			{ x: 0, y: 0.5 }, // reflex dent
 		];
 		const { robot, warnings } = decodeIB3FromByteArray(ib3Bytes({ parts: [{ name: "Polygon", x: 0, y: 0, vertices: verts }] }));
-		expect(robot.parts.filter((p) => p instanceof Polygon)).toHaveLength(0);
-		expect((robot.parts.filter((p) => p instanceof Triangle) as Triangle[]).length).toBe(2); // n - 2
-		expect(robot.parts.filter((p) => p instanceof FixedJoint)).toHaveLength(1); // n - 3
-		expect(warnings.some((m) => m.includes("concave"))).toBe(true);
+		const polys = robot.parts.filter((p) => p instanceof Polygon) as Polygon[];
+		expect(polys).toHaveLength(1);
+		expect(polys[0].numVertices()).toBe(4);
+		expect(Polygon.isConvex(verts)).toBe(false); // genuinely concave
+		expect(robot.parts.filter((p) => p instanceof Triangle)).toHaveLength(0);
+		expect(robot.parts.filter((p) => p instanceof FixedJoint)).toHaveLength(0);
+		expect(warnings.some((m) => m.includes("welded triangles"))).toBe(false);
 	});
 
-	it("falls back to welded triangles for a convex polygon with > b2_maxPolygonVertices verts", () => {
-		// A convex 10-gon exceeds the 8-vertex b2PolygonShape cap.
+	it("imports a convex polygon with > b2_maxPolygonVertices verts as ONE Polygon", () => {
+		// A convex 10-gon exceeds the 8-vertex single-b2PolygonShape cap; Polygon.Init
+		// ear-clips it into triangle fixtures, so it stays ONE Polygon part.
 		const verts: { x: number; y: number }[] = [];
 		for (let k = 0; k < 10; k++) {
 			verts.push({ x: 3 * Math.cos((k / 10) * 2 * Math.PI), y: 3 * Math.sin((k / 10) * 2 * Math.PI) });
 		}
 		const { robot, warnings } = decodeIB3FromByteArray(ib3Bytes({ parts: [{ name: "Polygon", x: 0, y: 0, vertices: verts }] }));
-		expect(robot.parts.filter((p) => p instanceof Polygon)).toHaveLength(0);
-		expect((robot.parts.filter((p) => p instanceof Triangle) as Triangle[]).length).toBe(8); // n - 2
-		expect(warnings.some((m) => m.includes("vertices"))).toBe(true);
+		const polys = robot.parts.filter((p) => p instanceof Polygon) as Polygon[];
+		expect(polys).toHaveLength(1);
+		expect(polys[0].numVertices()).toBe(10);
+		expect(robot.parts.filter((p) => p instanceof Triangle)).toHaveLength(0);
+		expect(warnings.some((m) => m.includes("welded triangles"))).toBe(false);
 	});
 });
 
@@ -595,6 +602,11 @@ describe("IB3 sandbox settings", () => {
 		expect(robot.cameraX).toBe(12);
 		expect(robot.cameraY).toBe(34);
 		expect(robot.zoomLevel).toBe(45);
+	});
+
+	it("gravity absent -> IB3's own default (16 -> ~9.809), NOT IB2's 15", () => {
+		const { robot } = decodeIB3FromByteArray(ib3Bytes({ settings: { size: 0 } })); // no gravityY
+		expect(robot.settings.gravity).toBeCloseTo(16 / 1.63098878695);
 	});
 
 	it("defaults waterHeightOscSpeed to 4000 for <=0.00.10a when absent", () => {
