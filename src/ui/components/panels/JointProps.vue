@@ -45,6 +45,11 @@ const visualInSim = computed({
 	get: () => sel.value?.visualInSim ?? true,
 	set: (v: boolean) => game.dispatch({ type: "setVisualInSim", partIds: ids.value, value: v }),
 });
+// IB3 superset: joint marker scales with zoom (else constant on-screen size).
+const scaleToZoom = computed({
+	get: () => sel.value?.scaleToZoom ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setScaleToZoom", partIds: ids.value, value: v }),
+});
 const strength = computed({
 	get: () => sel.value?.strength ?? 15,
 	set: (v: number) => game.dispatch({ type: "setJointStrength", partIds: ids.value, value: Number(v) }),
@@ -203,6 +208,7 @@ function applyColour(): void {
 		<div class="checkboxes">
 			<UCheckbox v-model="floppyJoint" label="Floppy Joint" :disabled="!motorEnabled" />
 			<UCheckbox v-model="visualInSim" label="Show During Simulation" />
+			<UCheckbox v-model="scaleToZoom" label="Scale With Zoom" />
 		</div>
 
 		<template v-if="isRevolute">

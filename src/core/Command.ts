@@ -231,6 +231,8 @@ export type Command =
 	// IB3 superset: per-part outline opacity (0..255) + joint/thruster "show graphic in sim".
 	| { type: "setBorderOpacity"; partIds: number[]; value: number }
 	| { type: "setVisualInSim"; partIds: number[]; value: boolean }
+	// IB3 superset: joint/thruster graphic scales with zoom (true) vs constant on-screen size.
+	| { type: "setScaleToZoom"; partIds: number[]; value: boolean }
 	| { type: "setFixedRotation"; partIds: number[]; value: boolean }
 	| { type: "setOutline"; partIds: number[]; value: boolean }
 	| { type: "setOutlineBehind"; partIds: number[]; value: boolean }

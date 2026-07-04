@@ -107,6 +107,8 @@ export type PartSnapshot = {
 	borderOpacity?: number;
 	/** IB3 superset: show the joint/thruster graphic during simulation. */
 	visualInSim?: boolean;
+	/** IB3 superset: joint/thruster graphic scales with zoom (else constant on-screen). */
+	scaleToZoom?: boolean;
 
 	// Joint (RevoluteJoint / PrismaticJoint)
 	/** enableMotor (revolute) / enablePiston (prismatic). */

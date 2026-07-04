@@ -36,6 +36,15 @@ const enableKey = computed({
 	get: () => sel.value?.enableKey ?? true,
 	set: (v: boolean) => game.dispatch({ type: "setThrusterEnableKey", partIds: ids.value, value: v }),
 });
+// IB3 superset: show the thruster graphic during sim / scale it with zoom.
+const visualInSim = computed({
+	get: () => sel.value?.visualInSim ?? true,
+	set: (v: boolean) => game.dispatch({ type: "setVisualInSim", partIds: ids.value, value: v }),
+});
+const scaleToZoom = computed({
+	get: () => sel.value?.scaleToZoom ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setScaleToZoom", partIds: ids.value, value: v }),
+});
 </script>
 
 <template>
@@ -56,6 +65,10 @@ const enableKey = computed({
 		</div>
 		<div class="checkboxes">
 			<UCheckbox v-model="enableKey" label="Enable Key" />
+		</div>
+		<div class="checkboxes">
+			<UCheckbox v-model="visualInSim" label="Show During Simulation" />
+			<UCheckbox v-model="scaleToZoom" label="Scale With Zoom" />
 		</div>
 	</div>
 </template>

@@ -1929,6 +1929,8 @@ export class GameCore {
 				enableKeyCW: part.enableKeyCW,
 				enableKeyCCW: part.enableKeyCCW,
 				stiff: part.isStiff,
+				visualInSim: part.visualInSim, // IB3 superset (no revolute sim graphic, but round-trips)
+				scaleToZoom: part.scaleToZoom, // IB3 superset: marker scales with zoom
 				// Rotating joint is a trigger TARGET (a triggerList drives/destroys it).
 				triggerList: part.triggerList,
 			};
@@ -1986,6 +1988,7 @@ export class GameCore {
 				subColl: part.subColl,
 				outline: part.outline,
 				visualInSim: part.visualInSim, // IB3 superset: hide the shaft during sim
+				scaleToZoom: part.scaleToZoom, // IB3 superset: shaft scales with zoom
 				// Sliding joint is a trigger TARGET too.
 				triggerList: part.triggerList,
 			};
@@ -2006,6 +2009,8 @@ export class GameCore {
 				thrustKey: part.thrustKey,
 				autoOn: part.autoOn,
 				enableKey: part.enableKey, // IB3 Thrusters.enableKey
+				visualInSim: part.visualInSim, // IB3 superset
+				scaleToZoom: part.scaleToZoom, // IB3 superset: marker scales with zoom
 				// Thrusters are a trigger TARGET (thrust while a named trigger touches).
 				triggerList: part.triggerList,
 			};
@@ -4623,6 +4628,7 @@ export class GameCore {
 			case "setLocked":
 			case "setBorderOpacity":
 			case "setVisualInSim":
+			case "setScaleToZoom":
 			case "setFixedRotation":
 			case "setOutline":
 			case "setOutlineBehind":
@@ -4740,6 +4746,7 @@ export class GameCore {
 				case "setLocked":
 				case "setBorderOpacity":
 				case "setVisualInSim":
+				case "setScaleToZoom":
 				case "setFixedRotation":
 				case "setOutline":
 				case "setOutlineBehind":
@@ -5385,6 +5392,12 @@ export class GameCore {
 			case "setVisualInSim":
 				this.editParts(command.partIds, (p) => {
 					p.visualInSim = command.value;
+				});
+				return;
+			// IB3 superset: joint/thruster graphic scales with zoom vs constant screen size.
+			case "setScaleToZoom":
+				this.editParts(command.partIds, (p) => {
+					p.scaleToZoom = command.value;
 				});
 				return;
 			// Outline lives on ShapePart AND PrismaticJoint (ShapeCheckboxAction OUTLINE_TYPE).

@@ -506,47 +506,51 @@ export class Draw extends b2DebugDraw {
             if (allParts[i].isStatic && !allParts[i].isEditable) myColor = Draw.s_staticColor;
             if (allParts[i] instanceof ShapePart && allParts[i].highlightForJoint) myColor = Draw.s_jointCreatingColor;
 
+            // IB3 scaleToZoom: FALSE (default) draws the joint/thruster marker at a
+            // CONSTANT on-screen size (the *30/m_drawScale below); TRUE draws it
+            // WORLD-fixed (scales with zoom). zf cancels the 30/scale factor for true.
+            const zf = allParts[i].scaleToZoom ? this.m_drawScale / 30 : 1;
             if (allParts[i] instanceof FixedJoint) {
               var fjoint: FixedJoint = allParts[i] as FixedJoint;
               for (var j: number = 0; j < 2; j++) {
                 var verts: Array<any> = new Array();
                 verts[0] = new b2Vec2(
-                  fjoint.anchorX - (0.075 * (j + 1) * 30) / this.m_drawScale,
-                  fjoint.anchorY - (0.075 * (j + 1) * 30) / this.m_drawScale
+                  fjoint.anchorX - (0.075 * (j + 1) * 30 * zf) / this.m_drawScale,
+                  fjoint.anchorY - (0.075 * (j + 1) * 30 * zf) / this.m_drawScale
                 );
                 verts[1] = new b2Vec2(
-                  fjoint.anchorX - (0.075 * (j + 1) * 30) / this.m_drawScale,
-                  fjoint.anchorY + (0.075 * (j + 1) * 30) / this.m_drawScale
+                  fjoint.anchorX - (0.075 * (j + 1) * 30 * zf) / this.m_drawScale,
+                  fjoint.anchorY + (0.075 * (j + 1) * 30 * zf) / this.m_drawScale
                 );
                 verts[2] = new b2Vec2(
-                  fjoint.anchorX + (0.075 * (j + 1) * 30) / this.m_drawScale,
-                  fjoint.anchorY + (0.075 * (j + 1) * 30) / this.m_drawScale
+                  fjoint.anchorX + (0.075 * (j + 1) * 30 * zf) / this.m_drawScale,
+                  fjoint.anchorY + (0.075 * (j + 1) * 30 * zf) / this.m_drawScale
                 );
                 verts[3] = new b2Vec2(
-                  fjoint.anchorX + (0.075 * (j + 1) * 30) / this.m_drawScale,
-                  fjoint.anchorY - (0.075 * (j + 1) * 30) / this.m_drawScale
+                  fjoint.anchorX + (0.075 * (j + 1) * 30 * zf) / this.m_drawScale,
+                  fjoint.anchorY - (0.075 * (j + 1) * 30 * zf) / this.m_drawScale
                 );
                 this.DrawPolygon(verts, 4, myColor);
               }
             } else if (allParts[i] instanceof RevoluteJoint) {
               var rjoint: RevoluteJoint = allParts[i] as RevoluteJoint;
-              this.DrawCircle(new b2Vec2(rjoint.anchorX, rjoint.anchorY), (0.075 * 30) / this.m_drawScale, myColor);
-              this.DrawCircle(new b2Vec2(rjoint.anchorX, rjoint.anchorY), (0.15 * 30) / this.m_drawScale, myColor);
+              this.DrawCircle(new b2Vec2(rjoint.anchorX, rjoint.anchorY), (0.075 * 30 * zf) / this.m_drawScale, myColor);
+              this.DrawCircle(new b2Vec2(rjoint.anchorX, rjoint.anchorY), (0.15 * 30 * zf) / this.m_drawScale, myColor);
             } else if (allParts[i] instanceof Thrusters) {
               var t: Thrusters = allParts[i] as Thrusters;
               for (j = 0; j < 2; j++) {
                 verts = new Array();
                 verts[0] = new b2Vec2(
-                  t.centerX + (0.2 * Math.cos(t.angle) * (j + 1) * 30) / this.m_drawScale,
-                  t.centerY + (0.2 * Math.sin(t.angle) * (j + 1) * 30) / this.m_drawScale
+                  t.centerX + (0.2 * Math.cos(t.angle) * (j + 1) * 30 * zf) / this.m_drawScale,
+                  t.centerY + (0.2 * Math.sin(t.angle) * (j + 1) * 30 * zf) / this.m_drawScale
                 );
                 verts[1] = new b2Vec2(
-                  t.centerX + (0.1 * Math.cos(t.angle + (2 * Math.PI) / 3) * (j + 1) * 30) / this.m_drawScale,
-                  t.centerY + (0.1 * Math.sin(t.angle + (2 * Math.PI) / 3) * (j + 1) * 30) / this.m_drawScale
+                  t.centerX + (0.1 * Math.cos(t.angle + (2 * Math.PI) / 3) * (j + 1) * 30 * zf) / this.m_drawScale,
+                  t.centerY + (0.1 * Math.sin(t.angle + (2 * Math.PI) / 3) * (j + 1) * 30 * zf) / this.m_drawScale
                 );
                 verts[2] = new b2Vec2(
-                  t.centerX + (0.1 * Math.cos(t.angle + (4 * Math.PI) / 3) * (j + 1) * 30) / this.m_drawScale,
-                  t.centerY + (0.1 * Math.sin(t.angle + (4 * Math.PI) / 3) * (j + 1) * 30) / this.m_drawScale
+                  t.centerX + (0.1 * Math.cos(t.angle + (4 * Math.PI) / 3) * (j + 1) * 30 * zf) / this.m_drawScale,
+                  t.centerY + (0.1 * Math.sin(t.angle + (4 * Math.PI) / 3) * (j + 1) * 30 * zf) / this.m_drawScale
                 );
                 this.DrawPolygon(verts, 3, myColor);
               }

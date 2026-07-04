@@ -139,5 +139,7 @@ describe("locked is functional: a locked part can't be dragged", () => {
 		expect((core.getState().parts.find((p) => p.id === ids[0]) as Circle).borderOpacity).toBe(0);
 		core.dispatch({ type: "setVisualInSim", partIds: ids, value: false });
 		expect((core.getState().parts.find((p) => p.id === ids[0]) as Circle).visualInSim).toBe(false);
+		core.dispatch({ type: "setScaleToZoom", partIds: ids, value: true });
+		expect((core.getState().parts.find((p) => p.id === ids[0]) as Circle).scaleToZoom).toBe(true);
 	});
 });
