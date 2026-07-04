@@ -65,7 +65,7 @@ import { encodeReplay, decodeReplay, decodeReplayFile, decodeDemoReplay } from "
 import type { DecodedReplay, ReplayMeta, ReplayRobot } from "./replaySerialization";
 import { EXPO_PUBLIC_EDITABLE } from "./exposure";
 import { buildTerrainParts, computeBounds, defaultWaterHeight } from "./sandboxEnvironment";
-import { polygonDifference, polygonArea } from "./polygonBoolean";
+import { polygonDifference, polygonArea, pointInPolygon } from "./polygonBoolean";
 import type { Vec2 } from "./polygonBoolean";
 import {
 	ChallengeSession,
@@ -2202,6 +2202,7 @@ export class GameCore {
 			if (p instanceof ShapePart && this.shapeWorldRing(p)) subs.push(p);
 		}
 		if (subs.length === 0) return;
+		const subSet = new Set<ShapePart>(subs);
 
 		// Subtract each subtrahend from EVERY current piece, accumulating ALL the
 		// resulting loops (a cut can split a piece into several disjoint polygons —
@@ -2233,6 +2234,10 @@ export class GameCore {
 
 		// Full cover: every piece was removed — delete the target + the subtrahends.
 		if (rings.length === 0) {
+			// No pieces remain, so every joint on the target has nowhere to re-point:
+			// cleanup deletes all joints touching the target or a subtrahend.
+			const jointRemoveIds = this.cleanupJointsForSubtraction(targetPart, subSet, [], []);
+			for (const jid of jointRemoveIds) removeIds.add(jid);
 			removeIds.add(targetId);
 			const parts = this.state.parts.filter((p) => !removeIds.has(p.id));
 			const selection = this.state.edit.selection.filter((sid) => !removeIds.has(sid));
@@ -2273,9 +2278,17 @@ export class GameCore {
 		const built = valid.map((ring) => this.buildSubtractPolygon(ring, targetPart));
 		for (const p of built) p.id = ++this.nextId;
 
+		// Joint cleanup: delete joints on subtrahends, delete target-joints whose
+		// anchor fell in a removed region, and re-point surviving target-joints to
+		// the piece Polygon containing their anchor (so nothing dangles after the
+		// target object is swapped out). Merge the deletions into removeIds so the
+		// parts-array rebuild below drops them.
+		const jointRemoveIds = this.cleanupJointsForSubtraction(targetPart, subSet, valid, built);
+		for (const jid of jointRemoveIds) removeIds.add(jid);
+
 		// The largest piece replaces the target IN PLACE (z-order slot preserved);
-		// the remaining pieces are appended (drawn on top). Subtrahends are dropped.
-		// Every new piece is selected; revert to the Select tool.
+		// the remaining pieces are appended (drawn on top). Subtrahends + deleted
+		// joints are dropped. Every new piece is selected; revert to the Select tool.
 		const primary = built[0];
 		const extras = built.slice(1);
 		const newParts: Part[] = [];
@@ -2323,6 +2336,92 @@ export class GameCore {
 		// locked/visualInSim/scaleToZoom).
 		targetPart.CopyJaybitFieldsTo(poly);
 		return poly;
+	}
+
+	/**
+	 * World anchor point where `side` (1 == part1, 2 == part2) of a joint attaches.
+	 * Revolute/Fixed joints share a single pivot (anchorX/anchorY); a PrismaticJoint
+	 * attaches part1 at one axis endpoint and part2 at the other (anchor ∓ axis·L/2).
+	 */
+	private subtractJointAnchor(j: JointPart, side: 1 | 2): { x: number; y: number } {
+		if (j instanceof PrismaticJoint) {
+			const half = j.initLength / 2;
+			const sign = side === 1 ? -1 : 1;
+			return { x: j.anchorX + sign * j.axis.x * half, y: j.anchorY + sign * j.axis.y * half };
+		}
+		return { x: j.anchorX, y: j.anchorY };
+	}
+
+	/** Index of the first result piece whose ring contains `pt`, or -1. */
+	private containingPieceIndex(pt: { x: number; y: number }, pieceRings: Vec2[][]): number {
+		for (let i = 0; i < pieceRings.length; i++) {
+			if (pointInPolygon(pt, pieceRings[i])) return i;
+		}
+		return -1;
+	}
+
+	/**
+	 * Joint bookkeeping for a subtraction. Returns the ids of joints to DELETE and,
+	 * as a side effect, RE-POINTS surviving target-joints onto the piece Polygon
+	 * that contains their anchor. Policy:
+	 *   - a joint connected to a deleted SUBTRAHEND is deleted;
+	 *   - a joint connected to the TARGET is re-pointed to the piece containing its
+	 *     (target-side) anchor, or deleted if that anchor fell in a removed region
+	 *     (no piece contains it — including the full-cover case where there are no
+	 *     pieces at all);
+	 *   - a joint touching neither is left untouched.
+	 * Deleted joints are also detached from any SURVIVING shape's m_joints so no
+	 * live shape keeps a reference to a gone joint.
+	 */
+	private cleanupJointsForSubtraction(
+		targetPart: ShapePart,
+		subSet: Set<ShapePart>,
+		pieceRings: Vec2[][],
+		piecePolys: Polygon[],
+	): Set<number> {
+		const removeIds = new Set<number>();
+		for (const p of this.state.parts) {
+			if (!(p instanceof JointPart)) continue;
+			const j = p as JointPart;
+			// (1) Connected to a deleted subtrahend → delete the joint.
+			if (subSet.has(j.part1) || subSet.has(j.part2)) {
+				removeIds.add(j.id);
+				continue;
+			}
+			const p1IsTarget = j.part1 === targetPart;
+			const p2IsTarget = j.part2 === targetPart;
+			if (!p1IsTarget && !p2IsTarget) continue; // unrelated joint — leave it alone
+			// (2) Connected to the target → find the piece holding each target-side
+			// anchor; delete if any target side has no containing piece.
+			const idx1 = p1IsTarget ? this.containingPieceIndex(this.subtractJointAnchor(j, 1), pieceRings) : -1;
+			const idx2 = p2IsTarget ? this.containingPieceIndex(this.subtractJointAnchor(j, 2), pieceRings) : -1;
+			if ((p1IsTarget && idx1 < 0) || (p2IsTarget && idx2 < 0)) {
+				removeIds.add(j.id);
+				continue;
+			}
+			// Survives — re-point the target side(s) to the containing piece(s).
+			const pieces = new Set<Polygon>();
+			if (p1IsTarget) {
+				j.part1 = piecePolys[idx1];
+				pieces.add(piecePolys[idx1]);
+			}
+			if (p2IsTarget) {
+				j.part2 = piecePolys[idx2];
+				pieces.add(piecePolys[idx2]);
+			}
+			for (const pc of pieces) pc.AddJoint(j);
+		}
+		// Detach every deleted joint from any SURVIVING shape still referencing it
+		// (the shapes being removed — target/subtrahends — need no cleanup).
+		for (const p of this.state.parts) {
+			if (!(p instanceof JointPart) || !removeIds.has(p.id)) continue;
+			const j = p as JointPart;
+			for (const side of [j.part1, j.part2]) {
+				if (side === targetPart || subSet.has(side)) continue;
+				side.RemoveJoint(j);
+			}
+		}
+		return removeIds;
 	}
 
 	// --- Rotate / resize geometry ------------------------------------------

@@ -156,6 +156,18 @@ export class ShapePart extends Part {
     this.m_joints.push(j);
   }
 
+  /**
+   * Detach a joint from this shape's joint list (inverse of AddJoint). Used when
+   * a joint is deleted from the parts graph — e.g. the "Subtract Shape" cleanup
+   * (GameCore.handleSubtractShapes) drops joints that connected to a removed
+   * subtrahend or landed in a subtracted-away region — so a surviving shape
+   * never keeps a reference to a gone joint.
+   */
+  public RemoveJoint(j: JointPart): void {
+    const idx = this.m_joints.indexOf(j);
+    if (idx >= 0) this.m_joints.splice(idx, 1);
+  }
+
   public AddThrusters(t: Thrusters): void {
     this.m_thrusters.push(t);
   }

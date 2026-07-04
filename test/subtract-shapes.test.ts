@@ -9,6 +9,8 @@ import { createInitialState } from "../src/core/GameState";
 import { Rectangle } from "../src/Parts/Rectangle";
 import { Circle } from "../src/Parts/Circle";
 import { Polygon } from "../src/Parts/Polygon";
+import { RevoluteJoint } from "../src/Parts/RevoluteJoint";
+import { JointPart } from "../src/Parts/JointPart";
 import type { Part } from "../src/Parts/Part";
 
 /** A fresh sandbox core with the given pre-built shapes appended (fresh ids). */
@@ -168,6 +170,63 @@ describe("subtractShapes", () => {
 			expect(p.blue).toBe(30);
 			expect(p.density).toBe(22);
 		}
+	});
+
+	it("cleans up joints: deletes ones on subtrahends / in removed regions, re-points survivors", () => {
+		// Split a 6x2 rect by a middle bar (removes x in [2,4]) → left + right pieces.
+		const target = new Rectangle(0, 0, 6, 2);
+		const cutter = new Rectangle(2, -1, 2, 4);
+		// Partner shapes the joints connect the target/cutter TO (not subtracted).
+		const anchorLeft = new Circle(1, 1, 0.3); // inside the surviving LEFT piece
+		const anchorMid = new Circle(3, 1, 0.3); // in the REMOVED middle band
+		const anchorSub = new Circle(3, 3, 0.3); // partner for the joint on the cutter
+		// jSurvive: target-joint whose anchor (1,1) survives on the left piece.
+		const jSurvive = new RevoluteJoint(target, anchorLeft, 1, 1);
+		// jRemoved: target-joint whose anchor (3,1) falls in the subtracted-away band.
+		const jRemoved = new RevoluteJoint(target, anchorMid, 3, 1);
+		// jOnSub: joint attached to the (deleted) subtrahend cutter.
+		const jOnSub = new RevoluteJoint(cutter, anchorSub, 3, 3);
+
+		const { core, ids } = coreWith(target, cutter, anchorLeft, anchorMid, anchorSub, jSurvive, jRemoved, jOnSub);
+		const [targetId, cutterId, , , , jSurviveId, jRemovedId, jOnSubId] = ids;
+
+		core.dispatch({ type: "subtractShapes", targetId, subtrahendIds: [cutterId] });
+		const parts = core.getState().parts;
+		const byId = (id: number) => parts.find((p) => p.id === id);
+
+		// Target replaced by two pieces; cutter gone.
+		expect(byId(targetId)).toBeUndefined();
+		expect(byId(cutterId)).toBeUndefined();
+		expect(parts.filter((p) => p instanceof Polygon).length).toBe(2);
+
+		// Joint on the subtrahend → deleted. Joint in the removed region → deleted.
+		expect(byId(jOnSubId)).toBeUndefined();
+		expect(byId(jRemovedId)).toBeUndefined();
+
+		// Surviving joint kept and RE-POINTED: its target side is now a piece Polygon
+		// (which is itself a live part), the other side is unchanged.
+		const survivor = byId(jSurviveId) as RevoluteJoint | undefined;
+		expect(survivor).toBeInstanceOf(RevoluteJoint);
+		expect(survivor!.part1).toBeInstanceOf(Polygon);
+		expect(parts).toContain(survivor!.part1);
+		expect((survivor!.part1 as Polygon).InsideShape(1, 1, 1)).toBe(true);
+		expect(survivor!.part2).toBe(anchorLeft);
+
+		// Hard invariant: NO dangling joints — every joint in the graph references
+		// parts that are still in the graph.
+		const liveIds = new Set(parts.map((p) => p.id));
+		for (const p of parts) {
+			if (p instanceof JointPart) {
+				expect(liveIds.has(p.part1.id)).toBe(true);
+				expect(liveIds.has(p.part2.id)).toBe(true);
+			}
+		}
+
+		// The deleted joints are detached from their surviving partner shapes'
+		// m_joints too (no lingering reference): re-cloning the graph (which drops
+		// any joint whose partner is missing) round-trips to the SAME joint set.
+		const jointIds = parts.filter((p) => p instanceof JointPart).map((p) => p.id);
+		expect(jointIds).toEqual([jSurviveId]);
 	});
 
 	it("subtracts multiple subtrahends in one command", () => {
