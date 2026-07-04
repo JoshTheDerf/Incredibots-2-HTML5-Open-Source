@@ -190,6 +190,8 @@ export type Command =
 	| { type: "setTriggerList"; partIds: number[]; value: string }
 	| { type: "setCameraFocus"; partIds: number[]; value: boolean }
 	| { type: "setFixate"; partIds: number[]; value: boolean }
+	// IB3 superset: lock/unlock a part (locked parts can't be selected/edited).
+	| { type: "setLocked"; partIds: number[]; value: boolean }
 	| { type: "setFixedRotation"; partIds: number[]; value: boolean }
 	| { type: "setOutline"; partIds: number[]; value: boolean }
 	| { type: "setOutlineBehind"; partIds: number[]; value: boolean }

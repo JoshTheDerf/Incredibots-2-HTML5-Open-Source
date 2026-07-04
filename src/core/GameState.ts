@@ -91,6 +91,8 @@ export type PartSnapshot = {
 	/** "Outlines Behind": maps to ShapePart.terrain. */
 	outlineBehind?: boolean;
 	undragable?: boolean;
+	/** IB3 superset: editor lock (a locked part can't be dragged). */
+	locked?: boolean;
 
 	// Joint (RevoluteJoint / PrismaticJoint)
 	/** enableMotor (revolute) / enablePiston (prismatic). */

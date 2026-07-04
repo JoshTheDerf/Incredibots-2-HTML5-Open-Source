@@ -836,6 +836,13 @@ function applyCommonPartFields(p: Part, od: Record<string, unknown>, warnings: S
 	}
 	if (has(od, "opacity") && "opacity" in anyp) anyp.opacity = trunc(od.opacity);
 	if (has(od, "outlines") && "outline" in anyp) anyp.outline = Boolean(od.outlines);
+	// IB3 superset fields on Part (Database.as:934/938/987/991/1044/1048/1056). Now
+	// first-class IB2 fields, so map them straight across (no data loss).
+	if (has(od, "graphicType")) p.graphicType = trunc(od.graphicType);
+	if (has(od, "borderOpacity")) p.borderOpacity = trunc(od.borderOpacity);
+	if (has(od, "locked")) p.locked = Boolean(od.locked);
+	if (has(od, "visualInSim")) p.visualInSim = Boolean(od.visualInSim);
+	if (has(od, "scaleToZoom")) p.scaleToZoom = Boolean(od.scaleToZoom);
 	if (has(od, "partOfChallenge") && od.partOfChallenge) {
 		warnings.add("IB3 challenge-locked parts were imported as normal parts.");
 	}

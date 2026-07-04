@@ -268,6 +268,12 @@ export class ShapePart extends Part {
     other.buoyant = this.buoyant;
     // IB3 copies fixedRotation likewise (ShapePart.as:331/:356).
     other.fixedRotation = this.fixedRotation;
+    // IB3 superset Part fields (Part.ts) — copy on clone so copy/paste/mirror keep them.
+    other.graphicType = this.graphicType;
+    other.borderOpacity = this.borderOpacity;
+    other.locked = this.locked;
+    other.visualInSim = this.visualInSim;
+    other.scaleToZoom = this.scaleToZoom;
   }
 
   /**

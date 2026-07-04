@@ -1842,6 +1842,7 @@ export class GameCore {
 				outline: part.outline,
 				outlineBehind: part.terrain, // "Outlines Behind" == terrain
 				undragable: part.undragable,
+				locked: part.locked, // IB3 superset: editor lock (pins the part)
 				// Trigger SOURCE fields (two symmetric slots) — read uniformly so the
 				// group-edit UI can compute [varies] without touching live parts.
 				triggerName: part.triggerName,
@@ -4572,6 +4573,7 @@ export class GameCore {
 			case "setTriggerList":
 			case "setCameraFocus":
 			case "setFixate":
+			case "setLocked":
 			case "setFixedRotation":
 			case "setOutline":
 			case "setOutlineBehind":
@@ -4683,6 +4685,7 @@ export class GameCore {
 				case "setTriggerList":
 				case "setCameraFocus":
 				case "setFixate":
+				case "setLocked":
 				case "setFixedRotation":
 				case "setOutline":
 				case "setOutlineBehind":
@@ -4960,10 +4963,18 @@ export class GameCore {
 				const selected = command.partIds
 					.map((id) => this.findPart(id))
 					.filter((p): p is Part => p !== undefined);
+				// IB3 superset: a LOCKED part is pinned — it can't be dragged, and it
+				// doesn't drag its cluster. Any locked part in the selection is skipped;
+				// the rest still move. (Locked parts stay selectable so they can be
+				// unlocked via the panel.)
+				if (selected.some((p) => p.locked) && selected.every((p) => p.locked)) return;
 				const cluster = new Set<Part>();
 				for (const sel of selected) {
+					if (sel.locked) continue;
 					for (const p of sel.GetAttachedParts() as Part[]) cluster.add(p);
 				}
+				// Never move a locked part even if pulled in via a cluster.
+				for (const p of [...cluster]) if (p.locked) cluster.delete(p);
 				for (const p of this.state.parts) {
 					if (!cluster.has(p)) continue;
 					// ShapePart stores centerX/centerY; JointPart anchorX/anchorY;
@@ -5173,6 +5184,13 @@ export class GameCore {
 			case "setFixedRotation":
 				this.editParts(command.partIds, (p) => {
 					if (p instanceof ShapePart) p.fixedRotation = command.value;
+				});
+				return;
+			// IB3 superset: lock/unlock parts. Locking also DROPS them from the current
+			// selection (a locked part can't be re-selected — see the "select" handler).
+			case "setLocked":
+				this.editParts(command.partIds, (p) => {
+					p.locked = command.value;
 				});
 				return;
 			// Outline lives on ShapePart AND PrismaticJoint (ShapeCheckboxAction OUTLINE_TYPE).

@@ -137,6 +137,20 @@ function putPartsIntoByteArray(parts: Part[], b: ByteArray): ByteArray {
 	return b;
 }
 
+/**
+ * Read the IB3-superset fields that live on Part (graphicType/borderOpacity/
+ * locked/visualInSim/scaleToZoom) off a decoded object onto the built part.
+ * Absent on pre-superset codes -> the Part defaults (0/255/false/true/false =
+ * classic behaviour). The encoder writes them automatically (public fields).
+ */
+function readSupersetPartFields(p: Part, od: any): void {
+	if (has(od, "graphicType")) p.graphicType = Math.trunc(od.graphicType);
+	if (has(od, "borderOpacity")) p.borderOpacity = Math.trunc(od.borderOpacity);
+	if (has(od, "locked")) p.locked = Boolean(od.locked);
+	if (has(od, "visualInSim")) p.visualInSim = Boolean(od.visualInSim);
+	if (has(od, "scaleToZoom")) p.scaleToZoom = Boolean(od.scaleToZoom);
+}
+
 function extractPartsFromByteArray(b: ByteArray): Part[] {
 	const objectData = b.readObject() as any[];
 	const partData: Part[] = [];
@@ -229,6 +243,7 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 			shape.buoyant = has(od, "buoyant") ? Boolean(od.buoyant) : true;
 			// IB3 fixedRotation (IB3 ShapePart.as:31); absent on old codes -> false.
 			shape.fixedRotation = has(od, "fixedRotation") ? Boolean(od.fixedRotation) : false;
+			readSupersetPartFields(shape, od);
 			partData.push(shape);
 		} else if (od.type === "TextPart") {
 			// Legacy passes Main.m_curController; the headless core has no controller
@@ -249,6 +264,7 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 			text.angle = has(od, "angle") ? Number(od.angle) : 0;
 			text.visibleOnStart = has(od, "visibleOnStart") ? Boolean(od.visibleOnStart) : false;
 			text.triggerList = has(od, "triggerList") ? od.triggerList : "";
+			readSupersetPartFields(text, od);
 			partData.push(text);
 		} else if (od.type === "Thrusters") {
 			if (od.shapeIndex >= 0) {
@@ -260,6 +276,7 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 				// IB3 Thrusters.enableKey (IB3 Thrusters.as:24); absent -> true.
 				t.enableKey = has(od, "enableKey") ? Boolean(od.enableKey) : true;
 				t.triggerList = has(od, "triggerList") ? od.triggerList : "";
+				readSupersetPartFields(t, od);
 				partData.push(t);
 			}
 		} else if (od.type === "FixedJoint" || od.type === "RevoluteJoint" || od.type === "PrismaticJoint") {
@@ -344,6 +361,7 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 				// triggerList lives on JointPart for all three joint types (Jaybit
 				// JointPart.as; Database.as :2229/:2248/:2287).
 				joint.triggerList = has(od, "triggerList") ? od.triggerList : "";
+				readSupersetPartFields(joint, od);
 				partData.push(joint);
 			}
 		}

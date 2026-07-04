@@ -83,6 +83,12 @@ const undragable = computed({
 	get: () => sel.value?.undragable ?? false,
 	set: (v: boolean) => game.dispatch({ type: "setUndragable", partIds: ids.value, value: v }),
 });
+// IB3 superset: lock the part in the editor (can't be dragged; stays selectable
+// so it can be unlocked here).
+const locked = computed({
+	get: () => sel.value?.locked ?? false,
+	set: (v: boolean) => game.dispatch({ type: "setLocked", partIds: ids.value, value: v }),
+});
 
 // Colour (ColourChangeWindow: RGBA + opacity). Reads the part's current colour;
 // applied on click via the already-wired setColour command.
@@ -175,6 +181,7 @@ function applyColour(): void {
 		</div>
 		<div class="checkboxes">
 			<UCheckbox v-model="outlineBehind" label="Outlines Behind" />
+			<UCheckbox v-model="locked" label="Locked" />
 		</div>
 	</div>
 </template>
