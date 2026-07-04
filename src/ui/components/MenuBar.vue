@@ -53,6 +53,20 @@ function open(panel: PanelKey): void {
 	emit("open", panel);
 }
 
+// "Subtract Shape" (Extras) operates on 2+ selected SHAPES (Circle / Rectangle /
+// Triangle / Polygon — the ring-geometry parts the boolean difference accepts;
+// joints, thrusters, cannons, text are ignored). The FIRST-selected shape is the
+// TARGET (the base you keep, replaced by the difference); the rest are the
+// subtrahends (deleted). Computed from live selection so the item stays reactive.
+const SUBTRACTABLE_SHAPES = new Set(["Circle", "Rectangle", "Triangle", "Polygon"]);
+const subtractShapeIds = computed<number[]>(() => {
+	const byId = new Map(game.parts.map((p) => [p.id, p]));
+	return game.edit.selection.filter((id) => {
+		const p = byId.get(id) as { type?: string } | undefined;
+		return !!p && p.type != null && SUBTRACTABLE_SHAPES.has(p.type);
+	});
+});
+
 // File menu — legacy BuildFileMenu (Main Menu / Save / Load* / Log In / High
 // Scores / Report / Sound). We wire the items that have real commands or ported
 // panels; New Robot maps to the "New" flow.
@@ -248,6 +262,19 @@ const extrasMenu = computed<DropdownMenuItem[][]>(() => {
 				label: "Mirror Vertical",
 				icon: "i-lucide-flip-vertical",
 				onSelect: () => game.dispatch({ type: "mirrorParts", partIds: game.edit.selection, axis: "vertical" }),
+			},
+			{
+				// Boolean geometry: subtract later-selected shapes from the first one,
+				// replacing it with a new (possibly concave) Polygon. Enabled only with
+				// 2+ subtractable shapes selected.
+				label: "Subtract Shape",
+				icon: "i-lucide-square-minus",
+				disabled: subtractShapeIds.value.length < 2,
+				onSelect: () => {
+					const ids = subtractShapeIds.value;
+					if (ids.length < 2) return;
+					game.dispatch({ type: "subtractShapes", targetId: ids[0], subtrahendIds: ids.slice(1) });
+				},
 			},
 			{ label: "Scale...", icon: "i-lucide-scaling" },
 		],

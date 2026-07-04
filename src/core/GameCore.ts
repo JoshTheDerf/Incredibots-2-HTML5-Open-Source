@@ -65,6 +65,8 @@ import { encodeReplay, decodeReplay, decodeReplayFile, decodeDemoReplay } from "
 import type { DecodedReplay, ReplayMeta, ReplayRobot } from "./replaySerialization";
 import { EXPO_PUBLIC_EDITABLE } from "./exposure";
 import { buildTerrainParts, computeBounds, defaultWaterHeight } from "./sandboxEnvironment";
+import { polygonDifference, largestPiece, polygonArea } from "./polygonBoolean";
+import type { Vec2 } from "./polygonBoolean";
 import {
 	ChallengeSession,
 	CreatePartKind,
@@ -2118,6 +2120,182 @@ export class GameCore {
 		const len = Math.hypot(tx, ty) || 1;
 		const mag = 0.25 * len;
 		return { x: (tx / len) * mag, y: (ty / len) * mag };
+	}
+
+	// --- Boolean "Subtract Shape" ------------------------------------------
+
+	/** Segments per circle when a Circle is sampled to a ring for boolean ops. */
+	private static readonly SUBTRACT_CIRCLE_SEGMENTS = 24;
+
+	/**
+	 * The WORLD-space outline ring of a shape for boolean geometry, or null when
+	 * the part isn't a meaningful subtraction operand. Rectangle/Triangle expose
+	 * angle-applied world vertices via GetVertices(); a (possibly curved/concave)
+	 * Polygon uses its dense tessellated ring; a Circle is sampled as a regular
+	 * N-gon. Cannon and Bomb (a Circle subclass carrying explosive behaviour, not
+	 * plain geometry) are excluded.
+	 */
+	private shapeWorldRing(part: ShapePart): Vec2[] | null {
+		if (part instanceof Cannon || part instanceof Bomb) return null;
+		if (part instanceof Circle) {
+			const n = GameCore.SUBTRACT_CIRCLE_SEGMENTS;
+			const ring: Vec2[] = [];
+			for (let i = 0; i < n; i++) {
+				const a = (i / n) * 2 * Math.PI;
+				ring.push({ x: part.centerX + part.radius * Math.cos(a), y: part.centerY + part.radius * Math.sin(a) });
+			}
+			return ring;
+		}
+		if (part instanceof Polygon) {
+			return (part.GetTessellatedVertices() as { x: number; y: number }[]).map((v) => ({ x: v.x, y: v.y }));
+		}
+		if (part instanceof Rectangle || part instanceof Triangle) {
+			return (part.GetVertices() as { x: number; y: number }[]).map((v) => ({ x: v.x, y: v.y }));
+		}
+		return null;
+	}
+
+	/** Drop consecutive coincident vertices (a boolean result can emit a few). */
+	private dedupeRing(ring: Vec2[]): Vec2[] {
+		const out: Vec2[] = [];
+		const eps = 1e-7;
+		for (const p of ring) {
+			const prev = out.length ? out[out.length - 1] : ring[ring.length - 1];
+			if (out.length && Math.abs(p.x - prev.x) < eps && Math.abs(p.y - prev.y) < eps) continue;
+			out.push({ x: p.x, y: p.y });
+		}
+		// Also fold a wrap-around duplicate (last == first).
+		if (out.length >= 2) {
+			const a = out[0];
+			const b = out[out.length - 1];
+			if (Math.abs(a.x - b.x) < eps && Math.abs(a.y - b.y) < eps) out.pop();
+		}
+		return out;
+	}
+
+	/**
+	 * Replace TARGET with (target − ⋃ subtrahends) as a new Polygon and delete the
+	 * subtrahends (the `subtractShapes` command). The difference runs in world
+	 * space via src/core/polygonBoolean; the result may be concave (Polygon
+	 * ear-clips it) or multi-piece (the largest piece is kept, the rest dropped
+	 * with a warn). Edge cases: subtrahends fully covering the target delete it;
+	 * a no-overlap / interior-hole / degenerate result leaves the target
+	 * unchanged (warn). The new Polygon inherits the target's material +
+	 * appearance (density/friction/restitution, colour/opacity, outlines,
+	 * collision flags, and the IB3 superset fields via CopyJaybitFieldsTo) and
+	 * takes the target's slot in the parts array (z-order preserved).
+	 */
+	private handleSubtractShapes(targetId: number, subtrahendIds: number[]): void {
+		const targetPart = this.findPart(targetId);
+		if (!(targetPart instanceof ShapePart)) return;
+		// A LOCKED part is pinned — don't rewrite it (mirrors moveParts).
+		if (targetPart.locked) return;
+		const targetRing = this.shapeWorldRing(targetPart);
+		if (!targetRing || targetRing.length < 3) return;
+		const originalArea = polygonArea(targetRing);
+
+		// Resolve the subtrahends: subtractable shapes, excluding the target itself.
+		const subs: ShapePart[] = [];
+		for (const id of subtrahendIds) {
+			if (id === targetId) continue;
+			const p = this.findPart(id);
+			if (p instanceof ShapePart && this.shapeWorldRing(p)) subs.push(p);
+		}
+		if (subs.length === 0) return;
+
+		// Subtract each subtrahend in turn, keeping the largest resulting piece.
+		let ring: Vec2[] | null = targetRing;
+		let removedEntirely = false;
+		let multiPieceDropped = false;
+		for (const s of subs) {
+			if (!ring) break;
+			const cutter = this.shapeWorldRing(s)!;
+			const pieces = polygonDifference(ring, cutter);
+			if (pieces === null) {
+				// A degenerate boolean result we couldn't repair — abort cleanly.
+				console.warn("subtractShapes: boolean difference produced an unusable result; leaving target unchanged");
+				return;
+			}
+			if (pieces.length === 0) {
+				ring = null;
+				removedEntirely = true;
+				break;
+			}
+			if (pieces.length > 1) multiPieceDropped = true;
+			ring = largestPiece(pieces);
+		}
+
+		const removeIds = new Set<number>(subs.map((s) => s.id));
+
+		// Full cover: the target is gone too — delete it along with the subtrahends.
+		if (removedEntirely || !ring || ring.length < 3) {
+			removeIds.add(targetId);
+			const parts = this.state.parts.filter((p) => !removeIds.has(p.id));
+			const selection = this.state.edit.selection.filter((sid) => !removeIds.has(sid));
+			this.state = {
+				...this.state,
+				parts,
+				edit: { ...this.state.edit, selection, selectedPart: this.deriveSelectedPart(selection) },
+			};
+			this.markChanged();
+			return;
+		}
+
+		// No-op fallback: nothing was actually removed (disjoint shapes, or a
+		// subtrahend strictly interior to the target — an unrepresentable hole).
+		if (Math.abs(polygonArea(ring) - originalArea) < 1e-6) {
+			console.warn("subtractShapes: shapes do not overlap (or would leave a hole); leaving target unchanged");
+			return;
+		}
+
+		const clean = this.dedupeRing(ring);
+		if (clean.length < 3 || !Polygon.isSimple(clean)) {
+			console.warn("subtractShapes: result is not a usable simple polygon; leaving target unchanged");
+			return;
+		}
+		if (multiPieceDropped) {
+			console.warn("subtractShapes: result split into multiple pieces; keeping the largest");
+		}
+
+		// Build the replacement Polygon in world space (baseline == world at angle 0)
+		// and carry over the target's material + appearance (mirrors Polygon.MakeCopy).
+		const poly = new Polygon(
+			clean.map((v) => new b2Vec2(v.x, v.y)),
+			0,
+		);
+		poly.density = targetPart.density;
+		poly.collide = targetPart.collide;
+		poly.isStatic = targetPart.isStatic;
+		poly.red = targetPart.red;
+		poly.green = targetPart.green;
+		poly.blue = targetPart.blue;
+		poly.opacity = targetPart.opacity;
+		poly.outline = targetPart.outline;
+		poly.terrain = targetPart.terrain; // "Outlines Behind"
+		poly.undragable = targetPart.undragable;
+		poly.isCameraFocus = targetPart.isCameraFocus;
+		// friction/restitution, collision layers A-D + subColl, triggers, buoyant,
+		// fixedRotation, and the IB3 superset fields (graphicType/borderOpacity/
+		// locked/visualInSim/scaleToZoom).
+		targetPart.CopyJaybitFieldsTo(poly);
+		poly.id = ++this.nextId;
+
+		// Splice the new Polygon into the target's slot (z-order preserved) and drop
+		// the subtrahends; select the new part and revert to the Select tool.
+		const newParts: Part[] = [];
+		for (const p of this.state.parts) {
+			if (p.id === targetId) newParts.push(poly);
+			else if (removeIds.has(p.id)) continue;
+			else newParts.push(p);
+		}
+		const selection = [poly.id];
+		this.state = {
+			...this.state,
+			parts: newParts,
+			edit: { ...this.state.edit, selection, selectedPart: this.snapshotOf(poly), tool: "select" },
+		};
+		this.markChanged();
+		this.emitSound("shapeCreated");
 	}
 
 	// --- Rotate / resize geometry ------------------------------------------
@@ -4668,6 +4846,7 @@ export class GameCore {
 			case "editPolygonPoint":
 			case "addPolygonPoint":
 			case "removePolygonPoint":
+			case "subtractShapes":
 			case "createText":
 			case "createThrusters":
 			case "createCannon":
@@ -4789,6 +4968,7 @@ export class GameCore {
 				case "editPolygonPoint":
 				case "addPolygonPoint":
 				case "removePolygonPoint":
+				case "subtractShapes":
 				case "createText":
 				case "createThrusters":
 				case "createCannon":
@@ -5184,6 +5364,10 @@ export class GameCore {
 					p.pointTypes = types;
 					p.RecomputeCenter();
 				});
+				return;
+			}
+			case "subtractShapes": {
+				this.handleSubtractShapes(command.targetId, command.subtrahendIds);
 				return;
 			}
 			case "createText": {

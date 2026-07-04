@@ -102,6 +102,19 @@ export type Command =
 	// tool vertex range; a remove that would drop below 3 vertices is refused.
 	| { type: "addPolygonPoint"; partId: number; index: number; x: number; y: number }
 	| { type: "removePolygonPoint"; partId: number; index: number }
+	// Boolean-geometry "Subtract Shape" (Extras menu). Subtract the geometry of
+	// one-or-more SUBTRAHEND shapes from a TARGET shape, replacing the target with
+	// a new Polygon carrying the target's material/appearance, and deleting the
+	// subtrahends. The result may be concave (Polygon ear-clips it) and may split
+	// into disjoint pieces (the largest-area piece is kept; the rest are dropped,
+	// with a console.warn). Any shape whose geometry is a ring — Circle (sampled
+	// as a 24-gon), Rectangle, Triangle, Polygon — is eligible; Cannon/Bomb and
+	// non-shapes are ignored. The boolean difference runs in WORLD space (see
+	// src/core/polygonBoolean.ts); a degenerate / empty-covering / no-overlap
+	// result leaves the target unchanged (warn) or deletes it (full cover). The
+	// UI (MenuBar) sets `targetId` = the FIRST-selected shape (the base you keep)
+	// and `subtrahendIds` = the rest of the selection.
+	| { type: "subtractShapes"; targetId: number; subtrahendIds: number[] }
 	| { type: "createText"; x: number; y: number; text: string }
 	// Attach a Thrusters / Cannon at the click point. createThrusters snaps onto
 	// the single shape under (x,y) (ControllerGame.MaybeCreateThrusters :6797);

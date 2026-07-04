@@ -1,0 +1,139 @@
+// GameCore `subtractShapes` command — the "Subtract Shape" boolean-geometry
+// editor feature. Verifies the command replaces the TARGET with a Polygon of the
+// difference (carrying the target's material/appearance), deletes the
+// subtrahends, is undoable, and handles the full-cover / no-overlap edge cases.
+
+import { describe, expect, it, vi } from "vitest";
+import { GameCore } from "../src/core/GameCore";
+import { createInitialState } from "../src/core/GameState";
+import { Rectangle } from "../src/Parts/Rectangle";
+import { Circle } from "../src/Parts/Circle";
+import { Polygon } from "../src/Parts/Polygon";
+import type { Part } from "../src/Parts/Part";
+
+/** A fresh sandbox core with the given pre-built shapes appended (fresh ids). */
+function coreWith(...shapes: Part[]): { core: GameCore; ids: number[] } {
+	const state = createInitialState();
+	const base = state.parts.length;
+	state.parts = [...state.parts, ...shapes];
+	const core = new GameCore(state);
+	// The constructor assigns ids to the appended (id-0) parts after the terrain.
+	const ids = core.getState().parts.slice(base).map((p) => p.id);
+	return { core, ids };
+}
+
+function polygonsOf(core: GameCore): Polygon[] {
+	return core.getState().parts.filter((p) => p instanceof Polygon) as Polygon[];
+}
+
+describe("subtractShapes", () => {
+	it("replaces the target with a difference Polygon and deletes the subtrahend", () => {
+		// 4x4 target rect at origin; a 2x2 cutter overlapping its top-right corner.
+		const target = new Rectangle(0, 0, 4, 4);
+		target.red = 123;
+		target.green = 45;
+		target.blue = 67;
+		target.density = 20;
+		target.friction = 9;
+		const cutter = new Rectangle(3, 3, 2, 2);
+		const { core, ids } = coreWith(target, cutter);
+		const [targetId, cutterId] = ids;
+		const partsBefore = core.getState().parts.length;
+
+		core.dispatch({ type: "subtractShapes", targetId, subtrahendIds: [cutterId] });
+
+		// The cutter is gone; the target rect is replaced by exactly one Polygon.
+		expect(core.getState().parts.find((p) => p.id === cutterId)).toBeUndefined();
+		expect(core.getState().parts.find((p) => p.id === targetId)).toBeUndefined();
+		expect(core.getState().parts.length).toBe(partsBefore - 1); // -cutter, rect→poly
+		const polys = polygonsOf(core);
+		expect(polys.length).toBe(1);
+		const poly = polys[0];
+		// 16 − 1 (the overlapping corner) = 15.
+		expect(poly.GetArea()).toBeCloseTo(15, 4);
+		// Material + appearance carried over from the target.
+		expect(poly.red).toBe(123);
+		expect(poly.green).toBe(45);
+		expect(poly.blue).toBe(67);
+		expect(poly.density).toBe(20);
+		expect(poly.friction).toBe(9);
+		// The new polygon is selected.
+		expect(core.getState().edit.selection).toEqual([poly.id]);
+	});
+
+	it("is undoable — undo restores the original two shapes", () => {
+		const target = new Rectangle(0, 0, 4, 4);
+		const cutter = new Rectangle(3, 3, 2, 2);
+		const { core, ids } = coreWith(target, cutter);
+		const [targetId, cutterId] = ids;
+		const partsBefore = core.getState().parts.length;
+
+		core.dispatch({ type: "subtractShapes", targetId, subtrahendIds: [cutterId] });
+		expect(polygonsOf(core).length).toBe(1);
+
+		core.dispatch({ type: "undo" });
+		expect(core.getState().parts.length).toBe(partsBefore);
+		expect(core.getState().parts.find((p) => p.id === cutterId)).toBeInstanceOf(Rectangle);
+		expect(core.getState().parts.find((p) => p.id === targetId)).toBeInstanceOf(Rectangle);
+		expect(polygonsOf(core).length).toBe(0);
+	});
+
+	it("deletes the target when a subtrahend fully covers it", () => {
+		const target = new Rectangle(1, 1, 2, 2);
+		const cutter = new Rectangle(-5, -5, 20, 20);
+		const { core, ids } = coreWith(target, cutter);
+		const [targetId, cutterId] = ids;
+
+		core.dispatch({ type: "subtractShapes", targetId, subtrahendIds: [cutterId] });
+		expect(core.getState().parts.find((p) => p.id === targetId)).toBeUndefined();
+		expect(core.getState().parts.find((p) => p.id === cutterId)).toBeUndefined();
+		expect(polygonsOf(core).length).toBe(0);
+	});
+
+	it("leaves the target unchanged (with a warning) when shapes do not overlap", () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const target = new Rectangle(0, 0, 2, 2);
+		const cutter = new Rectangle(10, 10, 2, 2);
+		const { core, ids } = coreWith(target, cutter);
+		const [targetId, cutterId] = ids;
+
+		core.dispatch({ type: "subtractShapes", targetId, subtrahendIds: [cutterId] });
+		// Both shapes still there; no polygon created.
+		expect(core.getState().parts.find((p) => p.id === targetId)).toBeInstanceOf(Rectangle);
+		expect(core.getState().parts.find((p) => p.id === cutterId)).toBeInstanceOf(Rectangle);
+		expect(polygonsOf(core).length).toBe(0);
+		expect(warn).toHaveBeenCalled();
+		warn.mockRestore();
+	});
+
+	it("subtracts a circle (sampled as an N-gon) from a rectangle", () => {
+		const target = new Rectangle(0, 0, 4, 4);
+		// A circle centred on the target's top-right corner removes ~a quarter disc.
+		const cutter = new Circle(4, 4, 2);
+		const { core, ids } = coreWith(target, cutter);
+		const [targetId, cutterId] = ids;
+
+		core.dispatch({ type: "subtractShapes", targetId, subtrahendIds: [cutterId] });
+		const polys = polygonsOf(core);
+		expect(polys.length).toBe(1);
+		// 16 − (quarter of π·2² ≈ 3.14) ≈ 12.86 (N-gon approximation).
+		expect(polys[0].GetArea()).toBeGreaterThan(12);
+		expect(polys[0].GetArea()).toBeLessThan(13.2);
+		expect(core.getState().parts.find((p) => p.id === cutterId)).toBeUndefined();
+	});
+
+	it("subtracts multiple subtrahends in one command", () => {
+		const target = new Rectangle(0, 0, 6, 2); // area 12
+		const cutA = new Rectangle(0, 0, 1, 1); // removes 1 (bottom-left corner)
+		const cutB = new Rectangle(5, 1, 1, 1); // removes 1 (top-right corner)
+		const { core, ids } = coreWith(target, cutA, cutB);
+		const [targetId, aId, bId] = ids;
+
+		core.dispatch({ type: "subtractShapes", targetId, subtrahendIds: [aId, bId] });
+		expect(core.getState().parts.find((p) => p.id === aId)).toBeUndefined();
+		expect(core.getState().parts.find((p) => p.id === bId)).toBeUndefined();
+		const polys = polygonsOf(core);
+		expect(polys.length).toBe(1);
+		expect(polys[0].GetArea()).toBeCloseTo(10, 4);
+	});
+});
