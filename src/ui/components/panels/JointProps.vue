@@ -8,6 +8,7 @@ import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
 import { keyToLabel, labelToKey } from "../../keyLabels";
+import { MAX_RJ_SPEED, MAX_RJ_STRENGTH, MAX_SJ_SPEED, MAX_SJ_STRENGTH } from "../../../Parts/partDefaults";
 
 const game = useGameStore();
 const sel = computed(() => game.edit.selectedPart);
@@ -18,13 +19,14 @@ const isRevolute = computed(() => sel.value?.kind === "RevoluteJoint");
 // Strength / speed slider maxima from the active challenge restrictions
 // (PartEditWindow: RJ strength :1196 = maxRJStrength, RJ speed :1201 = maxRJSpeed;
 // SJ strength :1259 = maxSJStrength, SJ speed :1264 = maxSJSpeed). Min stays 1
-// (:806/:816). Falls back to 30 with no challenge / unset.
+// (:806/:816). Falls back to the per-type sandbox maxima (partDefaults, widened
+// for IB3: RJ speed 40, SJ strength 40, SJ speed 100) with no challenge / unset.
 const r = computed(() => game.challenge?.restrictions);
 const strengthMax = computed(() =>
-	(isRevolute.value ? r.value?.maxRJStrength : r.value?.maxSJStrength) ?? 30,
+	isRevolute.value ? (r.value?.maxRJStrength ?? MAX_RJ_STRENGTH) : (r.value?.maxSJStrength ?? MAX_SJ_STRENGTH),
 );
 const speedMax = computed(() =>
-	(isRevolute.value ? r.value?.maxRJSpeed : r.value?.maxSJSpeed) ?? 30,
+	isRevolute.value ? (r.value?.maxRJSpeed ?? MAX_RJ_SPEED) : (r.value?.maxSJSpeed ?? MAX_SJ_SPEED),
 );
 
 // -- Motor / piston enable (JointCheckboxAction ENABLE_TYPE) --

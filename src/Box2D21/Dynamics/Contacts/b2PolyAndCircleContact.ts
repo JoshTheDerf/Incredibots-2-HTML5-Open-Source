@@ -34,9 +34,18 @@ export class b2PolyAndCircleContact extends b2Contact
 	{
 	}
 
-	public Reset(fixtureA:b2Fixture, fixtureB:b2Fixture) : void
+	public Reset(fixtureA:b2Fixture | null = null, fixtureB:b2Fixture | null = null) : void
 	{
 		super.Reset(fixtureA,fixtureB);
+		// b2ContactFactory.Destroy calls Reset() with NO fixtures to clear a pooled
+		// contact (base b2Contact.Reset early-returns on null). Guard the type
+		// asserts to match — else `fixtureA.GetType()` (the assert ARGUMENT, always
+		// evaluated) throws on the null pool path, crashing every engine-1 sim that
+		// destroys a poly/circle contact.
+		if(!fixtureA || !fixtureB)
+		{
+			return;
+		}
 		b2Settings.b2Assert(fixtureA.GetType() == b2Shape.e_polygonShape);
 		b2Settings.b2Assert(fixtureB.GetType() == b2Shape.e_circleShape);
 	}

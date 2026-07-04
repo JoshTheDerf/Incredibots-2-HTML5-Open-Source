@@ -163,11 +163,18 @@ export class GroundRenderer {
 	 * ControllerSandbox.BuildGround (:205-565).
 	 */
 	build(sandbox: SandboxState): void {
-		const key = [sandbox.terrainType, sandbox.size, sandbox.terrainTheme].join(",");
+		const key = [sandbox.terrainType, sandbox.size, sandbox.terrainTheme, sandbox.groundStyle].join(",");
 		if (key === this.builtKey) return;
 		this.builtKey = key;
 
 		this.clear();
+
+		// IB3 ground (SHORE/ISLAND) has no sGround visual — it is drawn straight from
+		// its own collision bodies (drawAnyway, see sandboxEnvironment.ts), so this
+		// IB2-shaped decorative fill must NOT draw over it. Leave the view empty.
+		if (sandbox.groundStyle === 1 /* GROUND_STYLE_IB3 */) {
+			return;
+		}
 
 		this.theme = sandbox.terrainTheme;
 		const g = new Graphics();

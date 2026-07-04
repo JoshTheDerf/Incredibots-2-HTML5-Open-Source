@@ -82,16 +82,35 @@ describe("createPolygon", () => {
 		expect(core.getState().parts.length).toBe(before + 1);
 	});
 
-	it("rejects a NON-CONVEX ring (no part created)", () => {
+	it("ACCEPTS a concave (simple) ring — its collision shape triangulates", () => {
 		const core = sandboxCore();
 		const before = core.getState().parts.length;
-		// Classic concave 'arrow' quad: (0,0),(4,0),(1,1),(4,4) is not convex.
+		// A concave 'dart' quad: the (2,1) notch points inward. Not convex, but
+		// simple (non-self-intersecting), so it is now a valid Polygon.
+		const verts = [
+			{ x: 0, y: 0 },
+			{ x: 2, y: 1 },
+			{ x: 4, y: 0 },
+			{ x: 2, y: 4 },
+		];
+		expect(Polygon.isConvex(verts)).toBe(false);
+		core.dispatch({ type: "createPolygon", verts });
+		expect(polygonsOf(core).length).toBe(1);
+		expect(core.getState().parts.length).toBe(before + 1);
+		expect(polygonsOf(core)[0].numVertices()).toBe(4);
+	});
+
+	it("rejects a self-intersecting (bow-tie) ring (no part created)", () => {
+		const core = sandboxCore();
+		const before = core.getState().parts.length;
+		// A bow-tie: edges (0,0)-(4,4) and (4,0)-(0,4) cross — not a simple polygon,
+		// so it can't be triangulated and is refused.
 		core.dispatch({
 			type: "createPolygon",
 			verts: [
 				{ x: 0, y: 0 },
 				{ x: 4, y: 0 },
-				{ x: 1, y: 1 },
+				{ x: 0, y: 4 },
 				{ x: 4, y: 4 },
 			],
 		});
@@ -111,15 +130,17 @@ describe("createPolygon", () => {
 		expect(polygonsOf(core).length).toBe(0);
 	});
 
-	it("accepts the maximum vertex count and rejects more than the cap", () => {
+	it("accepts the maximum tool vertex count and rejects more than the cap", () => {
 		const core = sandboxCore();
-		// A convex regular octagon (Polygon.MAX_VERTICES == b2_maxPolygonVertices == 8).
-		const n = Polygon.MAX_VERTICES;
-		const octagon = Array.from({ length: n }, (_, i) => {
+		// A convex regular n-gon at the tool cap (Polygon.MAX_TOOL_VERTICES, which
+		// exceeds the b2_maxPolygonVertices==8 single-shape limit — such a polygon
+		// triangulates its collision shape).
+		const n = Polygon.MAX_TOOL_VERTICES;
+		const ngon = Array.from({ length: n }, (_, i) => {
 			const a = (2 * Math.PI * i) / n;
 			return { x: 5 * Math.cos(a), y: 5 * Math.sin(a) };
 		});
-		core.dispatch({ type: "createPolygon", verts: octagon });
+		core.dispatch({ type: "createPolygon", verts: ngon });
 		expect(polygonsOf(core).length).toBe(1);
 		expect(polygonsOf(core)[0].numVertices()).toBe(n);
 
@@ -129,6 +150,6 @@ describe("createPolygon", () => {
 			return { x: 6 * Math.cos(a), y: 6 * Math.sin(a) };
 		});
 		core.dispatch({ type: "createPolygon", verts: tooMany });
-		expect(polygonsOf(core).length).toBe(1); // still just the octagon
+		expect(polygonsOf(core).length).toBe(1); // still just the n-gon
 	});
 });

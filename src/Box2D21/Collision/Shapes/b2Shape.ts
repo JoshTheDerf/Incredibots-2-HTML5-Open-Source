@@ -40,10 +40,27 @@ export class b2Shape
 
 	public m_radius:number;
 
+	// RENDER READ-PATH SEAM: 2.1a keeps userData on the b2Fixture, but the pixi
+	// renderer (Draw.resolveShape) unwraps a fixture to its b2Shape and then reads
+	// Box2D-2.0-style shape.GetUserData() (outline/terrain/isBomb flags). 2.0's
+	// b2Shape carried userData; mirror that here so the unwrapped shape answers it.
+	// Box2D21Backend.createShape copies the fixture def's userData onto the shape.
+	public m_userData:any = null;
+
 	constructor()
 	{
 		this.m_type = b2Shape.e_unknownShape;
 		this.m_radius = b2Settings.b2_linearSlop;
+	}
+
+	public GetUserData() : any
+	{
+		return this.m_userData;
+	}
+
+	public SetUserData(data:any) : void
+	{
+		this.m_userData = data;
 	}
 
 	public static TestOverlap(shape1:b2Shape, transform1:b2Transform, shape2:b2Shape, transform2:b2Transform) : boolean

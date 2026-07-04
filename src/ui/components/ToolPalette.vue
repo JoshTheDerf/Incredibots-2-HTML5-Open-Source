@@ -52,8 +52,9 @@ const row1Tools: ToolDef[] = [
 	{ tool: "newCircle", label: "Circle", family: "blue", icon: "i-lucide-circle" },
 	{ tool: "newRect", label: "Rectangle", family: "blue", icon: "i-lucide-square" },
 	{ tool: "newTriangle", label: "Triangle", family: "blue", icon: "i-lucide-triangle" },
-	// Convex polygon (multi-click draw). IB3 has no interactive polygon tool; this
-	// is a new IB2/Jaybit editor gesture alongside the other shape build tools.
+	// Polygon (multi-click draw; concave allowed — the collision shape triangulates).
+	// IB3 has no interactive polygon tool; this is a new IB2/Jaybit editor gesture
+	// alongside the other shape build tools.
 	{ tool: "newPolygon", label: "Polygon", family: "blue", icon: "i-lucide-pentagon" },
 ];
 

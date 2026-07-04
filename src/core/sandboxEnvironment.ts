@@ -13,6 +13,7 @@
 import { Circle } from "../Parts/Circle";
 import type { Part } from "../Parts/Part";
 import { Rectangle } from "../Parts/Rectangle";
+import { Triangle } from "../Parts/Triangle";
 import type { SandboxState } from "./GameState";
 import { defaultWaterState } from "./waterSystem";
 
@@ -33,6 +34,27 @@ export const TERRAIN_EMPTY = 2;
 export const TERRAIN_ISLAND = 3;
 
 export const BACKGROUND_SOLID_COLOUR = 6;
+
+// --- ground STYLE: which game's sandbox geometry to build --------------------
+// IB2 (the classic Box2DFlash port) and IB3 lay their sandbox ground out
+// COMPLETELY differently — different width, a different surface height (IB2's
+// land surface sits at y=12, IB3's at y=-1), and IB3's LAND is an asymmetric
+// beach ("SHORE") rather than IB2's symmetric platform. An imported IB3 bot is
+// positioned in IB3 world coordinates, so it only lands correctly on IB3-shaped
+// ground. `groundStyle` selects the geometry table; it is auto-set to IB3 by the
+// IB3 importer and persisted, INDEPENDENT of the physics engine (an IB3 design
+// may be simulated on engine 0/1/2 but must keep IB3 ground).
+export const GROUND_STYLE_IB2 = 0;
+export const GROUND_STYLE_IB3 = 1;
+
+// IB3 ground half-width per size (Control/Ground.as TYPESIZES rect |x|), indexed
+// by SIZE_SMALL..SIZE_XLARGE. SHORE spans [-W,W]; ISLAND is a 2W-wide platform.
+const IB3_HALF: readonly number[] = [100, 150, 200, 250];
+
+/** Clamp a size enum into [0,3] for the IB3 tables. */
+function ib3SizeIndex(size: number): number {
+	return size < 0 ? 0 : size > 3 ? 3 : Math.trunc(size);
+}
 
 /**
  * Terrain top-fill colour per theme (0-6), RGB — ported from
@@ -64,6 +86,8 @@ export const DEFAULT_SANDBOX_SETTINGS = {
 	backgroundR: 0,
 	backgroundG: 0,
 	backgroundB: 0,
+	// Native sandbox is IB2-shaped ground; IB3 imports flip this to GROUND_STYLE_IB3.
+	groundStyle: GROUND_STYLE_IB2,
 } as const;
 
 /**
@@ -104,11 +128,51 @@ function markGround(p: Part, theme: number): Part {
  * the [0.1,5] clamp), MEDIUM/SMALL circles omit it (default true) — faithful to
  * the source. The resulting bodies are identical either way (drawAnyway=false).
  */
-export function buildTerrainParts(settings: Pick<SandboxState, "terrainType" | "size"> & { terrainTheme?: number }): Part[] {
+export function buildTerrainParts(
+	settings: Pick<SandboxState, "terrainType" | "size"> & { terrainTheme?: number; groundStyle?: number },
+): Part[] {
 	const parts: Part[] = [];
 	const { terrainType, size } = settings;
 	const theme = settings.terrainTheme ?? 0;
+	const groundStyle = settings.groundStyle ?? GROUND_STYLE_IB2;
 	const g = (p: Part) => markGround(p, theme);
+
+	// IB3 ground (Control/Ground.as TYPESIZES): LAND -> SHORE (asymmetric beach),
+	// ISLAND -> a symmetric 2W platform. Surface top is y=-1 for both, so imported
+	// IB3 bots (positioned in IB3 world coords) rest correctly. BOX/EMPTY have no
+	// IB3 geometry, so they fall through to the IB2 tables below (BOX) / nothing.
+	// sRect(x,y,w,h) -> Rectangle top-left (x,y); sCircle(x,y,r) -> Circle centre;
+	// sTria -> Triangle by 3 verts. All ground shapes bypass the size clamps.
+	if (groundStyle === GROUND_STYLE_IB3 && (terrainType === TERRAIN_LAND || terrainType === TERRAIN_ISLAND)) {
+		const w = IB3_HALF[ib3SizeIndex(size)];
+		// The IB2 GroundRenderer (a bespoke sGround gradient/rock visual) can't draw
+		// the IB3 SHORE/ISLAND shape, so instead the IB3 ground is drawn from its OWN
+		// collision bodies: flag them drawAnyway so Draw.DrawWorld paints them (as
+		// solid theme-coloured terrain at the exact IB3 positions), and suppress the
+		// IB2 GroundRenderer for this style (see groundRenderer.ts). g3 adds that flag.
+		const g3 = (p: Part) => {
+			const q = markGround(p, theme);
+			q.drawAnyway = true;
+			return q;
+		};
+		if (terrainType === TERRAIN_ISLAND) {
+			// TYPESIZES[ISLAND][size]: one 2W-wide slab + two r=7 end caps.
+			parts.push(g3(new Rectangle(-w, -1, 2 * w, 14, false)));
+			parts.push(g3(new Circle(-w, 6, 7, false)));
+			parts.push(g3(new Circle(w, 6, 7, false)));
+		} else {
+			// TYPESIZES[SHORE][size]: left land slab (top y=-1) + lower right beach
+			// slab (top y=5) + a slope triangle bridging them + rounded end caps + a
+			// small filler circle at the origin joint.
+			parts.push(g3(new Rectangle(-w, -1, w, 14, false)));
+			parts.push(g3(new Rectangle(0, 5, w, 8, false)));
+			parts.push(g3(new Circle(0, 0, 1, false)));
+			parts.push(g3(new Triangle(0, -0.99, 0, 5, 30, 5)));
+			parts.push(g3(new Circle(-w, 6, 7, false)));
+			parts.push(g3(new Circle(w, 9, 4, false)));
+		}
+		return parts;
+	}
 
 	// ISLAND reuses LAND geometry (IB2 LAND is already a centered platform).
 	if (terrainType === TERRAIN_LAND || terrainType === TERRAIN_ISLAND) {
@@ -166,9 +230,15 @@ export function buildTerrainParts(settings: Pick<SandboxState, "terrainType" | "
  * with size (LARGE=160 / MEDIUM=100 / SMALL=40).
  */
 export function computeBounds(
-	settings: Pick<SandboxState, "size" | "terrainType">,
+	settings: Pick<SandboxState, "size" | "terrainType"> & { groundStyle?: number },
 ): { minX: number; maxX: number; minY: number; maxY: number } {
 	const { size, terrainType } = settings;
+	// IB3 has no camera clamp (free camera). Give a generous extent that contains
+	// the (much larger) IB3 ground plus room to fly, scaled with the half-width.
+	if ((settings.groundStyle ?? GROUND_STYLE_IB2) === GROUND_STYLE_IB3) {
+		const w = IB3_HALF[ib3SizeIndex(size)];
+		return { minX: -(w + 60), maxX: w + 60, minY: -(w + 60), maxY: 60 + ib3SizeIndex(size) * 20 };
+	}
 	// XLARGE extends the LARGE clamp ~1.5x (matches the scaled terrain above).
 	const minX = size === SIZE_XLARGE ? -420 : size === SIZE_LARGE ? -280 : size === SIZE_MEDIUM ? -150 : -50;
 	const maxX = size === SIZE_XLARGE ? 420 : size === SIZE_LARGE ? 280 : size === SIZE_MEDIUM ? 150 : 50;
@@ -182,9 +252,47 @@ export function computeBounds(
 	return { minX, maxX, minY, maxY };
 }
 
+/**
+ * The world-Y of the ground's WALK/REST surface for a given sandbox — the level
+ * a fresh water surface should default to so water never covers the ground top
+ * (water fills y > height, +y down). IB3 SHORE/ISLAND top out at y=-1; IB2 LAND/
+ * ISLAND at y=12; a BOX's floor top is y=10 (y=15 at XLARGE); EMPTY has no ground
+ * (0, an arbitrary level). Used to seed the default water height per shape.
+ */
+export function groundTopY(
+	settings: Pick<SandboxState, "terrainType" | "size"> & { groundStyle?: number },
+): number {
+	const { terrainType, size } = settings;
+	if (terrainType === TERRAIN_EMPTY) return 0;
+	if ((settings.groundStyle ?? GROUND_STYLE_IB2) === GROUND_STYLE_IB3 && terrainType !== TERRAIN_BOX) {
+		return -1; // IB3 SHORE / ISLAND surface
+	}
+	if (terrainType === TERRAIN_BOX) return size === SIZE_XLARGE ? 15 : 10; // box floor top
+	return 12; // IB2 LAND / ISLAND slab top
+}
+
+/**
+ * The default water surface height for a sandbox: the ground's top surface, so
+ * that enabling water starts it level with the ground rather than flooding above
+ * it (the old flat default of 0 sat 12 units ABOVE every IB2 land surface). The
+ * user still freely edits the height afterward via the water panel.
+ */
+export function defaultWaterHeight(
+	settings: Pick<SandboxState, "terrainType" | "size"> & { groundStyle?: number },
+): number {
+	return groundTopY(settings);
+}
+
 /** A fresh default SandboxState (SMALL/LAND/GRASS/SKY, gravity 15) with bounds. */
 export function createDefaultSandboxState(): SandboxState {
 	const base = { ...DEFAULT_SANDBOX_SETTINGS };
 	// physicsEngine defaults to 0 (IB2 / Box2DFlash 2.0.2) — the classic engine.
-	return { ...base, bounds: computeBounds(base), water: defaultWaterState(), physicsEngine: 0 };
+	// Seed the (disabled) water surface at the ground top so a first enable of
+	// water doesn't submerge the terrain.
+	return {
+		...base,
+		bounds: computeBounds(base),
+		water: { ...defaultWaterState(), height: defaultWaterHeight(base) },
+		physicsEngine: 0,
+	};
 }

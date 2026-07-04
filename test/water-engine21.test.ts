@@ -41,6 +41,11 @@ function coreWithWater(water: Partial<WaterState>, ...parts: Part[]): GameCore {
 		water: {
 			...state.sandbox.water,
 			enabled: true,
+			// Surface at world y=0 (ABOVE the y=12 land) so a box near the origin is
+			// submerged and buoyancy is exercised. Set explicitly: the sandbox DEFAULT
+			// water height now sits at the ground top (defaultWaterHeight) to avoid
+			// flooding the terrain, which is not what this physics test wants.
+			height: 0,
 			heightOsc: 0,
 			tiltOsc: 0,
 			...water,

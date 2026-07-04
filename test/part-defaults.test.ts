@@ -33,9 +33,9 @@ describe("partDefaults constants (partDefaults.ts:12-24)", () => {
 		expect(DEFAULT_B).toBe(42);
 		expect(DEFAULT_O).toBe(255);
 	});
-	it("density range is 1..30", () => {
+	it("density range is 1..40 (max widened from 30 to accommodate IB3's density range)", () => {
 		expect(MIN_DENSITY).toBe(1);
-		expect(MAX_DENSITY).toBe(30);
+		expect(MAX_DENSITY).toBe(40);
 	});
 });
 

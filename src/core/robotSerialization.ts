@@ -409,6 +409,11 @@ function applyWaterSettings(settings: SandboxSettings, s: any): SandboxSettings 
 	// Physics-engine selection (P1.5b-2b). Optional-guarded like the water fields:
 	// absent on IB2/CE/Jaybit/pre-merge codes -> keep the default 0 (classic 2.0.2).
 	if (has(s, "physicsEngine")) settings.physicsEngine = Math.trunc(s.physicsEngine);
+	// Sandbox ground style (IB2 platform vs IB3 SHORE/ISLAND). Absent on codes
+	// predating the field -> keep 0 (IB2), EXCEPT an old IB3-engine save (engine 1)
+	// almost certainly wants IB3 ground, so auto-detect that so its bot lands right.
+	if (has(s, "groundStyle")) settings.groundStyle = Math.trunc(s.groundStyle);
+	else if (settings.physicsEngine === SandboxSettings.ENGINE_IB3) settings.groundStyle = SandboxSettings.GROUND_STYLE_IB3;
 	return settings;
 }
 

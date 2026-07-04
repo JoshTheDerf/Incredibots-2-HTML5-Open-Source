@@ -44,17 +44,24 @@ describe("friction/restitution UI-scale conversions (Jaybit Util.as:33/:161)", (
 		expect(Util.ConvertFrictionToBox2D(11)).toBe(0.4);
 		expect(Util.ConvertRestitutionToBox2D(7)).toBe(0.3);
 	});
-	it("friction spans 0.15..0.875 over 1..30 and clamps outside", () => {
+	it("friction: legacy 1..30 unchanged; range WIDENED to -5..35 -> Box2D 0..1 for IB3", () => {
+		// Legacy IB2 values convert byte-identically (formula unchanged).
 		expect(Util.ConvertFrictionToBox2D(1)).toBe(0.15);
 		expect(Util.ConvertFrictionToBox2D(30)).toBe(0.875);
-		expect(Util.ConvertFrictionToBox2D(-5)).toBe(0.15);
-		expect(Util.ConvertFrictionToBox2D(100)).toBe(0.875);
+		// Widened bounds reach the full Box2D [0,1] so imported IB3 friction survives.
+		expect(Util.ConvertFrictionToBox2D(-5)).toBe(0); // was clamped to 0.15
+		expect(Util.ConvertFrictionToBox2D(35)).toBe(1); // was clamped to 0.875
+		// Still clamps beyond the widened range.
+		expect(Util.ConvertFrictionToBox2D(-100)).toBe(0);
+		expect(Util.ConvertFrictionToBox2D(100)).toBe(1);
 	});
-	it("restitution spans 0.18..0.76 over 1..30 and clamps outside", () => {
+	it("restitution: legacy 1..30 unchanged; range WIDENED to -8..42 -> Box2D 0..1 for IB3", () => {
 		expect(Util.ConvertRestitutionToBox2D(1)).toBe(0.18);
 		expect(Util.ConvertRestitutionToBox2D(30)).toBe(0.76);
-		expect(Util.ConvertRestitutionToBox2D(0)).toBe(0.18);
-		expect(Util.ConvertRestitutionToBox2D(31)).toBe(0.76);
+		expect(Util.ConvertRestitutionToBox2D(-8)).toBe(0); // was clamped to 0.18
+		expect(Util.ConvertRestitutionToBox2D(42)).toBe(1); // was clamped to 0.76
+		expect(Util.ConvertRestitutionToBox2D(-100)).toBe(0);
+		expect(Util.ConvertRestitutionToBox2D(100)).toBe(1);
 	});
 });
 
@@ -484,7 +491,7 @@ describe("mirrorParts propagates the Jaybit fields (the mirror fix, ControllerGa
 // --- New GameCore commands + challenge restriction clamps -----------------
 
 describe("setFriction / setRestitution / setCollisionGroups commands", () => {
-	it("set the fields on every selected ShapePart, clamped to 1..30", () => {
+	it("set the fields on every selected ShapePart, clamped to the (IB3-widened) range", () => {
 		const c1 = new Circle(0, 0, 1);
 		const c2 = new Circle(3, 0, 1);
 		const { core, ids } = coreWithParts(c1, c2);
@@ -492,7 +499,7 @@ describe("setFriction / setRestitution / setCollisionGroups commands", () => {
 		core.dispatch({ type: "setRestitution", partIds: ids, value: 99 });
 		expect(getPart(core, ids[0]).friction).toBe(22);
 		expect(getPart(core, ids[1]).friction).toBe(22);
-		expect(getPart(core, ids[0]).restitution).toBe(30); // clamped
+		expect(getPart(core, ids[0]).restitution).toBe(42); // clamped to MAX_RESTITUTION (was 30)
 	});
 	it("setCollisionGroups applies layers+subColl+collide to shapes AND pistons", () => {
 		const c1 = new Circle(0, 0, 1);

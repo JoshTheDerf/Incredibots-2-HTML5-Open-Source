@@ -239,6 +239,17 @@ export interface SandboxState {
 	 * on the NEXT play. Default 0.
 	 */
 	physicsEngine: number;
+	/**
+	 * Which game's sandbox GROUND geometry to build (sandboxEnvironment.ts
+	 * GROUND_STYLE_IB2=0 / GROUND_STYLE_IB3=1). IB3 lays out the ground completely
+	 * differently (asymmetric SHORE, 2x+ wider, surface at y=-1 vs IB2's y=12), so
+	 * imported IB3 bots — positioned in IB3 world coords — only land correctly on
+	 * IB3-shaped ground. Auto-set to IB3 by the IB3 importer and persisted; kept
+	 * INDEPENDENT of physicsEngine so an IB3 design keeps IB3 ground on any engine.
+	 * Default 0 (IB2). Optional on old saves (absent -> IB2, with an IB3-engine
+	 * fallback in the deserializers).
+	 */
+	groundStyle: number;
 }
 
 /**

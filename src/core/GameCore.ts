@@ -29,6 +29,10 @@ import {
 	MAX_DENSITY,
 	MAX_FRICTION,
 	MAX_RESTITUTION,
+	MAX_RJ_SPEED,
+	MAX_RJ_STRENGTH,
+	MAX_SJ_SPEED,
+	MAX_SJ_STRENGTH,
 	MIN_DENSITY,
 	MIN_FRICTION,
 	MIN_RESTITUTION,
@@ -57,7 +61,7 @@ import {
 import { encodeReplay, decodeReplay, decodeReplayFile, decodeDemoReplay } from "./replaySerialization";
 import type { DecodedReplay, ReplayMeta, ReplayRobot } from "./replaySerialization";
 import { EXPO_PUBLIC_EDITABLE } from "./exposure";
-import { buildTerrainParts, computeBounds } from "./sandboxEnvironment";
+import { buildTerrainParts, computeBounds, defaultWaterHeight } from "./sandboxEnvironment";
 import {
 	ChallengeSession,
 	CreatePartKind,
@@ -626,6 +630,51 @@ export class GameCore {
 		}
 	}
 
+	/**
+	 * Camera offset that centres the view on where the BULK of `parts` sits — the
+	 * AREA-WEIGHTED centroid of the shapes (so a large cluster dominates and a stray
+	 * far-off part barely tugs the focus, unlike a bounding-box centre). Falls back
+	 * to the plain average of part positions when nothing has an area (joints/text
+	 * only), and returns null for an empty list. Keeps the current zoom; only pans.
+	 * Convention matches handleCenterOnSelection / handleCamera: offset = centre*scale.
+	 */
+	private focusCameraOnParts(parts: Part[]): CameraState | null {
+		if (parts.length === 0) return null;
+		let wSum = 0;
+		let wx = 0;
+		let wy = 0;
+		for (const p of parts) {
+			if (!(p instanceof ShapePart)) continue;
+			const area = Math.max(p.GetArea(), 1e-6);
+			const { x, y } = this.currentXY(p);
+			wx += x * area;
+			wy += y * area;
+			wSum += area;
+		}
+		let cx: number;
+		let cy: number;
+		if (wSum > 0) {
+			cx = wx / wSum;
+			cy = wy / wSum;
+		} else {
+			// No shapes (e.g. text-only) — use the plain average of all part positions.
+			let n = 0;
+			let sx = 0;
+			let sy = 0;
+			for (const p of parts) {
+				const { x, y } = this.currentXY(p);
+				sx += x;
+				sy += y;
+				n++;
+			}
+			if (n === 0) return null;
+			cx = sx / n;
+			cy = sy / n;
+		}
+		const scale = this.state.camera.scale;
+		return { ...this.state.camera, offsetX: cx * scale, offsetY: cy * scale };
+	}
+
 	/** Shared tail of importRobot / importRobotFile (post-decode application). */
 	private applyImportedRobot(decoded: DecodedRobot): void {
 		// Challenge restriction gates, matching the insert/paste siblings
@@ -656,19 +705,44 @@ export class GameCore {
 		this.notifyDepth++;
 		try {
 			this.pushHistory();
-			// Keep the sandbox terrain bodies (isSandbox) so the imported robot lands
-			// on the existing ground; only the robot parts are replaced.
-			const terrain = this.state.parts.filter((p) => (p as { isSandbox?: boolean }).isSandbox);
+			// A NATIVE/CE/Jaybit robot load keeps the current sandbox + terrain bodies
+			// (isSandbox) so the imported robot lands on the existing ground; only the
+			// robot parts are replaced. An IB3 import is different: its bot is positioned
+			// in IB3 WORLD COORDINATES and was tuned in an IB3 sandbox (different engine,
+			// AND a completely differently-shaped/sized ground — SHORE/ISLAND, surface at
+			// y=-1 vs IB2's y=12). So for IB3 we ADOPT the decoded sandbox and REBUILD the
+			// terrain from it, or the bot lands on the wrong ground (floating / clipping).
+			let sandbox = this.state.sandbox;
+			let terrain = this.state.parts.filter((p) => (p as { isSandbox?: boolean }).isSandbox);
+			if (decoded.ib3) {
+				const s = decoded.settings;
+				sandbox = {
+					gravity: s.gravity,
+					size: s.size,
+					terrainType: s.terrainType,
+					terrainTheme: s.terrainTheme,
+					background: s.background,
+					backgroundR: s.backgroundR,
+					backgroundG: s.backgroundG,
+					backgroundB: s.backgroundB,
+					bounds: computeBounds({ size: s.size, terrainType: s.terrainType, groundStyle: s.groundStyle }),
+					water: waterStateFromSettings(s),
+					physicsEngine: s.physicsEngine,
+					groundStyle: s.groundStyle,
+				};
+				terrain = buildTerrainParts(sandbox);
+				for (const p of terrain) p.id = ++this.nextId;
+			}
+			// Focus the camera on the bulk of the imported robot — its saved camera (or
+			// the current pan) can leave the bot off-screen, especially for IB3 imports
+			// whose world coords differ from the current sandbox. Pans only (keeps zoom).
+			const camera = this.focusCameraOnParts(decoded.parts) ?? this.state.camera;
 			this.state = {
 				...this.state,
+				// Terrain first so it draws behind the robot (BuildGround order).
 				parts: [...terrain, ...decoded.parts],
-				// An IB3 import carries its own physics engine (1 = 2.1a) so the bot
-				// runs on the engine it was tuned for (P1.5b-2b). Only IB3 codes retune
-				// the sandbox engine; native/CE/Jaybit loads keep the user's current
-				// engine (a robot load otherwise leaves the sandbox config untouched).
-				sandbox: decoded.ib3
-					? { ...this.state.sandbox, physicsEngine: decoded.settings.physicsEngine }
-					: this.state.sandbox,
+				sandbox,
+				camera,
 				edit: {
 					...this.state.edit,
 					selection: [],
@@ -736,7 +810,7 @@ export class GameCore {
 			backgroundR: s.backgroundR,
 			backgroundG: s.backgroundG,
 			backgroundB: s.backgroundB,
-			bounds: computeBounds({ size: s.size, terrainType: s.terrainType }),
+			bounds: computeBounds({ size: s.size, terrainType: s.terrainType, groundStyle: s.groundStyle }),
 			// IB3 water settings ride on the SandboxSettings (optional-guarded on
 			// decode); project them into the sandbox slice (waterSystem.ts).
 			water: waterStateFromSettings(s),
@@ -744,6 +818,9 @@ export class GameCore {
 			// on decode; 0 for IB2/CE/Jaybit codes, 1 for IB3 imports). GameCore reads
 			// this at play time to pick the backend (P1.5b-2b).
 			physicsEngine: s.physicsEngine,
+			// Sandbox ground style (IB2 platform vs IB3 SHORE/ISLAND). Rides on the
+			// SandboxSettings like physicsEngine; drives buildTerrainParts/bounds.
+			groundStyle: s.groundStyle,
 		};
 
 		this.notifyDepth++;
@@ -835,7 +912,7 @@ export class GameCore {
 			backgroundR: s.backgroundR,
 			backgroundG: s.backgroundG,
 			backgroundB: s.backgroundB,
-			bounds: computeBounds({ size: s.size, terrainType: s.terrainType }),
+			bounds: computeBounds({ size: s.size, terrainType: s.terrainType, groundStyle: s.groundStyle }),
 			// IB3 water settings ride on the SandboxSettings (optional-guarded on
 			// decode); project them into the sandbox slice (waterSystem.ts).
 			water: waterStateFromSettings(s),
@@ -843,6 +920,9 @@ export class GameCore {
 			// on decode; 0 for IB2/CE/Jaybit codes, 1 for IB3 imports). GameCore reads
 			// this at play time to pick the backend (P1.5b-2b).
 			physicsEngine: s.physicsEngine,
+			// Sandbox ground style (IB2 platform vs IB3 SHORE/ISLAND). Rides on the
+			// SandboxSettings like physicsEngine; drives buildTerrainParts/bounds.
+			groundStyle: s.groundStyle,
 		};
 
 		this.notifyDepth++;
@@ -918,6 +998,7 @@ export class GameCore {
 				sb.water,
 			);
 			settings.physicsEngine = sb.physicsEngine;
+			settings.groundStyle = sb.groundStyle;
 			this.challenge.challenge.settings = settings;
 		}
 		return this.challenge.challenge;
@@ -1048,6 +1129,7 @@ export class GameCore {
 			s.water,
 		);
 		settings.physicsEngine = s.physicsEngine;
+		settings.groundStyle = s.groundStyle;
 		return { data, robot: { parts: robotParts, settings } };
 	}
 
@@ -1096,7 +1178,7 @@ export class GameCore {
 			backgroundR: s.backgroundR,
 			backgroundG: s.backgroundG,
 			backgroundB: s.backgroundB,
-			bounds: computeBounds({ size: s.size, terrainType: s.terrainType }),
+			bounds: computeBounds({ size: s.size, terrainType: s.terrainType, groundStyle: s.groundStyle }),
 			// IB3 water settings ride on the SandboxSettings (optional-guarded on
 			// decode); project them into the sandbox slice (waterSystem.ts).
 			water: waterStateFromSettings(s),
@@ -1104,6 +1186,9 @@ export class GameCore {
 			// on decode; 0 for IB2/CE/Jaybit codes, 1 for IB3 imports). GameCore reads
 			// this at play time to pick the backend (P1.5b-2b).
 			physicsEngine: s.physicsEngine,
+			// Sandbox ground style (IB2 platform vs IB3 SHORE/ISLAND). Rides on the
+			// SandboxSettings like physicsEngine; drives buildTerrainParts/bounds.
+			groundStyle: s.groundStyle,
 		};
 		const terrain = buildTerrainParts(sandbox);
 		for (const p of terrain) p.id = ++this.nextId;
@@ -3939,7 +4024,14 @@ export class GameCore {
 			backgroundR: command.backgroundR,
 			backgroundG: command.backgroundG,
 			backgroundB: command.backgroundB,
-			bounds: computeBounds({ size: command.size, terrainType: command.terrainType }),
+			// Ground style is preserved from the current design (the terrain-shape
+			// panel doesn't change it); an IB3-imported design keeps IB3 ground when
+			// its size/shape is edited.
+			bounds: computeBounds({
+				size: command.size,
+				terrainType: command.terrainType,
+				groundStyle: this.state.sandbox.groundStyle,
+			}),
 			// Water settings: replaced when the command carries them (P6 water
 			// panel), preserved otherwise so pre-water callers are unaffected.
 			water: command.water ?? this.state.sandbox.water,
@@ -3947,7 +4039,14 @@ export class GameCore {
 			// preserved otherwise. Like gravity, it takes effect at the NEXT play
 			// (the backend is chosen at world creation — see applyPlayBackend).
 			physicsEngine: command.physicsEngine ?? this.state.sandbox.physicsEngine,
+			groundStyle: this.state.sandbox.groundStyle,
 		};
+		// If water is OFF, reseed its (latent, default) surface to the NEW ground's
+		// top so a later enable doesn't flood the terrain (defaultWaterHeight). An
+		// ENABLED water config is the user's — leave its height untouched.
+		if (!next.water.enabled) {
+			next.water = { ...next.water, height: defaultWaterHeight(next) };
+		}
 
 		// Drop the current terrain bodies (isSandbox) and rebuild from the new
 		// settings, keeping robot parts in place. Preserve robot-part ordering.
@@ -4764,12 +4863,14 @@ export class GameCore {
 				if (this.challenge && !partTypeAllowed(this.challenge, "triangle")) return;
 				const verts = command.verts;
 				// Guard the degenerate inputs the gesture is supposed to prevent, so a
-				// stray/programmatic dispatch can't build an invalid b2PolygonShape
-				// (b2PolygonShape does NOT validate convexity — its asserts are compiled
-				// out — so a non-convex ring would simulate wrongly): need 3..MAX_VERTICES
-				// vertices and a convex ring. Undo of a no-op create is harmless.
-				if (!verts || verts.length < 3 || verts.length > Polygon.MAX_VERTICES) return;
-				if (!Polygon.isConvex(verts)) return;
+				// stray/programmatic dispatch can't build a bad polygon: need
+				// 3..MAX_TOOL_VERTICES vertices and a SIMPLE (non-self-intersecting)
+				// ring. Concave is fine — Polygon.Init ear-clips it into convex collision
+				// fixtures — but a self-crossing bow-tie can't be triangulated, and
+				// b2PolygonShape doesn't validate geometry (asserts compiled out). Undo
+				// of a no-op create is harmless.
+				if (!verts || verts.length < 3 || verts.length > Polygon.MAX_TOOL_VERTICES) return;
+				if (!Polygon.isSimple(verts)) return;
 				const part = new Polygon(verts.map((v) => new b2Vec2(v.x, v.y)));
 				// Challenge material limits clamp friction/restitution defaults, exactly
 				// like createShape (Jaybit ShapePart ctor vs ControllerGame.min/maxFriction).
@@ -5114,26 +5215,36 @@ export class GameCore {
 			// Strength: motorStrength / pistonStrength (ChangeSliderAction STRENGTH_TYPE;
 			// slider range 1..30 — MAX_RJ_STRENGTH / MAX_SJ_STRENGTH).
 			case "setJointStrength": {
-				const v = Math.max(1, Math.min(MAX_JOINT_VALUE, command.value));
-				// Challenge joint-strength caps differ by joint type
+				// Per-type slider max (widened to accommodate IB3): RJ 1..MAX_RJ_STRENGTH,
+				// SJ 1..MAX_SJ_STRENGTH (they now differ — see partDefaults).
+				// Challenge joint-strength caps differ by joint type too
 				// (ControllerGame.strengthText :4122 RJ / :4127 SJ).
 				const ch = this.challenge;
 				this.editParts(command.partIds, (p) => {
-					if (p instanceof RevoluteJoint) p.motorStrength = ch ? clampRJ(ch, v, "strength") : v;
-					else if (p instanceof PrismaticJoint) p.pistonStrength = ch ? clampSJ(ch, v, "strength") : v;
+					if (p instanceof RevoluteJoint) {
+						const v = Math.max(1, Math.min(MAX_RJ_STRENGTH, command.value));
+						p.motorStrength = ch ? clampRJ(ch, v, "strength") : v;
+					} else if (p instanceof PrismaticJoint) {
+						const v = Math.max(1, Math.min(MAX_SJ_STRENGTH, command.value));
+						p.pistonStrength = ch ? clampSJ(ch, v, "strength") : v;
+					}
 				});
 				if (this.tutorialMachine) this.emitJointPowerMilestones(command.partIds);
 				return;
 			}
 			// Speed: motorSpeed / pistonSpeed (ChangeSliderAction SPEED_TYPE).
 			case "setJointSpeed": {
-				const v = Math.max(1, Math.min(MAX_JOINT_VALUE, command.value));
-				// Challenge joint-speed caps differ by joint type
-				// (ControllerGame.speedText :4154 RJ / :4159 SJ).
+				// Per-type slider max (widened for IB3): RJ 1..MAX_RJ_SPEED,
+				// SJ 1..MAX_SJ_SPEED (IB3 piston speed maps to IB2 units *2.5, so 100).
 				const ch = this.challenge;
 				this.editParts(command.partIds, (p) => {
-					if (p instanceof RevoluteJoint) p.motorSpeed = ch ? clampRJ(ch, v, "speed") : v;
-					else if (p instanceof PrismaticJoint) p.pistonSpeed = ch ? clampSJ(ch, v, "speed") : v;
+					if (p instanceof RevoluteJoint) {
+						const v = Math.max(1, Math.min(MAX_RJ_SPEED, command.value));
+						p.motorSpeed = ch ? clampRJ(ch, v, "speed") : v;
+					} else if (p instanceof PrismaticJoint) {
+						const v = Math.max(1, Math.min(MAX_SJ_SPEED, command.value));
+						p.pistonSpeed = ch ? clampSJ(ch, v, "speed") : v;
+					}
 				});
 				if (this.tutorialMachine) this.emitJointPowerMilestones(command.partIds);
 				return;

@@ -15,16 +15,16 @@ import { PrismaticJoint } from "../src/Parts/PrismaticJoint";
 import { TextPart } from "../src/Parts/TextPart";
 import { coreWithParts, getPart, selectOne } from "./helpers";
 
-describe("setDensity — absolute value clamped to [MIN_DENSITY,MAX_DENSITY]=1..30 (GameCore.ts:1084-1088)", () => {
+describe("setDensity — absolute value clamped to [MIN_DENSITY,MAX_DENSITY]=1..40 (widened for IB3)", () => {
 	it("sets exact in-range value", () => {
 		const { core, ids } = coreWithParts(new Circle(0, 0, 1));
 		core.dispatch({ type: "setDensity", partIds: ids, value: 7 });
 		expect(getPart(core, ids[0]).density).toBe(7);
 	});
-	it("clamps high to 30 and low to 1", () => {
+	it("clamps high to MAX_DENSITY (40, was 30) and low to 1", () => {
 		const { core, ids } = coreWithParts(new Circle(0, 0, 1));
 		core.dispatch({ type: "setDensity", partIds: ids, value: 999 });
-		expect(getPart(core, ids[0]).density).toBe(30);
+		expect(getPart(core, ids[0]).density).toBe(40);
 		core.dispatch({ type: "setDensity", partIds: ids, value: -5 });
 		expect(getPart(core, ids[0]).density).toBe(1);
 	});

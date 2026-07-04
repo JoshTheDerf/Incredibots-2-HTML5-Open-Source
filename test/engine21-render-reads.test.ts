@@ -78,6 +78,16 @@ describe("engine 1 (Box2D 2.1a) renderer reads do not throw", () => {
 		expect(rShape.m_type).toBe(b2Shape.e_polygonShape);
 		expect(rShape.GetVertexCount()).toBeGreaterThanOrEqual(3);
 		expect(rShape.GetVertices().length).toBeGreaterThanOrEqual(3);
+
+		// DrawShape reads shape.GetUserData().outline/terrain/isBomb on the RESOLVED
+		// shape. 2.1a keeps userData on the fixture (b2Shape has none), so without
+		// the backend mirroring it onto the shape the renderer throws every frame
+		// ("GetUserData is not a function", then null.outline) — freezing the sim.
+		expect(typeof cShape.GetUserData).toBe("function");
+		expect(cShape.GetUserData()).not.toBeNull();
+		expect(typeof cShape.GetUserData()).toBe("object");
+		expect(rShape.GetUserData()).not.toBeNull();
+		expect(typeof rShape.GetUserData()).toBe("object");
 	});
 
 	it("body.GetShapeList() (cannonball path) resolves to a readable shape", () => {

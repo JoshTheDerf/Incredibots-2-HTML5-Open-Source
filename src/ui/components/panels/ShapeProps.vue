@@ -7,6 +7,14 @@
 import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
+import {
+	MAX_DENSITY,
+	MAX_FRICTION,
+	MAX_RESTITUTION,
+	MIN_DENSITY,
+	MIN_FRICTION,
+	MIN_RESTITUTION,
+} from "../../../Parts/partDefaults";
 
 const game = useGameStore();
 
@@ -15,9 +23,9 @@ const ids = computed(() => game.edit.selection);
 
 // Density slider range from the active challenge restrictions (PartEditWindow
 // :1050-1051: minValue = minDensity, maxValue = maxDensity). Falls back to the
-// sandbox default 1..30 when no challenge / limit unset (null).
-const densityMin = computed(() => game.challenge?.restrictions.minDensity ?? 1);
-const densityMax = computed(() => game.challenge?.restrictions.maxDensity ?? 30);
+// sandbox material range (partDefaults, widened for IB3) when no challenge / limit unset.
+const densityMin = computed(() => game.challenge?.restrictions.minDensity ?? MIN_DENSITY);
+const densityMax = computed(() => game.challenge?.restrictions.maxDensity ?? MAX_DENSITY);
 
 // Density (m_densitySlider / m_densityArea) — ControllerGame.densitySlider.
 const density = computed({
@@ -30,10 +38,10 @@ const density = computed({
 // to the Advanced window (shapeAdv has no material sliders). Ranges honour the
 // active challenge restrictions; fall back to the 1..30 UI scale.
 const restr = computed(() => game.challenge?.restrictions);
-const frictionMin = computed(() => restr.value?.minFriction ?? 1);
-const frictionMax = computed(() => restr.value?.maxFriction ?? 30);
-const restitutionMin = computed(() => restr.value?.minRestitution ?? 1);
-const restitutionMax = computed(() => restr.value?.maxRestitution ?? 30);
+const frictionMin = computed(() => restr.value?.minFriction ?? MIN_FRICTION);
+const frictionMax = computed(() => restr.value?.maxFriction ?? MAX_FRICTION);
+const restitutionMin = computed(() => restr.value?.minRestitution ?? MIN_RESTITUTION);
+const restitutionMax = computed(() => restr.value?.maxRestitution ?? MAX_RESTITUTION);
 const frictionLocked = computed(() => frictionMin.value >= frictionMax.value);
 const restitutionLocked = computed(() => restitutionMin.value >= restitutionMax.value);
 const friction = computed({

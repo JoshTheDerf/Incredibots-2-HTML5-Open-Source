@@ -1596,30 +1596,37 @@ function handlePolygonClick(world: { x: number; y: number }, closeRequested: boo
 		}
 	}
 	// At the vertex cap only the close action (handled above) is possible.
-	if (n >= Polygon.MAX_VERTICES) return;
+	if (n >= Polygon.MAX_TOOL_VERTICES) return;
 	// Minimum side length: ignore a vertex too close to the previous one
 	// (accidental double placement / noise) — PolygonPart.SIDE_MIN_LENGTH.
 	if (n > 0) {
 		const prev = polygonPoints[n - 1];
 		if (Math.hypot(snapped.x - prev.x, snapped.y - prev.y) < Polygon.MIN_SIDE_LENGTH) return;
 	}
-	// Convexity: reject a vertex that would make the CLOSED ring non-convex.
-	// isConvex is winding-agnostic and treats the list as a closed ring (so it
-	// tests the wrap-around edges too), matching what the b2PolygonShape will be.
+	// Simplicity: reject a vertex that would make the CLOSED ring self-intersect.
+	// Concave IS allowed now (Polygon.Init ear-clips it into convex collision
+	// fixtures) — only a self-crossing (bow-tie) ring, which can't be triangulated,
+	// is rejected. isSimple is winding-agnostic and treats the list as a closed
+	// ring (so it tests the wrap-around edge too).
 	const candidate = [...polygonPoints, { x: snapped.x, y: snapped.y }];
-	if (candidate.length >= 3 && !Polygon.isConvex(candidate)) return;
+	if (candidate.length >= 3 && !Polygon.isSimple(candidate)) return;
 	polygonPoints = candidate;
 }
 
 /**
  * Commit the in-progress polygon: dispatch createPolygon with the accumulated
- * ring (only when it is a valid convex 3..MAX_VERTICES polygon — the gesture
- * keeps it so, but re-check defensively) and reset the gesture. GameCore builds,
+ * ring (only when it is a valid simple 3..MAX_TOOL_VERTICES polygon — concave
+ * allowed, self-crossing not — the gesture keeps it so, but re-check defensively)
+ * and reset the gesture. GameCore builds,
  * adds and selects the Polygon part through the same undoable history path as
  * every other create.
  */
 function commitPolygon(): void {
-	if (polygonPoints.length >= 3 && polygonPoints.length <= Polygon.MAX_VERTICES && Polygon.isConvex(polygonPoints)) {
+	if (
+		polygonPoints.length >= 3 &&
+		polygonPoints.length <= Polygon.MAX_TOOL_VERTICES &&
+		Polygon.isSimple(polygonPoints)
+	) {
 		game.dispatch({ type: "createPolygon", verts: polygonPoints.map((p) => ({ x: p.x, y: p.y })) });
 	}
 	polygonPoints = [];

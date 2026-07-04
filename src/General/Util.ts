@@ -50,14 +50,20 @@ export class Util {
   // restitution 7) map to 0.4 / 0.3 — CE's hardcoded values — so a
   // default-valued Jaybit shape is physically identical to a CE shape.
 
-  /** Util.as:33 — friction 1..30 -> 0.15..0.875; default 11 -> 0.4. */
+  // Friction / restitution UI value -> Box2D. The clamp bounds are WIDENED from
+  // the original 1..30 to the IB3-accommodating range (partDefaults MIN/MAX_*),
+  // so imported IB3 materials aren't clamped. The FORMULA is unchanged, so every
+  // in-range legacy value (1..30) converts identically; the wider bounds just let
+  // friction reach Box2D [0,1] (f in [-5,35]) and restitution [0,1] (r in [-8,42]).
+
+  /** Util.as:33 — friction -5..35 -> 0..1; legacy 1..30 -> 0.15..0.875; default 11 -> 0.4. */
   public static ConvertFrictionToBox2D(friction: number): number {
-    return (Math.max(1, Math.min(30, friction)) + 5) / 40;
+    return (Math.max(-5, Math.min(35, friction)) + 5) / 40;
   }
 
-  /** Util.as:161 — restitution 1..30 -> 0.18..0.76; default 7 -> 0.3. */
+  /** Util.as:161 — restitution -8..42 -> 0..1; legacy 1..30 -> 0.18..0.76; default 7 -> 0.3. */
   public static ConvertRestitutionToBox2D(restitution: number): number {
-    return (Math.max(1, Math.min(30, restitution)) + 8) / 50;
+    return (Math.max(-8, Math.min(42, restitution)) + 8) / 50;
   }
 
   /**

@@ -169,6 +169,29 @@ describe("IB3 part mapping", () => {
 		expect(c.opacity).toBe(200);
 	});
 
+	it("preserves IB3 materials outside the OLD IB2 1..30 range (widened range, no clamp/warning)", () => {
+		// IB3 extremes: max-grip friction 40, superball restitution 40, densest 40 —
+		// all previously clamped into 1..30 (losing the value). Now representable.
+		const { robot, warnings } = decodeIB3FromByteArray(
+			ib3Bytes({ parts: [circle({ friction: 40, restitution: 40, density: 40 })] }),
+		);
+		const c = robot.parts[0] as Circle;
+		expect(c.density).toBe(40); // pass-through, no longer capped at 30
+		expect(c.friction).toBe(35); // 40 - 5 -> Box2D (35+5)/40 = 1.0 (was clamped to 30)
+		expect(c.restitution).toBe(42); // 40*1.25 - 8 -> Box2D (42+8)/50 = 1.0 (was clamped to 30)
+		// No "outside range" warnings for valid IB3 values anymore.
+		expect([...warnings].some((w) => /friction|restitution/i.test(w))).toBe(false);
+	});
+
+	it("preserves IB3 frictionless / bounceless materials (bottom of the range)", () => {
+		const { robot } = decodeIB3FromByteArray(
+			ib3Bytes({ parts: [circle({ friction: 0, restitution: 0 })] }),
+		);
+		const c = robot.parts[0] as Circle;
+		expect(c.friction).toBe(-5); // 0 - 5 -> Box2D 0 (frictionless; was clamped to 1 -> 0.15)
+		expect(c.restitution).toBe(-8); // 0*1.25 - 8 -> Box2D 0 (no bounce)
+	});
+
 	it("recovers an axis-aligned rectangle from its 4 vertices", () => {
 		const parts = [{ name: "Rectangle", x: 5, y: 0, angle: 0, vertices: rectVerts(5, 0, 2, 1, 0) }];
 		const { robot } = decodeIB3FromByteArray(ib3Bytes({ parts }));

@@ -34,9 +34,15 @@ export class b2PolyAndEdgeContact extends b2Contact
 	{
 	}
 
-	public Reset(fixtureA:b2Fixture, fixtureB:b2Fixture) : void
+	public Reset(fixtureA:b2Fixture | null = null, fixtureB:b2Fixture | null = null) : void
 	{
 		super.Reset(fixtureA,fixtureB);
+		// See b2PolyAndCircleContact.Reset: the pooled-contact Destroy path calls
+		// Reset() with no fixtures, so guard the type asserts against null.
+		if(!fixtureA || !fixtureB)
+		{
+			return;
+		}
 		b2Settings.b2Assert(fixtureA.GetType() == b2Shape.e_polygonShape);
 		b2Settings.b2Assert(fixtureB.GetType() == b2Shape.e_edgeShape);
 	}

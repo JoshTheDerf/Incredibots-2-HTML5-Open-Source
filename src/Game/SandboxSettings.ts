@@ -53,6 +53,19 @@ export class SandboxSettings {
   public static ENGINE_IB3: number = 1;
   public static ENGINE_BOX2D3: number = 2;
 
+  // Which game's sandbox GROUND geometry to build: 0 = IB2 (classic platform,
+  // surface at y=12), 1 = IB3 (SHORE/ISLAND, surface at y=-1). IB3 bots are
+  // positioned in IB3 world coords so they only rest on IB3-shaped ground.
+  // Serialized with the settings (AMF writes all public fields); absent on old /
+  // IB2 / CE / Jaybit codes -> loaders guard it to 0. IB3 imports set it to 1.
+  // Kept independent of physicsEngine so an IB3 design keeps IB3 ground on any
+  // engine (the deserializers also fall back to IB3 ground for old IB3-engine
+  // saves that predate this field).
+  public groundStyle: number = SandboxSettings.GROUND_STYLE_IB2;
+
+  public static GROUND_STYLE_IB2: number = 0;
+  public static GROUND_STYLE_IB3: number = 1;
+
   public static WATER_TYPE_TIDE: number = 0;
   public static WATER_TYPE_WAVE: number = 1;
 

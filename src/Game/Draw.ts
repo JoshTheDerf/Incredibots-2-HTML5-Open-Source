@@ -565,6 +565,17 @@ export class Draw extends b2DebugDraw {
                   new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0),
                   allParts[i].opacity / 255.0
                 );
+              else if (allParts[i] instanceof Polygon)
+                this.DrawPolygonBodyForOutline(
+                  allParts[i],
+                  xf,
+                  new b2Color(
+                    (allParts[i] as Polygon).red / 255.0,
+                    (allParts[i] as Polygon).green / 255.0,
+                    (allParts[i] as Polygon).blue / 255.0
+                  ),
+                  (allParts[i] as Polygon).opacity / 255.0
+                );
               else
                 this.DrawShapeForOutline(
                   allParts[i].GetShape(),
@@ -599,6 +610,18 @@ export class Draw extends b2DebugDraw {
                   allParts[i].opacity / 255.0,
                   showOutlines
                 );
+              else if (allParts[i] instanceof Polygon)
+                this.DrawPolygonBody(
+                  allParts[i],
+                  xf,
+                  new b2Color(
+                    (allParts[i] as Polygon).red / 255.0,
+                    (allParts[i] as Polygon).green / 255.0,
+                    (allParts[i] as Polygon).blue / 255.0
+                  ),
+                  (allParts[i] as Polygon).opacity / 255.0,
+                  showOutlines
+                );
               else
                 this.DrawShape(
                   allParts[i].GetShape(),
@@ -616,6 +639,14 @@ export class Draw extends b2DebugDraw {
                   1,
                   showOutlines
                 );
+              else if (allParts[i] instanceof Polygon)
+                this.DrawPolygonBody(
+                  allParts[i],
+                  xf,
+                  Draw.s_staticColor,
+                  1,
+                  showOutlines
+                );
               else
                 this.DrawShape(
                   allParts[i].GetShape(),
@@ -628,6 +659,14 @@ export class Draw extends b2DebugDraw {
               if (allParts[i] instanceof Cannon)
                 this.DrawCannon(
                   allParts[i].GetShape(),
+                  xf,
+                  Draw.s_normalColor,
+                  1,
+                  showOutlines
+                );
+              else if (allParts[i] instanceof Polygon)
+                this.DrawPolygonBody(
+                  allParts[i],
                   xf,
                   Draw.s_normalColor,
                   1,
@@ -902,6 +941,52 @@ export class Draw extends b2DebugDraw {
         }
         break;
     }
+  }
+
+  /**
+   * Draw a Polygon PART's body during the sim from its own (possibly CONCAVE)
+   * body-local outline, transformed by the live body xform — instead of
+   * DrawShape, which reads a single b2 shape and so would draw only ONE of a
+   * concave polygon's triangulated collision fixtures. DrawSolidPolygon's
+   * non-zero fill renders the concave ring correctly; interpolation is preserved
+   * because it reuses the same RenderXForm-derived `xf`. Equivalent to DrawShape
+   * for a convex polygon (one shape == the whole outline), so all polygons take
+   * this path uniformly. Reads outline/terrain from the part (Polygon.outline).
+   */
+  public DrawPolygonBody(
+    poly: any,
+    xf: any,
+    color: any,
+    alpha: number,
+    showOutlines: boolean = true
+  ): void {
+    var local: Array<any> = poly.GetLocalVertices();
+    var n: number = local.length;
+    if (n < 3) return;
+    var vertices: Array<any> = new Array(n);
+    for (var i: number = 0; i < n; ++i) vertices[i] = b2Math.b2MulX(xf, local[i]);
+    if (this.drawColours) this.m_fillAlpha = alpha;
+    this.DrawSolidPolygon(
+      vertices,
+      n,
+      color,
+      false,
+      poly.outline && (!this.drawColours || !poly.terrain) && showOutlines
+    );
+  }
+
+  /** DrawShapeForOutline's counterpart for a concave-capable Polygon part. */
+  public DrawPolygonBodyForOutline(poly: any, xf: any, color: any, alpha: number): void {
+    color = Draw.DarkenColour(color);
+    var thickness: number = Math.max(0.1, (this.m_lineThickness * Math.pow(this.m_drawScale, 0.5)) / 8);
+    var local: Array<any> = poly.GetLocalVertices();
+    var n: number = local.length;
+    if (n < 3) return;
+    var vertices: Array<any> = new Array(n);
+    for (var i: number = 0; i < n; ++i) vertices[i] = b2Math.b2MulX(xf, local[i]);
+    vertices = ShapePart.GetOutlineVertices(vertices, n, thickness);
+    if (this.drawColours) this.m_fillAlpha = alpha;
+    this.DrawSolidPolygon(vertices, n, color, false, false);
   }
 
   public DrawCannon(

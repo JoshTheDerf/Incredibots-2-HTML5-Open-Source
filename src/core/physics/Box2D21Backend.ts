@@ -136,7 +136,16 @@ export class Box2D21Backend implements PhysicsBackend<b2World, b2Body, b2Fixture
 		}
 		// CreateFixture auto-computes mass when density>0 AND the body is dynamic
 		// (IB3 b2Body.as:183-207); setMass/setMassFromShapes finalize below.
-		return body.CreateFixture(fd)!;
+		const fixture = body.CreateFixture(fd)!;
+		// RENDER READ-PATH SEAM: mirror the fixture's userData onto its b2Shape.
+		// 2.1a stores userData on the fixture, but Draw.resolveShape unwraps a
+		// fixture to its shape and reads shape.GetUserData() (outline/terrain/isBomb)
+		// — 2.0.2 kept userData on the shape. Set it on the LIVE shape (b2Fixture.
+		// Create COPIES def.shape, so setting fd.shape wouldn't reach this instance).
+		// Without this the engine-1 renderer throws every frame ("GetUserData is not
+		// a function", then null.outline once GetUserData exists), freezing the sim.
+		fixture.GetShape().SetUserData(shapeDef.userData ?? null);
+		return fixture;
 	}
 
 	destroyShape(body: b2Body, shape: b2Fixture): void {

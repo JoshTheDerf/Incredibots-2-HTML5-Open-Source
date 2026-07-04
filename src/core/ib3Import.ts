@@ -72,7 +72,14 @@ import { ShapePart } from "../Parts/ShapePart";
 import { TextPart } from "../Parts/TextPart";
 import { Thrusters } from "../Parts/Thrusters";
 import { Triangle } from "../Parts/Triangle";
-import { TRIGGER_DESTROY, TRIGGER_FIRE } from "../Parts/partDefaults";
+import {
+	MAX_FRICTION,
+	MAX_RESTITUTION,
+	MIN_FRICTION,
+	MIN_RESTITUTION,
+	TRIGGER_DESTROY,
+	TRIGGER_FIRE,
+} from "../Parts/partDefaults";
 import { EXPO_PUBLIC_EDITABLE, EXPO_PUBLIC_UNEDITABLE, type ExposureFlags } from "./exposure";
 import type { DecodedRobot } from "./robotSerialization";
 import { VERSION_PREFIX } from "./serializationVersion";
@@ -772,16 +779,24 @@ function applyCommonShapeFields(shape: ShapePart, od: Record<string, unknown>, v
 	// density passes through (both engines: (d+5)/10; IB2 Init unclamped).
 	if (has(od, "density")) shape.density = num(od.density, shape.density);
 	if (has(od, "friction")) {
+		// IB3 friction (Box2D f3/40) -> IB2 UI (Box2D (f2+5)/40) => f2 = f3 - 5. The
+		// IB2 range is now widened to cover IB3's full 0..40 (partDefaults MIN/MAX_
+		// FRICTION = -5..35), so IB3 values map without clamping; the clamp only trips
+		// on malformed out-of-IB3-range input.
 		const conv = num(od.friction) - 5;
-		shape.friction = clamp(1, 30, conv);
-		if (conv < 1 || conv > 30) warnings.add("Some friction values were outside IB2's range and were clamped.");
+		shape.friction = clamp(MIN_FRICTION, MAX_FRICTION, conv);
+		if (conv < MIN_FRICTION || conv > MAX_FRICTION)
+			warnings.add("Some friction values were outside the supported range and were clamped.");
 	}
 	if (has(od, "restitution")) {
 		let r = num(od.restitution);
 		if (atOrBefore("0.00.18a", version)) r = (r / 54.8) * 40; // pre-0.00.18a fix-up
+		// IB3 restitution (Box2D r3/40) -> IB2 UI (Box2D (r2+8)/50) => r2 = r3*1.25 - 8.
+		// IB2 range widened to -8..42 to cover IB3's 0..40 without clamping.
 		const conv = r * 1.25 - 8;
-		shape.restitution = clamp(1, 30, conv);
-		if (conv < 1 || conv > 30) warnings.add("Some restitution values were outside IB2's range and were clamped.");
+		shape.restitution = clamp(MIN_RESTITUTION, MAX_RESTITUTION, conv);
+		if (conv < MIN_RESTITUTION || conv > MAX_RESTITUTION)
+			warnings.add("Some restitution values were outside the supported range and were clamped.");
 	}
 	if (has(od, "selfColl")) shape.subColl = Boolean(od.selfColl);
 	if (has(od, "buoyant")) shape.buoyant = Boolean(od.buoyant);
@@ -894,6 +909,12 @@ function mapSettings(s: Record<string, unknown>, version: string, warnings: Set<
 	// the IB3 physics engine (1) — GameCore runs it on src/Box2D21 at play time
 	// (P1.5b-2b). Native/CE/Jaybit codes never reach here and keep engine 0.
 	settings.physicsEngine = SandboxSettings.ENGINE_IB3;
+
+	// IB3 bots are positioned in IB3 WORLD COORDINATES, so they only rest on
+	// IB3-shaped sandbox ground (SHORE/ISLAND, surface at y=-1 — completely
+	// different from IB2's platform at y=12). Flag the ground style so
+	// buildTerrainParts/computeBounds build the IB3 sandbox for this design.
+	settings.groundStyle = SandboxSettings.GROUND_STYLE_IB3;
 
 	return settings;
 }
