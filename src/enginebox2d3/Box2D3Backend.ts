@@ -69,14 +69,22 @@
 // (ShapePart.CollisionBits) and self-collision groupIndex map 1:1 onto v3's
 // b2Filter{categoryBits,maskBits,groupIndex} with IDENTICAL semantics to
 // Box2DFlash 2.0/2.1a — negative groupIndex = never collide (robot self-collide
-// opt-out), positive = always collide, 0 = defer to category/mask. E3-1's
-// mapping is correct as-is. DEFERRED: the shipped ContactFilter custom
-// short-circuits (isSandbox force-collide; per-shape collide=false / same-piston
-// opt-outs) are NOT yet ported — v3's custom-filter callback is veto-only (can
-// further restrict but cannot force-collide across a b2Filter reject), and none
-// of the required semantics are exercisable by the standard filter alone; the
-// piston self-collision is already handled by the shared negative groupIndex.
-// (Follow-up; engine 2 is not user-reachable until E3-4.)
+// opt-out), positive = always collide, 0 = defer to category/mask.
+// CONTACTFILTER RECONCILIATION (E3-5): the shipped Game/ContactFilter.ShouldCollide
+// custom short-circuits are now fully ported. Split by nature:
+//   - isSandbox FORCE-collide: v3's custom filter is VETO-ONLY (can restrict but
+//     cannot force-collide across a b2Filter reject), so this is encoded in the
+//     b2FILTER BITS instead — createShape overlays reserved OBJECT_BIT/SANDBOX_BIT
+//     (bits 16/17, above the 4 layer nibbles) so sandbox/terrain collides with
+//     every object incl. an all-layers-off object that the layer bits alone would
+//     make collide with nothing. See the OBJECT_BIT/SANDBOX_BIT constants.
+//   - collide=false opt-outs + same-piston-different-body: these are RESTRICTIONS,
+//     so they ARE expressible in the veto-only callback — ported verbatim in
+//     shouldCollide(), wired via b2World_SetCustomFilterCallback + per-shape
+//     enableCustomFiltering. (The negative-groupIndex piston/robot self-collide is
+//     still handled by v3's built-in group check, as before.)
+// Verified (test/engine3-tuning.test.ts) for terrain-vs-all-off, collide=false,
+// and same-piston-two-bodies. Nothing in ContactFilter is left un-portable.
 //
 // WATER / BUOYANCY (E3-3) — v3 has NO controller framework, so createWaterController
 // builds a PLAIN-JS controller (def + registered bodies + animated surface state)
@@ -329,12 +337,79 @@ export class Box2D3Joint {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// SOLVER-FEEL TUNING (E3-5). v3's soft-step solver differs from Box2DFlash
+// 2.0.2/2.1a, so these are set + PINNED so engine-2 feel tracks engines 0/1 and
+// doesn't drift if box2d3-wasm changes its defaults. Chosen by a cross-engine
+// metric sweep (test/engine3-tuning.test.ts + the E3-5 report); values that
+// equal the v3 default are pinned deliberately, not left implicit.
+//
+// UNIT SCALE: our physics world is ALREADY ~1 unit = 1 metre — the "30" in the
+// codebase (ControllerMainMenu.m_physScale / Draw.m_drawScale) is a RENDER
+// px/unit multiplier, NOT a physics scale; bodies are built in metre-ish units
+// (a 2x2 part is ~2 m, gravity ~15 m/s^2). So v3's length-based tuning constants
+// (contact speculative distance, sleep/restitution thresholds — all calibrated
+// for 1 unit == 1 m) already match us at b2_lengthUnitsPerMeter == 1. NB
+// box2d3-wasm does NOT bind b2SetLengthUnitsPerMeter anyway, so 1 is forced; this
+// is fine precisely because our world is metre-scale.
+
 /**
  * v3 Step takes a single sub-step count (not the 2.x velocity/position split). 4
- * is the v3-recommended default and rests cleanly (box2d3-smoke.test.ts); the
- * incoming 2.0 `iterations` is a different solver concept, not forwarded.
+ * is the v3-recommended default; the E3-5 sweep found 8/16 give NO measurable
+ * gain on our bots (rest sink, settle time, stacking under load, car travel were
+ * already indistinguishable from engines 0/1 at 4), so 4 stays — extra sub-steps
+ * would only cost CPU. The incoming 2.0 `iterations` is a different solver
+ * concept, not forwarded.
  */
 const B2_SUB_STEP_COUNT = 4;
+
+/**
+ * Contact-constraint stiffness (Hz). v3 default 30; kept. Must stay <= 0.25 * the
+ * sub-step rate (4 sub-steps * 60 fps = 240 Hz -> cap 60) to avoid contact
+ * jitter; 30 is stiff enough that bodies rest AT the surface with no visible
+ * sink (measured rest y == ideal to <1 mm, matching engines 0/1) and no jitter.
+ */
+const CONTACT_HERTZ = 30;
+
+/**
+ * Contact damping ratio. v3 default 10; kept. High damping = contacts settle
+ * without bouncing out (near-critically damped), which is what the rigid
+ * Box2DFlash contacts effectively did. Lowering it did not recover v3's slightly
+ * lower restitution (see below) and risks lively contacts, so 10 stays.
+ */
+const CONTACT_DAMPING_RATIO = 10;
+
+/**
+ * Relative normal speed below which restitution (bounce) is suppressed. v3
+ * default 1.0 (in length-units/s) == Box2DFlash 2.0.2/2.1a b2_velocityThreshold
+ * (1.0) at our 1-unit==1-m scale, so a bounce triggers under the same impact
+ * speed on all three engines. Pinned to 1.0 to keep that parity.
+ *
+ * KNOWN RESIDUAL: for the SAME restitution coefficient, v3's split-solver
+ * restitution rebounds ~20% lower than Box2DFlash (measured: a max-restitution
+ * box rebounds ~9.8 units under engine 2 vs ~12.5/12.9 under engines 0/1). The
+ * E3-5 sweep confirmed this is INHERENT to v3's restitution model — it does not
+ * respond to contactHertz/damping/sub-step tuning — and it errs on the SAFE side
+ * (slightly less bounce, never excessive). Left as-is rather than faked by
+ * inflating the per-shape restitution.
+ */
+const RESTITUTION_THRESHOLD = 1.0;
+
+// Reserved collision-filter bits for the ContactFilter reconciliation (E3-5).
+// Layers A-D occupy bits 0-15 (ShapePart.CollisionBits); bits 16/17 are free and
+// within the 32-bit `b2Filter.categoryBits` field (the 64-bit getters/setters are
+// avoided — we never need >18 bits). These encode the ContactFilter `isSandbox`
+// FORCE-collide that a veto-only custom callback cannot express (see the filter
+// block in installContactHandlers + createShape). OBJECT_BIT tags every real
+// shape; SANDBOX_BIT tags sandbox/terrain. A sandbox shape's mask carries
+// OBJECT_BIT and its category SANDBOX_BIT, and every object's mask carries
+// SANDBOX_BIT + category OBJECT_BIT, so sandbox collides with EVERY object —
+// even an all-layers-off object (categoryBits 0) that would otherwise collide
+// with nothing — exactly matching ContactFilter's isSandbox short-circuit. The
+// bits never make two OBJECTS collide (OBJECT_BIT is only ever in a mask via
+// SANDBOX_BIT and vice-versa; object-vs-object still reduces to shared layers).
+const OBJECT_BIT = 1 << 16; // 0x10000
+const SANDBOX_BIT = 1 << 17; // 0x20000
 
 /** ±MAX_VALUE "no limit" sentinels from the 2.x defs -> a large finite bound
  * (v3 SetLimits with 1.79e308 risks NaN); ~5730 turns is effectively unlimited. */
@@ -369,6 +444,10 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 		const g = new m.b2Vec2(def.gravityX, def.gravityY);
 		wd.gravity = g;
 		wd.enableSleep = def.doSleep;
+		// E3-5 solver-feel tuning (pinned; see the constants above).
+		wd.contactHertz = CONTACT_HERTZ;
+		wd.contactDampingRatio = CONTACT_DAMPING_RATIO;
+		wd.restitutionThreshold = RESTITUTION_THRESHOLD;
 		// v3 uses a dynamic tree; the 2.0 world AABB bounds are obsolete (as in 2.1a).
 		const world = m.b2CreateWorld(wd);
 		g.delete();
@@ -430,12 +509,31 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 		// contact/sensor poll drives the trigger + condition hooks.
 		sd.enableContactEvents = true;
 		sd.enableSensorEvents = true;
+		// ContactFilter reconciliation (E3-5): the veto-only custom callback (wired
+		// in installContactHandlers) handles the collide=false / same-piston OPT-OUTS
+		// but CANNOT force-collide across a b2Filter reject, so it can't express
+		// ContactFilter's isSandbox force-collide alone. Opt every shape into the
+		// custom callback and encode the sandbox force-collide directly in the filter
+		// bits below.
+		sd.enableCustomFiltering = true;
 		// Collision layers: our 2.0 category/mask/group bits map 1:1 onto v3's
 		// b2Filter (same encoding ShapePart.CollisionBits computes; same negative=
-		// never / positive=always / 0=defer semantics as Box2DFlash 2.0/2.1a).
+		// never / positive=always / 0=defer semantics as Box2DFlash 2.0/2.1a). We
+		// KEEP the un-augmented game bits on the wrapper's m_filter (what parts +
+		// the bomb's base-filter read via GetFilterData()); only the v3 shape's
+		// filter gets the reserved OBJECT_BIT/SANDBOX_BIT overlay (see the constants)
+		// that encodes ContactFilter's isSandbox force-collide.
 		const filter = { categoryBits: shapeDef.filter.categoryBits, maskBits: shapeDef.filter.maskBits, groupIndex: shapeDef.filter.groupIndex };
-		sd.filter.categoryBits = filter.categoryBits;
-		sd.filter.maskBits = filter.maskBits;
+		const ud = shapeDef.userData as { isSandbox?: boolean } | null;
+		const isSandbox = !!(ud && ud.isSandbox);
+		if (isSandbox) {
+			// Sandbox/terrain collides with EVERY object (any layer, even all-off).
+			sd.filter.categoryBits = filter.categoryBits | SANDBOX_BIT;
+			sd.filter.maskBits = filter.maskBits | OBJECT_BIT;
+		} else {
+			sd.filter.categoryBits = filter.categoryBits | OBJECT_BIT;
+			sd.filter.maskBits = filter.maskBits | SANDBOX_BIT;
+		}
 		sd.filter.groupIndex = filter.groupIndex;
 
 		let raw: RawShapeId;
@@ -741,10 +839,63 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 	}
 
 	// --- contact wiring ---
-	installContactHandlers(_world: RawWorldId, hooks: ContactHooks): void {
+	installContactHandlers(world: RawWorldId, hooks: ContactHooks): void {
 		// v3 has NO listener — just remember the hooks; step() drains the polled
 		// begin/end touch events into them after each b2World_Step.
 		this.contactHooks = hooks;
+		// ContactFilter reconciliation (E3-5). v3's custom filter is VETO-ONLY: it
+		// runs AFTER the built-in b2Filter (category/mask/group) passes and can only
+		// FURTHER restrict a pair (return false = don't collide) — it can't force a
+		// pair to collide across a b2Filter reject. So we split the shipped
+		// Game/ContactFilter.ShouldCollide:
+		//   - isSandbox FORCE-collide  -> encoded in the b2Filter bits at createShape
+		//     (OBJECT_BIT/SANDBOX_BIT), so those pairs already pass the built-in
+		//     filter and reach this callback; here we simply DON'T veto them.
+		//   - collide=false opt-outs + same-piston-different-body -> the veto clauses
+		//     below, a 1:1 port of ContactFilter.ShouldCollide's restriction clauses
+		//     (the base super.ShouldCollide == category/mask/group is v3's built-in
+		//     check, already applied before we're called).
+		// Negative-groupIndex self-collision (robot/piston) is handled by v3's
+		// built-in group check, exactly as in engines 0/1 — nothing to do here.
+		this.m.b2World_SetCustomFilterCallback(world, (idA: RawShapeId, idB: RawShapeId): boolean =>
+			this.shouldCollide(idA, idB),
+		);
+	}
+
+	/**
+	 * Veto-only custom filter (E3-5): a direct port of Game/ContactFilter.
+	 * ShouldCollide MINUS the base category/mask/group check (v3 already did it) and
+	 * MINUS the isSandbox force-collide (now in the filter bits). Returns true to
+	 * allow the collision v3's filter already accepted, false to veto it.
+	 */
+	private shouldCollide(idA: RawShapeId, idB: RawShapeId): boolean {
+		const s1 = this.shapesById.get(keyOf(idA as IdTriple));
+		const s2 = this.shapesById.get(keyOf(idB as IdTriple));
+		if (!s1 || !s2) return true; // unknown shape: don't restrict
+		// biome-ignore lint/suspicious/noExplicitAny: userData is the 2.0 shape any.
+		const u1 = s1.userData as any;
+		// biome-ignore lint/suspicious/noExplicitAny: userData is the 2.0 shape any.
+		const u2 = s2.userData as any;
+		// isSandbox short-circuit -> never veto (matches ContactFilter returning true).
+		if ((u1 && u1.isSandbox) || (u2 && u2.isSandbox)) return true;
+		if (u1 && u2) {
+			// collide=false opt-outs (ContactFilter.ts:11-15).
+			if (!u1.collide && (!u1.editable || u2.editable) && (u1.isPiston === -1 || u2.isPiston === -1)) return false;
+			if (!u2.collide && (!u2.editable || u1.editable) && (u1.isPiston === -1 || u2.isPiston === -1)) return false;
+			if (u1.isPiston !== -1 && u2.isPiston !== -1 && !u1.collide && (!u1.editable || u2.editable)) return false;
+			if (u1.isPiston !== -1 && u2.isPiston !== -1 && !u2.collide && (!u2.editable || u1.editable)) return false;
+			// Two shaft segments of the SAME piston on DIFFERENT bodies never collide
+			// (ContactFilter.ts:26). Compare body ids via the raw v3 handle.
+			if (
+				u1.isPiston !== -1 &&
+				u2.isPiston !== -1 &&
+				u1.isPiston === u2.isPiston &&
+				keyOf(this.m.b2Shape_GetBody(idA) as IdTriple) !== keyOf(this.m.b2Shape_GetBody(idB) as IdTriple)
+			) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/** Poll v3's per-step begin/end touch events (contacts + sensors) into the hooks. */
