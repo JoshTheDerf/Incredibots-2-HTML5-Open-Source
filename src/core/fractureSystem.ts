@@ -346,8 +346,10 @@ export class FractureSystem {
 		for (const part of parts) {
 			if (!this.fracturable(part)) continue;
 			this.captureRest(part, backend);
-			const shape = part.GetShape();
-			if (shape && this.bodyLocal.has(part)) this.shapeToPart.set(shape, part);
+			if (!this.bodyLocal.has(part)) continue;
+			// Register EVERY collision fixture (a concave Polygon has several) so a
+			// contact on any of them attributes the impact to this part.
+			for (const shape of part.GetCollisionShapes()) this.shapeToPart.set(shape, part);
 		}
 	}
 

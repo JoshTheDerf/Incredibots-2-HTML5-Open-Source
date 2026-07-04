@@ -10,6 +10,7 @@
 //      fragments and restores the original (it re-Inits on the next play).
 
 import { afterEach, describe, expect, it } from "vitest";
+import { b2Vec2 } from "../src/Box2D";
 import { GameCore } from "../src/core/GameCore";
 import { createInitialState } from "../src/core/GameState";
 import { FRACTURE_TEST, shatter } from "../src/core/fractureSystem";
@@ -18,6 +19,7 @@ import { decodeRobot, encodeRobot } from "../src/core/robotSerialization";
 import { SandboxSettings } from "../src/Game/SandboxSettings";
 import { Circle } from "../src/Parts/Circle";
 import { FixedJoint } from "../src/Parts/FixedJoint";
+import { Polygon } from "../src/Parts/Polygon";
 import { Rectangle } from "../src/Parts/Rectangle";
 import { RevoluteJoint } from "../src/Parts/RevoluteJoint";
 import { setPhysicsBackend } from "../src/Parts/partGlobals";
@@ -152,6 +154,29 @@ describe("fracture in simulation", () => {
 		const original = core.getState().parts.find((p) => p.id === id) as Rectangle;
 		expect(original).toBeTruthy();
 		expect(original.GetShape()).toBeNull();
+	});
+
+	it("a CONCAVE polygon shatters too (contact lands on a non-first triangle fixture)", () => {
+		// A concave polygon Init's into several triangle fixtures; m_shape is only the
+		// first, so the impact must be attributed via ALL fixtures (GetCollisionShapes),
+		// else a contact on another triangle would never trigger a fracture.
+		const verts = [
+			new b2Vec2(-2, -23),
+			new b2Vec2(2, -23),
+			new b2Vec2(2, -19),
+			new b2Vec2(0, -21), // reflex notch -> concave
+			new b2Vec2(-2, -19),
+		];
+		const poly = new Polygon(verts);
+		expect(Polygon.isConvex(verts)).toBe(false); // genuinely concave
+		poly.fragility = 10;
+		poly.id = 100000;
+		const state = createInitialState();
+		state.parts = [...state.parts, poly];
+		const core = new GameCore(state);
+		core.dispatch({ type: "play" });
+		core.dispatch({ type: "step", frames: 300 });
+		expect(core.getSimFragments().length).toBeGreaterThanOrEqual(2);
 	});
 
 	it("a fragility-0 shape never shatters", () => {

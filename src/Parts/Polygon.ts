@@ -1,4 +1,4 @@
-import { b2Body, b2BodyDef, b2MassData, b2PolygonDef, b2Settings, b2Vec2, b2World } from "../Box2D";
+import { b2Body, b2BodyDef, b2MassData, b2PolygonDef, b2Settings, b2Shape, b2Vec2, b2World } from "../Box2D";
 import { Util } from "../General/Util"
 import { COLLISION_GROUP_UNSET } from "./partDefaults"
 import { getPhysicsBackend } from "./partGlobals"
@@ -79,6 +79,14 @@ export class Polygon extends ShapePart {
    * outline and the (triangulated) collision shape both follow the béziers.
    */
   protected m_localVertices: b2Vec2[] = [];
+
+  /**
+   * Every collision fixture this polygon Init'd — one for a convex ring, or the
+   * ear-clipped triangle fan for a concave/>8-vertex ring. m_shape is only the
+   * FIRST; the fracture system needs ALL of them (a contact can land on any
+   * triangle) — see GetCollisionShapes / fractureSystem.beginFrame.
+   */
+  protected m_shapes: b2Shape[] = [];
 
   constructor(
     verts: b2Vec2[],
@@ -344,6 +352,11 @@ export class Polygon extends ShapePart {
     return this.m_localVertices;
   }
 
+  /** All collision fixtures (concave polygons attach several) — see m_shapes. */
+  public override GetCollisionShapes(): b2Shape[] {
+    return this.m_shapes.length > 0 ? this.m_shapes.slice() : super.GetCollisionShapes();
+  }
+
   public Move(xVal: number, yVal: number): void {
     for (var i: number = 0; i < this.vertices.length; i++) {
       this.vertices[i].x = xVal + (this.vertices[i].x - this.centerX);
@@ -477,8 +490,10 @@ export class Polygon extends ShapePart {
     // b2_maxPolygonVertices — ear-clip into convex triangle fixtures on the same
     // body so the (possibly concave) outline still collides correctly, since a
     // Box2D shape must be convex.
+    this.m_shapes = [];
     if (Polygon.isConvex(local) && n <= b2Settings.b2_maxPolygonVertices) {
       this.m_shape = getPhysicsBackend().createShape(this.m_body, makeDef(local));
+      this.m_shapes.push(this.m_shape);
     } else {
       var tris: number[][] = Polygon.triangulate(local);
       for (var t: number = 0; t < tris.length; t++) {
@@ -488,7 +503,10 @@ export class Polygon extends ShapePart {
           makeDef([local[tri[0]], local[tri[1]], local[tri[2]]])
         );
         // The first triangle becomes m_shape (GetShape()!=null gate + cannonball
-        // parity); the whole outline renders from m_localVertices regardless.
+        // parity); the whole outline renders from m_localVertices regardless. ALL
+        // triangle fixtures are tracked in m_shapes so the fracture system can
+        // attribute a contact on ANY of them to this part (see GetCollisionShapes).
+        this.m_shapes.push(shape);
         if (!this.m_shape) this.m_shape = shape;
       }
     }

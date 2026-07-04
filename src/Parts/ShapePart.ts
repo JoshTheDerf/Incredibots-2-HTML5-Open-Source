@@ -135,6 +135,15 @@ export class ShapePart extends Part {
     return this.m_shape;
   }
 
+  /**
+   * All of this part's live collision fixtures. Single-fixture shapes return just
+   * m_shape; a concave Polygon overrides this to return its whole triangle fan so
+   * the fracture system can attribute a contact on ANY fixture to the part.
+   */
+  public GetCollisionShapes(): b2Shape[] {
+    return this.m_shape ? [this.m_shape] : [];
+  }
+
   public GetFixture() {
     return this.m_fixture;
   }
