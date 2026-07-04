@@ -101,7 +101,7 @@
 // objects and are NOT deleted.
 
 import { b2Joint, b2Shape } from "../Box2D";
-import type { b2BodyDef, b2CircleDef, b2JointDef, b2MassData, b2PolygonDef, b2PrismaticJointDef, b2RevoluteJointDef, b2ShapeDef } from "../Box2D";
+import type { b2BodyDef, b2CircleDef, b2JointDef, b2MassData, b2MouseJointDef, b2PolygonDef, b2PrismaticJointDef, b2RevoluteJointDef, b2ShapeDef } from "../Box2D";
 import { WATER_TYPE_WAVE } from "../core/physics/PhysicsBackend";
 import type {
 	BodyTransform,
@@ -188,6 +188,10 @@ export class Box2D3Body {
 		this.userData = u;
 	}
 	public GetMass(): number {
+		return this.m.b2Body_GetMass(this.id);
+	}
+	/** 2.0 b2Body.m_mass field — GameCore reads it to size the mouse-joint maxForce. */
+	public get m_mass(): number {
 		return this.m.b2Body_GetMass(this.id);
 	}
 	/** World position (parts read `.GetPosition().x`). */
@@ -335,8 +339,12 @@ export class Box2D3Shape {
 	}
 }
 
-/** Revolute vs prismatic, so the wrapper's duck-typed ops dispatch to the right v3 fns. */
-type JointKind = "revolute" | "prismatic";
+/**
+ * revolute / prismatic dispatch the wrapper's duck-typed motor ops to the right
+ * v3 fns; "mouse" is the user-drag joint (2.x b2MouseJoint), which v3 dropped —
+ * we back it with a v3 MOTOR joint (see createMouse) and expose only SetTarget.
+ */
+type JointKind = "revolute" | "prismatic" | "mouse";
 
 /**
  * A v3 joint wrapper duck-typing the b2RevoluteJoint / b2PrismaticJoint surface
@@ -351,6 +359,27 @@ export class Box2D3Joint {
 		public readonly id: RawJointId,
 		public readonly kind: JointKind,
 	) {}
+
+	/**
+	 * 2.0 b2MouseJoint.SetTarget — retarget the user-drag joint to a new world
+	 * point. Our v3 mouse joint is a motor joint anchored on the (origin, identity)
+	 * ground body, so frameA.p is the target in WORLD == ground-local coords; move
+	 * it and wake the bodies so the spring drags the grabbed point along.
+	 */
+	public SetTarget(target: Vec2Like): void {
+		if (this.kind !== "mouse") return;
+		const m = this.m;
+		const t = new m.b2Transform();
+		const p = new m.b2Vec2(target.x, target.y);
+		const q = m.b2MakeRot(0);
+		t.p = p;
+		t.q = q;
+		m.b2Joint_SetLocalFrameA(this.id, t);
+		m.b2Joint_WakeBodies(this.id);
+		p.delete();
+		q.delete();
+		t.delete();
+	}
 
 	public EnableMotor(flag: boolean): void {
 		if (this.kind === "revolute") this.m.b2RevoluteJoint_EnableMotor(this.id, flag);
@@ -469,6 +498,16 @@ const SANDBOX_BIT = 1 << 17; // 0x20000
  * (v3 SetLimits with 1.79e308 risks NaN); ~5730 turns is effectively unlimited. */
 const LIMIT_INF = 1e5;
 
+/**
+ * User-drag (mouse) joint spring tuning. v3 dropped the b2MouseJoint, so the drag
+ * is a motor joint's LINEAR spring; these give the same soft, slightly-damped pull
+ * the 2.x mouse joint had (2.x default frequencyHz 5 / dampingRatio 0.7). The
+ * force is capped by the 2.x maxForce (300 * body mass) at the call site, so the
+ * spring stiffness here only sets the FEEL, not the strength ceiling.
+ */
+const MOUSE_JOINT_HERTZ = 5;
+const MOUSE_JOINT_DAMPING_RATIO = 0.7;
+
 export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box2D3Shape, Box2D3Joint> {
 	private readonly m: Box2D3Module;
 	/** Resolve a v3 shape id (from a contact/sensor event) back to its wrapper. */
@@ -482,6 +521,13 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 	 * renderer. Reset with the world; entries removed on destroyBody.
 	 */
 	private bodies = new Set<Box2D3Body>();
+	/**
+	 * A static body at the world origin, created lazily as bodyA for the user-drag
+	 * (mouse) joint — v3, unlike 2.x, has no implicit world ground body. NOT added
+	 * to `bodies` (it's not a part body; static, so the interpolator ignores it).
+	 * Reset with the world.
+	 */
+	private groundBody: RawBodyId | null = null;
 	/** Engine-neutral contact hooks, drained after each step (v3 has no listener). */
 	private contactHooks: ContactHooks | null = null;
 	/**
@@ -502,6 +548,7 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 		// previous play (the backend is a process-wide singleton).
 		this.shapesById = new Map();
 		this.bodies = new Set();
+		this.groundBody = null;
 		this.contactHooks = null;
 		this.waterControllers = [];
 		const wd = m.b2DefaultWorldDef();
@@ -675,9 +722,75 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 		const type = jointDef.type;
 		if (type === b2Joint.e_revoluteJoint) return this.createRevolute(world, jointDef as b2RevoluteJointDef);
 		if (type === b2Joint.e_prismaticJoint) return this.createPrismatic(world, jointDef as b2PrismaticJointDef);
-		// Mouse joints (user drag) + weld (plain fixed welds don't reach here —
-		// they're a shared body, mirroring engines 0/1) are not needed for the sim.
+		// b2MouseJoint (user drag during the sim). v3 REMOVED the mouse joint, so we
+		// back it with a motor joint (see createMouse). Weld isn't reached — plain
+		// fixed welds are a shared body (mirroring engines 0/1).
+		if (type === b2Joint.e_mouseJoint) return this.createMouse(world, jointDef as b2MouseJointDef);
 		throw new Error(`Box2D3Backend.createJoint: unsupported joint type ${type}`);
+	}
+
+	/**
+	 * The v3 static ground body (bodyA for the mouse joint), created once per world.
+	 * v3 has no implicit world ground body like 2.x's world.m_groundBody.
+	 */
+	private ensureGroundBody(world: RawWorldId): RawBodyId {
+		if (this.groundBody) return this.groundBody;
+		const m = this.m;
+		const bd = m.b2DefaultBodyDef();
+		bd.type = m.b2BodyType.b2_staticBody;
+		const g = m.b2CreateBody(world, bd);
+		bd.delete();
+		this.groundBody = g;
+		return g;
+	}
+
+	/**
+	 * User-drag "mouse" joint. v3 has no b2MouseJoint, so this is a v3 MOTOR joint:
+	 * a soft LINEAR spring dragging the grabbed body point toward the cursor, with
+	 * NO angular constraint (the body pivots freely under the off-centre pull, just
+	 * like a 2.x mouse joint). bodyA is the origin/identity ground body, so the
+	 * frameA point IS the world target (and SetTarget just moves frameA.p).
+	 *   frameA.p = target (world)                     — where we drag TO
+	 *   frameB.p = target mapped into bodyB-local      — the grabbed point
+	 * maxForce (2.x = 300 * mass) maps to both the spring + velocity force caps.
+	 */
+	private createMouse(world: RawWorldId, s: b2MouseJointDef): Box2D3Joint {
+		const m = this.m;
+		const bodyB = (s.body2 as unknown as Box2D3Body).id;
+		const ground = this.ensureGroundBody(world);
+		const jd = m.b2DefaultMotorJointDef();
+		const base = jd.base;
+		base.bodyIdA = ground;
+		base.bodyIdB = bodyB;
+		base.collideConnected = false;
+		// frameA on ground (origin, identity) => its point is the world target.
+		this.withFrame(s.target.x, s.target.y, 0, (t) => {
+			base.localFrameA = t as typeof base.localFrameA;
+		});
+		// frameB on bodyB = the grabbed point, i.e. the target in bodyB-local coords.
+		const wp = new m.b2Vec2(s.target.x, s.target.y);
+		const localP = readVec(m.b2Body_GetLocalPoint(bodyB, wp));
+		wp.delete();
+		this.withFrame(localP.x, localP.y, 0, (t) => {
+			base.localFrameB = t as typeof base.localFrameB;
+		});
+		// Soft LINEAR spring toward frameA — this IS the drag. Its own damping ratio
+		// gives the settle; maxSpringForce bounds it at the 2.x maxForce (300*mass).
+		jd.linearHertz = MOUSE_JOINT_HERTZ;
+		jd.linearDampingRatio = MOUSE_JOINT_DAMPING_RATIO;
+		jd.maxSpringForce = s.maxForce;
+		// The VELOCITY motor (target velocity 0) is DISABLED: with a non-zero cap it
+		// drives the relative velocity to zero and cancels the spring, so a
+		// centre-grabbed body only creeps. The spring + damping ratio alone give the
+		// mouse-joint feel.
+		jd.maxVelocityForce = 0;
+		// NO angular constraint — a mouse joint never rotates the body to a target.
+		jd.angularHertz = 0;
+		jd.maxSpringTorque = 0;
+		jd.maxVelocityTorque = 0;
+		const raw = m.b2CreateMotorJoint(world, jd);
+		jd.delete();
+		return new Box2D3Joint(m, raw, "mouse");
 	}
 
 	/**
