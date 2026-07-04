@@ -1643,8 +1643,13 @@ function drawFrame(): void {
 	// parts and drawAnyway=true parts still draw via the gate in Draw.DrawWorld.
 	// DrawWorld(allParts, selectedParts, world, notStarted, drawStatic,
 	//           showJoints, showOutlines, challenge)  — see Draw.ts:75.
+	// Superset/prototype: append live shatter fragments (transient sim-only bodies
+	// held outside the edit model) so they render with their inherited material.
+	// game.liveFragments() is empty except while a fragile shape is shattering.
+	const fragments = game.liveFragments() as Part[];
+	const drawParts = fragments.length > 0 ? [...(state.parts as Part[]), ...fragments] : (state.parts as Part[]);
 	draw.DrawWorld(
-		state.parts as Part[],
+		drawParts,
 		selectedParts,
 		state.world,
 		notStarted,

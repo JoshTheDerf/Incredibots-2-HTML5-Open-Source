@@ -183,6 +183,8 @@ export type Command =
 	// (the legacy sliders set the field directly; the Action only recorded a
 	// delta for undo — see ControllerGame.densitySlider/strengthSlider).
 	| { type: "setDensity"; partIds: number[]; value: number }
+	// Fragility (superset/prototype): 0..MAX_FRAGILITY shatter-susceptibility.
+	| { type: "setFragility"; partIds: number[]; value: number }
 	// Friction / restitution: UI-scale 1..30 like density (Jaybit sliders,
 	// ControllerGame.frictionSlider/restitutionSlider; text entry clamped via
 	// CheckFriction/CheckRestitution against the challenge min/max). Converted

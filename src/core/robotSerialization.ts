@@ -253,6 +253,8 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 			// triggerAction defaults to TRIGGER_NONE = 6 (NOT 0 — 0 is a real action).
 			shape.friction = has(od, "friction") ? Number(od.friction) : DEFAULT_FRICTION;
 			shape.restitution = has(od, "restitution") ? Number(od.restitution) : DEFAULT_RESTITUTION;
+			// Superset/prototype fragility (absent on IB2/IB3 codes -> 0 = indestructible).
+			shape.fragility = has(od, "fragility") ? Number(od.fragility) : 0;
 			shape.collide = od.collide;
 			shape.collA = has(od, "collA") ? Boolean(od.collA) : Boolean(od.collide);
 			shape.collB = has(od, "collB") ? Boolean(od.collB) : Boolean(od.collide);

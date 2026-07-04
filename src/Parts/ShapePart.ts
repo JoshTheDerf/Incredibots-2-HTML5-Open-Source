@@ -62,6 +62,14 @@ export class ShapePart extends Part {
   // optional AMF field (absent on old codes -> false).
   public fixedRotation: boolean = false;
   public isCameraFocus: boolean = false;
+  /**
+   * Superset/prototype: shatter-susceptibility. 0 (default) == indestructible —
+   * existing content is unaffected. A higher value lowers the collision-impact
+   * speed needed to fracture this shape into fragments during simulation. Copied
+   * on clone + round-tripped through save/load; the shatter runtime lives in
+   * src/core/fractureSystem.ts. See partDefaults MIN/MAX/DEFAULT_FRAGILITY.
+   */
+  public fragility: number = 0;
   public m_collisionGroup: number = COLLISION_GROUP_UNSET;
   public highlightForJoint: boolean = false;
   public isBullet: boolean = false;
@@ -189,6 +197,28 @@ export class ShapePart extends Part {
     // do nothing
   }
 
+  /**
+   * Destroy this shape's physics presence mid-sim WITHOUT taking it out of the
+   * edit model — the fracture runtime (src/core/fractureSystem.ts) calls this
+   * when a fragile shape shatters, mirroring the exploded-Bomb pattern
+   * (Bomb.Explode :438-439): the body is destroyed and the shape/body handles
+   * nulled so Draw's `GetShape() != null` gate skips it, but the part stays in
+   * state.parts so a reset re-Inits it. `isInitted` is left true so the reset
+   * UnInit runs cleanly (it early-outs on the already-null body).
+   */
+  public ConsumeForFracture(world: b2World): void {
+    if (this.m_body) {
+      const bud = this.m_body.GetUserData() as { deleted?: boolean } | null;
+      if (!bud || !bud.deleted) {
+        getPhysicsBackend().destroyBody(world, this.m_body);
+        if (!this.m_body.GetUserData()) this.m_body.SetUserData({});
+        (this.m_body.GetUserData() as { deleted?: boolean }).deleted = true;
+      }
+    }
+    this.m_shape = null;
+    this.m_body = null;
+  }
+
   public KeyInput(key: number, up: boolean, replay: boolean): void {
     // do nothing
   }
@@ -274,6 +304,8 @@ export class ShapePart extends Part {
     other.locked = this.locked;
     other.visualInSim = this.visualInSim;
     other.scaleToZoom = this.scaleToZoom;
+    // Superset/prototype fracture susceptibility (see ShapePart.fragility).
+    other.fragility = this.fragility;
   }
 
   /**

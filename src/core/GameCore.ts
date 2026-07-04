@@ -27,6 +27,7 @@ import {
 	DEFAULT_O,
 	DEFAULT_R,
 	MAX_DENSITY,
+	MAX_FRAGILITY,
 	MAX_FRICTION,
 	MAX_RESTITUTION,
 	MAX_RJ_SPEED,
@@ -34,6 +35,7 @@ import {
 	MAX_SJ_SPEED,
 	MAX_SJ_STRENGTH,
 	MIN_DENSITY,
+	MIN_FRAGILITY,
 	MIN_FRICTION,
 	MIN_RESTITUTION,
 	TRIGGER_NONE,
@@ -46,6 +48,7 @@ import { TextPart } from "../Parts/TextPart";
 import { Thrusters } from "../Parts/Thrusters";
 import { Triangle } from "../Parts/Triangle";
 import type { Command, ShapeKind } from "./Command";
+import { FractureSystem } from "./fractureSystem";
 import { GameState, PartSnapshot, createInitialState } from "./GameState";
 import type { CameraState } from "./GameState";
 import { decodeRobot, decodeRobotFile, encodeRobot } from "./robotSerialization";
@@ -300,6 +303,16 @@ export class GameCore {
 	 * b2World.DestroyBody's controller-edge cleanup (bombs!).
 	 */
 	private waterSystem: WaterSystem | null = null;
+	/**
+	 * Runtime shatter watcher + its live fragment bodies (superset/prototype, see
+	 * src/core/fractureSystem.ts). Fragments are TRANSIENT sim-only shapes (the
+	 * cannonball pattern) — they live here, NOT in state.parts, so a reset drops
+	 * them and the fractured originals return. The renderer draws them by
+	 * concatenating getSimFragments() after state.parts. Only populated during a
+	 * normal (non-replay) sim; cleared on play + reset.
+	 */
+	private fractureSystem = new FractureSystem();
+	private simFragments: ShapePart[] = [];
 	/**
 	 * Live replay recording buffers while a normal (non-replay) sim runs; null
 	 * otherwise. Reset on `play` (ControllerGame.ts:2730-2735). See src/core/replay.ts.
@@ -1828,6 +1841,7 @@ export class GameCore {
 				opacity: part.opacity / 255,
 				angle: part.angle,
 				density: part.density,
+				fragility: part.fragility,
 				friction: part.friction,
 				restitution: part.restitution,
 				collide: part.collide,
@@ -3312,6 +3326,9 @@ export class GameCore {
 		// not just challenges, matching the legacy unconditional reset.
 		this.cannonballs = [];
 		setCannonballs(this.cannonballs as unknown[]);
+		// Fresh fracture state for this run (superset/prototype).
+		this.simFragments = [];
+		this.fractureSystem.reset();
 
 		// Challenge: reset every condition's isSatisfied before a fresh run and
 		// clear any prior outcome/score (ControllerChallenge.playButton :52-59).
@@ -3456,6 +3473,10 @@ export class GameCore {
 		if (world) {
 			for (const p of this.state.parts) p.UnInit(world);
 		}
+		// Drop transient fracture fragments; the fractured originals re-Init on the
+		// next play (they kept their state.parts slot — see ConsumeForFracture).
+		this.simFragments = [];
+		this.fractureSystem.reset();
 		// Water system dies with the world (WaterControl.UnInit).
 		this.waterSystem = null;
 		// Restore the engine-0 backend so this run's engine selection can't leak
@@ -3727,6 +3748,56 @@ export class GameCore {
 	}
 
 	/**
+	 * Live transient fracture fragments for the renderer (superset/prototype).
+	 * Empty except mid-shatter; the renderer concatenates these after
+	 * state.parts so shards draw with their inherited material. Not part of the
+	 * edit model — a reset drops them (see fractureSystem.ts / handleReset).
+	 */
+	public getSimFragments(): ShapePart[] {
+		return this.state.sim.phase === "running" ? this.simFragments : [];
+	}
+
+	/**
+	 * Post-step shatter pass: fracture any fragile shape (in state.parts OR an
+	 * existing fragment) that just took a hard impact. Consumed parents keep their
+	 * state.parts slot (body destroyed, restored on reset); fresh fragments join
+	 * the transient simFragments list. Never runs during replay playback.
+	 */
+	private updateFractures(world: b2World): void {
+		if (this.replaySession) return;
+		// Candidates: editable shapes still present + already-live fragments (so a
+		// shard can shatter again on a harder hit). Only ShapeParts qualify.
+		const candidates: ShapePart[] = [];
+		for (const p of this.state.parts) if (p instanceof ShapePart) candidates.push(p);
+		for (const f of this.simFragments) candidates.push(f);
+
+		const results = this.fractureSystem.update(
+			candidates,
+			world,
+			getPhysicsBackend(),
+			this.state.sandbox.gravityX,
+			this.state.sandbox.gravity,
+			STEP_DT,
+			() => ++this.nextId,
+		);
+		if (results.length === 0) return;
+
+		const consumed = new Set<ShapePart>();
+		const added: ShapePart[] = [];
+		for (const r of results) {
+			consumed.add(r.parent);
+			for (const f of r.fragments) added.push(f);
+		}
+		// Drop any consumed fragment from the live list; append new ones.
+		this.simFragments = this.simFragments.filter((f) => !consumed.has(f)).concat(added);
+		// Rebuild parts so the (now body-less) consumed originals re-render as gone
+		// and the store re-reads. The parts themselves are unchanged objects; the
+		// new array reference triggers the reactive snapshot.
+		this.state = { ...this.state, parts: [...this.state.parts] };
+		this.markChanged();
+	}
+
+	/**
 	 * step: advance the world by `frames` (default 1). Each frame does the two
 	 * Box2D sub-steps the legacy Update() loop runs (ControllerGame.ts:584-585):
 	 * a warm-up Step(1/60, 5) then Step(1/60, 10). After stepping, sync each
@@ -3777,6 +3848,12 @@ export class GameCore {
 			}
 			getPhysicsBackend().step(world, STEP_DT, STEP_ITERATIONS_WARMUP);
 			getPhysicsBackend().step(world, STEP_DT, STEP_ITERATIONS);
+			// Superset/prototype fracturing (post-step, like joint CheckForBreakage):
+			// shatter any fragile shape that just took a hard impact. Fragments are
+			// transient sim-only bodies (see simFragments). Skipped during replay
+			// playback (deterministic sync-point replay must not diverge). Both
+			// state.parts AND live fragments are eligible so a shard can re-shatter.
+			this.updateFractures(world);
 			frame++;
 			// Replay save cap (ControllerGame.ts:585).
 			if (this.recording && (frame >= REPLAY_MAX_FRAMES || this.cannonballs.length > REPLAY_MAX_CANNONBALLS)) {
@@ -4617,6 +4694,7 @@ export class GameCore {
 			case "movePartsToBack":
 			case "setColour":
 			case "setDensity":
+			case "setFragility":
 			case "setFriction":
 			case "setRestitution":
 			case "setCollide":
@@ -4735,6 +4813,7 @@ export class GameCore {
 				case "setColour":
 				case "setTool":
 				case "setDensity":
+				case "setFragility":
 				case "setFriction":
 				case "setRestitution":
 				case "setCollide":
@@ -5243,6 +5322,15 @@ export class GameCore {
 				// checks carBody.density < 15; cursor-gated so any shape's density
 				// crossing below 15 emits it faithfully.
 				if (this.tutorialMachine && v < 15) this.notifyTutorial({ type: "progress", key: "densityDecreased" });
+				return;
+			}
+			// Fragility (superset/prototype): absolute value clamped to
+			// [MIN_FRAGILITY, MAX_FRAGILITY]. 0 == indestructible (see fractureSystem).
+			case "setFragility": {
+				const v = Math.max(MIN_FRAGILITY, Math.min(MAX_FRAGILITY, command.value));
+				this.editParts(command.partIds, (p) => {
+					if (p instanceof ShapePart) p.fragility = v;
+				});
 				return;
 			}
 			// Friction / restitution: 1..30 UI scale like density (Jaybit

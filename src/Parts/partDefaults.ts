@@ -37,6 +37,15 @@ export const MIN_RESTITUTION = -8;
 export const MAX_RESTITUTION = 42;
 export const DEFAULT_RESTITUTION = 7;
 
+// --- Fragility (superset / prototype) ------------------------------------
+// A per-shape "how easily does this shatter" scalar. 0 == indestructible (the
+// default, so existing content behaves EXACTLY as before). Higher values lower
+// the collision-impact speed needed to fracture the shape into fragments (see
+// src/core/fractureSystem.ts). Not an IB2/IB3 field — a new superset feature.
+export const MIN_FRAGILITY = 0;
+export const MAX_FRAGILITY = 10;
+export const DEFAULT_FRAGILITY = 0;
+
 // Runtime-only "collision group not yet assigned" sentinel for
 // ShapePart/PrismaticJoint.m_collisionGroup (Jaybit int.MIN_VALUE; never
 // persisted). Shared so the parts' Init guards test the SAME value the field

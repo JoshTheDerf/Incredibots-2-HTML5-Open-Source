@@ -11,9 +11,11 @@ import { selectedPolyPoint } from "../../polygonEditState";
 import { Polygon } from "../../../Parts/Polygon";
 import {
 	MAX_DENSITY,
+	MAX_FRAGILITY,
 	MAX_FRICTION,
 	MAX_RESTITUTION,
 	MIN_DENSITY,
+	MIN_FRAGILITY,
 	MIN_FRICTION,
 	MIN_RESTITUTION,
 } from "../../../Parts/partDefaults";
@@ -71,6 +73,13 @@ const densityMax = computed(() => game.challenge?.restrictions.maxDensity ?? MAX
 const density = computed({
 	get: () => sel.value?.density ?? 15,
 	set: (v: number) => game.dispatch({ type: "setDensity", partIds: ids.value, value: Number(v) }),
+});
+
+// Fragility (superset/prototype): 0 = indestructible (default); higher shatters
+// more easily on hard impacts during simulation. See core/fractureSystem.ts.
+const fragility = computed({
+	get: () => sel.value?.fragility ?? MIN_FRAGILITY,
+	set: (v: number) => game.dispatch({ type: "setFragility", partIds: ids.value, value: Number(v) }),
 });
 
 // Friction / Restitution — Jaybit added these sliders to the main object panel
@@ -191,6 +200,13 @@ function applyColour(): void {
 			<div class="slider-row">
 				<USlider v-model="density" :min="densityMin" :max="densityMax" :step="1" size="sm" class="slider" />
 				<UInput v-model.number="density" type="number" size="xs" class="num-input" />
+			</div>
+		</UFormField>
+
+		<UFormField label="Fragility" help="0 = indestructible; higher shatters more easily on impact" class="field">
+			<div class="slider-row">
+				<USlider v-model="fragility" :min="MIN_FRAGILITY" :max="MAX_FRAGILITY" :step="1" size="sm" class="slider" />
+				<UInput v-model.number="fragility" type="number" size="xs" class="num-input" />
 			</div>
 		</UFormField>
 

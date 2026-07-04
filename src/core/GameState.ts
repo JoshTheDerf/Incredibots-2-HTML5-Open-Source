@@ -82,6 +82,8 @@ export type PartSnapshot = {
 	// --- per-property edit fields (read back from the live Part) ---
 	// Shape (ShapePart: Circle/Rectangle/Triangle/Cannon)
 	density?: number;
+	/** Superset/prototype shatter-susceptibility, 0..MAX_FRAGILITY. */
+	fragility?: number;
 	/** Jaybit adjustable material, 1..30 UI scale like density. */
 	friction?: number;
 	restitution?: number;

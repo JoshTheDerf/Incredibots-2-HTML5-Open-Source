@@ -123,6 +123,16 @@ export const useGameStore = defineStore("game", () => {
 		return core.getLiveChallenge();
 	}
 
+	/**
+	 * Live transient fracture fragments (superset/prototype). Like liveChallenge,
+	 * these are read each render frame OUTSIDE the reactive snapshot and appended
+	 * after state.parts in the DrawWorld call, so shatter fragments render with
+	 * their inherited material without polluting the edit model.
+	 */
+	function liveFragments() {
+		return core.getSimFragments();
+	}
+
 	// Defensive dispatch wrapper: a handler throw must NOT crash the whole app
 	// (the UI frame stays usable), but it must be LOUD so broken commands are
 	// visible — previously a silent console.warn masked real bugs like the
@@ -293,6 +303,7 @@ export const useGameStore = defineStore("game", () => {
 		tutorial,
 		replay,
 		liveChallenge,
+		liveFragments,
 		dispatch,
 		exportRobot,
 		notifyCodeCopied,
