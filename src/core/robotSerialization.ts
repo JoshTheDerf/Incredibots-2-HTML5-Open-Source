@@ -94,6 +94,40 @@ function has(od: object, key: string): boolean {
 	return Object.prototype.hasOwnProperty.call(od, key);
 }
 
+/**
+ * Parse a Polygon's optional bézier fields from a decoded AMF part object. The
+ * curved-polygon addition serializes `pointTypes` (number[]), `handlesIn` and
+ * `handlesOut` (b2Vec2-shaped {x,y}[] offsets, like `vertices`) as public fields.
+ * Absent on pre-bézier codes and every IB3-import code → all-undefined, which the
+ * Polygon ctor treats as an all-VERTEX straight polygon (backward compatible).
+ * Exported so challengeSerialization reuses the exact same round-trip.
+ */
+export function readBezierFields(od: any): {
+	pointTypes?: number[];
+	handlesIn?: { x: number; y: number }[];
+	handlesOut?: { x: number; y: number }[];
+} {
+	let pointTypes: number[] | undefined;
+	let handlesIn: { x: number; y: number }[] | undefined;
+	let handlesOut: { x: number; y: number }[] | undefined;
+	if (has(od, "pointTypes") && od.pointTypes) {
+		const rt = od.pointTypes as ArrayLike<number>;
+		pointTypes = [];
+		for (let vi = 0; vi < rt.length; vi++) pointTypes.push(Math.trunc(Number(rt[vi])));
+	}
+	if (has(od, "handlesIn") && od.handlesIn) {
+		const rh = od.handlesIn as ArrayLike<{ x: number; y: number }>;
+		handlesIn = [];
+		for (let vi = 0; vi < rh.length; vi++) handlesIn.push({ x: Number(rh[vi].x), y: Number(rh[vi].y) });
+	}
+	if (has(od, "handlesOut") && od.handlesOut) {
+		const rh = od.handlesOut as ArrayLike<{ x: number; y: number }>;
+		handlesOut = [];
+		for (let vi = 0; vi < rh.length; vi++) handlesOut.push({ x: Number(rh[vi].x), y: Number(rh[vi].y) });
+	}
+	return { pointTypes, handlesIn, handlesOut };
+}
+
 function putPartsIntoByteArray(parts: Part[], b: ByteArray): ByteArray {
 	parts = parts.filter(isPartOfRobot);
 
@@ -199,7 +233,11 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 				const raw = (od.vertices ?? []) as ArrayLike<{ x: number; y: number }>;
 				const verts: b2Vec2[] = [];
 				for (let vi = 0; vi < raw.length; vi++) verts.push(new b2Vec2(Number(raw[vi].x), Number(raw[vi].y)));
-				shape = new Polygon(verts);
+				// Bézier point types + handle offsets (curved-polygon addition). Absent on
+				// pre-bézier codes and every IB3-import code → undefined → all-VERTEX
+				// straight polygon, byte-identical to the classic behaviour.
+				const bez = readBezierFields(od);
+				shape = new Polygon(verts, 0, bez.pointTypes, bez.handlesIn, bez.handlesOut);
 			} else {
 				shape = new Cannon(od.x, od.y, od.w);
 				(shape as Cannon).fireKey = od.fireKey;

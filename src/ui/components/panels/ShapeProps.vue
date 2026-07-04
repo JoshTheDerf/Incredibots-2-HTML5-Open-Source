@@ -7,6 +7,8 @@
 import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
+import { selectedPolyPoint } from "../../polygonEditState";
+import { Polygon } from "../../../Parts/Polygon";
 import {
 	MAX_DENSITY,
 	MAX_FRICTION,
@@ -20,6 +22,44 @@ const game = useGameStore();
 
 const sel = computed(() => game.edit.selectedPart);
 const ids = computed(() => game.edit.selection);
+
+// --- Polygon bézier point editor -----------------------------------------
+// Shown when a single Polygon is selected with one of its control points active
+// (GameCanvas sets selectedPolyPoint on click). Lets the author toggle the point
+// between VERTEX / ASYMMETRIC / SYMMETRIC and add/remove points, all via the
+// undoable editPolygonPoint / add/removePolygonPoint commands.
+const isPolygon = computed(() => sel.value?.kind === "Polygon" && ids.value.length === 1);
+const polyPoints = computed(() => (isPolygon.value ? sel.value?.polyPoints ?? [] : []));
+const activePointIndex = computed(() =>
+	selectedPolyPoint.value != null && selectedPolyPoint.value < polyPoints.value.length ? selectedPolyPoint.value : null,
+);
+const activePoint = computed(() => (activePointIndex.value != null ? polyPoints.value[activePointIndex.value] : null));
+
+const POINT_TYPES = [
+	{ value: Polygon.POINT_VERTEX, label: "Vertex" },
+	{ value: Polygon.POINT_SYMMETRIC, label: "Symmetric" },
+	{ value: Polygon.POINT_ASYMMETRIC, label: "Asymmetric" },
+];
+
+function setPointType(t: number): void {
+	if (activePointIndex.value == null) return;
+	game.dispatch({ type: "editPolygonPoint", partId: ids.value[0], index: activePointIndex.value, pointType: t });
+}
+
+function addPointAfterActive(): void {
+	if (activePointIndex.value == null) return;
+	const pts = polyPoints.value;
+	const i = activePointIndex.value;
+	const a = pts[i];
+	const b = pts[(i + 1) % pts.length];
+	game.dispatch({ type: "addPolygonPoint", partId: ids.value[0], index: i, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+}
+
+function removeActivePoint(): void {
+	if (activePointIndex.value == null || polyPoints.value.length <= 3) return;
+	game.dispatch({ type: "removePolygonPoint", partId: ids.value[0], index: activePointIndex.value });
+	selectedPolyPoint.value = null;
+}
 
 // Density slider range from the active challenge restrictions (PartEditWindow
 // :1050-1051: minValue = minDensity, maxValue = maxDensity). Falls back to the
@@ -114,6 +154,34 @@ function applyColour(): void {
 
 <template>
 	<div class="shape-props">
+		<div v-if="isPolygon" class="poly-editor">
+			<div class="poly-hint">
+				{{ activePoint ? `Point ${activePointIndex! + 1} of ${polyPoints.length}` : "Click a point to edit its curve" }}
+			</div>
+			<template v-if="activePoint">
+				<div class="poly-types">
+					<IbButton
+						v-for="t in POINT_TYPES"
+						:key="t.value"
+						:family="activePoint.type === t.value ? 'blue' : 'pink'"
+						:label="t.label"
+						class="poly-type-btn"
+						@click="setPointType(t.value)"
+					/>
+				</div>
+				<div class="poly-actions">
+					<IbButton family="pink" label="Add Point" class="poly-action-btn" @click="addPointAfterActive" />
+					<IbButton
+						family="pink"
+						label="Remove Point"
+						class="poly-action-btn"
+						:disabled="polyPoints.length <= 3"
+						@click="removeActivePoint"
+					/>
+				</div>
+			</template>
+		</div>
+
 		<UFormField label="Density" class="field">
 			<div class="slider-row">
 				<USlider v-model="density" :min="densityMin" :max="densityMax" :step="1" size="sm" class="slider" />
@@ -254,5 +322,39 @@ function applyColour(): void {
 
 .order-buttons :deep(.ib-btn) {
 	width: 100%;
+}
+
+.poly-editor {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 6px;
+	border: 1px solid var(--ib-purple, #7a5cff);
+	border-radius: 6px;
+}
+
+.poly-hint {
+	font-size: 11px;
+	opacity: 0.8;
+}
+
+.poly-types {
+	display: flex;
+	gap: 4px;
+	flex-wrap: wrap;
+}
+
+.poly-type-btn {
+	flex: 1;
+	min-width: 64px;
+}
+
+.poly-actions {
+	display: flex;
+	gap: 4px;
+}
+
+.poly-action-btn {
+	flex: 1;
 }
 </style>

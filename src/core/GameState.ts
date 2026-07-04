@@ -68,6 +68,16 @@ export type PartSnapshot = {
 	size?: number;
 	/** Convex-polygon (Polygon part) rotated world vertices, for renderers/inspectors. */
 	verts?: { x: number; y: number }[];
+	/**
+	 * Polygon per-vertex bézier data for the point-edit UI: each control vertex in
+	 * ROTATED world space, its smoothing `type` (Polygon.POINT_*), and its incoming
+	 * (`inX`/`inY`) + outgoing (`outX`/`outY`) handle ENDPOINTS in rotated world
+	 * space (vertex + rotated offset). All-VERTEX points have handle endpoints
+	 * equal to the vertex. `polyAngle` is the polygon's live rotation, so the canvas
+	 * can map a world edit back to the baseline.
+	 */
+	polyPoints?: { x: number; y: number; type: number; inX: number; inY: number; outX: number; outY: number }[];
+	polyAngle?: number;
 
 	// --- per-property edit fields (read back from the live Part) ---
 	// Shape (ShapePart: Circle/Rectangle/Triangle/Cannon)

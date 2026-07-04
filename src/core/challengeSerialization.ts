@@ -31,7 +31,7 @@ import { Util } from "../General/Util";
 import { Challenge } from "../Game/Challenge";
 import { DEFAULT_FRICTION, DEFAULT_RESTITUTION, TRIGGER_NONE } from "../Parts/partDefaults";
 import { decodeExposureInt, EXPO_PUBLIC_EDITABLE, type ExposureFlags } from "./exposure";
-import { readVersionedNameHeader } from "./robotSerialization";
+import { readBezierFields, readVersionedNameHeader } from "./robotSerialization";
 import { sniffFileBytes, TYPE_TAG_CHALLENGE, VERSION_PREFIX, VERSION_STRING } from "./serializationVersion";
 import { SandboxSettings } from "../Game/SandboxSettings";
 import { WinCondition } from "../Game/WinCondition";
@@ -123,7 +123,9 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 				const raw = (od.vertices ?? []) as ArrayLike<{ x: number; y: number }>;
 				const verts: b2Vec2[] = [];
 				for (let vi = 0; vi < raw.length; vi++) verts.push(new b2Vec2(Number(raw[vi].x), Number(raw[vi].y)));
-				shape = new Polygon(verts);
+				// Bézier point types + handle offsets; absent → all-VERTEX straight polygon.
+				const bez = readBezierFields(od);
+				shape = new Polygon(verts, 0, bez.pointTypes, bez.handlesIn, bez.handlesOut);
 			} else {
 				shape = new Cannon(od.x, od.y, od.w);
 				(shape as Cannon).fireKey = od.fireKey;

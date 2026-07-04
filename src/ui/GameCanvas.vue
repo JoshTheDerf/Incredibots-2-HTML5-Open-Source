@@ -25,6 +25,7 @@ import { Polygon } from "../Parts/Polygon";
 import { JointPart } from "../Parts/JointPart";
 import { useGameStore } from "./gameStore";
 import { useUiPrefs } from "./uiPrefs";
+import { selectedPolyPoint } from "./polygonEditState";
 import {
 	RestrictToSquares,
 	FifteenAngleIncrements,
@@ -112,6 +113,18 @@ watch(
 			game.dispatch({ type: "cancelJointGesture" });
 			jointDisambiguateStart = null;
 			overlay?.clear();
+		}
+	},
+);
+
+// Reset the active polygon control-point selection whenever the selected part
+// changes (a different part / nothing selected) or the tool leaves select, so
+// the point-edit UI + handles don't refer to a stale index.
+watch(
+	() => [game.edit.selectedPart?.id ?? null, game.edit.selectedPart?.kind ?? null, game.edit.tool],
+	() => {
+		if (game.edit.selectedPart?.kind !== "Polygon" || game.edit.tool !== "select") {
+			selectedPolyPoint.value = null;
 		}
 	},
 );
@@ -206,7 +219,18 @@ type Gesture =
 	// NEW_CIRCLE/NEW_RECT/NEW_TRIANGLE press-drag-release (mouseClick :2190-2380);
 	// pointer-move repaints the preview via Draw.DrawTempShape and pointer-up
 	// dispatches createShape with the final geometry.
-	| { kind: "create"; shape: ShapeKind; start: { x: number; y: number }; current: { x: number; y: number } };
+	| { kind: "create"; shape: ShapeKind; start: { x: number; y: number }; current: { x: number; y: number } }
+	// Pen-tool polygon CREATE drag: after a pointer-down places a new vertex, a
+	// drag (before release) pulls out SYMMETRIC bézier handles for it — like a
+	// vector pen tool. `index` is the just-placed polygonPoints entry; `anchor` is
+	// its vertex (world). On move the outgoing handle tracks the cursor and the
+	// incoming handle mirrors it; on release, a negligible drag stays a corner.
+	| { kind: "polyPen"; index: number; anchor: { x: number; y: number } }
+	// Post-creation Polygon point edit: drag a control vertex or one of its bézier
+	// handle endpoints. `part` selects which element; `live` is its current world
+	// position (updated on move for the overlay preview) and is committed to the
+	// core via editPolygonPoint on release (one undo step per drag).
+	| { kind: "polyPoint"; partId: number; index: number; part: "vertex" | "in" | "out"; live: { x: number; y: number }; moved: boolean };
 
 let gesture: Gesture = { kind: "none" };
 
@@ -232,7 +256,13 @@ let pointerWorld: { x: number; y: number } | null = null;
 // clicking near the first vertex, double-clicking, or pressing Enter, and
 // Escape cancels. Empty when no polygon is mid-construction. `pointerWorld`
 // (shared with the triangle preview) drives the rubber-band edge to the cursor.
-let polygonPoints: { x: number; y: number }[] = [];
+// Each entry carries its vertex plus its cubic-bézier handle ENDPOINTS (absolute
+// world coords; equal to the vertex for a plain corner) and its smoothing `type`
+// (Polygon.POINT_*). A plain click leaves the handles at the vertex (VERTEX); a
+// click-drag pulls them out symmetric (SYMMETRIC). commitPolygon converts the
+// endpoints to per-vertex offsets for the createPolygon command.
+type PenPoint = { x: number; y: number; inX: number; inY: number; outX: number; outY: number; type: number };
+let polygonPoints: PenPoint[] = [];
 
 // Pointer-down anchor of a >2-overlap joint/thruster DISAMBIGUATION interaction
 // (ControllerGame FINALIZING_JOINT). Set on pointer-down while the core's
@@ -466,7 +496,14 @@ function onPointerDown(event: PointerEvent): void {
 	// commits and Escape cancels (both in onKeyDown). No drag — vertices are
 	// point clicks, like the triangle apex.
 	if (tool === "newPolygon") {
-		handlePolygonClick(world, event.detail >= 2);
+		const placed = handlePolygonClick(world, event.detail >= 2);
+		// A newly-placed (non-closing) vertex begins a pen-tool drag: holding and
+		// dragging before release pulls out its symmetric bézier handles.
+		if (placed >= 0) {
+			const v = polygonPoints[placed];
+			gesture = { kind: "polyPen", index: placed, anchor: { x: v.x, y: v.y } };
+			container.value.setPointerCapture(event.pointerId);
+		}
 		return;
 	}
 
@@ -586,6 +623,26 @@ function onPointerDown(event: PointerEvent): void {
 	}
 
 	if (tool !== "select") return;
+
+	// Post-creation Polygon point editing: when exactly one Polygon is selected,
+	// a press near one of its control vertices or (for the active point) its
+	// bézier handle endpoints begins a drag of that element. Takes priority over
+	// the normal part select/drag so points on top of the shape are grabbable.
+	const polyHit = hitPolygonEditElement(s.x, s.y);
+	if (polyHit) {
+		if (polyHit.part === "vertex") selectedPolyPoint.value = polyHit.index;
+		const sp = game.edit.selectedPart;
+		const pt = sp?.polyPoints?.[polyHit.index];
+		const live =
+			polyHit.part === "vertex"
+				? { x: pt!.x, y: pt!.y }
+				: polyHit.part === "in"
+					? { x: pt!.inX, y: pt!.inY }
+					: { x: pt!.outX, y: pt!.outY };
+		gesture = { kind: "polyPoint", partId: sp!.id, index: polyHit.index, part: polyHit.part, live, moved: false };
+		container.value.setPointerCapture(event.pointerId);
+		return;
+	}
 
 	const additive = event.shiftKey || event.ctrlKey || event.metaKey;
 	const hit = hitTestPart(game.parts, world.x, world.y, camera.scale);
@@ -809,6 +866,32 @@ function onPointerMove(event: PointerEvent): void {
 		// cleared/repainted every tick, so we must draw the preview there).
 		gesture.current = { x: world.x, y: world.y };
 	}
+
+	if (gesture.kind === "polyPen") {
+		// Pull out SYMMETRIC handles for the just-placed vertex: the outgoing handle
+		// follows the cursor, the incoming handle mirrors it about the vertex.
+		const p = polygonPoints[gesture.index];
+		if (p) {
+			p.outX = world.x;
+			p.outY = world.y;
+			p.inX = 2 * gesture.anchor.x - world.x;
+			p.inY = 2 * gesture.anchor.y - world.y;
+			p.type = Math.hypot(world.x - gesture.anchor.x, world.y - gesture.anchor.y) > 0.05 ? Polygon.POINT_SYMMETRIC : Polygon.POINT_VERTEX;
+			if (p.type === Polygon.POINT_VERTEX) {
+				p.inX = p.x; p.inY = p.y; p.outX = p.x; p.outY = p.y;
+			}
+		}
+		return;
+	}
+
+	if (gesture.kind === "polyPoint") {
+		// Track the dragged vertex/handle for the overlay preview; the commit to the
+		// core happens on release (editPolygonPoint). Vertex drags are grid-snapped.
+		const w = gesture.part === "vertex" ? snapGesturePoint({ x: world.x, y: world.y }) : { x: world.x, y: world.y };
+		gesture.live = { x: w.x, y: w.y };
+		gesture.moved = true;
+		return;
+	}
 }
 
 function onPointerUp(event: PointerEvent): void {
@@ -921,6 +1004,44 @@ function onPointerUp(event: PointerEvent): void {
 				y2: current.y,
 			});
 		}
+	} else if (gesture.kind === "polyPen") {
+		// The pen drag ended: the vertex + its handles are already recorded in
+		// polygonPoints (updated live on move). Nothing to commit until the ring
+		// closes; just end the gesture (drawFrame keeps previewing the ring).
+		gesture = { kind: "none" };
+		try {
+			container.value.releasePointerCapture(event.pointerId);
+		} catch {
+			// ignore
+		}
+		return;
+	} else if (gesture.kind === "polyPoint") {
+		// Commit the point/handle drag through the undoable command. Only dispatch
+		// when the cursor actually moved (a plain click just (re)selects the point).
+		if (gesture.moved) {
+			const g = gesture;
+			const sp = game.edit.selectedPart;
+			const pt = sp?.polyPoints?.[g.index];
+			if (pt) {
+				if (g.part === "vertex") {
+					game.dispatch({ type: "editPolygonPoint", partId: g.partId, index: g.index, x: g.live.x, y: g.live.y });
+				} else {
+					// Handle endpoint → offset relative to the (rotated) vertex. The core
+					// bakes rotation, so pass the world offset; for an unrotated polygon
+					// (the common case) world == baseline.
+					const off = { x: g.live.x - pt.x, y: g.live.y - pt.y };
+					if (g.part === "in") game.dispatch({ type: "editPolygonPoint", partId: g.partId, index: g.index, handleIn: off });
+					else game.dispatch({ type: "editPolygonPoint", partId: g.partId, index: g.index, handleOut: off });
+				}
+			}
+		}
+		gesture = { kind: "none" };
+		try {
+			container.value.releasePointerCapture(event.pointerId);
+		} catch {
+			// ignore
+		}
+		return;
 	}
 	gesture = { kind: "none" };
 	try {
@@ -1149,26 +1270,140 @@ function drawPolygonPreview(): void {
 	const cam = game.camera;
 	const toS = (p: { x: number; y: number }) => worldToScreen(p.x, p.y, cam, rect.width, rect.height);
 	overlay.clear();
-	const pts = polygonPoints.map(toS);
+	// Control ring (world) + per-vertex handle OFFSETS from the pen points, plus a
+	// rubber-band cursor as a temporary trailing corner.
+	const ctrl = polygonPoints.map((p) => ({ x: p.x, y: p.y }));
+	const hIn = polygonPoints.map((p) => ({ x: p.inX - p.x, y: p.inY - p.y }));
+	const hOut = polygonPoints.map((p) => ({ x: p.outX - p.x, y: p.outY - p.y }));
 	const cursorWorld = pointerWorld ? snapGesturePoint(pointerWorld) : null;
-	const cur = cursorWorld ? toS(cursorWorld) : null;
-	// The previewed ring: placed vertices + the rubber-band cursor point.
-	const ring = cur ? [...pts, cur] : pts;
-	if (ring.length >= 3) {
-		overlay.moveTo(ring[0].x, ring[0].y);
-		for (let i = 1; i < ring.length; i++) overlay.lineTo(ring[i].x, ring[i].y);
-		overlay.lineTo(ring[0].x, ring[0].y);
+	if (cursorWorld) {
+		ctrl.push({ x: cursorWorld.x, y: cursorWorld.y });
+		hIn.push({ x: 0, y: 0 });
+		hOut.push({ x: 0, y: 0 });
+	}
+	// Tessellate the (possibly curved) preview ring and map to screen.
+	const ringS = Polygon.tessellateRing(ctrl, hIn, hOut, Polygon.BEZIER_SAMPLES).map(toS);
+	if (ringS.length >= 3) {
+		overlay.moveTo(ringS[0].x, ringS[0].y);
+		for (let i = 1; i < ringS.length; i++) overlay.lineTo(ringS[i].x, ringS[i].y);
+		overlay.lineTo(ringS[0].x, ringS[0].y);
 		overlay.fill({ color: 0x33aaff, alpha: 0.12 });
 		overlay.stroke({ width: 2, color: 0x33aaff, alpha: 0.9 });
 	} else {
-		overlay.moveTo(ring[0].x, ring[0].y);
-		for (let i = 1; i < ring.length; i++) overlay.lineTo(ring[i].x, ring[i].y);
+		overlay.moveTo(ringS[0].x, ringS[0].y);
+		for (let i = 1; i < ringS.length; i++) overlay.lineTo(ringS[i].x, ringS[i].y);
 		overlay.stroke({ width: 2, color: 0x33aaff, alpha: 0.9 });
 	}
-	// Vertex handles; the first vertex (the click-to-close target) is larger + gold.
-	for (let i = 0; i < pts.length; i++) {
-		overlay.circle(pts[i].x, pts[i].y, i === 0 ? 5 : 3);
+	// Handle guides for any curved pen point (line vertex→handle + a small dot).
+	for (let i = 0; i < polygonPoints.length; i++) {
+		const p = polygonPoints[i];
+		if (p.type === Polygon.POINT_VERTEX) continue;
+		const v = toS(p);
+		for (const h of [{ x: p.inX, y: p.inY }, { x: p.outX, y: p.outY }]) {
+			const hs = toS(h);
+			overlay.moveTo(v.x, v.y);
+			overlay.lineTo(hs.x, hs.y);
+			overlay.stroke({ width: 1, color: 0x22dd88, alpha: 0.85 });
+			overlay.circle(hs.x, hs.y, 3);
+			overlay.fill({ color: 0x22dd88, alpha: 0.9 });
+		}
+	}
+	// Vertex dots; the first vertex (the click-to-close target) is larger + gold.
+	for (let i = 0; i < polygonPoints.length; i++) {
+		const v = toS(polygonPoints[i]);
+		overlay.circle(v.x, v.y, i === 0 ? 5 : 3);
 		overlay.fill({ color: i === 0 ? 0xffcc00 : 0x33aaff, alpha: 0.95 });
+	}
+}
+
+// Whether the post-creation polygon point-edit overlay should be shown this frame.
+function shouldShowPolyEdit(): boolean {
+	return (
+		game.sim.phase === "editing" &&
+		game.edit.tool === "select" &&
+		game.edit.selection.length === 1 &&
+		game.edit.selectedPart?.kind === "Polygon" &&
+		!!game.edit.selectedPart?.polyPoints &&
+		polygonPoints.length === 0 &&
+		gesture.kind !== "marquee" &&
+		gesture.kind !== "pan"
+	);
+}
+
+let polyEditOverlayActive = false;
+
+/**
+ * Paint the selected Polygon's editable control points (and the active point's
+ * bézier handles) into the overlay, plus the live drag preview of a point/handle
+ * being moved. Screen-space; repainted each frame while a single Polygon is
+ * selected with the Select tool.
+ */
+function drawPolygonEditOverlay(): void {
+	if (!overlay || !app || !container.value) return;
+	const sp = game.edit.selectedPart;
+	if (!sp || !sp.polyPoints) return;
+	const rect = container.value.getBoundingClientRect();
+	const cam = game.camera;
+	const toS = (x: number, y: number) => worldToScreen(x, y, cam, rect.width, rect.height);
+	overlay.clear();
+
+	// A live drag overrides the dragged element's position for the preview.
+	const drag = gesture.kind === "polyPoint" ? gesture : null;
+	const pts = sp.polyPoints.map((pt, i) => {
+		let x = pt.x;
+		let y = pt.y;
+		let inX = pt.inX;
+		let inY = pt.inY;
+		let outX = pt.outX;
+		let outY = pt.outY;
+		if (drag && drag.index === i) {
+			if (drag.part === "vertex") {
+				const dx = drag.live.x - pt.x;
+				const dy = drag.live.y - pt.y;
+				x += dx; y += dy; inX += dx; inY += dy; outX += dx; outY += dy;
+			} else if (drag.part === "in") {
+				inX = drag.live.x; inY = drag.live.y;
+				if (pt.type === Polygon.POINT_SYMMETRIC) { outX = 2 * x - inX; outY = 2 * y - inY; }
+			} else {
+				outX = drag.live.x; outY = drag.live.y;
+				if (pt.type === Polygon.POINT_SYMMETRIC) { inX = 2 * x - outX; inY = 2 * y - outY; }
+			}
+		}
+		return { x, y, inX, inY, outX, outY, type: pt.type };
+	});
+
+	// The previewed (curved) outline from the live control points.
+	const ctrl = pts.map((p) => ({ x: p.x, y: p.y }));
+	const hIn = pts.map((p) => ({ x: p.inX - p.x, y: p.inY - p.y }));
+	const hOut = pts.map((p) => ({ x: p.outX - p.x, y: p.outY - p.y }));
+	const ringS = Polygon.tessellateRing(ctrl, hIn, hOut, Polygon.BEZIER_SAMPLES).map((p) => toS(p.x, p.y));
+	if (ringS.length >= 2) {
+		overlay.moveTo(ringS[0].x, ringS[0].y);
+		for (let i = 1; i < ringS.length; i++) overlay.lineTo(ringS[i].x, ringS[i].y);
+		overlay.lineTo(ringS[0].x, ringS[0].y);
+		overlay.stroke({ width: 1.5, color: 0xffaa22, alpha: 0.8 });
+	}
+
+	const active = selectedPolyPoint.value;
+	// Handle guides for the ACTIVE point (only it shows draggable handles).
+	if (active != null && active >= 0 && active < pts.length && pts[active].type !== Polygon.POINT_VERTEX) {
+		const p = pts[active];
+		const v = toS(p.x, p.y);
+		for (const h of [{ x: p.inX, y: p.inY }, { x: p.outX, y: p.outY }]) {
+			const hs = toS(h.x, h.y);
+			overlay.moveTo(v.x, v.y);
+			overlay.lineTo(hs.x, hs.y);
+			overlay.stroke({ width: 1, color: 0x22dd88, alpha: 0.9 });
+			overlay.circle(hs.x, hs.y, 4);
+			overlay.fill({ color: 0x22dd88, alpha: 0.95 });
+		}
+	}
+	// Control vertices; the active one is highlighted.
+	for (let i = 0; i < pts.length; i++) {
+		const v = toS(pts[i].x, pts[i].y);
+		const isActive = i === active;
+		overlay.circle(v.x, v.y, isActive ? 5 : 4);
+		overlay.fill({ color: isActive ? 0xffcc00 : 0xffaa22, alpha: 0.95 });
 	}
 }
 
@@ -1435,7 +1670,18 @@ function drawFrame(): void {
 	// in-progress shape DrawTempShape can't express). Only touches the overlay
 	// while a polygon is mid-construction, so it never fights the marquee /
 	// prismatic-axis / condition previews (all on mutually-exclusive tools).
-	if (polygonPoints.length > 0) drawPolygonPreview();
+	if (polygonPoints.length > 0) {
+		drawPolygonPreview();
+		polyEditOverlayActive = false;
+	} else if (shouldShowPolyEdit()) {
+		drawPolygonEditOverlay();
+		polyEditOverlayActive = true;
+	} else if (polyEditOverlayActive) {
+		// Just stopped showing the edit overlay (deselected / tool changed): clear
+		// it once so it doesn't linger, without fighting other overlay previews.
+		overlay?.clear();
+		polyEditOverlayActive = false;
+	}
 }
 
 /**
@@ -1581,7 +1827,7 @@ function resolveTriangleApex(
  * Polygon.MAX_VERTICES, and is at least Polygon.MIN_SIDE_LENGTH from the previous
  * vertex; a click that would violate any of these is IGNORED (rejected).
  */
-function handlePolygonClick(world: { x: number; y: number }, closeRequested: boolean): void {
+function handlePolygonClick(world: { x: number; y: number }, closeRequested: boolean): number {
 	const snapped = snapGesturePoint(world);
 	const n = polygonPoints.length;
 	// Close threshold in world units: a small screen distance scaled by the camera
@@ -1592,25 +1838,29 @@ function handlePolygonClick(world: { x: number; y: number }, closeRequested: boo
 		const distToFirst = Math.hypot(snapped.x - first.x, snapped.y - first.y);
 		if (closeRequested || distToFirst <= closeThresh) {
 			commitPolygon();
-			return;
+			return -1;
 		}
 	}
 	// At the vertex cap only the close action (handled above) is possible.
-	if (n >= Polygon.MAX_TOOL_VERTICES) return;
+	if (n >= Polygon.MAX_TOOL_VERTICES) return -1;
 	// Minimum side length: ignore a vertex too close to the previous one
 	// (accidental double placement / noise) — PolygonPart.SIDE_MIN_LENGTH.
 	if (n > 0) {
 		const prev = polygonPoints[n - 1];
-		if (Math.hypot(snapped.x - prev.x, snapped.y - prev.y) < Polygon.MIN_SIDE_LENGTH) return;
+		if (Math.hypot(snapped.x - prev.x, snapped.y - prev.y) < Polygon.MIN_SIDE_LENGTH) return -1;
 	}
-	// Simplicity: reject a vertex that would make the CLOSED ring self-intersect.
-	// Concave IS allowed now (Polygon.Init ear-clips it into convex collision
-	// fixtures) — only a self-crossing (bow-tie) ring, which can't be triangulated,
-	// is rejected. isSimple is winding-agnostic and treats the list as a closed
-	// ring (so it tests the wrap-around edge too).
-	const candidate = [...polygonPoints, { x: snapped.x, y: snapped.y }];
-	if (candidate.length >= 3 && !Polygon.isSimple(candidate)) return;
-	polygonPoints = candidate;
+	// Simplicity: reject a vertex that would make the CLOSED CONTROL ring
+	// self-intersect. Concave IS allowed (Polygon.Init ear-clips it); only a
+	// self-crossing (bow-tie) ring is rejected. (Bézier handles can still bow a
+	// curve into a crossing — the core re-checks the TESSELLATED ring on commit.)
+	const candidate = [...polygonPoints.map((p) => ({ x: p.x, y: p.y })), { x: snapped.x, y: snapped.y }];
+	if (candidate.length >= 3 && !Polygon.isSimple(candidate)) return -1;
+	// Append a plain corner (handles at the vertex); a pen drag may pull them out.
+	polygonPoints = [
+		...polygonPoints,
+		{ x: snapped.x, y: snapped.y, inX: snapped.x, inY: snapped.y, outX: snapped.x, outY: snapped.y, type: Polygon.POINT_VERTEX },
+	];
+	return polygonPoints.length - 1;
 }
 
 /**
@@ -1622,15 +1872,56 @@ function handlePolygonClick(world: { x: number; y: number }, closeRequested: boo
  * every other create.
  */
 function commitPolygon(): void {
-	if (
-		polygonPoints.length >= 3 &&
-		polygonPoints.length <= Polygon.MAX_TOOL_VERTICES &&
-		Polygon.isSimple(polygonPoints)
-	) {
-		game.dispatch({ type: "createPolygon", verts: polygonPoints.map((p) => ({ x: p.x, y: p.y })) });
+	const ctrl = polygonPoints.map((p) => ({ x: p.x, y: p.y }));
+	if (polygonPoints.length >= 3 && polygonPoints.length <= Polygon.MAX_TOOL_VERTICES && Polygon.isSimple(ctrl)) {
+		// Convert absolute handle endpoints to per-vertex OFFSETS (relative to the
+		// vertex) for the createPolygon command; the core re-validates the
+		// tessellated ring is simple.
+		game.dispatch({
+			type: "createPolygon",
+			verts: ctrl,
+			pointTypes: polygonPoints.map((p) => p.type),
+			handlesIn: polygonPoints.map((p) => ({ x: p.inX - p.x, y: p.inY - p.y })),
+			handlesOut: polygonPoints.map((p) => ({ x: p.outX - p.x, y: p.outY - p.y })),
+		});
 	}
 	polygonPoints = [];
 	overlay?.clear();
+}
+
+// --- Post-creation Polygon point-edit hit testing --------------------------
+const POLY_HANDLE_HIT_PX = 9;
+
+/**
+ * Hit-test the selected Polygon's editable elements at a canvas point: the
+ * active point's bézier handle endpoints first (they sit off the shape), then
+ * any control vertex. Returns null when no single Polygon is selected or nothing
+ * is near. Screen-space so the hit radius is constant regardless of zoom.
+ */
+function hitPolygonEditElement(sx: number, sy: number): { index: number; part: "vertex" | "in" | "out" } | null {
+	if (!container.value) return null;
+	if (game.edit.selection.length !== 1) return null;
+	const sp = game.edit.selectedPart;
+	if (!sp || sp.kind !== "Polygon" || !sp.polyPoints) return null;
+	const rect = container.value.getBoundingClientRect();
+	const toS = (wx: number, wy: number) => worldToScreen(wx, wy, game.camera, rect.width, rect.height);
+	const near = (ax: number, ay: number) => Math.hypot(ax - sx, ay - sy) <= POLY_HANDLE_HIT_PX;
+	// Handle endpoints are only shown/grabbable for the currently active point.
+	const active = selectedPolyPoint.value;
+	if (active != null && active >= 0 && active < sp.polyPoints.length) {
+		const pt = sp.polyPoints[active];
+		if (pt.type !== Polygon.POINT_VERTEX) {
+			const inS = toS(pt.inX, pt.inY);
+			if (near(inS.x, inS.y)) return { index: active, part: "in" };
+			const outS = toS(pt.outX, pt.outY);
+			if (near(outS.x, outS.y)) return { index: active, part: "out" };
+		}
+	}
+	for (let i = 0; i < sp.polyPoints.length; i++) {
+		const v = toS(sp.polyPoints[i].x, sp.polyPoints[i].y);
+		if (near(v.x, v.y)) return { index: i, part: "vertex" };
+	}
+	return null;
 }
 
 onMounted(async () => {

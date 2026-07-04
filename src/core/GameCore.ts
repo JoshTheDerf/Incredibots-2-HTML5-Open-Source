@@ -1860,7 +1860,23 @@ export class GameCore {
 				snap.h = part.h;
 			}
 			if (part instanceof Polygon) {
-				snap.verts = (part.GetVertices() as { x: number; y: number }[]).map((v) => ({ x: v.x, y: v.y }));
+				const worldVerts = part.GetVertices() as { x: number; y: number }[];
+				snap.verts = worldVerts.map((v) => ({ x: v.x, y: v.y }));
+				// Per-vertex bézier data (rotated world space) for the point-edit UI.
+				const c = Math.cos(part.angle);
+				const s = Math.sin(part.angle);
+				snap.polyAngle = part.angle;
+				snap.polyPoints = worldVerts.map((v, i) => {
+					const hi = part.handlesIn[i];
+					const ho = part.handlesOut[i];
+					// Rotate the (baseline) handle offsets by the live angle, then anchor
+					// to the rotated vertex so the UI gets absolute world endpoints.
+					const inX = v.x + (hi.x * c - hi.y * s);
+					const inY = v.y + (hi.x * s + hi.y * c);
+					const outX = v.x + (ho.x * c - ho.y * s);
+					const outY = v.y + (ho.x * s + ho.y * c);
+					return { x: v.x, y: v.y, type: part.pointTypes[i], inX, inY, outX, outY };
+				});
 			}
 			if (part instanceof Cannon) {
 				snap.w = part.w;
@@ -2065,6 +2081,24 @@ export class GameCore {
 		this.markChanged();
 	}
 
+	/**
+	 * A sensible default OUTGOING bézier handle offset for vertex `i` when a point
+	 * is toggled to a smooth (symmetric/asymmetric) type with no existing handles:
+	 * a quarter of the neighbour span, along the tangent from the previous to the
+	 * next vertex (the classic Catmull-Rom-ish smooth-spline seed). The incoming
+	 * handle is the negation of this for a symmetric seed.
+	 */
+	private defaultPolyHandle(verts: { x: number; y: number }[], i: number): { x: number; y: number } {
+		const n = verts.length;
+		const prev = verts[(i - 1 + n) % n];
+		const next = verts[(i + 1) % n];
+		let tx = next.x - prev.x;
+		let ty = next.y - prev.y;
+		const len = Math.hypot(tx, ty) || 1;
+		const mag = 0.25 * len;
+		return { x: (tx / len) * mag, y: (ty / len) * mag };
+	}
+
 	// --- Rotate / resize geometry ------------------------------------------
 
 	/**
@@ -2251,6 +2285,14 @@ export class GameCore {
 				for (let k = 0; k < p.vertices.length; k++) {
 					p.vertices[k].x = p.centerX + p.initVertices[k].x * sf;
 					p.vertices[k].y = p.centerY + p.initVertices[k].y * sf;
+					// Handles are offsets; scale by the same factor so a curved
+					// polygon keeps its bezier shape when resized.
+					if (p.initHandlesIn) {
+						p.handlesIn[k].x = p.initHandlesIn[k].x * sf;
+						p.handlesIn[k].y = p.initHandlesIn[k].y * sf;
+						p.handlesOut[k].x = p.initHandlesOut[k].x * sf;
+						p.handlesOut[k].y = p.initHandlesOut[k].y * sf;
+					}
 				}
 			} else if (p instanceof Cannon) {
 				p.w = p.initW * sf;
@@ -4539,6 +4581,9 @@ export class GameCore {
 		switch (command.type) {
 			case "createShape":
 			case "createPolygon":
+			case "editPolygonPoint":
+			case "addPolygonPoint":
+			case "removePolygonPoint":
 			case "createText":
 			case "createThrusters":
 			case "createCannon":
@@ -4653,6 +4698,9 @@ export class GameCore {
 			switch (command.type) {
 				case "createShape":
 				case "createPolygon":
+				case "editPolygonPoint":
+				case "addPolygonPoint":
+				case "removePolygonPoint":
 				case "createText":
 				case "createThrusters":
 				case "createCannon":
@@ -4895,8 +4943,20 @@ export class GameCore {
 				// b2PolygonShape doesn't validate geometry (asserts compiled out). Undo
 				// of a no-op create is harmless.
 				if (!verts || verts.length < 3 || verts.length > Polygon.MAX_TOOL_VERTICES) return;
-				if (!Polygon.isSimple(verts)) return;
-				const part = new Polygon(verts.map((v) => new b2Vec2(v.x, v.y)));
+				// Simplicity is checked on the TESSELLATED ring so a bézier edge that
+				// bows out into a self-crossing shape is refused (the ear-clip needs a
+				// simple ring). For an all-VERTEX ring this is exactly isSimple(verts).
+				const cpHandlesIn = command.handlesIn ? command.handlesIn.map((h) => (h ? { x: h.x, y: h.y } : { x: 0, y: 0 })) : verts.map(() => ({ x: 0, y: 0 }));
+				const cpHandlesOut = command.handlesOut ? command.handlesOut.map((h) => (h ? { x: h.x, y: h.y } : { x: 0, y: 0 })) : verts.map(() => ({ x: 0, y: 0 }));
+				const cpTess = Polygon.tessellateRing(verts, cpHandlesIn, cpHandlesOut, Polygon.BEZIER_SAMPLES);
+				if (!Polygon.isSimple(cpTess)) return;
+				const part = new Polygon(
+					verts.map((v) => new b2Vec2(v.x, v.y)),
+					0,
+					command.pointTypes,
+					cpHandlesIn,
+					cpHandlesOut
+				);
 				// Challenge material limits clamp friction/restitution defaults, exactly
 				// like createShape (Jaybit ShapePart ctor vs ControllerGame.min/maxFriction).
 				this.clampPartToChallengeLimits(part);
@@ -4918,6 +4978,120 @@ export class GameCore {
 				this.markChanged();
 				this.emitSound("shapeCreated");
 				if (this.tutorialMachine) this.notifyTutorial({ type: "partCreated", partKind: createdKind });
+				return;
+			}
+			case "editPolygonPoint": {
+				this.editParts([command.partId], (p) => {
+					if (!(p instanceof Polygon)) return;
+					// Fold any rotation into the baseline so we edit in plain world space
+					// (baseline == world once angle is 0). Appearance is unchanged.
+					p.BakeRotation();
+					const i = command.index;
+					if (i < 0 || i >= p.vertices.length) return;
+					// Work on copies so an edit that would break the ring is discarded.
+					const verts = p.vertices.map((v) => ({ x: v.x, y: v.y }));
+					const hIn = p.handlesIn.map((v) => ({ x: v.x, y: v.y }));
+					const hOut = p.handlesOut.map((v) => ({ x: v.x, y: v.y }));
+					const types = p.pointTypes.slice();
+					if (command.x != null) verts[i].x = command.x;
+					if (command.y != null) verts[i].y = command.y;
+					let type = types[i];
+					// Handle edits first (respecting the CURRENT symmetric invariant).
+					if (command.handleIn !== undefined) {
+						hIn[i] = command.handleIn ? { x: command.handleIn.x, y: command.handleIn.y } : { x: 0, y: 0 };
+						if (type === Polygon.POINT_SYMMETRIC) hOut[i] = { x: -hIn[i].x, y: -hIn[i].y };
+					}
+					if (command.handleOut !== undefined) {
+						hOut[i] = command.handleOut ? { x: command.handleOut.x, y: command.handleOut.y } : { x: 0, y: 0 };
+						if (type === Polygon.POINT_SYMMETRIC) hIn[i] = { x: -hOut[i].x, y: -hOut[i].y };
+					}
+					// A type toggle then re-establishes the invariant for the new mode.
+					if (command.pointType != null) {
+						type = command.pointType;
+						const nz = (h: { x: number; y: number }) => Math.abs(h.x) > 1e-12 || Math.abs(h.y) > 1e-12;
+						if (type === Polygon.POINT_VERTEX) {
+							hIn[i] = { x: 0, y: 0 };
+							hOut[i] = { x: 0, y: 0 };
+						} else if (type === Polygon.POINT_SYMMETRIC) {
+							let src: { x: number; y: number } | null = nz(hOut[i])
+								? hOut[i]
+								: nz(hIn[i])
+									? { x: -hIn[i].x, y: -hIn[i].y }
+									: null;
+							if (!src) src = this.defaultPolyHandle(verts, i);
+							hOut[i] = { x: src.x, y: src.y };
+							hIn[i] = { x: -src.x, y: -src.y };
+						} else if (type === Polygon.POINT_ASYMMETRIC) {
+							if (!nz(hIn[i]) && !nz(hOut[i])) {
+								const src = this.defaultPolyHandle(verts, i);
+								hOut[i] = { x: src.x, y: src.y };
+								hIn[i] = { x: -src.x, y: -src.y };
+							}
+						}
+					}
+					// Reject an edit that self-crosses the tessellated ring (unbuildable).
+					const tess = Polygon.tessellateRing(verts, hIn, hOut, Polygon.BEZIER_SAMPLES);
+					if (!Polygon.isSimple(tess)) return;
+					for (let k = 0; k < verts.length; k++) {
+						p.vertices[k] = new b2Vec2(verts[k].x, verts[k].y);
+						p.handlesIn[k] = new b2Vec2(hIn[k].x, hIn[k].y);
+						p.handlesOut[k] = new b2Vec2(hOut[k].x, hOut[k].y);
+					}
+					p.pointTypes = types;
+					p.pointTypes[i] = type;
+					p.RecomputeCenter();
+				});
+				return;
+			}
+			case "addPolygonPoint": {
+				this.editParts([command.partId], (p) => {
+					if (!(p instanceof Polygon)) return;
+					if (p.vertices.length >= Polygon.MAX_TOOL_VERTICES) return;
+					p.BakeRotation();
+					const i = command.index;
+					if (i < 0 || i >= p.vertices.length) return;
+					const at = i + 1; // insert AFTER `index`
+					const verts = p.vertices.map((v) => ({ x: v.x, y: v.y }));
+					const hIn = p.handlesIn.map((v) => ({ x: v.x, y: v.y }));
+					const hOut = p.handlesOut.map((v) => ({ x: v.x, y: v.y }));
+					const types = p.pointTypes.slice();
+					verts.splice(at, 0, { x: command.x, y: command.y });
+					hIn.splice(at, 0, { x: 0, y: 0 });
+					hOut.splice(at, 0, { x: 0, y: 0 });
+					types.splice(at, 0, Polygon.POINT_VERTEX);
+					const tess = Polygon.tessellateRing(verts, hIn, hOut, Polygon.BEZIER_SAMPLES);
+					if (!Polygon.isSimple(tess)) return;
+					p.vertices = verts.map((v) => new b2Vec2(v.x, v.y));
+					p.handlesIn = hIn.map((v) => new b2Vec2(v.x, v.y));
+					p.handlesOut = hOut.map((v) => new b2Vec2(v.x, v.y));
+					p.pointTypes = types;
+					p.RecomputeCenter();
+				});
+				return;
+			}
+			case "removePolygonPoint": {
+				this.editParts([command.partId], (p) => {
+					if (!(p instanceof Polygon)) return;
+					if (p.vertices.length <= 3) return; // a polygon needs >= 3 vertices
+					p.BakeRotation();
+					const i = command.index;
+					if (i < 0 || i >= p.vertices.length) return;
+					const verts = p.vertices.map((v) => ({ x: v.x, y: v.y }));
+					const hIn = p.handlesIn.map((v) => ({ x: v.x, y: v.y }));
+					const hOut = p.handlesOut.map((v) => ({ x: v.x, y: v.y }));
+					const types = p.pointTypes.slice();
+					verts.splice(i, 1);
+					hIn.splice(i, 1);
+					hOut.splice(i, 1);
+					types.splice(i, 1);
+					const tess = Polygon.tessellateRing(verts, hIn, hOut, Polygon.BEZIER_SAMPLES);
+					if (!Polygon.isSimple(tess)) return;
+					p.vertices = verts.map((v) => new b2Vec2(v.x, v.y));
+					p.handlesIn = hIn.map((v) => new b2Vec2(v.x, v.y));
+					p.handlesOut = hOut.map((v) => new b2Vec2(v.x, v.y));
+					p.pointTypes = types;
+					p.RecomputeCenter();
+				});
 				return;
 			}
 			case "createText": {

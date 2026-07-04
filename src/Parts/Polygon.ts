@@ -41,18 +41,69 @@ export class Polygon extends ShapePart {
    */
   public static MAX_TOOL_VERTICES: number = 16;
 
+  // --- Bézier point types (per-vertex smoothing mode) ---------------------
+  /** Sharp corner — no smoothing; both handles are zero (the classic straight edge). */
+  public static POINT_VERTEX: number = 0;
+  /** Both bézier handles independent (length + direction) — a "cusp" the pen-tool can shape. */
+  public static POINT_ASYMMETRIC: number = 1;
+  /** The two handles are exactly mirrored (equal length, opposite direction). */
+  public static POINT_SYMMETRIC: number = 2;
+  /** Sample count per CURVED cubic segment when tessellating for collision + outline. */
+  public static BEZIER_SAMPLES: number = 12;
+
+  /**
+   * Per-vertex smoothing mode (POINT_VERTEX / ASYMMETRIC / SYMMETRIC), parallel
+   * to `vertices`. All-POINT_VERTEX (the default) == the classic straight polygon.
+   */
+  public pointTypes: number[] = [];
+  /**
+   * Incoming/outgoing cubic-bézier control handles, one per vertex, stored as
+   * OFFSETS relative to the vertex in the SAME angle-0 baseline space as
+   * `vertices` (so rotation/resize reuse the vertex machinery: rotate applies
+   * `angle`, resize scales by the factor). A zero offset means "no handle on
+   * that side" → that half of the edge is straight. handlesIn[i] shapes the edge
+   * ARRIVING at vertex i (from i-1); handlesOut[i] the edge LEAVING vertex i.
+   */
+  public handlesIn: b2Vec2[] = [];
+  public handlesOut: b2Vec2[] = [];
+  /** Resize baselines for the handles, captured by PrepareForResizing (parallel to initVertices). */
+  public initHandlesIn!: b2Vec2[];
+  public initHandlesOut!: b2Vec2[];
+
   /**
    * Body-local (relative to the body origin) vertices captured at Init, angle
    * already baked in — the renderer draws the true (possibly concave) outline
    * from these transformed by the live body xform, INDEPENDENT of how the
    * collision shape was triangulated (see Draw.DrawPolygonBody). Empty until Init.
+   * For a CURVED polygon this is the TESSELLATED (dense) ring, so the drawn
+   * outline and the (triangulated) collision shape both follow the béziers.
    */
   protected m_localVertices: b2Vec2[] = [];
 
-  constructor(verts: b2Vec2[], nAngle: number = 0) {
+  constructor(
+    verts: b2Vec2[],
+    nAngle: number = 0,
+    pointTypes?: number[],
+    handlesIn?: { x: number; y: number }[],
+    handlesOut?: { x: number; y: number }[]
+  ) {
     super(0, 0);
     // Own a private copy so callers can't mutate our geometry behind our back.
     this.vertices = verts.map((v) => new b2Vec2(v.x, v.y));
+
+    var n: number = this.vertices.length;
+    // Init the bézier arrays (default all-VERTEX, zero handles == straight polygon)
+    // BEFORE CheckVertices, so a winding flip can keep them aligned with `vertices`.
+    this.pointTypes = new Array(n);
+    this.handlesIn = new Array(n);
+    this.handlesOut = new Array(n);
+    for (var k: number = 0; k < n; k++) {
+      this.pointTypes[k] = pointTypes && pointTypes[k] != null ? pointTypes[k] : Polygon.POINT_VERTEX;
+      var hi = handlesIn && handlesIn[k] ? handlesIn[k] : null;
+      var ho = handlesOut && handlesOut[k] ? handlesOut[k] : null;
+      this.handlesIn[k] = new b2Vec2(hi ? hi.x : 0, hi ? hi.y : 0);
+      this.handlesOut[k] = new b2Vec2(ho ? ho.x : 0, ho ? ho.y : 0);
+    }
 
     var avgX: number = 0;
     var avgY: number = 0;
@@ -83,7 +134,23 @@ export class Polygon extends ShapePart {
    * (PolygonPart.as:267-279), which reverses on the wrong turn direction.
    */
   public CheckVertices(): void {
-    if (this.SignedArea() < 0) this.vertices.reverse();
+    if (this.SignedArea() < 0) {
+      this.vertices.reverse();
+      // Keep the parallel bézier arrays aligned with the reversed ring. Reversing
+      // the winding swaps each vertex's "previous"/"next" neighbours, so the
+      // incoming and outgoing handle roles swap too (the offset vectors are
+      // unchanged — they still point at the same physical control points).
+      if (this.pointTypes && this.pointTypes.length === this.vertices.length) {
+        this.pointTypes.reverse();
+        this.handlesIn.reverse();
+        this.handlesOut.reverse();
+        for (var i: number = 0; i < this.handlesIn.length; i++) {
+          var tmp: b2Vec2 = this.handlesIn[i];
+          this.handlesIn[i] = this.handlesOut[i];
+          this.handlesOut[i] = tmp;
+        }
+      }
+    }
   }
 
   /** Standard signed polygon area (2x); positive == CCW-in-math winding. */
@@ -122,6 +189,131 @@ export class Polygon extends ShapePart {
     return Polygon.GetOutlineVertices(this.GetVertices(), this.vertices.length, thickness);
   }
 
+  /** Cubic-bézier point at parameter t in [0,1] for control points p0,c1,c2,p3. */
+  private static cubicPoint(
+    p0: { x: number; y: number },
+    c1: { x: number; y: number },
+    c2: { x: number; y: number },
+    p3: { x: number; y: number },
+    t: number
+  ): b2Vec2 {
+    var u: number = 1 - t;
+    var b0: number = u * u * u;
+    var b1: number = 3 * u * u * t;
+    var b2: number = 3 * u * t * t;
+    var b3: number = t * t * t;
+    return new b2Vec2(
+      b0 * p0.x + b1 * c1.x + b2 * c2.x + b3 * p3.x,
+      b0 * p0.y + b1 * c1.y + b2 * c2.y + b3 * p3.y
+    );
+  }
+
+  /**
+   * Tessellate a control ring (verts + per-vertex handle OFFSETS) into a DENSE
+   * point ring: each edge i→i+1 whose endpoints carry a non-zero handle on that
+   * side is sampled as a cubic bézier (P0=verts[i], P1=verts[i]+handlesOut[i],
+   * P2=verts[i+1]+handlesIn[i+1], P3=verts[i+1]); a fully-straight edge (both
+   * handles zero) contributes only its start vertex. So an all-VERTEX ring
+   * tessellates to itself EXACTLY (byte-identical to the classic straight
+   * polygon), and a curved one becomes a dense ring the existing concave
+   * ear-clip / non-zero-fill machinery handles unchanged.
+   */
+  public static tessellateRing(
+    verts: { x: number; y: number }[],
+    handlesIn: { x: number; y: number }[],
+    handlesOut: { x: number; y: number }[],
+    samples: number
+  ): b2Vec2[] {
+    var n: number = verts.length;
+    var ring: b2Vec2[] = [];
+    var eps: number = 1e-12;
+    for (var i: number = 0; i < n; i++) {
+      var j: number = (i + 1) % n;
+      var p0 = verts[i];
+      var p3 = verts[j];
+      var ho = handlesOut[i];
+      var hi = handlesIn[j];
+      var curved: boolean =
+        (ho && (Math.abs(ho.x) > eps || Math.abs(ho.y) > eps)) ||
+        (hi && (Math.abs(hi.x) > eps || Math.abs(hi.y) > eps));
+      // Always push the segment's START vertex once (the next segment pushes the next).
+      ring.push(new b2Vec2(p0.x, p0.y));
+      if (curved) {
+        var c1 = { x: p0.x + (ho ? ho.x : 0), y: p0.y + (ho ? ho.y : 0) };
+        var c2 = { x: p3.x + (hi ? hi.x : 0), y: p3.y + (hi ? hi.y : 0) };
+        for (var s: number = 1; s < samples; s++) {
+          ring.push(Polygon.cubicPoint(p0, c1, c2, p3, s / samples));
+        }
+      }
+    }
+    return ring;
+  }
+
+  /** True iff any vertex carries a non-zero handle (i.e. the polygon is curved). */
+  public isCurved(): boolean {
+    var eps: number = 1e-12;
+    for (var i: number = 0; i < this.handlesIn.length; i++) {
+      if (Math.abs(this.handlesIn[i].x) > eps || Math.abs(this.handlesIn[i].y) > eps) return true;
+      if (Math.abs(this.handlesOut[i].x) > eps || Math.abs(this.handlesOut[i].y) > eps) return true;
+    }
+    return false;
+  }
+
+  /** Handle offsets rotated by the live `angle` (offsets are translation-invariant). */
+  private rotatedHandles(): { in: b2Vec2[]; out: b2Vec2[] } {
+    var c: number = Math.cos(this.angle);
+    var s: number = Math.sin(this.angle);
+    var rot = (v: b2Vec2): b2Vec2 => new b2Vec2(v.x * c - v.y * s, v.x * s + v.y * c);
+    return { in: this.handlesIn.map(rot), out: this.handlesOut.map(rot) };
+  }
+
+  /**
+   * The angle-applied, DENSE (tessellated) world-space ring — what the edit-mode
+   * renderer draws and what hit-testing/outline use for a curved polygon. For a
+   * straight polygon this equals GetVertices() exactly.
+   */
+  public GetTessellatedVertices(): b2Vec2[] {
+    var verts: Array<any> = this.GetVertices();
+    var rh = this.rotatedHandles();
+    return Polygon.tessellateRing(verts, rh.in, rh.out, Polygon.BEZIER_SAMPLES);
+  }
+
+  public GetTessellatedVerticesForOutline(thickness: number): Array<any> {
+    var tess: b2Vec2[] = this.GetTessellatedVertices();
+    return Polygon.GetOutlineVertices(tess, tess.length, thickness);
+  }
+
+  /**
+   * Fold the live `angle` into the baseline geometry (vertices + handle offsets)
+   * and zero the angle, recomputing the centre. Appearance is unchanged; this
+   * lets the post-creation point-edit commands work in plain angle-0 world space
+   * (baseline == world) even for a rotated polygon.
+   */
+  public BakeRotation(): void {
+    if (this.angle === 0) return;
+    var rotated: Array<any> = this.GetVertices();
+    var rh = this.rotatedHandles();
+    for (var i: number = 0; i < this.vertices.length; i++) {
+      this.vertices[i] = new b2Vec2(rotated[i].x, rotated[i].y);
+      this.handlesIn[i] = new b2Vec2(rh.in[i].x, rh.in[i].y);
+      this.handlesOut[i] = new b2Vec2(rh.out[i].x, rh.out[i].y);
+    }
+    this.angle = 0;
+    this.RecomputeCenter();
+  }
+
+  /** Recompute centerX/centerY as the vertex average (the rotation pivot). */
+  public RecomputeCenter(): void {
+    var avgX: number = 0;
+    var avgY: number = 0;
+    for (var i: number = 0; i < this.vertices.length; i++) {
+      avgX += this.vertices[i].x;
+      avgY += this.vertices[i].y;
+    }
+    this.centerX = avgX / this.vertices.length;
+    this.centerY = avgY / this.vertices.length;
+  }
+
   /**
    * Point-in-polygon test on the rotated verts. IB3/PolygonPart.InsidePart
    * (:97-130) used a convex "all edges on one side" test; a Polygon can now be
@@ -130,7 +322,9 @@ export class Polygon extends ShapePart {
    * for the ShapePart signature (unused; the test is scale-invariant).
    */
   public InsideShape(xVal: number, yVal: number, scale: number): boolean {
-    var verts: Array<any> = this.GetVertices();
+    // Test the DENSE (tessellated) ring so curves hit-test accurately; for a
+    // straight polygon this equals GetVertices().
+    var verts: Array<any> = this.GetTessellatedVertices();
     var n: number = verts.length;
     var inside: boolean = false;
     for (var i: number = 0, j: number = n - 1; i < n; j = i++) {
@@ -160,6 +354,13 @@ export class Polygon extends ShapePart {
 
   public MakeCopy(): ShapePart {
     var poly: Polygon = new Polygon(this.vertices, this.angle);
+    // Deep-copy the bézier state (types + handle offsets). Assign directly rather
+    // than via the ctor so a mirror/winding flip in MakeCopy's ctor keeps them
+    // aligned via CheckVertices (which already ran on the copy's straight arrays);
+    // here `this` is already normalized, so a plain aligned copy is correct.
+    poly.pointTypes = this.pointTypes.slice();
+    poly.handlesIn = this.handlesIn.map((v) => new b2Vec2(v.x, v.y));
+    poly.handlesOut = this.handlesOut.map((v) => new b2Vec2(v.x, v.y));
     poly.density = this.density;
     poly.collide = this.collide;
     poly.isStatic = this.isStatic;
@@ -211,10 +412,17 @@ export class Polygon extends ShapePart {
     var originX: number = body ? body.GetPosition().x : this.centerX;
     var originY: number = body ? body.GetPosition().y : this.centerY;
     var world0: Array<any> = this.GetVertices();
-    var local: b2Vec2[] = new Array(n);
+    var localCtrl: b2Vec2[] = new Array(n);
     for (var i: number = 0; i < n; i++) {
-      local[i] = new b2Vec2(world0[i].x - originX, world0[i].y - originY);
+      localCtrl[i] = new b2Vec2(world0[i].x - originX, world0[i].y - originY);
     }
+    // Tessellate the CONTROL ring (with rotated handle offsets — offsets are
+    // translation-invariant, so they need no origin shift) into the dense local
+    // ring the collision shape + renderer both use. For a straight (all-VERTEX)
+    // polygon this is byte-identical to the old control ring.
+    var rh = this.rotatedHandles();
+    var local: b2Vec2[] = Polygon.tessellateRing(localCtrl, rh.in, rh.out, Polygon.BEZIER_SAMPLES);
+    n = local.length;
     this.m_localVertices = local;
 
     // Fresh userData object per fixture (a concave polygon attaches several) —
@@ -296,7 +504,9 @@ export class Polygon extends ShapePart {
       return true;
     }
     // Port of PolygonPart.IntersectsBox :66-95 (edges vs. the 4 box sides).
-    var verts: Array<any> = this.GetVertices();
+    // Dense ring so a curved edge crossing the box is detected; == GetVertices()
+    // for a straight polygon.
+    var verts: Array<any> = this.GetTessellatedVertices();
     var n: number = verts.length;
     for (var i: number = 0; i < n; i++) {
       var ax = verts[i].x;
@@ -315,6 +525,10 @@ export class Polygon extends ShapePart {
     // Baseline verts relative to the centre (PolygonPart.PrepareForResizing :219-247);
     // handleResizeApply scales these around the pivot.
     this.initVertices = this.vertices.map((v) => new b2Vec2(v.x - this.centerX, v.y - this.centerY));
+    // Handles are offsets (translation-invariant); capture them so the resize
+    // gesture can scale them by the same factor as the vertices.
+    this.initHandlesIn = this.handlesIn.map((v) => new b2Vec2(v.x, v.y));
+    this.initHandlesOut = this.handlesOut.map((v) => new b2Vec2(v.x, v.y));
   }
 
   public equals(other: ShapePart): boolean {
@@ -324,6 +538,11 @@ export class Polygon extends ShapePart {
     for (var i: number = 0; i < this.vertices.length; i++) {
       if (!this.NumbersEqual(this.vertices[i].x, o.vertices[i].x)) return false;
       if (!this.NumbersEqual(this.vertices[i].y, o.vertices[i].y)) return false;
+      if (this.pointTypes[i] !== o.pointTypes[i]) return false;
+      if (!this.NumbersEqual(this.handlesIn[i].x, o.handlesIn[i].x)) return false;
+      if (!this.NumbersEqual(this.handlesIn[i].y, o.handlesIn[i].y)) return false;
+      if (!this.NumbersEqual(this.handlesOut[i].x, o.handlesOut[i].x)) return false;
+      if (!this.NumbersEqual(this.handlesOut[i].y, o.handlesOut[i].y)) return false;
     }
     return super.equals(other);
   }
