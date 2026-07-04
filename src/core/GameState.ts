@@ -103,6 +103,10 @@ export type PartSnapshot = {
 	undragable?: boolean;
 	/** IB3 superset: editor lock (a locked part can't be dragged). */
 	locked?: boolean;
+	/** IB3 superset: outline opacity 0..255 (shapes). */
+	borderOpacity?: number;
+	/** IB3 superset: show the joint/thruster graphic during simulation. */
+	visualInSim?: boolean;
 
 	// Joint (RevoluteJoint / PrismaticJoint)
 	/** enableMotor (revolute) / enablePiston (prismatic). */

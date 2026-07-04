@@ -39,6 +39,12 @@ const floppyJoint = computed({
 	get: () => !(sel.value?.stiff ?? false),
 	set: (v: boolean) => game.dispatch({ type: "setJointStiff", partIds: ids.value, value: !v }),
 });
+// IB3 superset: show the joint graphic during simulation (the prismatic shaft is
+// the only joint graphic drawn while running; hidden when this is off).
+const visualInSim = computed({
+	get: () => sel.value?.visualInSim ?? true,
+	set: (v: boolean) => game.dispatch({ type: "setVisualInSim", partIds: ids.value, value: v }),
+});
 const strength = computed({
 	get: () => sel.value?.strength ?? 15,
 	set: (v: number) => game.dispatch({ type: "setJointStrength", partIds: ids.value, value: Number(v) }),
@@ -196,6 +202,7 @@ function applyColour(): void {
 
 		<div class="checkboxes">
 			<UCheckbox v-model="floppyJoint" label="Floppy Joint" :disabled="!motorEnabled" />
+			<UCheckbox v-model="visualInSim" label="Show During Simulation" />
 		</div>
 
 		<template v-if="isRevolute">

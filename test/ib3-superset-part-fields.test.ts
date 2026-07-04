@@ -127,4 +127,17 @@ describe("locked is functional: a locked part can't be dragged", () => {
 		core.dispatch({ type: "moveParts", partIds: ids, dx: 4, dy: 0 });
 		expect((core.getState().parts.find((p) => p.id === ids[0]) as Circle).centerX).toBe(4);
 	});
+
+	it("setBorderOpacity sets + clamps to 0..255; setVisualInSim toggles", () => {
+		const c = new Circle(0, 0, 1, false);
+		const { core, ids } = coreWith([c]);
+		core.dispatch({ type: "setBorderOpacity", partIds: ids, value: 100 });
+		expect((core.getState().parts.find((p) => p.id === ids[0]) as Circle).borderOpacity).toBe(100);
+		core.dispatch({ type: "setBorderOpacity", partIds: ids, value: 999 });
+		expect((core.getState().parts.find((p) => p.id === ids[0]) as Circle).borderOpacity).toBe(255);
+		core.dispatch({ type: "setBorderOpacity", partIds: ids, value: -5 });
+		expect((core.getState().parts.find((p) => p.id === ids[0]) as Circle).borderOpacity).toBe(0);
+		core.dispatch({ type: "setVisualInSim", partIds: ids, value: false });
+		expect((core.getState().parts.find((p) => p.id === ids[0]) as Circle).visualInSim).toBe(false);
+	});
 });

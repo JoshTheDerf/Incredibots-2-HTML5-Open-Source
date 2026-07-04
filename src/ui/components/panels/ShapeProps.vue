@@ -129,6 +129,11 @@ const locked = computed({
 	get: () => sel.value?.locked ?? false,
 	set: (v: boolean) => game.dispatch({ type: "setLocked", partIds: ids.value, value: v }),
 });
+// IB3 superset: outline opacity 0..255 (Draw uses it as the outline stroke alpha).
+const borderOpacity = computed({
+	get: () => sel.value?.borderOpacity ?? 255,
+	set: (v: number) => game.dispatch({ type: "setBorderOpacity", partIds: ids.value, value: Number(v) }),
+});
 
 // Colour (ColourChangeWindow: RGBA + opacity). Reads the part's current colour;
 // applied on click via the already-wired setColour command.
@@ -247,6 +252,12 @@ function applyColour(): void {
 		<div class="checkboxes">
 			<UCheckbox v-model="outline" label="Show Outlines" />
 		</div>
+		<UFormField v-if="outline" label="Outline Opacity" class="field">
+			<div class="slider-row">
+				<USlider v-model="borderOpacity" :min="0" :max="255" :step="1" size="sm" class="slider" />
+				<UInput v-model.number="borderOpacity" type="number" size="xs" class="num-input" />
+			</div>
+		</UFormField>
 		<div class="checkboxes">
 			<UCheckbox v-model="outlineBehind" label="Outlines Behind" />
 			<UCheckbox v-model="locked" label="Locked" />

@@ -177,6 +177,9 @@ export class Draw extends b2DebugDraw {
     this.m_world = world
     var i: number;
     this.m_sprite.clear();
+    // Outline stroke alpha, reset each frame. Per-part IB3 borderOpacity overrides
+    // it at the top of each part in the draw loops below (see Part.borderOpacity).
+    this.m_alpha = 1.0;
 
     if (challenge && (notStarted || challenge.showConditions)) {
       for (i = 0; i < challenge.winConditions.length; i++) {
@@ -269,6 +272,8 @@ export class Draw extends b2DebugDraw {
       }
       for (i = 0; i < allParts.length; i++) {
         if (!allParts[i].isStatic || allParts[i].isEditable || drawStatic || allParts[i].drawAnyway) {
+          // IB3 borderOpacity: this part's outline stroke alpha (0..255 -> 0..1).
+          this.m_alpha = ((allParts[i] as { borderOpacity?: number }).borderOpacity ?? 255) / 255;
           if (allParts[i] instanceof ShapePart || allParts[i] instanceof PrismaticJoint) {
             myColor = Draw.s_normalColor;
             isHighlighted = false;
@@ -594,6 +599,8 @@ export class Draw extends b2DebugDraw {
       }
       for (i = 0; i < allParts.length; i++) {
         if (!allParts[i].isStatic || allParts[i].isEditable || drawStatic || allParts[i].drawAnyway) {
+          // IB3 borderOpacity: this part's outline stroke alpha (0..255 -> 0..1).
+          this.m_alpha = ((allParts[i] as { borderOpacity?: number }).borderOpacity ?? 255) / 255;
           // Bomb explosion FIRST, at the bomb's own slot in the part order
           // (IB3 DrawBomb calls DrawBombExplosion before drawing the body,
           // Draw2D.as:537-540, inside the bottom-parts pass at Draw2D.as:123-125)
@@ -686,7 +693,9 @@ export class Draw extends b2DebugDraw {
                   showOutlines
                 );
             }
-          } else if (allParts[i] instanceof PrismaticJoint) {
+          } else if (allParts[i] instanceof PrismaticJoint && (allParts[i] as PrismaticJoint).visualInSim) {
+            // IB3 visualInSim=false hides the joint graphic during the sim (the
+            // prismatic shaft is the only joint/thruster graphic drawn while running).
             const pj = allParts[i] as PrismaticJoint;
             var shapes = allParts[i].GetShapes();
             for (j = 0; j < shapes.length; j++) {

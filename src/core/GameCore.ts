@@ -1843,6 +1843,7 @@ export class GameCore {
 				outlineBehind: part.terrain, // "Outlines Behind" == terrain
 				undragable: part.undragable,
 				locked: part.locked, // IB3 superset: editor lock (pins the part)
+				borderOpacity: part.borderOpacity, // IB3 superset: outline opacity 0..255
 				// Trigger SOURCE fields (two symmetric slots) — read uniformly so the
 				// group-edit UI can compute [varies] without touching live parts.
 				triggerName: part.triggerName,
@@ -1984,6 +1985,7 @@ export class GameCore {
 				collD: part.collD,
 				subColl: part.subColl,
 				outline: part.outline,
+				visualInSim: part.visualInSim, // IB3 superset: hide the shaft during sim
 				// Sliding joint is a trigger TARGET too.
 				triggerList: part.triggerList,
 			};
@@ -4619,6 +4621,8 @@ export class GameCore {
 			case "setCameraFocus":
 			case "setFixate":
 			case "setLocked":
+			case "setBorderOpacity":
+			case "setVisualInSim":
 			case "setFixedRotation":
 			case "setOutline":
 			case "setOutlineBehind":
@@ -4734,6 +4738,8 @@ export class GameCore {
 				case "setCameraFocus":
 				case "setFixate":
 				case "setLocked":
+				case "setBorderOpacity":
+				case "setVisualInSim":
 				case "setFixedRotation":
 				case "setOutline":
 				case "setOutlineBehind":
@@ -5365,6 +5371,20 @@ export class GameCore {
 			case "setLocked":
 				this.editParts(command.partIds, (p) => {
 					p.locked = command.value;
+				});
+				return;
+			// IB3 superset: outline opacity (0..255) — Draw uses it as the outline alpha.
+			case "setBorderOpacity": {
+				const v = Math.max(0, Math.min(255, Math.round(command.value)));
+				this.editParts(command.partIds, (p) => {
+					p.borderOpacity = v;
+				});
+				return;
+			}
+			// IB3 superset: show a joint/thruster graphic during the sim (else hidden).
+			case "setVisualInSim":
+				this.editParts(command.partIds, (p) => {
+					p.visualInSim = command.value;
 				});
 				return;
 			// Outline lives on ShapePart AND PrismaticJoint (ShapeCheckboxAction OUTLINE_TYPE).

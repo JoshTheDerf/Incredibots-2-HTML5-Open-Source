@@ -228,6 +228,9 @@ export type Command =
 	| { type: "setFixate"; partIds: number[]; value: boolean }
 	// IB3 superset: lock/unlock a part (locked parts can't be selected/edited).
 	| { type: "setLocked"; partIds: number[]; value: boolean }
+	// IB3 superset: per-part outline opacity (0..255) + joint/thruster "show graphic in sim".
+	| { type: "setBorderOpacity"; partIds: number[]; value: number }
+	| { type: "setVisualInSim"; partIds: number[]; value: boolean }
 	| { type: "setFixedRotation"; partIds: number[]; value: boolean }
 	| { type: "setOutline"; partIds: number[]; value: boolean }
 	| { type: "setOutlineBehind"; partIds: number[]; value: boolean }
