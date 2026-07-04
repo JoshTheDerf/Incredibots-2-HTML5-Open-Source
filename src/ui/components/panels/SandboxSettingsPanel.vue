@@ -7,7 +7,7 @@
 // (AdvancedSandboxWindow.okButtonPressed + ControllerSandbox.RefreshSandboxSettings):
 // it stores the settings, rebuilds the terrain bodies + world bounds, and (for
 // gravity) takes effect on the NEXT play, matching the original.
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
 import { frameTextures } from "../../assets";
@@ -38,19 +38,33 @@ const blueValue = ref(sb.backgroundB || 255);
 
 const gravity = ref(sb.gravity);
 
-// Physics-engine selector (P1.5b-2b). 0 = IB2 (classic Box2DFlash 2.0.2, the
-// default) | 1 = IB3 (2.1a). Box2D 3.x (engine 2) is RESERVED but not yet
-// implemented, so it is OMITTED here (a disabled "coming soon" entry would need
-// object-item USelect; the two-string list keeps this panel's existing pattern).
-// Seeded from the current sandbox; applied on Okay, taking effect at the next
-// play (like gravity). An engine-2 design opened here reads back as IB3 (its
-// nearest real engine) so re-applying doesn't silently downgrade it to IB2.
-const engineLabels = ["IB2 (classic · 2.0)", "IB3 (2.1a)"];
-const engineIndex = ref(sb.physicsEngine >= 1 ? 1 : 0);
+// Physics-engine selector (P1.5b-2b / E3-4). 0 = IB2 (classic Box2DFlash 2.0.2,
+// the default) | 1 = IB3 (2.1a) | 2 = Box2D 3 (beta, box2d3-wasm). Seeded from
+// the current sandbox; applied on Okay, taking effect at the next play (like
+// gravity).
+const engineLabels = ["IB2 (classic · 2.0)", "IB3 (2.1a)", "Box2D 3 (beta)"];
+const engineIndex = ref(sb.physicsEngine >= 2 ? 2 : sb.physicsEngine >= 1 ? 1 : 0);
 const engineLabel = computed({
 	get: () => engineLabels[engineIndex.value] ?? engineLabels[0],
 	set: (v: string) => (engineIndex.value = Math.max(0, engineLabels.indexOf(v))),
 });
+
+// Selecting Box2D 3 (beta) kicks off the async wasm PRELOAD so the backend is
+// ready synchronously at play time (§C2). On failure (wasm load/instantiate
+// error) revert off the unusable engine — back to the previous choice (or IB3)
+// — while gameStore surfaces the error notice. `immediate` also preloads when a
+// design saved as engine 2 opens this panel. If the module is already loaded
+// ensureEngine2 resolves instantly with no notice flash.
+watch(
+	engineIndex,
+	(next, prev) => {
+		if (next !== 2) return;
+		game.ensureEngine2().then((ok) => {
+			if (!ok) engineIndex.value = prev == null || prev === 2 ? 1 : prev;
+		});
+	},
+	{ immediate: true },
+);
 
 // Plain label lists paired with index refs — mirrors the ShapeProps.vue
 // convention (USelect + separate index state) rather than object items,
@@ -145,6 +159,12 @@ function onCancel(): void {
 				<USelect id="sandbox-engine" v-model="engineLabel" :items="engineLabels" size="sm" />
 			</div>
 			<p class="engine-hint">Takes effect on the next play.</p>
+			<p v-if="engineIndex === 2 && game.engine2Status === 'loading'" class="engine-hint">
+				Loading Box2D 3 (beta)…
+			</p>
+			<p v-else-if="engineIndex === 2 && game.engine2Status === 'error'" class="engine-hint">
+				Box2D 3 failed to load.
+			</p>
 
 			<div class="rgb-block">
 				<div class="rgb-row">

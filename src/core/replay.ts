@@ -107,6 +107,13 @@ export interface ReplayData {
 	 * legacy exports) default to 0, the classic engine (see replaySerialization).
 	 */
 	physicsEngine?: number;
+	/**
+	 * For engine 2 (Box2D v3) only: the box2d3-wasm build version the replay was
+	 * recorded on (E3-4). v3 promises deterministic results only for a fixed
+	 * build, so playback on a different version surfaces a warning (§C3). Absent
+	 * for engines 0/1 and all legacy replays.
+	 */
+	physicsEngineVersion?: string;
 }
 
 /**
@@ -123,8 +130,10 @@ export interface RecordingBuffers {
 	syncPoints: ReplaySyncPoint[];
 	/** false once frame>=9000 or cannonballs>500 (ControllerGame.ts:585). */
 	canSave: boolean;
-	/** Physics engine this run uses (P1.5b-2b): 0 = IB2 (2.0.2) | 1 = IB3 (2.1a). */
+	/** Physics engine this run uses (P1.5b-2b): 0 = IB2 (2.0.2) | 1 = IB3 (2.1a) | 2 = Box2D v3. */
 	physicsEngine: number;
+	/** box2d3-wasm build version (engine 2 only; E3-4) — pins replay determinism. */
+	physicsEngineVersion?: string;
 }
 
 /**
@@ -132,7 +141,7 @@ export interface RecordingBuffers {
  * play-start reset (ControllerGame.ts:2730-2735): the first camera movement is
  * the +Infinity/+Infinity "keep current pan" sentinel at frame 0.
  */
-export function createRecording(physScale: number, physicsEngine = 0): RecordingBuffers {
+export function createRecording(physScale: number, physicsEngine = 0, physicsEngineVersion?: string): RecordingBuffers {
 	return {
 		cameraMovements: [
 			{ frame: 0, x: Number.POSITIVE_INFINITY, y: Number.POSITIVE_INFINITY, scale: physScale },
@@ -141,6 +150,7 @@ export function createRecording(physScale: number, physicsEngine = 0): Recording
 		syncPoints: [],
 		canSave: true,
 		physicsEngine,
+		physicsEngineVersion,
 	};
 }
 
@@ -222,6 +232,7 @@ export function finalizeReplay(rec: RecordingBuffers, numFrames: number): Replay
 		numFrames,
 		version: VERSION_STRING_FOR_REPLAYS,
 		physicsEngine: rec.physicsEngine,
+		physicsEngineVersion: rec.physicsEngineVersion,
 	};
 }
 

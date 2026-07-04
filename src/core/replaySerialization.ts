@@ -177,6 +177,13 @@ function putReplayIntoByteArray(replay: ReplayData, b: ByteArray): ByteArray {
 	// (which lack them) read back as engine 0 (see extractReplayFromByteArray).
 	// Written with the same compact 2-byte codec as the rest of the stream.
 	writeInt(b, replay.physicsEngine ?? 0);
+	// Engine-2 (Box2D v3) additionally pins the box2d3-wasm build version (E3-4):
+	// v3 promises deterministic results only for a fixed build, so a replay claims
+	// determinism only against the SAME version. Appended (writeUTF) AFTER the
+	// engine tag — still optional/trailing, so legacy readers (which stop at the
+	// keyPress terminator) and engine-0/1 replays (which never write it) are
+	// unaffected. Present ONLY when a version string was recorded (engine 2).
+	if (replay.physicsEngineVersion != null) b.writeUTF(replay.physicsEngineVersion);
 	return b;
 }
 
@@ -289,7 +296,11 @@ function extractReplayFromByteArray(data: ByteArray): ReplayData {
 	// legacy CE/Jaybit replays end here, so absent -> engine 0 (classic 2.0.2).
 	let physicsEngine = 0;
 	if (data.position !== data.length) physicsEngine = readInt(data);
-	return { cameraMovements, syncPoints, keyPresses, numFrames, version, physicsEngine };
+	// Optional box2d3-wasm version pin (E3-4), written after the engine tag by
+	// engine-2 replays only. Absent for engines 0/1 and legacy replays -> undefined.
+	let physicsEngineVersion: string | undefined;
+	if (data.position !== data.length) physicsEngineVersion = data.readUTF();
+	return { cameraMovements, syncPoints, keyPresses, numFrames, version, physicsEngine, physicsEngineVersion };
 }
 
 // --- Public string API (matches Database.ExportReplay / ImportReplay) ------

@@ -11,7 +11,7 @@
 
 import { b2AABB, b2MouseJointDef, b2Vec2, b2World } from "../Box2D";
 import type { b2Joint } from "../Box2D";
-import { getPhysicsBackend, setCannonballs, setPhysicsBackend } from "../Parts/partGlobals";
+import { getEngine2Backend, getEngine2Version, getPhysicsBackend, setCannonballs, setPhysicsBackend } from "../Parts/partGlobals";
 import { box2d20Backend, box2d21Backend } from "./physics";
 import { Util } from "../General/Util";
 import { Bomb, markBombImpact } from "../Parts/Bomb";
@@ -2971,8 +2971,10 @@ export class GameCore {
 	 *
 	 *   0 = IB2 (Box2DFlash 2.0.2, src/Box2D)   — the classic engine + module default
 	 *   1 = IB3 (Box2DFlash 2.1a, src/Box2D21)
-	 *   2 = Box2D 3.x (box2d3-wasm)             — RESERVED, not implemented yet:
-	 *       falls back to engine 1 (the nearest real engine) with a surfaced notice.
+	 *   2 = Box2D 3.x (box2d3-wasm)             — a WASM backend the UI PRELOADS and
+	 *       registers via registerEngine2Backend (partGlobals); used when ready,
+	 *       else falls back to engine 1 (nearest real engine) with a surfaced notice
+	 *       (E3-4). The core never statically imports it (check:core).
 	 *
 	 * Engine 0 is the module default that every teardown (reset / stopReplay /
 	 * resetSessionForLoad / view-again) restores via resetPhysicsBackend(), so it
@@ -2993,10 +2995,29 @@ export class GameCore {
 		if (engine === 1) {
 			setPhysicsBackend(engine1);
 		} else if (engine === 2) {
-			// Box2D 3.x is reserved but not yet implemented — run on the nearest real
-			// engine (IB3 2.1a) and tell the user (ENGINE-BOX2D3-PLAN.md).
-			setPhysicsBackend(engine1);
-			this.emitMessage("Box2D 3 (beta) is not available yet — running on the IB3 (2.1a) engine.");
+			// Engine 2 (Box2D v3) is the async-loaded WASM backend the UI preloaded and
+			// registered via registerEngine2Backend. Use it when ready; otherwise (still
+			// loading / load failed) fall back to the nearest real engine (IB3 2.1a) and
+			// tell the user (§C2, ENGINE-BOX2D3-PLAN.md E3-4).
+			const e2 = getEngine2Backend();
+			if (e2) {
+				setPhysicsBackend(e2);
+				// Replay determinism (§C3): v3 promises identical results only for a fixed
+				// build. If a replay pins a box2d3-wasm version other than the one loaded,
+				// surface a warning but still attempt playback.
+				if (this.replaySession) {
+					const pinned = this.replaySession.data.physicsEngineVersion;
+					const current = getEngine2Version();
+					if (pinned && current && pinned !== current) {
+						this.emitMessage(
+							`This replay was recorded on Box2D 3 (beta) v${pinned}; you have v${current}. Playback may differ.`,
+						);
+					}
+				}
+			} else {
+				setPhysicsBackend(engine1);
+				this.emitMessage("Box2D 3 (beta) is still loading — running on the IB3 (2.1a) engine.");
+			}
 		}
 		// engine 0 (or any unknown value): leave the active backend as-is (the
 		// teardown-restored default, box2d20Backend).
@@ -3233,12 +3254,16 @@ export class GameCore {
 			this.replaySession.keyPressIndex = 0;
 			this.recording = null;
 		} else {
-			// Record which engine this run used so playback reproduces it on the SAME
-			// backend (P1.5b-2b). Engine 2 fell back to 1 in applyPlayBackend, so the
-			// recording pins the effective engine (2 -> 1), never the unimplemented 2.
+			// Record which engine this run ACTUALLY used so playback reproduces it on the
+			// SAME backend (P1.5b-2b). Mirror applyPlayBackend's choice: engine 2 only
+			// pins 2 when its WASM backend was registered/ready (else it fell back to 1);
+			// engine 2 additionally records the box2d3-wasm build version so a replay
+			// claims determinism only against the same build (§C3, E3-4).
 			const requested = this.state.sandbox.physicsEngine;
-			const engine = requested === 1 || requested === 2 ? 1 : 0;
-			this.recording = createRecording(this.state.camera.scale, engine);
+			const e2ready = getEngine2Backend() != null;
+			const engine = requested === 2 && e2ready ? 2 : requested === 1 || requested === 2 ? 1 : 0;
+			const version = engine === 2 ? getEngine2Version() ?? undefined : undefined;
+			this.recording = createRecording(this.state.camera.scale, engine, version);
 		}
 		this.tutorialWonFired = false;
 

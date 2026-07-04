@@ -11,6 +11,7 @@ import { defineStore } from "pinia";
 import { GameCore } from "../core/GameCore";
 import type { Command, EditState, SimState, CameraState } from "../core";
 import type { Part } from "../Parts/Part";
+import { getEngine2Backend, registerEngine2Backend } from "../Parts/partGlobals";
 import { soundService } from "./sound";
 
 const core = new GameCore();
@@ -34,6 +35,55 @@ export const useGameStore = defineStore("game", () => {
 	/** Clear the current notice (dialog dismissed / OK). */
 	function dismissNotice(): void {
 		notice.value = null;
+	}
+
+	// --- Engine 2 (Box2D v3) async wasm preload ------------------------------
+	// Engine 2 is a WASM backend that lives OUTSIDE the node-clean core
+	// (src/enginebox2d3). GameCore.handlePlay is synchronous, but the wasm load is
+	// async, so we resolve the tension by PRELOADING here (§C2): when the user
+	// selects engine 2, ensureEngine2() dynamically imports the adapter (its own
+	// lazy chunk — engines 0/1 users never download it), awaits the wasm, builds
+	// the Box2D3Backend, and REGISTERS it into partGlobals so it's already
+	// available SYNCHRONOUSLY at play time. On failure the selection is reverted by
+	// the caller and a notice is shown; play then still falls back to engine 1.
+	const ENGINE2_LOADING_NOTICE = "Loading the Box2D 3 (beta) physics engine…";
+	const engine2Status = ref<"idle" | "loading" | "ready" | "error">(
+		getEngine2Backend() ? "ready" : "idle",
+	);
+
+	/**
+	 * Ensure the engine-2 (Box2D v3) WASM backend is loaded and registered.
+	 * Idempotent + memoized (loadBox2D3 itself memoizes the module). Resolves true
+	 * when the backend is ready, false on load/instantiate failure (with a notice).
+	 */
+	async function ensureEngine2(): Promise<boolean> {
+		if (getEngine2Backend()) {
+			engine2Status.value = "ready";
+			return true;
+		}
+		engine2Status.value = "loading";
+		notice.value = ENGINE2_LOADING_NOTICE;
+		try {
+			const [{ loadBox2D3, BOX2D3_WASM_VERSION }, { Box2D3Backend }] = await Promise.all([
+				import("../enginebox2d3/loadBox2D3"),
+				import("../enginebox2d3/Box2D3Backend"),
+			]);
+			const module = await loadBox2D3();
+			const backend = new Box2D3Backend(module);
+			// Box2D3Backend's handle types are structurally distinct from engine-0's,
+			// but handles are opaque by the PhysicsBackend contract — register under
+			// the seam's type (same cast GameCore uses for engine 1).
+			registerEngine2Backend(backend as never, BOX2D3_WASM_VERSION);
+			engine2Status.value = "ready";
+			// Clear the loading notice only if it's still ours (don't stomp a newer one).
+			if (notice.value === ENGINE2_LOADING_NOTICE) notice.value = null;
+			return true;
+		} catch (err) {
+			console.error("[gameStore] Box2D 3 (beta) physics failed to load:", err);
+			engine2Status.value = "error";
+			notice.value = "Box2D 3 (beta) physics failed to load. Staying on the IB3 (2.1a) engine.";
+			return false;
+		}
 	}
 
 	const sim = computed<Readonly<SimState>>(() => state.value.sim);
@@ -264,5 +314,7 @@ export const useGameStore = defineStore("game", () => {
 		goToChallengeEditor,
 		notice,
 		dismissNotice,
+		engine2Status,
+		ensureEngine2,
 	};
 });

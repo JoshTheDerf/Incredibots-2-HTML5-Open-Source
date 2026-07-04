@@ -28,6 +28,25 @@ export default defineConfig(({ command }) => ({
     ],
     // `.dat` robot/replay files are imported for their URL, like the images.
     assetsInclude: ['**/*.dat'],
+    // Don't let esbuild dep-prebundle the box2d3-wasm emscripten glue — it must
+    // load as-authored so its `new URL(...wasm, import.meta.url)` asset ref and
+    // node/browser branches survive. It's only reached via a lazy dynamic import
+    // when engine 2 is selected, so excluding it costs engines 0/1 nothing.
+    optimizeDeps: { exclude: ['box2d3-wasm'] },
+    resolve: {
+        alias: {
+            // Engine 2 (Box2D v3) imports the box2d3-wasm COMPAT build directly so
+            // the SIMD "deluxe" build (top-level-await worker; needs COOP/COEP) is
+            // never pulled into the graph — see src/enginebox2d3/loadBox2D3.ts. The
+            // package's `exports` map doesn't expose this deep path, so alias a
+            // stable specifier to the file; the adapter is a lazy dynamic import, so
+            // this only affects that chunk, and the compat build's
+            // `new URL('Box2D.compat.wasm', import.meta.url)` makes Vite emit the wasm.
+            'box2d3-wasm/compat': fileURLToPath(
+                new URL('./node_modules/box2d3-wasm/build/dist/es/compat/Box2D.compat.mjs', import.meta.url),
+            ),
+        },
+    },
     server: {
         // Listen on all interfaces so the Caddy container can reach us via
         // host.docker.internal.

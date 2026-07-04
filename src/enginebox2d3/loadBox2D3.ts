@@ -21,6 +21,15 @@
 
 import type Box2D3Factory from "box2d3-wasm";
 
+/**
+ * The box2d3-wasm build version this adapter targets. Engine-2 replays record it
+ * (E3-4) and playback warns on mismatch — v3 promises deterministic results only
+ * for a FIXED build (§C3). Keep in sync with the "box2d3-wasm" dependency version
+ * in package.json (the package's ESM `exports` map gates a direct package.json
+ * import, so this is a hand-maintained mirror).
+ */
+export const BOX2D3_WASM_VERSION = "5.2.0";
+
 /** The resolved emscripten module namespace (all bound v3 functions/structs). */
 export type Box2D3Module = Awaited<ReturnType<typeof Box2D3Factory>>;
 
@@ -41,14 +50,18 @@ export function loadBox2D3(): Promise<Box2D3Module> {
 
 async function loadModule(): Promise<Box2D3Module> {
 	if (typeof window !== "undefined") {
-		// Browser / Vite. The package entry ("box2d3-wasm") auto-selects the
-		// compat build when the page is NOT cross-origin isolated — which our
-		// deploy never is (can't set COOP/COEP) — so this yields the same
-		// deterministic compat build as the node path. Full browser wasm-asset
-		// wiring (locateFile / ?url, MIME check) is finalized in E3-4; this is
-		// the minimum needed for a lazy dynamic-import to resolve.
-		const entry = (await import("box2d3-wasm")) as unknown as { default: Box2D3FactoryFn };
-		return entry.default({});
+		// Browser / Vite. Import the COMPAT build DIRECTLY (not the package entry).
+		// The entry ("box2d3-wasm") conditionally imports BOTH the compat and the
+		// SIMD "deluxe" builds; bundling deluxe (a) breaks `vite build` — its
+		// enkiTS worker uses top-level await which Rollup can't emit as an iife
+		// worker — and (b) violates §C3 (deluxe is threaded/non-deterministic and
+		// needs COOP/COEP our deploy can't set). Importing compat directly keeps
+		// deluxe out of the graph. The package's ESM `exports` map gates this deep
+		// path, so a Vite `resolve.alias` ("box2d3-wasm/compat" -> the compat mjs)
+		// makes it resolvable; its own `new URL("Box2D.compat.wasm", import.meta.url)`
+		// then makes Vite emit the wasm as a hashed asset in the adapter's lazy chunk.
+		const compat = (await import("box2d3-wasm/compat")) as unknown as { default: Box2D3FactoryFn };
+		return compat.default({});
 	}
 
 	// Node / vitest. The package entry would pick the SIMD "deluxe" build here

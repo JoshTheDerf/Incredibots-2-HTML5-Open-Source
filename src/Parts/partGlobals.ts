@@ -35,6 +35,40 @@ export function setPhysicsBackend(value: PhysicsBackend<b2World, b2Body, b2Shape
   physicsBackend = value;
 }
 
+// Engine-2 (Box2D v3, box2d3-wasm) is an ASYNC-loaded WASM backend that lives
+// OUTSIDE the node-clean core (src/enginebox2d3), so nothing in the core purity
+// graph may statically import it (check:core). Instead the UI layer PRELOADS the
+// wasm, constructs the Box2D3Backend, and REGISTERS the ready instance here
+// (registerEngine2Backend) — an injection seam the core can read WITHOUT a
+// static box2d3 import. GameCore.applyPlayBackend picks it up via
+// getEngine2Backend() when a design/replay selects engine 2; if nothing is
+// registered yet (still loading / load failed) it falls back to engine 1.
+//
+// The registered instance persists across plays (it's a cached loaded module),
+// but is only ever made the ACTIVE backend for engine===2 — the active backend
+// still resets to engine 0 on every teardown (resetPhysicsBackend), so an
+// engine-2 selection can't leak into an engine-0/1 run. `version` pins the
+// box2d3-wasm build for replay determinism (§C3): v3 promises deterministic
+// results only for a fixed build.
+let engine2Backend: PhysicsBackend<b2World, b2Body, b2Shape, b2Joint> | null = null;
+let engine2Version: string | null = null;
+
+export function registerEngine2Backend(
+  backend: PhysicsBackend<b2World, b2Body, b2Shape, b2Joint> | null,
+  version: string | null = null,
+): void {
+  engine2Backend = backend;
+  engine2Version = version;
+}
+
+export function getEngine2Backend(): PhysicsBackend<b2World, b2Body, b2Shape, b2Joint> | null {
+  return engine2Backend;
+}
+
+export function getEngine2Version(): string | null {
+  return engine2Version;
+}
+
 // Collision group bit used when initialising prismatic-joint piston shapes.
 // The legacy controller resets this to 0x0001 at play time and doubles it for
 // every PrismaticJoint (ControllerGame.playButton). The core owns the value;
