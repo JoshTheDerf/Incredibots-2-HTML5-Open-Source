@@ -256,7 +256,8 @@ export class Draw extends b2DebugDraw {
               } else if (allParts[i] instanceof Polygon) {
                 var poly: Polygon = allParts[i] as Polygon;
                 this.m_fillAlpha = poly.opacity / 255.0;
-                this.DrawSolidPolygon(poly.GetVerticesForOutline(thickness), poly.numVertices(), myColor, false, false);
+                var polyOutline: Array<any> = poly.GetTessellatedVerticesForOutline(thickness);
+                this.DrawSolidPolygon(polyOutline, polyOutline.length, myColor, false, false);
               } else if (allParts[i] instanceof Cannon) {
                 var ca: Cannon = allParts[i] as Cannon;
                 this.m_fillAlpha = ca.opacity / 255.0;
@@ -343,9 +344,13 @@ export class Draw extends b2DebugDraw {
             } else if (allParts[i] instanceof Polygon) {
               poly = allParts[i] as Polygon;
               if (this.drawColours) { this.m_fillAlpha = poly.opacity / 255.0; this.ApplyJointVizNudge(jvHighlight); }
+              // Dense (tessellated) ring so a curved polygon draws its béziers in
+              // edit mode; == GetVertices() for a straight one. Pixi's non-zero
+              // fill renders the (possibly concave) dense ring correctly.
+              var polyTess: Array<any> = poly.GetTessellatedVertices();
               this.DrawSolidPolygon(
-                poly.GetVertices(),
-                poly.numVertices(),
+                polyTess,
+                polyTess.length,
                 myColor,
                 isHighlighted,
                 poly.outline && (!poly.terrain || !this.drawColours) && showOutlines

@@ -65,7 +65,43 @@ export type Command =
 	// the first vertex / Enter, Escape cancels). GameCore re-validates convexity +
 	// count and no-ops a degenerate ring, then builds + selects the part exactly
 	// like createShape (default colour/material, undoable via the same history path).
-	| { type: "createPolygon"; verts: { x: number; y: number }[] }
+	// `verts` is the ordered ring; the optional bézier arrays (parallel to `verts`)
+	// carry the pen-tool's per-vertex smoothing: `pointTypes` (Polygon.POINT_*),
+	// and `handlesIn`/`handlesOut` — cubic-bézier control-handle OFFSETS relative to
+	// each vertex, in angle-0 world space. Omitting all three (or passing zero
+	// handles) yields the classic all-VERTEX straight polygon. A click-drag during
+	// placement produces a SYMMETRIC point whose two handles are mirrored.
+	| {
+			type: "createPolygon";
+			verts: { x: number; y: number }[];
+			pointTypes?: number[];
+			handlesIn?: ({ x: number; y: number } | null)[];
+			handlesOut?: ({ x: number; y: number } | null)[];
+	  }
+	// --- post-creation bézier point editing (curved-polygon editor) ---
+	// Edit ONE vertex of a Polygon after creation. Every geometry field is optional
+	// (omitted == unchanged), mirroring setShapeTrigger's convention. `x`/`y` move
+	// the vertex (angle-0 world space; the core bakes any rotation first so
+	// world==baseline). `handleIn`/`handleOut` set that side's control-handle OFFSET
+	// (relative to the vertex); null CLEARS it (straight). `pointType` toggles the
+	// smoothing mode (Polygon.POINT_VERTEX clears both handles; POINT_SYMMETRIC
+	// forces the two handles mirrored; POINT_ASYMMETRIC leaves them independent).
+	// When a SYMMETRIC point's handle is edited, the core mirrors the opposite one.
+	| {
+			type: "editPolygonPoint";
+			partId: number;
+			index: number;
+			x?: number;
+			y?: number;
+			handleIn?: { x: number; y: number } | null;
+			handleOut?: { x: number; y: number } | null;
+			pointType?: number;
+	  }
+	// Insert a new vertex into a Polygon AFTER `index` (world space), or remove the
+	// vertex at `index`. Both re-validate the resulting ring is simple + within the
+	// tool vertex range; a remove that would drop below 3 vertices is refused.
+	| { type: "addPolygonPoint"; partId: number; index: number; x: number; y: number }
+	| { type: "removePolygonPoint"; partId: number; index: number }
 	| { type: "createText"; x: number; y: number; text: string }
 	// Attach a Thrusters / Cannon at the click point. createThrusters snaps onto
 	// the single shape under (x,y) (ControllerGame.MaybeCreateThrusters :6797);
