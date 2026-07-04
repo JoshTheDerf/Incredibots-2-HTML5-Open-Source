@@ -3443,6 +3443,11 @@ export class GameCore {
 					this.triggerKeyInput,
 				);
 			},
+			// Superset/prototype fracturing: the engine surfaces each solved contact's
+			// impact (world point + engine-neutral relative normal speed); the fracture
+			// system keeps the strongest per fragile shape this step (see
+			// beginFrame/applyFractures in handleStep).
+			onImpact: (impact): void => this.fractureSystem.recordImpact(impact),
 		});
 		return world;
 	}
@@ -3936,28 +3941,25 @@ export class GameCore {
 	}
 
 	/**
-	 * Post-step shatter pass: fracture any fragile shape (in state.parts OR an
-	 * existing fragment) that just took a hard impact. Consumed parents keep their
-	 * state.parts slot (body destroyed, restored on reset); fresh fragments join
-	 * the transient simFragments list. Never runs during replay playback.
+	 * The live fragile-shape candidate list: editable shapes still in state.parts
+	 * PLUS already-live fragments (so a shard can re-shatter on a harder hit).
 	 */
-	private updateFractures(world: b2World): void {
-		if (this.replaySession) return;
-		// Candidates: editable shapes still present + already-live fragments (so a
-		// shard can shatter again on a harder hit). Only ShapeParts qualify.
+	private fractureCandidates(): ShapePart[] {
 		const candidates: ShapePart[] = [];
 		for (const p of this.state.parts) if (p instanceof ShapePart) candidates.push(p);
 		for (const f of this.simFragments) candidates.push(f);
+		return candidates;
+	}
 
-		const results = this.fractureSystem.update(
-			candidates,
-			world,
-			getPhysicsBackend(),
-			this.state.sandbox.gravityX,
-			this.state.sandbox.gravity,
-			STEP_DT,
-			() => ++this.nextId,
-		);
+	/**
+	 * Post-step shatter pass: apply the impacts the contact hook recorded DURING
+	 * this frame's steps. Consumed parents keep their state.parts slot (body
+	 * destroyed, restored on reset); fresh fragments join the transient
+	 * simFragments list. Never runs during replay playback.
+	 */
+	private applySimFractures(world: b2World): void {
+		if (this.replaySession) return;
+		const results = this.fractureSystem.applyFractures(world, getPhysicsBackend(), () => ++this.nextId);
 		if (results.length === 0) return;
 
 		const consumed = new Set<ShapePart>();
@@ -4024,14 +4026,16 @@ export class GameCore {
 			if (this.recording && frame % REPLAY_SYNC_FRAMES === 0) {
 				addSyncPoint(this.recording, frame, this.replayBodies(), this.replayCannonballs());
 			}
+			// Superset/prototype fracturing: arm the shatter watcher BEFORE stepping so
+			// the contact hook (onImpact) can attribute each solved contact's impact to
+			// a fragile shape; then the two Box2D sub-steps feed those impacts; then
+			// applySimFractures shatters over-threshold shapes at their contact point.
+			// Skipped during replay playback (deterministic sync-point replay mustn't
+			// diverge). state.parts AND live fragments are eligible (a shard re-shatters).
+			if (!this.replaySession) this.fractureSystem.beginFrame(this.fractureCandidates(), getPhysicsBackend());
 			getPhysicsBackend().step(world, STEP_DT, STEP_ITERATIONS_WARMUP);
 			getPhysicsBackend().step(world, STEP_DT, STEP_ITERATIONS);
-			// Superset/prototype fracturing (post-step, like joint CheckForBreakage):
-			// shatter any fragile shape that just took a hard impact. Fragments are
-			// transient sim-only bodies (see simFragments). Skipped during replay
-			// playback (deterministic sync-point replay must not diverge). Both
-			// state.parts AND live fragments are eligible so a shard can re-shatter.
-			this.updateFractures(world);
+			this.applySimFractures(world);
 			frame++;
 			// Replay save cap (ControllerGame.ts:585).
 			if (this.recording && (frame >= REPLAY_MAX_FRAMES || this.cannonballs.length > REPLAY_MAX_CANNONBALLS)) {

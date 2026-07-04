@@ -201,18 +201,57 @@ export class ShapePart extends Part {
    * Destroy this shape's physics presence mid-sim WITHOUT taking it out of the
    * edit model — the fracture runtime (src/core/fractureSystem.ts) calls this
    * when a fragile shape shatters, mirroring the exploded-Bomb pattern
-   * (Bomb.Explode :438-439): the body is destroyed and the shape/body handles
-   * nulled so Draw's `GetShape() != null` gate skips it, but the part stays in
+   * (Bomb.Explode :409-440): attached joints + thrusters are split off (so
+   * nothing dangles), then the body/shape are removed and the handles nulled so
+   * Draw's `GetShape() != null` gate skips it, while the part stays in
    * state.parts so a reset re-Inits it. `isInitted` is left true so the reset
    * UnInit runs cleanly (it early-outs on the already-null body).
+   *
+   * A WELDED part shares one b2Body with its neighbours (CheckFixedJoints Init's
+   * partners onto the same body), so shattering it must NOT destroy that shared
+   * body — like Bomb, we drop only this part's own fixture and keep the body (+
+   * neighbours). Prototype limitation: a CONCAVE welded part has several fixtures
+   * but only its first (m_shape) is removed.
    */
   public ConsumeForFracture(world: b2World): void {
+    // A non-triggered FixedJoint to a live neighbour means this part shares its
+    // body — decide BEFORE the joints below are destroyed.
+    var welded: boolean = false;
+    for (var wi: number = 0; wi < this.m_joints.length; wi++) {
+      var wj: any = this.m_joints[wi];
+      if (wj instanceof FixedJoint && wj.isEnabled && !wj.IsTriggered()) {
+        var other: ShapePart | null = wj.GetOtherPart(this);
+        if (other && other.isEnabled) {
+          welded = true;
+          break;
+        }
+      }
+    }
+    // Split off attached joints + thrusters (TriggerSystem.SplitPart :146-162).
+    for (var ji: number = 0; ji < this.m_joints.length; ji++) {
+      if (this.m_joints[ji] instanceof JointPart && this.m_joints[ji].isEnabled) {
+        this.m_joints[ji].DestroyJointPart(world);
+      }
+    }
+    for (var thi: number = 0; thi < this.m_thrusters.length; thi++) {
+      if (this.m_thrusters[thi] instanceof Thrusters && this.m_thrusters[thi].isEnabled) {
+        this.m_thrusters[thi].DestroyThruster(world);
+      }
+    }
+
     if (this.m_body) {
-      const bud = this.m_body.GetUserData() as { deleted?: boolean } | null;
-      if (!bud || !bud.deleted) {
-        getPhysicsBackend().destroyBody(world, this.m_body);
-        if (!this.m_body.GetUserData()) this.m_body.SetUserData({});
-        (this.m_body.GetUserData() as { deleted?: boolean }).deleted = true;
+      if (welded && this.m_shape && getPhysicsBackend().bodyShapeCount(this.m_body) > 1) {
+        // Welded cluster: drop only this part's fixture; keep the body for the
+        // neighbours (Bomb.as:421-425).
+        getPhysicsBackend().destroyShape(this.m_body, this.m_shape);
+        if (!getPhysicsBackend().bodyIsStatic(this.m_body)) getPhysicsBackend().setMassFromShapes(this.m_body);
+      } else {
+        const bud = this.m_body.GetUserData() as { deleted?: boolean } | null;
+        if (!bud || !bud.deleted) {
+          getPhysicsBackend().destroyBody(world, this.m_body);
+          if (!this.m_body.GetUserData()) this.m_body.SetUserData({});
+          (this.m_body.GetUserData() as { deleted?: boolean }).deleted = true;
+        }
       }
     }
     this.m_shape = null;

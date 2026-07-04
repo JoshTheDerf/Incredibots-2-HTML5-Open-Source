@@ -20,7 +20,7 @@ import type {
 	WaterSurfaceReadback,
 	WorldDef,
 } from "./PhysicsBackend";
-import { WATER_TYPE_WAVE } from "./PhysicsBackend";
+import { impulseToSpeed, WATER_TYPE_WAVE } from "./PhysicsBackend";
 
 /** The engine-0 water controllers (a tide or a wave; both extend b2BuoyancyController). */
 type WaterController20 = b2BuoyancyController | b2WaveController;
@@ -110,6 +110,10 @@ export class Box2D20Backend implements PhysicsBackend<b2World, b2Body, b2Shape, 
 		body.WakeUp();
 	}
 
+	bodyShapeCount(body: b2Body): number {
+		return body.m_shapeCount;
+	}
+
 	bodyIsStatic(body: b2Body): boolean {
 		return body.IsStatic();
 	}
@@ -167,6 +171,29 @@ export class Box2D20Backend implements PhysicsBackend<b2World, b2Body, b2Shape, 
 		const listener = new b2ContactListener();
 		listener.Add = (point: unknown): void => hooks.onAdd(point as ContactPointLike);
 		listener.Remove = (point: unknown): void => hooks.onRemove(point as ContactPointLike);
+		// Solved-contact impact report (fracturing). b2Island.Report -> Result gives
+		// the world position + normalImpulse applied at each manifold point; convert
+		// the impulse to a relative normal speed via the two bodies' reduced mass so
+		// the fracture threshold is engine-neutral (see ContactImpact).
+		if (hooks.onImpact) {
+			const onImpact = hooks.onImpact;
+			listener.Result = (cr: {
+				shape1: b2Shape;
+				shape2: b2Shape;
+				position: b2Vec2;
+				normalImpulse: number;
+			}): void => {
+				const speed = impulseToSpeed(cr.normalImpulse, cr.shape1.m_body.GetMass(), cr.shape2.m_body.GetMass());
+				if (speed <= 0) return;
+				onImpact({
+					shape1: cr.shape1,
+					shape2: cr.shape2,
+					x: cr.position.x,
+					y: cr.position.y,
+					speed,
+				});
+			};
+		}
 		world.SetContactListener(listener);
 	}
 

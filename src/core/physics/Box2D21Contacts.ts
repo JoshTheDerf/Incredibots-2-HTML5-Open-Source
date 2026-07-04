@@ -35,9 +35,10 @@
 //   - SENSORS. 2.1a fires Begin/End for sensor fixtures too; the trigger/
 //     condition code already keys off userData, so this is transparent.
 
-import { b2ContactFilter, b2ContactListener } from "../../Box2D21";
-import type { b2Contact, b2Fixture, b2World } from "../../Box2D21";
+import { b2ContactFilter, b2ContactListener, b2WorldManifold } from "../../Box2D21";
+import type { b2Contact, b2ContactImpulse, b2Fixture, b2World } from "../../Box2D21";
 import type { ContactHooks, ContactPointLike } from "./PhysicsBackend";
+import { impulseToSpeed } from "./PhysicsBackend";
 
 /** UserData shape the collision filter reads (mirrors ContactFilter.ts). */
 interface FilterUserData {
@@ -102,6 +103,9 @@ class Box2D21ContactFilter extends b2ContactFilter {
 
 /** A b2ContactListener that drives the engine-neutral hooks. */
 class Box2D21Listener extends b2ContactListener {
+	// Reusable world-manifold scratch for PostSolve (avoids per-contact alloc).
+	private readonly worldManifold = new b2WorldManifold();
+
 	constructor(private readonly hooks: ContactHooks) {
 		super();
 	}
@@ -117,6 +121,32 @@ class Box2D21Listener extends b2ContactListener {
 
 	public override EndContact(contact: b2Contact): void {
 		this.hooks.onRemove(this.point(contact));
+	}
+
+	// Solved-contact impact report (fracturing). 2.1a fires PostSolve per contact
+	// with the per-point normal impulses; take the strongest point + its world
+	// position and convert the impulse to an engine-neutral relative normal speed
+	// via the two bodies' reduced mass (see ContactImpact / impulseToSpeed).
+	public override PostSolve(contact: b2Contact, impulse: b2ContactImpulse): void {
+		if (!this.hooks.onImpact) return;
+		const count = contact.GetManifold().m_pointCount;
+		if (count <= 0) return;
+		let maxJ = 0;
+		let maxK = 0;
+		for (let k = 0; k < count; k++) {
+			if (impulse.normalImpulses[k] > maxJ) {
+				maxJ = impulse.normalImpulses[k];
+				maxK = k;
+			}
+		}
+		if (maxJ <= 0) return;
+		const fa = contact.GetFixtureA();
+		const fb = contact.GetFixtureB();
+		const speed = impulseToSpeed(maxJ, fa.GetBody().GetMass(), fb.GetBody().GetMass());
+		if (speed <= 0) return;
+		contact.GetWorldManifold(this.worldManifold);
+		const p = this.worldManifold.m_points[maxK];
+		this.hooks.onImpact({ shape1: fa, shape2: fb, x: p.x, y: p.y, speed });
 	}
 }
 

@@ -26,7 +26,7 @@ import { b2Vec2 } from "../Box2D";
 import { Circle } from "../Parts/Circle";
 import { Polygon } from "../Parts/Polygon";
 import { ShapePart } from "../Parts/ShapePart";
-import type { PhysicsBackend, Vec2Like } from "./physics/PhysicsBackend";
+import type { ContactImpact, PhysicsBackend } from "./physics/PhysicsBackend";
 
 // --- tuning ----------------------------------------------------------------
 /**
@@ -257,65 +257,67 @@ export function shatter(ring: Pt[], impact: Pt, fragmentCount: number, rand: () 
 	return fragments;
 }
 
-/** Body-local (origin-relative, angle-0-at-init) outline for any ShapePart. */
-function partLocalOutline(part: ShapePart): Pt[] | null {
+/**
+ * The angle-applied WORLD outline of a shape in its EDIT (rest) pose — used once
+ * per part to capture its body-local outline (see captureRest). Polygon uses its
+ * tessellated (curve-aware) ring; Circle an N-gon; Rectangle/Triangle their
+ * GetVertices(). Returns null for shapes we can't fracture (no vertices).
+ */
+function editWorldOutline(part: ShapePart): Pt[] | null {
 	if (part instanceof Polygon) {
-		const lv = part.GetLocalVertices();
-		if (!lv || lv.length < 3) return null;
-		return lv.map((v) => ({ x: v.x, y: v.y }));
+		const v = part.GetTessellatedVertices();
+		return v && v.length >= 3 ? v.map((p) => ({ x: p.x, y: p.y })) : null;
 	}
 	if (part instanceof Circle) {
 		const r = part.radius;
 		const ring: Pt[] = [];
 		for (let i = 0; i < FRACTURE_CIRCLE_SEGMENTS; i++) {
 			const a = (i / FRACTURE_CIRCLE_SEGMENTS) * Math.PI * 2;
-			ring.push({ x: r * Math.cos(a), y: r * Math.sin(a) });
+			ring.push({ x: part.centerX + r * Math.cos(a), y: part.centerY + r * Math.sin(a) });
 		}
 		return ring;
 	}
-	// Rectangle / Triangle expose angle-applied world vertices via GetVertices();
-	// the body was created at (centerX, centerY, angle 0) with those verts baked,
-	// so body-local == GetVertices() − centre (stable through the run since the
-	// part's edit-space fields aren't touched during sim).
+	// Rectangle / Triangle expose angle-applied WORLD vertices via GetVertices().
 	const gv = (part as unknown as { GetVertices?: () => b2Vec2[] }).GetVertices?.();
-	if (gv && gv.length >= 3) return gv.map((v) => ({ x: v.x - part.centerX, y: v.y - part.centerY }));
-	return null;
+	return gv && gv.length >= 3 ? gv.map((v) => ({ x: v.x, y: v.y })) : null;
 }
 
 /**
- * Ray-march from the ring centroid toward `dir` to the first boundary crossing,
- * giving a boundary impact point. Falls back to the centroid if no crossing.
+ * A recorded impact on a fragile part this step: the strongest contact speed and
+ * its world point (kept for shatter focus).
  */
-function boundaryHit(ring: Pt[], cx: number, cy: number, dirX: number, dirY: number): Pt {
-	const len = Math.hypot(dirX, dirY) || 1;
-	const ux = dirX / len;
-	const uy = dirY / len;
-	// March out in small steps until we exit the polygon, then back off half a step.
-	let extent = 0;
-	for (const p of ring) extent = Math.max(extent, Math.hypot(p.x - cx, p.y - cy));
-	const steps = 48;
-	let lastInside = 0;
-	for (let i = 1; i <= steps; i++) {
-		const d = (extent * 1.1 * i) / steps;
-		if (pointInPolygon(cx + ux * d, cy + uy * d, ring)) lastInside = d;
-		else break;
-	}
-	return { x: cx + ux * lastInside, y: cy + uy * lastInside };
+interface Impact {
+	speed: number;
+	x: number;
+	y: number;
 }
 
 /**
- * The runtime shatter watcher. One instance per GameCore, reset each play/reset.
- * Keyed on the live body handle (stable within a run); fragments seed their own
- * velocity so they don't immediately re-fracture.
+ * The runtime shatter watcher (one per GameCore, reset each play/reset). Driven
+ * by REAL contact impulses surfaced through the PhysicsBackend seam
+ * (ContactHooks.onImpact) rather than a velocity proxy:
+ *   - beginFrame(parts): before each step, capture rest outlines + build the
+ *     fragile-shape lookup and clear the per-step impact accumulator.
+ *   - recordImpact(impact): called DURING step() by the contact hook; keeps the
+ *     strongest impact speed + point per fragile part (by shape identity).
+ *   - applyFractures(...): after step(), shatter every part whose impact exceeds
+ *     FRACTURE_BASE_SPEED / fragility, at the exact contact point.
  */
 export class FractureSystem {
-	// Previous-frame linear velocity per live body, for the Δv impact proxy.
-	private prevVel = new Map<unknown, Vec2Like>();
+	// Rest body-local outline per part (origin-relative, captured at rest angle 0),
+	// so a moved/rotated/welded body's live outline = xform · local.
+	private bodyLocal = new Map<ShapePart, Pt[]>();
+	// This frame's fragile shape handles -> part (shape identity == part.GetShape()).
+	private shapeToPart = new Map<unknown, ShapePart>();
+	// Strongest impact this step per fragile part.
+	private impacts = new Map<ShapePart, Impact>();
 	private groupCounter = 0;
 
 	/** Clear all per-run state (call on play + reset). */
 	public reset(): void {
-		this.prevVel.clear();
+		this.bodyLocal.clear();
+		this.shapeToPart.clear();
+		this.impacts.clear();
 		this.groupCounter = 0;
 	}
 
@@ -323,79 +325,99 @@ export class FractureSystem {
 		return FRAGMENT_GROUP_BASE - this.groupCounter++;
 	}
 
-	/**
-	 * Run one post-step pass. `parts` is the live shape list (state.parts); the
-	 * returned fractures each carry the consumed parent + its fresh fragments.
-	 * `allocId` stamps a unique id onto each fragment. Never fractures during
-	 * replay playback (the caller gates on that).
-	 */
-	public update(
-		parts: ShapePart[],
-		world: unknown,
-		backend: PhysicsBackend,
-		gravityX: number,
-		gravityY: number,
-		dt: number,
-		allocId: () => number,
-	): FractureResult[] {
-		const results: FractureResult[] = [];
-		// Free-fall Δv over the two sub-steps we run per frame, subtracted so a
-		// falling (not-yet-collided) body never trips the impact threshold.
-		const gdvx = gravityX * dt * 2;
-		const gdvy = gravityY * dt * 2;
-
-		for (const part of parts) {
-			if (!this.eligible(part)) continue;
-			const body = part.GetBody();
-			if (!body) continue;
-
-			const v = backend.bodyVelocity(body);
-			const prev = this.prevVel.get(body);
-			this.prevVel.set(body, { x: v.x, y: v.y });
-			if (!prev) continue; // need a baseline frame first
-
-			// Collision-induced velocity change (net of gravity).
-			const dvx = v.x - prev.x - gdvx;
-			const dvy = v.y - prev.y - gdvy;
-			const speed = Math.hypot(dvx, dvy);
-			const threshold = FRACTURE_BASE_SPEED / Math.max(1e-3, part.fragility);
-			if (speed <= threshold) continue;
-
-			const result = this.fracturePart(part, body, backend, world, dvx, dvy, speed, threshold, v, allocId);
-			if (result) results.push(result);
-		}
-		return results;
-	}
-
-	/** Only dynamic, jointless, non-sandbox fragile shapes with a live body qualify. */
-	private eligible(part: ShapePart): boolean {
+	/** Basic fracture eligibility (independent of a captured outline). */
+	private fracturable(part: ShapePart): boolean {
 		if (!part.isEnabled || part.isInitted !== true) return false;
 		if (part.fragility <= 0) return false;
 		if (part.isStatic || part.isSandbox || part.terrain) return false;
-		if (!part.GetBody() || part.GetShape() == null) return false;
-		// A welded / jointed / thrustered part shares a body or drives constraints;
-		// shattering it would dangle those — out of scope for the prototype.
-		if (part.GetActiveJoints().length > 0 || part.GetActiveThrusters().length > 0) return false;
-		// Circle / Rectangle / Triangle / Polygon only.
-		return partLocalOutline(part) != null;
+		return !!part.GetBody() && part.GetShape() != null;
+	}
+
+	/**
+	 * Before each step: (re)build the fragile-shape lookup, lazily capturing each
+	 * fragile part's rest body-local outline (the first beginFrame runs BEFORE the
+	 * first step, and a fragment's first beginFrame runs before it has stepped, so
+	 * both capture a true rest pose — angle 0, body at its Init origin), and clear
+	 * the per-step impact accumulator.
+	 */
+	public beginFrame(parts: ShapePart[], backend: PhysicsBackend): void {
+		this.shapeToPart.clear();
+		this.impacts.clear();
+		for (const part of parts) {
+			if (!this.fracturable(part)) continue;
+			this.captureRest(part, backend);
+			const shape = part.GetShape();
+			if (shape && this.bodyLocal.has(part)) this.shapeToPart.set(shape, part);
+		}
+	}
+
+	/** Capture a part's rest body-local outline (once); no-op if already captured. */
+	private captureRest(part: ShapePart, backend: PhysicsBackend): void {
+		if (this.bodyLocal.has(part)) return;
+		const body = part.GetBody();
+		if (!body) return;
+		const world = editWorldOutline(part);
+		if (!world) return;
+		// At rest the body sits at its Init origin with angle 0, so body-local ==
+		// edit-world − origin (rotation is identity). The live outline later rotates
+		// these by the body's current angle around its current position.
+		const xf = backend.bodyTransform(body);
+		this.bodyLocal.set(
+			part,
+			world.map((p) => ({ x: p.x - xf.x, y: p.y - xf.y })),
+		);
+	}
+
+	/**
+	 * Record a solved-contact impact (called DURING step by the contact hook). We
+	 * key by SHAPE identity — the same handle the part stored via GetShape() — so
+	 * a hit on one welded part of a shared body is attributed to THAT part.
+	 */
+	public recordImpact(impact: ContactImpact): void {
+		this.consider(impact.shape1, impact);
+		this.consider(impact.shape2, impact);
+	}
+
+	private consider(shape: unknown, impact: ContactImpact): void {
+		const part = this.shapeToPart.get(shape);
+		if (!part) return;
+		const prev = this.impacts.get(part);
+		if (!prev || impact.speed > prev.speed) this.impacts.set(part, { speed: impact.speed, x: impact.x, y: impact.y });
+	}
+
+	/**
+	 * After each step: shatter every fragile part whose strongest impact this step
+	 * exceeded its threshold (FRACTURE_BASE_SPEED / fragility), at the exact
+	 * contact point. Returns the consumed parents + their fresh fragments.
+	 */
+	public applyFractures(world: unknown, backend: PhysicsBackend, allocId: () => number): FractureResult[] {
+		if (this.impacts.size === 0) return [];
+		const results: FractureResult[] = [];
+		for (const [part, imp] of this.impacts) {
+			if (!this.fracturable(part) || !this.bodyLocal.has(part)) continue;
+			const threshold = FRACTURE_BASE_SPEED / Math.max(1e-3, part.fragility);
+			if (imp.speed <= threshold) continue;
+			const result = this.fracturePart(part, backend, world, imp, threshold, allocId);
+			if (result) results.push(result);
+		}
+		this.impacts.clear();
+		return results;
 	}
 
 	private fracturePart(
 		part: ShapePart,
-		body: unknown,
 		backend: PhysicsBackend,
 		world: unknown,
-		dvx: number,
-		dvy: number,
-		speed: number,
+		imp: Impact,
 		threshold: number,
-		parentVel: Vec2Like,
 		allocId: () => number,
 	): FractureResult | null {
-		const local = partLocalOutline(part);
-		if (!local) return null;
+		const local = this.bodyLocal.get(part);
+		const body = part.GetBody();
+		if (!local || !body) return null;
 
-		// Live pose → world-space outline.
+		// Live pose → world-space outline (works for welded bodies too: `local` is
+		// relative to the SHARED body origin captured at rest).
 		const xf = backend.bodyTransform(body);
 		const cos = Math.cos(xf.angle);
 		const sin = Math.sin(xf.angle);
@@ -405,13 +427,16 @@ export class FractureSystem {
 		}));
 		if (polygonArea(worldRing) < FRACTURE_MIN_PARENT_AREA) return null;
 
-		// Impact is on the side OPPOSITE the velocity change (the contact pushed the
-		// body in +Δv, so the surface it struck lies in −Δv).
-		const c = polygonCentroid(worldRing);
-		const impact = boundaryHit(worldRing, c.x, c.y, -dvx, -dvy);
+		// The exact contact point (recorded during the step) is the shatter focus.
+		// Clamp it into the ring so a slightly-outside contact still focuses sanely.
+		let impact: Pt = { x: imp.x, y: imp.y };
+		if (!pointInPolygon(impact.x, impact.y, worldRing)) {
+			const c = polygonCentroid(worldRing);
+			impact = { x: (impact.x + c.x) / 2, y: (impact.y + c.y) / 2 };
+		}
 
 		// Harder hits + higher fragility → more shards.
-		const over = speed / threshold; // > 1
+		const over = imp.speed / threshold; // > 1
 		let count = Math.round(FRACTURE_MIN_FRAGMENTS + (over - 1) * part.fragility * 1.5);
 		count = Math.max(FRACTURE_MIN_FRAGMENTS, Math.min(FRACTURE_MAX_FRAGMENTS, count));
 
@@ -419,15 +444,23 @@ export class FractureSystem {
 		const cells = shatter(worldRing, impact, count, mulberry32(seed || 1));
 		if (cells.length < 2) return null; // nothing useful to split into
 
-		// Consume the parent: destroy its physics presence (exploded-Bomb pattern)
-		// so it vanishes for this run but stays in state.parts for reset.
+		// Parent linear velocity (for fragment inheritance) BEFORE we destroy it.
+		const parentVel = backend.bodyVelocity(body);
+
+		// Consume the parent: destroy its physics presence (exploded-Bomb pattern) +
+		// split off its joints/thrusters; a welded neighbour keeps the shared body.
 		part.ConsumeForFracture(world as never);
+		// This part's shape handle is gone — drop it from the lookup so a stale
+		// entry can't re-attribute a later impact to it.
+		this.bodyLocal.delete(part);
 
 		const childFragility =
 			part.fragility * FRACTURE_FRAGILITY_FALLOFF >= FRACTURE_MIN_CASCADE_FRAGILITY
 				? part.fragility * FRACTURE_FRAGILITY_FALLOFF
 				: 0;
 		const group = this.nextGroup();
+		const centre = polygonCentroid(worldRing);
+		const impactRadius = Math.hypot(centre.x - impact.x, centre.y - impact.y) + 1e-6;
 
 		const fragments: ShapePart[] = [];
 		for (const cell of cells) {
@@ -441,20 +474,17 @@ export class FractureSystem {
 			// exploding apart via overlap resolution — they scatter via velocity
 			// instead (they still collide with the world / other robots).
 			const fc = polygonCentroid(cell);
-			const kick = FRACTURE_SCATTER_SPEED;
 			let ox = fc.x - impact.x;
 			let oy = fc.y - impact.y;
 			const olen = Math.hypot(ox, oy) || 1;
 			ox /= olen;
 			oy /= olen;
-			// Nearer to the impact → bigger kick.
-			const nearness = Math.max(0.2, 1 - olen / (Math.hypot(c.x - impact.x, c.y - impact.y) + 1e-6));
-			const vx = parentVel.x + ox * kick * nearness;
-			const vy = parentVel.y + oy * kick * nearness;
+			// Nearer to the impact → bigger outward kick.
+			const nearness = Math.max(0.2, 1 - olen / impactRadius);
+			const vx = parentVel.x + ox * FRACTURE_SCATTER_SPEED * nearness;
+			const vy = parentVel.y + oy * FRACTURE_SCATTER_SPEED * nearness;
 			const mass = (fbody as { GetMass?: () => number }).GetMass?.() ?? 1;
 			backend.applyImpulse(fbody, { x: vx * mass, y: vy * mass }, { x: fc.x, y: fc.y });
-			// Seed the fragment's baseline velocity so it doesn't re-fracture next frame.
-			this.prevVel.set(fbody, { x: vx, y: vy });
 			fragments.push(frag);
 		}
 
@@ -493,6 +523,11 @@ export class FractureSystem {
 		frag.borderOpacity = parent.borderOpacity;
 		frag.scaleToZoom = parent.scaleToZoom;
 		frag.fragility = fragility;
+		// A fragment is a transient sim body, never user-edited — mark non-editable
+		// so Polygon.Init does NOT flag it as a bullet. A spray of overlapping BULLET
+		// bodies overwhelms engine 0's (Box2D 2.0.2) TOI solver and freezes the sim
+		// (engine 2 handled it fine); non-bullet fragments fixed that.
+		frag.isEditable = false;
 		// Distinct negative group so a shatter's shards don't collide with each other.
 		frag.m_collisionGroup = group;
 		frag.id = allocId();
@@ -501,4 +536,4 @@ export class FractureSystem {
 }
 
 /** Exposed for tests. */
-export const FRACTURE_TEST = { shatter, polygonArea, pointInPolygon, convexHull, mulberry32, boundaryHit };
+export const FRACTURE_TEST = { shatter, polygonArea, pointInPolygon, convexHull, mulberry32 };

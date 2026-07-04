@@ -9,18 +9,18 @@
 //      transient fragments; a fragility-0 shape never does; reset drops the
 //      fragments and restores the original (it re-Inits on the next play).
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { GameCore } from "../src/core/GameCore";
 import { createInitialState } from "../src/core/GameState";
-import {
-	FRACTURE_TEST,
-	FractureSystem,
-	shatter,
-} from "../src/core/fractureSystem";
+import { FRACTURE_TEST, shatter } from "../src/core/fractureSystem";
+import { box2d20Backend, box2d21Backend } from "../src/core/physics";
 import { decodeRobot, encodeRobot } from "../src/core/robotSerialization";
 import { SandboxSettings } from "../src/Game/SandboxSettings";
 import { Circle } from "../src/Parts/Circle";
+import { FixedJoint } from "../src/Parts/FixedJoint";
 import { Rectangle } from "../src/Parts/Rectangle";
+import { RevoluteJoint } from "../src/Parts/RevoluteJoint";
+import { setPhysicsBackend } from "../src/Parts/partGlobals";
 import { MAX_FRAGILITY, MIN_FRAGILITY } from "../src/Parts/partDefaults";
 import type { Part } from "../src/Parts/Part";
 
@@ -176,9 +176,9 @@ describe("fracture in simulation", () => {
 		expect(original.GetShape()).not.toBeNull();
 	});
 
-	it("FractureSystem needs a baseline frame before it can fire (no first-frame spurious break)", () => {
-		// Direct unit check: with only one observation, update returns nothing.
-		const fs = new FractureSystem();
+	it("does not shatter without a real contact impact (a shape resting in mid-air)", () => {
+		// Impact-driven: a fragile shape that hasn't touched anything yet (one frame
+		// of free-fall, no contact) produces no impact report -> no shatter.
 		const shape = new Rectangle(-1, -1, 2, 2);
 		shape.fragility = 10;
 		shape.id = 1;
@@ -186,10 +186,76 @@ describe("fracture in simulation", () => {
 		state.parts = [...state.parts, shape];
 		const core = new GameCore(state);
 		core.dispatch({ type: "play" });
-		// One frame only: the body has no previous-velocity baseline yet, so even a
-		// (hypothetical) large delta can't be measured — nothing shatters.
 		core.dispatch({ type: "step", frames: 1 });
 		expect(core.getSimFragments().length).toBe(0);
+	});
+});
+
+describe("fracture across engines + welded/jointed parts", () => {
+	afterEach(() => setPhysicsBackend(box2d20Backend));
+
+	function dropCore(fragility: number, extra: Part[] = []): { core: GameCore; id: number } {
+		const shape = new Rectangle(-1, -21, 2, 2);
+		shape.fragility = fragility;
+		shape.id = 100000;
+		const state = createInitialState();
+		state.parts = [...state.parts, shape, ...extra];
+		let n = 100001;
+		for (const p of extra) p.id = n++;
+		return { core: new GameCore(state), id: shape.id };
+	}
+
+	it("engine 1 (Box2D 2.1a) also shatters a fragile shape on hard impact", () => {
+		setPhysicsBackend(box2d21Backend);
+		const { core } = dropCore(8);
+		core.dispatch({ type: "play" });
+		core.dispatch({ type: "step", frames: 260 });
+		expect(core.getSimFragments().length).toBeGreaterThanOrEqual(2);
+	});
+
+	it("a WELDED fragile part shatters (previously joints excluded it)", () => {
+		// Two rectangles welded into one rigid body; both fragile. Dropped hard, the
+		// welded assembly shatters (welded parts are now eligible).
+		const a = new Rectangle(-1, -21, 2, 2);
+		a.fragility = 8;
+		const b = new Rectangle(1, -21, 2, 2);
+		b.fragility = 8;
+		const fj = new FixedJoint(a, b, 0, -20); // untriggered weld -> shared body
+		a.id = 100000;
+		b.id = 100001;
+		fj.id = 100002;
+		const state = createInitialState();
+		state.parts = [...state.parts, a, b, fj];
+		const core = new GameCore(state);
+		expect(a.GetBody).toBeTruthy();
+		core.dispatch({ type: "play" });
+		// Shared-body weld sanity: both parts share one body.
+		expect(a.GetBody()).toBe(b.GetBody());
+		core.dispatch({ type: "step", frames: 260 });
+		expect(core.getSimFragments().length).toBeGreaterThanOrEqual(2);
+	});
+
+	it("a REVOLUTE-jointed fragile part shatters, leaving the base intact and no dangling joint", () => {
+		// A fragile arm pinned to a (non-fragile) base by a revolute joint; both fall
+		// and hit the ground. The arm shatters (jointed parts are now eligible) and
+		// ConsumeForFracture splits off its joint — surviving 300 more frames without
+		// a crash proves the joint (which referenced the arm's destroyed body) was
+		// torn down (else the per-frame CheckForBreakage would throw).
+		const base = new Rectangle(-1, -21, 2, 2); // fragility 0 (intact)
+		const arm = new Rectangle(1, -21, 2, 2);
+		arm.fragility = 8;
+		const rj = new RevoluteJoint(base, arm, 0, -20);
+		base.id = 100000;
+		arm.id = 100001;
+		rj.id = 100002;
+		const state = createInitialState();
+		state.parts = [...state.parts, base, arm, rj];
+		const core = new GameCore(state);
+		core.dispatch({ type: "play" });
+		core.dispatch({ type: "step", frames: 300 });
+		expect(core.getSimFragments().length).toBeGreaterThanOrEqual(2);
+		// The non-fragile base is untouched (separate body from the shattered arm).
+		expect(base.GetShape()).not.toBeNull();
 	});
 });
 

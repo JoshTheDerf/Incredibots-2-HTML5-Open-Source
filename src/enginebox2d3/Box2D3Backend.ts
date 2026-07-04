@@ -477,6 +477,10 @@ const CONTACT_DAMPING_RATIO = 10;
  * inflating the per-shape restitution.
  */
 const RESTITUTION_THRESHOLD = 1.0;
+// Approach speed (world units/sec) above which v3 emits a contact HIT event, used
+// by the fracture system. Kept low so any impact the fracture threshold could
+// care about is reported; the fracture consumer filters non-fragile pairs.
+const HIT_EVENT_THRESHOLD = 1.0;
 
 // Reserved collision-filter bits for the ContactFilter reconciliation (E3-5).
 // Layers A-D occupy bits 0-15 (ShapePart.CollisionBits); bits 16/17 are free and
@@ -561,6 +565,11 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 		wd.restitutionThreshold = RESTITUTION_THRESHOLD;
 		// v3 uses a dynamic tree; the 2.0 world AABB bounds are obsolete (as in 2.1a).
 		const world = m.b2CreateWorld(wd);
+		// Fracture hit events: fire once a contact's approach speed exceeds this
+		// (world units/sec). Low enough to catch any impact the fracture threshold
+		// (FRACTURE_BASE_SPEED / fragility) could care about; the fracture consumer
+		// filters the rest. See drainContactEvents' hit-event loop.
+		m.b2World_SetHitEventThreshold(world, HIT_EVENT_THRESHOLD);
 		g.delete();
 		wd.delete();
 		return world;
@@ -621,6 +630,10 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 		// contact/sensor poll drives the trigger + condition hooks.
 		sd.enableContactEvents = true;
 		sd.enableSensorEvents = true;
+		// Hit events surface high-speed impacts (point + approachSpeed) for the
+		// fracture system — the v3 equivalent of engine 0/1's Result/PostSolve.
+		// The per-world hit threshold (set in createWorld) gates which fire.
+		sd.enableHitEvents = true;
 		// ContactFilter reconciliation (E3-5): the veto-only custom callback (wired
 		// in installContactHandlers) handles the collide=false / same-piston OPT-OUTS
 		// but CANNOT force-collide across a b2Filter reject, so it can't express
@@ -964,6 +977,10 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 		this.m.b2Body_SetAwake(body.id, true);
 	}
 
+	bodyShapeCount(body: Box2D3Body): number {
+		return this.m.b2Body_GetShapeCount(body.id);
+	}
+
 	bodyIsStatic(body: Box2D3Body): boolean {
 		const type = this.m.b2Body_GetType(body.id);
 		return type.value === this.m.b2BodyType.b2_staticBody.value;
@@ -1112,6 +1129,21 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 			const ev = ce.GetEndEvent(i);
 			this.fireContact(ev.shapeIdA, ev.shapeIdB, hooks, false);
 			deleteHandle(ev);
+		}
+		// Hit events → fracture impact reports. v3 gives the world point + relative
+		// approachSpeed directly (already the engine-neutral ContactImpact.speed —
+		// no impulse/mass conversion, unlike engines 0/1).
+		if (hooks.onImpact) {
+			const hitCount = ce.hitCount;
+			for (let i = 0; i < hitCount; i++) {
+				const ev = ce.GetHitEvent(i);
+				const s1 = this.shapesById.get(keyOf(ev.shapeIdA as IdTriple));
+				const s2 = this.shapesById.get(keyOf(ev.shapeIdB as IdTriple));
+				if (s1 && s2 && ev.approachSpeed > 0) {
+					hooks.onImpact({ shape1: s1, shape2: s2, x: ev.point.x, y: ev.point.y, speed: ev.approachSpeed });
+				}
+				deleteHandle(ev);
+			}
 		}
 		deleteHandle(ce);
 

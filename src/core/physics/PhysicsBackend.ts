@@ -70,6 +70,46 @@ export interface ContactPointLike {
 }
 
 /**
+ * Convert a Box2D normal impulse (mass·velocity units) into the engine-neutral
+ * relative NORMAL impact speed used by ContactImpact.speed: J / reducedMass,
+ * which equals the relative normal Δv of the two bodies. A static body (mass 0)
+ * is treated as infinite mass, so the reduced mass collapses to the dynamic
+ * body's mass (a dynamic body hitting the ground gets speed == its own Δv).
+ * Used by the 2.0.2 / 2.1a backends (v3 reports approachSpeed directly).
+ */
+export function impulseToSpeed(normalImpulse: number, mass1: number, mass2: number): number {
+	const reduced = mass1 > 0 && mass2 > 0 ? (mass1 * mass2) / (mass1 + mass2) : Math.max(mass1, mass2);
+	return reduced > 0 ? Math.abs(normalImpulse) / reduced : 0;
+}
+
+/**
+ * A solved-contact impact report (superset/prototype fracturing). Unlike the
+ * begin/end ContactPointLike, this carries the SEVERITY and LOCATION of a live
+ * collision, surfaced once per step from each engine's solver:
+ *   - engine 0 (2.0.2): b2ContactListener.Result -> b2ContactResult
+ *   - engine 1 (2.1a):  b2ContactListener.PostSolve -> b2ContactImpulse
+ *   - engine 2 (v3):    b2ContactHitEvent (enableHitEvents + hit threshold)
+ * `speed` is the engine-NEUTRAL metric: the relative NORMAL impact speed in
+ * world units/sec. Engines 0/1 derive it from the normal impulse and the two
+ * bodies' reduced mass (J/reducedMass == the relative normal Δv); engine 2 uses
+ * the hit event's approachSpeed directly. This lets the fracture threshold be a
+ * single speed value (FRACTURE_BASE_SPEED / fragility) across all three engines.
+ * `shape1`/`shape2` are the SAME shape/fixture handles a ShapePart stored via
+ * GetShape() (identity-comparable, like ContactPointLike) — the fracture
+ * consumer resolves them to parts by identity, which also pinpoints WHICH part
+ * of a welded body was hit.
+ */
+export interface ContactImpact {
+	shape1: { GetUserData(): unknown };
+	shape2: { GetUserData(): unknown };
+	/** Contact point in world coordinates. */
+	x: number;
+	y: number;
+	/** Relative normal impact speed (world units/sec) — engine-neutral severity. */
+	speed: number;
+}
+
+/**
  * Engine-neutral contact hooks. installContactHandlers invokes onAdd when a new
  * contact begins and onRemove when one ends, passing the neutral point. The hook
  * bodies (condition matching + trigger dispatch) live in GameCore and are
@@ -78,6 +118,12 @@ export interface ContactPointLike {
 export interface ContactHooks {
 	onAdd(point: ContactPointLike): void;
 	onRemove(point: ContactPointLike): void;
+	/**
+	 * OPTIONAL per-step impact report (fracturing). Backends that can surface a
+	 * solved contact's impulse/approach speed call this during step(); backends
+	 * that can't simply never call it (the consumer no-ops). See ContactImpact.
+	 */
+	onImpact?(impact: ContactImpact): void;
 }
 
 /** Result of a segment/ray cast against one shape: hit fraction + surface normal. */
@@ -225,6 +271,13 @@ export interface PhysicsBackend<W = unknown, B = unknown, S = unknown, J = unkno
 	// --- per-frame handle ops whose method names differ across the ports ---
 	/** Wake a sleeping body (2.0 WakeUp / 2.1a SetAwake(true)). */
 	wakeBody(body: B): void;
+	/**
+	 * Number of shapes/fixtures currently attached to the body. Used by the
+	 * fracture runtime (like Bomb.Explode) to decide whether a shattering shape
+	 * shares its body with welded neighbours (>1 => remove only its own shape and
+	 * keep the body for the neighbours) or owns it alone (destroy the body).
+	 */
+	bodyShapeCount(body: B): number;
 	/** True iff the body is static (2.0 IsStatic() / 2.1a GetType()===static). */
 	bodyIsStatic(body: B): boolean;
 	/**

@@ -293,6 +293,10 @@ export class Box2D21Backend implements PhysicsBackend<b2World, b2Body, b2Fixture
 		body.SetAwake(true);
 	}
 
+	bodyShapeCount(body: b2Body): number {
+		return body.m_fixtureCount;
+	}
+
 	bodyIsStatic(body: b2Body): boolean {
 		return body.GetType() === b2Body.b2_staticBody;
 	}
