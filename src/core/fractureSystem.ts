@@ -26,6 +26,7 @@ import { b2Vec2 } from "../Box2D";
 import { Circle } from "../Parts/Circle";
 import { Polygon } from "../Parts/Polygon";
 import { ShapePart } from "../Parts/ShapePart";
+import { polygonDifference } from "./polygonBoolean";
 import type { ContactImpact, PhysicsBackend } from "./physics/PhysicsBackend";
 
 // --- tuning ----------------------------------------------------------------
@@ -51,6 +52,31 @@ export const FRACTURE_MIN_CASCADE_FRAGILITY = 1;
 export const FRACTURE_SCATTER_SPEED = 4;
 /** Circle shapes are sampled as this many segments before shattering. */
 export const FRACTURE_CIRCLE_SEGMENTS = 20;
+/**
+ * LOCALIZED shatter: the shattered region is a disc around the impact whose
+ * radius (world units) scales with how hard the hit was — `over` = speed /
+ * threshold. A just-over-threshold hit chips ~this many units; a much harder hit
+ * shears a bigger chunk. So a large object hit by a small/fast object at a
+ * glancing angle (low NORMAL impact speed -> low `over`) only sheds a small area
+ * near the impact while the bulk survives; only an overwhelming hit (radius
+ * covering most of the object) shatters it whole.
+ */
+export const FRACTURE_SHATTER_RADIUS_BASE = 1.3;
+/** Cap the shatter radius at this multiple of the base (an over-the-top hit). */
+export const FRACTURE_SHATTER_RADIUS_MAX_MULT = 6;
+/** When the shatter blob would cover >= this fraction of the object, shatter it whole. */
+export const FRACTURE_FULL_SHATTER_FRAC = 0.85;
+/**
+ * The shattered region is NOT a clean disc: it is elongated ALONG the object's
+ * surface (perpendicular to the impact-in direction) to read as a shear scar,
+ * and its rim is jittered so the break edge looks like a natural crack, not a
+ * circle. ELONGATION = tangential/radial semi-axis ratio; JITTER = per-rim-vertex
+ * radius wobble (fraction).
+ */
+export const FRACTURE_SHATTER_ELONGATION = 1.7;
+export const FRACTURE_SHATTER_JITTER = 0.28;
+/** Blob rim vertex count used to carve the shattered region out of the object. */
+const FRACTURE_BLOB_SEGMENTS = 18;
 /** Fragment collision groups start here (a large negative, clear of structure groups). */
 const FRAGMENT_GROUP_BASE = -1000000;
 
@@ -258,6 +284,90 @@ export function shatter(ring: Pt[], impact: Pt, fragmentCount: number, rand: () 
 }
 
 /**
+ * The shattered-region "scar" ring around `impact`: an ellipse ELONGATED along
+ * the object surface (perpendicular to the impact→centroid axis) with a jittered
+ * rim, so a carved-out bite reads as a natural shear crack rather than a clean
+ * circle. `radius` is the radial (into-object) semi-axis; the tangential
+ * semi-axis is radius·ELONGATION. Returned CCW; `maxR` is its farthest rim reach.
+ */
+function impactBlob(
+	impact: Pt,
+	cx: number,
+	cy: number,
+	radius: number,
+	rand: () => number,
+): { ring: Pt[]; maxR: number } {
+	// Outward axis (centroid -> impact); tangent is perpendicular (along surface).
+	let ax = impact.x - cx;
+	let ay = impact.y - cy;
+	const alen = Math.hypot(ax, ay);
+	if (alen < 1e-6) {
+		ax = 1;
+		ay = 0;
+	} else {
+		ax /= alen;
+		ay /= alen;
+	}
+	const tx = -ay;
+	const ty = ax;
+	const a = radius; // radial semi-axis (into the object)
+	const b = radius * FRACTURE_SHATTER_ELONGATION; // tangential semi-axis (along surface)
+	const ring: Pt[] = [];
+	let maxR = 0;
+	for (let i = 0; i < FRACTURE_BLOB_SEGMENTS; i++) {
+		const t = (i / FRACTURE_BLOB_SEGMENTS) * Math.PI * 2;
+		const jit = 1 + FRACTURE_SHATTER_JITTER * (rand() * 2 - 1);
+		const u = b * Math.cos(t) * jit; // along tangent
+		const v = a * Math.sin(t) * jit; // along axis
+		const wx = impact.x + u * tx + v * ax;
+		const wy = impact.y + u * ty + v * ay;
+		ring.push({ x: wx, y: wy });
+		maxR = Math.max(maxR, Math.hypot(wx - impact.x, wy - impact.y));
+	}
+	if (signedArea(ring) < 0) ring.reverse(); // CCW for the boolean carve
+	return { ring, maxR };
+}
+
+/**
+ * LOCALIZED shatter: carve an elongated/jittered scar (impactBlob) out of the
+ * object and shatter only THAT region into shards, leaving the rest as one (or
+ * more) large surviving piece(s). Returns the small shard rings and the large
+ * remaining ring(s). Used when the scar doesn't engulf the whole object.
+ */
+function localizedShatter(
+	worldRing: Pt[],
+	impact: Pt,
+	radius: number,
+	shardCount: number,
+	rand: () => number,
+): { shards: Pt[][]; remaining: Pt[][]; maxR: number } {
+	const centre = polygonCentroid(worldRing);
+	const { ring: blob, maxR } = impactBlob(impact, centre.x, centre.y, radius, rand);
+	// The bulk that survives = object minus the scar (concave / multi-piece OK).
+	const remaining = polygonDifference(worldRing, blob) ?? [];
+	// Shards tile the scar∩object: seeds clustered in the blob, Voronoi over the
+	// object hull, kept when their centre lies in BOTH the blob and the object.
+	const hull = convexHull(worldRing);
+	const seeds: Pt[] = [];
+	let guard = shardCount * 40;
+	while (seeds.length < shardCount && guard-- > 0) {
+		const rr = maxR * rand() * rand();
+		const aa = rand() * Math.PI * 2;
+		const p = { x: impact.x + rr * Math.cos(aa), y: impact.y + rr * Math.sin(aa) };
+		if (pointInPolygon(p.x, p.y, blob) && pointInPolygon(p.x, p.y, worldRing)) seeds.push(p);
+	}
+	if (seeds.length < 2) return { shards: [], remaining, maxR };
+	const shards: Pt[][] = [];
+	for (let k = 0; k < seeds.length; k++) {
+		const cell = voronoiCell(hull, seeds, k);
+		if (cell.length < 3 || polygonArea(cell) < FRACTURE_MIN_FRAGMENT_AREA) continue;
+		const c = polygonCentroid(cell);
+		if (pointInPolygon(c.x, c.y, worldRing) && pointInPolygon(c.x, c.y, blob)) shards.push(cell);
+	}
+	return { shards, remaining, maxR };
+}
+
+/**
  * The angle-applied WORLD outline of a shape in its EDIT (rest) pose — used once
  * per part to capture its body-local outline (see captureRest). Polygon uses its
  * tessellated (curve-aware) ring; Circle an N-gon; Rectangle/Triangle their
@@ -437,14 +547,56 @@ export class FractureSystem {
 			impact = { x: (impact.x + c.x) / 2, y: (impact.y + c.y) / 2 };
 		}
 
-		// Harder hits + higher fragility → more shards.
+		// Severity: how far over threshold. Drives the scar SIZE (world units), so a
+		// glancing / low-normal-speed hit (small `over`) chips only a small area.
 		const over = imp.speed / threshold; // > 1
-		let count = Math.round(FRACTURE_MIN_FRAGMENTS + (over - 1) * part.fragility * 1.5);
-		count = Math.max(FRACTURE_MIN_FRAGMENTS, Math.min(FRACTURE_MAX_FRAGMENTS, count));
+		const shatterRadius = Math.min(
+			FRACTURE_SHATTER_RADIUS_BASE * over,
+			FRACTURE_SHATTER_RADIUS_BASE * FRACTURE_SHATTER_RADIUS_MAX_MULT,
+		);
+		const centre = polygonCentroid(worldRing);
+		let objExtent = 0;
+		for (const p of worldRing) objExtent = Math.max(objExtent, Math.hypot(p.x - centre.x, p.y - centre.y));
 
-		const seed = Math.abs(Math.round(impact.x * 73856093 + impact.y * 19349663 + count)) >>> 0;
-		const cells = shatter(worldRing, impact, count, mulberry32(seed || 1));
-		if (cells.length < 2) return null; // nothing useful to split into
+		const seed = Math.abs(Math.round(impact.x * 73856093 + impact.y * 19349663 + over * 1009)) >>> 0;
+		const rand = mulberry32(seed || 1);
+		const childFragility =
+			part.fragility * FRACTURE_FRAGILITY_FALLOFF >= FRACTURE_MIN_CASCADE_FRAGILITY
+				? part.fragility * FRACTURE_FRAGILITY_FALLOFF
+				: 0;
+
+		// A "piece" to spawn: its ring, its fragility, and whether it's a small shard
+		// (gets an outward scatter kick) or the large surviving bulk (just coasts).
+		interface Piece {
+			ring: Pt[];
+			fragility: number;
+			shard: boolean;
+		}
+		const pieces: Piece[] = [];
+
+		// Would the scar engulf (most of) the object? Then shatter it WHOLE; else
+		// carve a localized scar and keep the bulk.
+		if (shatterRadius * FRACTURE_SHATTER_ELONGATION >= objExtent * FRACTURE_FULL_SHATTER_FRAC) {
+			let count = Math.round(FRACTURE_MIN_FRAGMENTS + (over - 1) * part.fragility * 1.5);
+			count = Math.max(FRACTURE_MIN_FRAGMENTS, Math.min(FRACTURE_MAX_FRAGMENTS, count));
+			const cells = shatter(worldRing, impact, count, rand);
+			if (cells.length < 2) return null;
+			for (const c of cells) pieces.push({ ring: c, fragility: childFragility, shard: true });
+		} else {
+			let shardCount = Math.round(2 + (over - 1) * part.fragility);
+			shardCount = Math.max(2, Math.min(FRACTURE_MAX_FRAGMENTS, shardCount));
+			const { shards, remaining } = localizedShatter(worldRing, impact, shatterRadius, shardCount, rand);
+			if (shards.length < 1) return null; // scar too small to yield a real chip -> no-op
+			for (const s of shards) pieces.push({ ring: s, fragility: childFragility, shard: true });
+			// The surviving bulk gets the DECAYED fragility (like shards) so repeated
+			// hits chip it a few more times, then it stops — it "stays present" instead
+			// of tumbling itself to dust across many contacts.
+			for (const r of remaining) {
+				if (polygonArea(r) < FRACTURE_MIN_FRAGMENT_AREA) continue;
+				pieces.push({ ring: r, fragility: childFragility, shard: false });
+			}
+		}
+		if (pieces.length === 0) return null;
 
 		// Parent linear velocity (for fragment inheritance) BEFORE we destroy it.
 		const parentVel = backend.bodyVelocity(body);
@@ -456,35 +608,34 @@ export class FractureSystem {
 		// entry can't re-attribute a later impact to it.
 		this.bodyLocal.delete(part);
 
-		const childFragility =
-			part.fragility * FRACTURE_FRAGILITY_FALLOFF >= FRACTURE_MIN_CASCADE_FRAGILITY
-				? part.fragility * FRACTURE_FRAGILITY_FALLOFF
-				: 0;
 		const group = this.nextGroup();
-		const centre = polygonCentroid(worldRing);
 		const impactRadius = Math.hypot(centre.x - impact.x, centre.y - impact.y) + 1e-6;
 
 		const fragments: ShapePart[] = [];
-		for (const cell of cells) {
-			const frag = this.buildFragment(cell, part, childFragility, group, allocId);
+		for (const piece of pieces) {
+			const frag = this.buildFragment(piece.ring, part, piece.fragility, group, allocId);
 			if (!frag) continue;
 			frag.Init(world as never);
 			const fbody = frag.GetBody();
 			if (!fbody) continue;
 
-			// Fragments spawn overlapping; the shared negative group stops them from
-			// exploding apart via overlap resolution — they scatter via velocity
-			// instead (they still collide with the world / other robots).
-			const fc = polygonCentroid(cell);
-			let ox = fc.x - impact.x;
-			let oy = fc.y - impact.y;
-			const olen = Math.hypot(ox, oy) || 1;
-			ox /= olen;
-			oy /= olen;
-			// Nearer to the impact → bigger outward kick.
-			const nearness = Math.max(0.2, 1 - olen / impactRadius);
-			const vx = parentVel.x + ox * FRACTURE_SCATTER_SPEED * nearness;
-			const vy = parentVel.y + oy * FRACTURE_SCATTER_SPEED * nearness;
+			// Pieces share the negative group so a shatter's overlapping seams don't
+			// explode apart via overlap resolution — they still collide with the world
+			// / other robots. Small shards get an outward kick (bigger near the impact);
+			// the surviving bulk just coasts with the parent's velocity.
+			const fc = polygonCentroid(piece.ring);
+			let vx = parentVel.x;
+			let vy = parentVel.y;
+			if (piece.shard) {
+				let ox = fc.x - impact.x;
+				let oy = fc.y - impact.y;
+				const olen = Math.hypot(ox, oy) || 1;
+				ox /= olen;
+				oy /= olen;
+				const nearness = Math.max(0.2, 1 - olen / impactRadius);
+				vx += ox * FRACTURE_SCATTER_SPEED * nearness;
+				vy += oy * FRACTURE_SCATTER_SPEED * nearness;
+			}
 			const mass = (fbody as { GetMass?: () => number }).GetMass?.() ?? 1;
 			backend.applyImpulse(fbody, { x: vx * mass, y: vy * mass }, { x: fc.x, y: fc.y });
 			fragments.push(frag);

@@ -179,6 +179,30 @@ describe("fracture in simulation", () => {
 		expect(core.getSimFragments().length).toBeGreaterThanOrEqual(2);
 	});
 
+	it("a LARGE object only sheds a local chip — one bulk piece dominates, not full shatter", () => {
+		// A big (20x3, area 60) fragile-but-tough (fragility 4) plank dropped tilted so
+		// a CORNER strikes first: the impact scar is small relative to the object, so it
+		// sheds a few shards near that corner while the large remainder survives as one
+		// dominant piece (vs a full shatter, where no single piece would dominate).
+		const plank = new Rectangle(-10, -13, 20, 3);
+		plank.fragility = 4;
+		plank.angle = 0.3; // tilt -> land on a corner, not flat
+		plank.id = 100000;
+		const state = createInitialState();
+		state.parts = [...state.parts, plank];
+		const core = new GameCore(state);
+		core.dispatch({ type: "play" });
+		core.dispatch({ type: "step", frames: 150 });
+		const frags = core.getSimFragments();
+		expect(frags.length).toBeGreaterThanOrEqual(2); // bulk + at least one shard
+		const areas = frags.map((f) => (f as { GetArea(): number }).GetArea());
+		const maxArea = Math.max(...areas);
+		const total = areas.reduce((s, a) => s + a, 0);
+		// Localized: ONE piece holds the majority of the surviving mass (a full shatter
+		// would spread it across many similar-sized shards, max/total well under half).
+		expect(maxArea).toBeGreaterThan(total * 0.55);
+	});
+
 	it("a fragility-0 shape never shatters", () => {
 		const { core } = dropCore(0);
 		core.dispatch({ type: "play" });
