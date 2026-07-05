@@ -203,6 +203,32 @@ describe("fracture in simulation", () => {
 		expect(maxArea).toBeGreaterThan(total * 0.55);
 	});
 
+	it("a FIXATED (static) fragile wall is chippable; its bulk stays fixated, chips do not", () => {
+		// A fixated wall floats anchored in the air; a heavy dynamic block dropped onto
+		// it delivers a contact impulse (impulseToSpeed uses the block's mass), so the
+		// wall chips. The surviving bulk stays static (fixated); the chips are dynamic.
+		const wall = new Rectangle(-6, 0, 12, 2); // centre (0, 1), anchored above ground
+		wall.isStatic = true; // "Fixate"
+		wall.fragility = 6;
+		wall.id = 100000;
+		const block = new Rectangle(-1, -8, 2, 2); // dynamic, falls onto the wall
+		block.fragility = 0;
+		block.density = 40; // heavy -> strong impact
+		block.id = 100001;
+		const state = createInitialState();
+		state.parts = [...state.parts, wall, block];
+		const core = new GameCore(state);
+		core.dispatch({ type: "play" });
+		expect(wall.GetBody()).not.toBeNull();
+		core.dispatch({ type: "step", frames: 120 });
+		const frags = core.getSimFragments();
+		expect(frags.length).toBeGreaterThanOrEqual(2);
+		// The fixated wall chipped: at least one dynamic chip AND at least one static
+		// (still-fixated) surviving bulk piece.
+		expect(frags.some((f) => f.isStatic === false)).toBe(true);
+		expect(frags.some((f) => f.isStatic === true)).toBe(true);
+	});
+
 	it("a fragility-0 shape never shatters", () => {
 		const { core } = dropCore(0);
 		core.dispatch({ type: "play" });

@@ -44,10 +44,18 @@ export const FRACTURE_MIN_PARENT_AREA = 0.15;
 /** Fragment count floor / ceiling per shatter. */
 export const FRACTURE_MIN_FRAGMENTS = 3;
 export const FRACTURE_MAX_FRAGMENTS = 12;
-/** Fragments inherit this fraction of the parent's fragility (so cascades decay). */
+/** SHARDS inherit this fraction of the parent's fragility (so shard cascades decay). */
 export const FRACTURE_FRAGILITY_FALLOFF = 0.5;
-/** Below this fragility a fragment is inert (won't re-shatter) — stops runaway cascades. */
+/** Below this fragility a shard is inert (won't re-shatter) — stops runaway shard cascades. */
 export const FRACTURE_MIN_CASCADE_FRAGILITY = 1;
+/**
+ * Frames a freshly-spawned piece is immune from re-fracturing. The surviving
+ * BULK keeps its FULL fragility (a large wall stays chippable indefinitely), but
+ * a just-carved piece is still overlapping/moving fast, so without this it would
+ * re-fracture every frame and pulverize itself. The cooldown spaces chips to a
+ * natural cadence: chip, coast, and chip again only on a genuine later hard hit.
+ */
+export const FRACTURE_COOLDOWN_FRAMES = 24;
 /** Extra outward scatter speed applied to fragments, scaled by nearness to impact. */
 export const FRACTURE_SCATTER_SPEED = 4;
 /** Circle shapes are sampled as this many segments before shattering. */
@@ -421,6 +429,10 @@ export class FractureSystem {
 	private shapeToPart = new Map<unknown, ShapePart>();
 	// Strongest impact this step per fragile part.
 	private impacts = new Map<ShapePart, Impact>();
+	// Frames remaining before a freshly-spawned piece may re-fracture (see
+	// FRACTURE_COOLDOWN_FRAMES). Keeps full-fragility bulk chippable indefinitely
+	// without pulverizing itself the instant it's carved.
+	private cooldown = new Map<ShapePart, number>();
 	private groupCounter = 0;
 
 	/** Clear all per-run state (call on play + reset). */
@@ -428,6 +440,7 @@ export class FractureSystem {
 		this.bodyLocal.clear();
 		this.shapeToPart.clear();
 		this.impacts.clear();
+		this.cooldown.clear();
 		this.groupCounter = 0;
 	}
 
@@ -439,7 +452,11 @@ export class FractureSystem {
 	private fracturable(part: ShapePart): boolean {
 		if (!part.isEnabled || part.isInitted !== true) return false;
 		if (part.fragility <= 0) return false;
-		if (part.isStatic || part.isSandbox || part.terrain) return false;
+		// Sandbox ground / terrain never shatter, but a FIXATED user shape
+		// (isStatic, set via "Fixate") IS chippable — a dynamic impactor still
+		// delivers a contact impulse to a static body (impulseToSpeed uses the
+		// dynamic body's mass), so it's detected; its chips spawn dynamic (below).
+		if (part.isSandbox || part.terrain) return false;
 		return !!part.GetBody() && part.GetShape() != null;
 	}
 
@@ -454,6 +471,13 @@ export class FractureSystem {
 		this.shapeToPart.clear();
 		this.impacts.clear();
 		for (const part of parts) {
+			// A freshly-carved piece is immune (and ticking down) for a few frames so
+			// it doesn't re-fracture every frame while still overlapping/moving fast.
+			const cd = this.cooldown.get(part);
+			if (cd && cd > 0) {
+				this.cooldown.set(part, cd - 1);
+				continue;
+			}
 			if (!this.fracturable(part)) continue;
 			this.captureRest(part, backend);
 			if (!this.bodyLocal.has(part)) continue;
@@ -565,12 +589,14 @@ export class FractureSystem {
 				? part.fragility * FRACTURE_FRAGILITY_FALLOFF
 				: 0;
 
-		// A "piece" to spawn: its ring, its fragility, and whether it's a small shard
-		// (gets an outward scatter kick) or the large surviving bulk (just coasts).
+		// A "piece" to spawn: its ring, its fragility, whether it's a small shard
+		// (outward kick, always dynamic) or the surviving bulk, and whether it's
+		// static (a fixated parent keeps its bulk fixated; chips are never fixated).
 		interface Piece {
 			ring: Pt[];
 			fragility: number;
 			shard: boolean;
+			isStatic: boolean;
 		}
 		const pieces: Piece[] = [];
 
@@ -581,19 +607,22 @@ export class FractureSystem {
 			count = Math.max(FRACTURE_MIN_FRAGMENTS, Math.min(FRACTURE_MAX_FRAGMENTS, count));
 			const cells = shatter(worldRing, impact, count, rand);
 			if (cells.length < 2) return null;
-			for (const c of cells) pieces.push({ ring: c, fragility: childFragility, shard: true });
+			// Whole object destroyed -> every piece is a free (dynamic) chip.
+			for (const c of cells) pieces.push({ ring: c, fragility: childFragility, shard: true, isStatic: false });
 		} else {
 			let shardCount = Math.round(2 + (over - 1) * part.fragility);
 			shardCount = Math.max(2, Math.min(FRACTURE_MAX_FRAGMENTS, shardCount));
 			const { shards, remaining } = localizedShatter(worldRing, impact, shatterRadius, shardCount, rand);
 			if (shards.length < 1) return null; // scar too small to yield a real chip -> no-op
-			for (const s of shards) pieces.push({ ring: s, fragility: childFragility, shard: true });
-			// The surviving bulk gets the DECAYED fragility (like shards) so repeated
-			// hits chip it a few more times, then it stops — it "stays present" instead
-			// of tumbling itself to dust across many contacts.
+			// Chips are always dynamic (they fly off), even from a fixated wall.
+			for (const s of shards) pieces.push({ ring: s, fragility: childFragility, shard: true, isStatic: false });
+			// The surviving bulk keeps the parent's FULL fragility (chippable
+			// INDEFINITELY) AND its fixated/static state (a fixated wall stays anchored
+			// while it sheds chips). The per-piece cooldown (below) keeps it from
+			// re-fracturing every frame and pulverizing itself.
 			for (const r of remaining) {
 				if (polygonArea(r) < FRACTURE_MIN_FRAGMENT_AREA) continue;
-				pieces.push({ ring: r, fragility: childFragility, shard: false });
+				pieces.push({ ring: r, fragility: part.fragility, shard: false, isStatic: part.isStatic });
 			}
 		}
 		if (pieces.length === 0) return null;
@@ -613,7 +642,7 @@ export class FractureSystem {
 
 		const fragments: ShapePart[] = [];
 		for (const piece of pieces) {
-			const frag = this.buildFragment(piece.ring, part, piece.fragility, group, allocId);
+			const frag = this.buildFragment(piece.ring, part, piece.fragility, group, piece.isStatic, allocId);
 			if (!frag) continue;
 			frag.Init(world as never);
 			const fbody = frag.GetBody();
@@ -621,23 +650,28 @@ export class FractureSystem {
 
 			// Pieces share the negative group so a shatter's overlapping seams don't
 			// explode apart via overlap resolution — they still collide with the world
-			// / other robots. Small shards get an outward kick (bigger near the impact);
-			// the surviving bulk just coasts with the parent's velocity.
-			const fc = polygonCentroid(piece.ring);
-			let vx = parentVel.x;
-			let vy = parentVel.y;
-			if (piece.shard) {
-				let ox = fc.x - impact.x;
-				let oy = fc.y - impact.y;
-				const olen = Math.hypot(ox, oy) || 1;
-				ox /= olen;
-				oy /= olen;
-				const nearness = Math.max(0.2, 1 - olen / impactRadius);
-				vx += ox * FRACTURE_SCATTER_SPEED * nearness;
-				vy += oy * FRACTURE_SCATTER_SPEED * nearness;
+			// / other robots. Small (always-dynamic) shards get an outward kick (bigger
+			// near the impact); a dynamic bulk coasts with the parent's velocity; a
+			// STATIC (fixated) bulk stays put (no impulse).
+			if (!piece.isStatic) {
+				const fc = polygonCentroid(piece.ring);
+				let vx = parentVel.x;
+				let vy = parentVel.y;
+				if (piece.shard) {
+					let ox = fc.x - impact.x;
+					let oy = fc.y - impact.y;
+					const olen = Math.hypot(ox, oy) || 1;
+					ox /= olen;
+					oy /= olen;
+					const nearness = Math.max(0.2, 1 - olen / impactRadius);
+					vx += ox * FRACTURE_SCATTER_SPEED * nearness;
+					vy += oy * FRACTURE_SCATTER_SPEED * nearness;
+				}
+				const mass = (fbody as { GetMass?: () => number }).GetMass?.() ?? 1;
+				backend.applyImpulse(fbody, { x: vx * mass, y: vy * mass }, { x: fc.x, y: fc.y });
 			}
-			const mass = (fbody as { GetMass?: () => number }).GetMass?.() ?? 1;
-			backend.applyImpulse(fbody, { x: vx * mass, y: vy * mass }, { x: fc.x, y: fc.y });
+			// Immune from re-fracturing for a few frames (still overlapping/fast).
+			this.cooldown.set(frag, FRACTURE_COOLDOWN_FRAMES);
 			fragments.push(frag);
 		}
 
@@ -651,11 +685,14 @@ export class FractureSystem {
 		parent: ShapePart,
 		fragility: number,
 		group: number,
+		isStatic: boolean,
 		allocId: () => number,
 	): Polygon | null {
 		const verts = cell.map((p) => new b2Vec2(p.x, p.y));
 		if (!Polygon.isSimple(verts) || polygonArea(cell) < FRACTURE_MIN_FRAGMENT_AREA) return null;
 		const frag = new Polygon(verts);
+		// A fixated parent's surviving bulk stays fixated (static); chips are dynamic.
+		frag.isStatic = isStatic;
 		// Material + appearance from the parent.
 		frag.density = parent.density;
 		frag.friction = parent.friction;
