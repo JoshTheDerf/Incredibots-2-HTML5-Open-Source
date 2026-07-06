@@ -91,9 +91,11 @@ export function impulseToSpeed(normalImpulse: number, mass1: number, mass2: numb
  *   - engine 2 (v3):    b2ContactHitEvent (enableHitEvents + hit threshold)
  * `speed` is the engine-NEUTRAL metric: the relative NORMAL impact speed in
  * world units/sec. Engines 0/1 derive it from the normal impulse and the two
- * bodies' reduced mass (J/reducedMass == the relative normal Δv); engine 2 uses
- * the hit event's approachSpeed directly. This lets the fracture threshold be a
- * single speed value (FRACTURE_BASE_SPEED / fragility) across all three engines.
+ * bodies' reduced mass (J/reducedMass == the relative normal Δv); engine 2 scales
+ * the hit event's approachSpeed by (1 + combined restitution) to report that SAME
+ * post-impulse Δv (v3 exposes no solved impulse on the hit event). This lets the
+ * fracture threshold be a single speed value (FRACTURE_BASE_SPEED / fragility)
+ * across all three engines.
  * `shape1`/`shape2` are the SAME shape/fixture handles a ShapePart stored via
  * GetShape() (identity-comparable, like ContactPointLike) — the fracture
  * consumer resolves them to parts by identity, which also pinpoints WHICH part
@@ -258,6 +260,15 @@ export interface PhysicsBackend<W = unknown, B = unknown, S = unknown, J = unkno
 	bodyVelocity(body: B): Vec2Like;
 	bodyTransform(body: B): BodyTransform;
 
+	/**
+	 * Hard-set a body's world transform — the replay playback WRITE path (sim-free
+	 * sync-point application). The method NAME differs across ports (2.0.2
+	 * b2Body.SetXForm / 2.1a b2Body.SetPositionAndAngle / v3 b2Body_SetTransform),
+	 * so it must go through the seam rather than a duck-typed handle call — that's
+	 * why native engine-1 replays used to crash on a raw SetXForm.
+	 */
+	setBodyTransform(body: B, x: number, y: number, angle: number): void;
+
 	// --- render-side body enumeration ---
 	/**
 	 * Invoke `cb` for every live body in the world — the render interpolator's
@@ -278,6 +289,15 @@ export interface PhysicsBackend<W = unknown, B = unknown, S = unknown, J = unkno
 	 * keep the body for the neighbours) or owns it alone (destroy the body).
 	 */
 	bodyShapeCount(body: B): number;
+	/**
+	 * A shape's body-LOCAL centre. 2.0 exposes b2CircleShape.GetLocalPosition() on
+	 * the shape itself, but 2.1a stores it as m_p on the b2CircleShape BEHIND the
+	 * fixture (the stored shape handle is the fixture, which has no
+	 * GetLocalPosition), and v3 keeps it on the wrapper — so this must go through
+	 * the seam. Non-circle shapes return (0,0). Used by Bomb.Explode to find a
+	 * (possibly welded) bomb's blast centre on any engine.
+	 */
+	shapeLocalCenter(shape: S): Vec2Like;
 	/** True iff the body is static (2.0 IsStatic() / 2.1a GetType()===static). */
 	bodyIsStatic(body: B): boolean;
 	/**

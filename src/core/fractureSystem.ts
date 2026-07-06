@@ -6,15 +6,13 @@
 // impact. It talks to the engine ONLY through the PhysicsBackend seam and the
 // Part API — no pixi/DOM — so it lives in src/core and rides all three engines.
 //
-// WHY A VELOCITY PROXY (not contact impulse): the neutral contact hooks
-// (PhysicsBackend.ContactHooks) surface only begin/end + the two touching shapes
-// — no impulse/force. Rather than thread a new impulse channel through all three
-// backends for a prototype, we detect impacts from the per-frame change in a
-// body's linear velocity: a hard hit reverses/kills velocity in a single step,
-// so |Δv| (minus the small free-fall component) is a good, engine-agnostic proxy
-// for collision severity, and its DIRECTION points from the contact into the
-// body — i.e. the impact is on the −Δv side, which is exactly where we focus the
-// shatter.
+// HOW IMPACTS ARE DETECTED (real contact impulses): the PhysicsBackend contact
+// hooks (ContactHooks.onImpact) surface each solved contact's normal impulse and
+// its world point. We convert that impulse to an engine-agnostic severity "speed"
+// and attribute it to the fragile part by SHAPE identity (recordImpact/consider),
+// keeping the strongest hit per part each step. The contact point is where we
+// focus the shatter. (This replaced an earlier velocity-proxy design that
+// inferred severity from the per-frame change in a body's linear velocity.)
 //
 // LIFECYCLE: fragments are TRANSIENT sim-only bodies (the cannonball pattern) —
 // they live in GameCore.simFragments, NOT state.parts, so a reset simply drops
@@ -171,6 +169,136 @@ function pointInPolygon(px: number, py: number, poly: Pt[]): boolean {
 	return inside;
 }
 
+/**
+ * A point guaranteed to lie INSIDE `ring`, as near `p` as we can manage. For a
+ * CONCAVE ring the naive "midpoint toward the area centroid" clamp can still land
+ * outside (the centroid itself can sit in a notch), so we instead walk the
+ * boundary: for each edge, take the closest point on it to `p`, step a hair along
+ * that edge's INWARD normal, and keep the interior candidate nearest `p`. Falls
+ * back to the centroid (then the vertex average) if nothing lands inside — which
+ * only happens for a degenerate ring.
+ */
+function interiorPointNear(p: Pt, ring: Pt[]): Pt {
+	const n = ring.length;
+	// Inward normal direction depends on winding; CCW (signedArea > 0) has interior
+	// to the LEFT of each directed edge.
+	const ccw = signedArea(ring) > 0;
+	// Step scale: a small fraction of the ring's extent (enough to clear the edge,
+	// small enough not to overshoot a thin region).
+	let minX = Infinity;
+	let minY = Infinity;
+	let maxX = -Infinity;
+	let maxY = -Infinity;
+	for (const v of ring) {
+		if (v.x < minX) minX = v.x;
+		if (v.y < minY) minY = v.y;
+		if (v.x > maxX) maxX = v.x;
+		if (v.y > maxY) maxY = v.y;
+	}
+	const step = Math.max(maxX - minX, maxY - minY) * 1e-3 + 1e-9;
+	let best: Pt | null = null;
+	let bestD = Infinity;
+	// Nudge a boundary point (qx,qy) inward along (nx,ny) and keep it if it lands
+	// inside the ring and is the nearest such candidate to the impact so far.
+	const consider = (qx: number, qy: number, nx: number, ny: number, d: number): void => {
+		if (d >= bestD) return;
+		const cx = qx + nx * step;
+		const cy = qy + ny * step;
+		if (pointInPolygon(cx, cy, ring)) {
+			best = { x: cx, y: cy };
+			bestD = d;
+		}
+	};
+	for (let i = 0; i < n; i++) {
+		const a = ring[i];
+		const b = ring[(i + 1) % n];
+		const dx = b.x - a.x;
+		const dy = b.y - a.y;
+		const len2 = dx * dx + dy * dy || 1e-12;
+		// Inward normal for this edge, unit length.
+		let nx = ccw ? -dy : dy;
+		let ny = ccw ? dx : -dx;
+		const nl = Math.hypot(nx, ny) || 1;
+		nx /= nl;
+		ny /= nl;
+		// Closest point on segment a→b to p — precise, but at a CORNER its inward
+		// nudge can stay on the adjacent edge (ambiguously outside)...
+		let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2;
+		t = Math.max(0, Math.min(1, t));
+		const qx = a.x + t * dx;
+		const qy = a.y + t * dy;
+		consider(qx, qy, nx, ny, Math.hypot(qx - p.x, qy - p.y));
+		// ...so also try the edge MIDPOINT, which is strictly interior to the edge and
+		// whose inward nudge is unambiguously inside — a robust fallback the corner
+		// case can't defeat.
+		const mx2 = a.x + 0.5 * dx;
+		const my2 = a.y + 0.5 * dy;
+		consider(mx2, my2, nx, ny, Math.hypot(mx2 - p.x, my2 - p.y));
+	}
+	if (best) return best;
+	const c = polygonCentroid(ring);
+	if (pointInPolygon(c.x, c.y, ring)) return c;
+	let mx = 0;
+	let my = 0;
+	for (const v of ring) {
+		mx += v.x;
+		my += v.y;
+	}
+	return { x: mx / n, y: my / n };
+}
+
+/**
+ * True iff a CONVEX cell lies wholly within `ring`. A Voronoi cell is convex, so
+ * it is contained iff every vertex is — but a vertex can sit exactly ON the ring
+ * boundary (coincident with a ring vertex/edge), where even-odd pointInPolygon is
+ * undefined; we therefore test each vertex nudged a hair toward the cell centroid
+ * (still inside the convex cell), which is unambiguously interior for a contained
+ * cell and unambiguously exterior for one poking into a notch. This is the
+ * concave-parent containment guard (option (c)): rejecting a cell that straddles a
+ * notch beats keeping it protruding, since a robust concave polygon∩polygon clip
+ * isn't available here.
+ */
+function convexCellInside(cell: Pt[], ring: Pt[]): boolean {
+	const c = polygonCentroid(cell);
+	// (1) every cell vertex must be inside the ring (nudged inward to dodge the
+	// boundary-coincidence ambiguity of even-odd pointInPolygon).
+	for (const v of cell) {
+		const sx = v.x + (c.x - v.x) * 1e-3;
+		const sy = v.y + (c.y - v.y) * 1e-3;
+		if (!pointInPolygon(sx, sy, ring)) return false;
+	}
+	// (2) no ring vertex may lie inside the cell — a reflex NOTCH tip poking into
+	// the convex cell means the cell spans the notch even with all its own vertices
+	// inside the ring.
+	for (const v of ring) {
+		if (pointInPolygon(v.x, v.y, cell)) return false;
+	}
+	// (3) no cell edge may properly cross a ring edge — a cell edge can slice across
+	// a notch opening while every endpoint stays inside the ring and no ring vertex
+	// falls inside the cell. `properCross` is strict (interior/interior only), so a
+	// shared vertex where a cell corner touches the ring boundary is not a false hit.
+	const cn = cell.length;
+	const rn = ring.length;
+	for (let i = 0; i < cn; i++) {
+		const a1 = cell[i];
+		const a2 = cell[(i + 1) % cn];
+		for (let j = 0; j < rn; j++) {
+			if (properCross(a1, a2, ring[j], ring[(j + 1) % rn])) return false;
+		}
+	}
+	return true;
+}
+
+/** Strict proper (interior/interior) segment crossing; collinear/touching = false. */
+function properCross(a1: Pt, a2: Pt, b1: Pt, b2: Pt): boolean {
+	const d = (p: Pt, q: Pt, r: Pt): number => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+	const d1 = d(b1, b2, a1);
+	const d2 = d(b1, b2, a2);
+	const d3 = d(a1, a2, b1);
+	const d4 = d(a1, a2, b2);
+	return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+}
+
 /** Andrew's monotone-chain convex hull (CCW, no collinear points). */
 function convexHull(pts: Pt[]): Pt[] {
 	const p = pts.slice().sort((a, b) => (a.x === b.x ? a.y - b.y : a.x - b.x));
@@ -278,15 +406,34 @@ export function shatter(ring: Pt[], impact: Pt, fragmentCount: number, rand: () 
 	}
 	if (seeds.length < 2) return [];
 
+	// A CONCAVE parent's ring is strictly smaller than its convex hull, so a cell
+	// tiled over the hull can straddle a notch and protrude into empty space. Only
+	// then do we pay for the extra containment test; a convex parent (the common
+	// case) keeps the original, unchanged fast path.
+	const concave = polygonArea(hull) > polygonArea(ring) + 1e-9;
+
 	const fragments: Pt[][] = [];
 	for (let k = 0; k < seeds.length; k++) {
 		const cell = voronoiCell(hull, seeds, k);
 		if (cell.length < 3) continue;
 		if (polygonArea(cell) < FRACTURE_MIN_FRAGMENT_AREA) continue;
-		const c = polygonCentroid(cell);
-		// For a concave parent, drop cells whose centre isn't actually inside it.
-		if (!pointInPolygon(c.x, c.y, ring)) continue;
-		fragments.push(cell);
+		if (!concave) {
+			// Convex parent: the cell already lies within the ring (ring == hull), so
+			// keep it verbatim — identical to the pre-fix behaviour.
+			fragments.push(cell);
+			continue;
+		}
+		// Concave parent: a cell built over the convex HULL can straddle a notch and
+		// protrude into empty space (the notch), where it would gain phantom material
+		// and overlap its neighbours. Keeping it on a centroid-only test (the old
+		// behaviour) let such cells through. We instead REJECT any cell not wholly
+		// inside the true ring (option (c): a robust concave polygon∩polygon clip is
+		// not cleanly available — Greiner–Hormann intersection here mis-classifies the
+		// notch region — so we accept fewer, correct fragments over protruding ones).
+		// LIMITATION: the notch's rim is left slightly under-fragmented (the straddling
+		// cells' in-ring slivers are dropped rather than kept). Acceptable for the
+		// prototype; the bulk still shatters into contained fragments.
+		if (convexCellInside(cell, ring)) fragments.push(cell);
 	}
 	return fragments;
 }
@@ -365,12 +512,23 @@ function localizedShatter(
 		if (pointInPolygon(p.x, p.y, blob) && pointInPolygon(p.x, p.y, worldRing)) seeds.push(p);
 	}
 	if (seeds.length < 2) return { shards: [], remaining, maxR };
+	// Same concave protrusion guard as shatter(): only a concave object needs its
+	// shards clipped back to the true ring; a convex one keeps the fast path.
+	const concave = polygonArea(hull) > polygonArea(worldRing) + 1e-9;
 	const shards: Pt[][] = [];
 	for (let k = 0; k < seeds.length; k++) {
 		const cell = voronoiCell(hull, seeds, k);
 		if (cell.length < 3 || polygonArea(cell) < FRACTURE_MIN_FRAGMENT_AREA) continue;
+		if (!concave) {
+			const c = polygonCentroid(cell);
+			if (pointInPolygon(c.x, c.y, worldRing) && pointInPolygon(c.x, c.y, blob)) shards.push(cell);
+			continue;
+		}
+		// Concave object: reject any shard not wholly inside the ring (same option (c)
+		// containment guard as shatter) so a shard can't reach across a notch; keep
+		// the contained ones whose centre still lies in the scar (blob).
 		const c = polygonCentroid(cell);
-		if (pointInPolygon(c.x, c.y, worldRing) && pointInPolygon(c.x, c.y, blob)) shards.push(cell);
+		if (convexCellInside(cell, worldRing) && pointInPolygon(c.x, c.y, blob)) shards.push(cell);
 	}
 	return { shards, remaining, maxR };
 }
@@ -422,8 +580,8 @@ interface Impact {
  *     FRACTURE_BASE_SPEED / fragility, at the exact contact point.
  */
 export class FractureSystem {
-	// Rest body-local outline per part (origin-relative, captured at rest angle 0),
-	// so a moved/rotated/welded body's live outline = xform · local.
+	// Body-local outline per part (position-subtracted AND un-rotated by the capture
+	// pose), so a moved/rotated/welded body's live outline = xform · local.
 	private bodyLocal = new Map<ShapePart, Pt[]>();
 	// This frame's fragile shape handles -> part (shape identity == part.GetShape()).
 	private shapeToPart = new Map<unknown, ShapePart>();
@@ -494,13 +652,22 @@ export class FractureSystem {
 		if (!body) return;
 		const world = editWorldOutline(part);
 		if (!world) return;
-		// At rest the body sits at its Init origin with angle 0, so body-local ==
-		// edit-world − origin (rotation is identity). The live outline later rotates
-		// these by the body's current angle around its current position.
+		// Store the outline in the body's LOCAL frame: subtract the body position AND
+		// un-rotate by the body's current angle (inverse rotation). Capture can be
+		// DEFERRED (see FRACTURE_COOLDOWN_FRAMES in beginFrame) while a fragment falls
+		// and rotates, so the pose here may not be angle 0 — inverse-rotating cancels
+		// whatever angle is present. This composes to identity with fracturePart, which
+		// reconstructs world = xf.position + R(xf.angle)·local.
 		const xf = backend.bodyTransform(body);
+		const cos = Math.cos(xf.angle);
+		const sin = Math.sin(xf.angle);
 		this.bodyLocal.set(
 			part,
-			world.map((p) => ({ x: p.x - xf.x, y: p.y - xf.y })),
+			world.map((p) => {
+				const dx = p.x - xf.x;
+				const dy = p.y - xf.y;
+				return { x: dx * cos + dy * sin, y: -dx * sin + dy * cos };
+			}),
 		);
 	}
 
@@ -567,8 +734,15 @@ export class FractureSystem {
 		// Clamp it into the ring so a slightly-outside contact still focuses sanely.
 		let impact: Pt = { x: imp.x, y: imp.y };
 		if (!pointInPolygon(impact.x, impact.y, worldRing)) {
+			// The cheap clamp (midpoint toward the area centroid) works for a convex
+			// ring, but for a CONCAVE one the centroid — and thus the midpoint — can
+			// itself fall in a notch OUTSIDE the ring, clustering seeds on empty space
+			// so every Voronoi cell is rejected and a genuine hard hit fails to
+			// shatter. So use the midpoint only when it actually lands inside; else
+			// fall back to a guaranteed-interior point near the true contact.
 			const c = polygonCentroid(worldRing);
-			impact = { x: (impact.x + c.x) / 2, y: (impact.y + c.y) / 2 };
+			const mid = { x: (impact.x + c.x) / 2, y: (impact.y + c.y) / 2 };
+			impact = pointInPolygon(mid.x, mid.y, worldRing) ? mid : interiorPointNear({ x: imp.x, y: imp.y }, worldRing);
 		}
 
 		// Severity: how far over threshold. Drives the scar SIZE (world units), so a

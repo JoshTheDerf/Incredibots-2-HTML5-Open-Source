@@ -444,10 +444,13 @@ onBeforeUnmount(() => {
 }
 
 /* Part-edit panel overlay — pinned to the left edge, starting just below the
-   toolbar (legacy PartEditWindow y=90), running down the side. */
+   toolbar (legacy PartEditWindow y=90), running down the side.
+   top clears the toolbar (top:6px + ToolPalette height) with an ~8-12px gap so
+   the inspector no longer tucks under the toolbar on desktop. Mobile overrides
+   this below (.editor-shell.is-mobile .inspector-overlay). */
 .inspector-overlay {
 	position: absolute;
-	top: 84px;
+	top: 124px;
 	left: 6px;
 	bottom: 8px;
 	z-index: 14;

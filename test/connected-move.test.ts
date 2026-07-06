@@ -93,6 +93,35 @@ describe("connected-set move (legacy GetAttachedParts drag semantics)", () => {
 		expect(joint.anchorY).toBeCloseTo(j0.y + 1);
 	});
 
+	it("rotating one jointed shape rotates the attached partner + joint anchor (cluster)", () => {
+		// Regression: rotateParts operated on the raw selection only, while moveParts
+		// (and legacy rotate) expand to GetAttachedParts(). Rotating one part of a
+		// jointed assembly left its partner and the joint anchor behind, tearing it.
+		const { core, a, b, joint } = jointedRig();
+		const a0 = xyOf(core, a.id);
+		const b0 = xyOf(core, b.id);
+		const j0 = { x: joint.anchorX, y: joint.anchorY };
+
+		core.dispatch({ type: "select", partIds: [a.id] });
+		core.dispatch({ type: "rotateParts", partIds: [a.id], angle: Math.PI / 2 });
+
+		// Pivot is the selection centroid (= A's own center), so A stays put...
+		const a1 = xyOf(core, a.id);
+		expect(a1.x).toBeCloseTo(a0.x);
+		expect(a1.y).toBeCloseTo(a0.y);
+
+		// ...but the jointed partner B rotates about A: it actually moves, and its
+		// distance from the pivot is preserved (rigid rotation).
+		const b1 = xyOf(core, b.id);
+		expect(Math.hypot(b1.x - b0.x, b1.y - b0.y)).toBeGreaterThan(0.5);
+		const r0 = Math.hypot(b0.x - a0.x, b0.y - a0.y);
+		const r1 = Math.hypot(b1.x - a0.x, b1.y - a0.y);
+		expect(r1).toBeCloseTo(r0);
+
+		// The joint anchor is in the cluster too, so it moves with them.
+		expect(Math.hypot(joint.anchorX - j0.x, joint.anchorY - j0.y)).toBeGreaterThan(0.1);
+	});
+
 	it("an unconnected shape does NOT move when another shape is dragged", () => {
 		const core = new GameCore();
 		core.dispatch({ type: "createShape", kind: "rect", x1: 0, y1: 0, x2: 2, y2: 1 });

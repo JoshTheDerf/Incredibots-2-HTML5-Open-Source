@@ -31,6 +31,13 @@ export class Condition {
       minShapeY: number = Number.MAX_VALUE,
       maxShapeY: number = -Number.MAX_VALUE;
     if (this.subject == 0) {
+      // Defensive: a subject-0 condition's picked shape can have been deleted or
+      // subtracted away in the editor (GameCore clears the ref, but guard anyway).
+      // Without a live shape+body there is nothing to test — treat as unsatisfied.
+      if (!this.shape1 || !this.shape1.GetShape() || !this.shape1.GetBody()) {
+        this.isSatisfied = false;
+        return;
+      }
       if (this.shape1.GetShape() instanceof b2CircleShape) {
         const circle = this.shape1.GetShape();
         const center = b2Math.b2MulX(this.shape1.GetBody().GetXForm(), circle.GetLocalPosition());
@@ -253,6 +260,11 @@ export class Condition {
 
   public ContactAdded(point, parts: Array<any>, cannonballs: Array<any>): void {
     if (this.object == 5 || this.object == 6) {
+      // Defensive: obj-5/6 ("touching"/"touched") needs the picked object shape
+      // (shape2), and subject-0 also needs shape1. A deleted/subtracted pick would
+      // otherwise NPE here — skip the contact if either required shape is gone.
+      if (!this.shape2 || !this.shape2.GetShape()) return;
+      if (this.subject == 0 && (!this.shape1 || !this.shape1.GetShape())) return;
       if (this.subject == 0) {
         if ((point.shape1 == this.shape1.GetShape() && point.shape2 == this.shape2.GetShape()) || (point.shape1 == this.shape2.GetShape() && point.shape2 == this.shape1.GetShape())) this.isSatisfied = true;
       } else if (this.subject == 1) {

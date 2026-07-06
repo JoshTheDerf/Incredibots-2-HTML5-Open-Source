@@ -192,7 +192,7 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 			readSupersetPartFields(text, od);
 			partData.push(text);
 		} else if (od.type === "Thrusters") {
-			if (od.shapeIndex >= 0) {
+			if (od.shapeIndex >= 0 && od.shapeIndex < partData.length && partData[od.shapeIndex]) {
 				const t = new Thrusters(partData[od.shapeIndex] as ShapePart, od.centerX, od.centerY);
 				t.strength = od.strength;
 				t.angle = od.angle;
@@ -205,7 +205,14 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 				partData.push(t);
 			}
 		} else if (od.type === "FixedJoint" || od.type === "RevoluteJoint" || od.type === "PrismaticJoint") {
-			if (od.part1Index >= 0 && od.part2Index >= 0) {
+			if (
+				od.part1Index >= 0 &&
+				od.part1Index < partData.length &&
+				partData[od.part1Index] &&
+				od.part2Index >= 0 &&
+				od.part2Index < partData.length &&
+				partData[od.part2Index]
+			) {
 				let joint: JointPart;
 				if (od.type === "FixedJoint") {
 					joint = new FixedJoint(
@@ -480,8 +487,18 @@ function readChallengeBodyAfterParts(data: ByteArray, partData: Part[], inlineFr
 		cond.maxX = conditions[i].maxX;
 		cond.minY = conditions[i].minY;
 		cond.maxY = conditions[i].maxY;
-		if (conditions[i].shape1Index !== -1) cond.shape1 = allShapes[conditions[i].shape1Index] as ShapePart;
-		if (conditions[i].shape2Index !== -1) cond.shape2 = allShapes[conditions[i].shape2Index] as ShapePart;
+		if (
+			conditions[i].shape1Index !== -1 &&
+			conditions[i].shape1Index < allShapes.length &&
+			allShapes[conditions[i].shape1Index]
+		)
+			cond.shape1 = allShapes[conditions[i].shape1Index] as ShapePart;
+		if (
+			conditions[i].shape2Index !== -1 &&
+			conditions[i].shape2Index < allShapes.length &&
+			allShapes[conditions[i].shape2Index]
+		)
+			cond.shape2 = allShapes[conditions[i].shape2Index] as ShapePart;
 		c.winConditions.push(cond);
 	}
 
@@ -497,8 +514,18 @@ function readChallengeBodyAfterParts(data: ByteArray, partData: Part[], inlineFr
 		con.maxX = conditions[i].maxX;
 		con.minY = conditions[i].minY;
 		con.maxY = conditions[i].maxY;
-		if (conditions[i].shape1Index !== -1) con.shape1 = allShapes[conditions[i].shape1Index] as ShapePart;
-		if (conditions[i].shape2Index !== -1) con.shape2 = allShapes[conditions[i].shape2Index] as ShapePart;
+		if (
+			conditions[i].shape1Index !== -1 &&
+			conditions[i].shape1Index < allShapes.length &&
+			allShapes[conditions[i].shape1Index]
+		)
+			con.shape1 = allShapes[conditions[i].shape1Index] as ShapePart;
+		if (
+			conditions[i].shape2Index !== -1 &&
+			conditions[i].shape2Index < allShapes.length &&
+			allShapes[conditions[i].shape2Index]
+		)
+			con.shape2 = allShapes[conditions[i].shape2Index] as ShapePart;
 		c.lossConditions.push(con);
 	}
 
@@ -623,12 +650,18 @@ function putChallengeIntoByteArray(challenge: Challenge): ByteArray {
 		const wc = challenge.winConditions[i];
 		if (wc.shape1) {
 			for (let j = 0; j < allShapes.length; j++) {
-				if (wc.shape1.equals(allShapes[j])) wc.shape1Index = j;
+				if (wc.shape1.equals(allShapes[j])) {
+					wc.shape1Index = j;
+					break;
+				}
 			}
 		}
 		if (wc.shape2) {
 			for (let j = 0; j < allShapes.length; j++) {
-				if (wc.shape2.equals(allShapes[j])) wc.shape2Index = j;
+				if (wc.shape2.equals(allShapes[j])) {
+					wc.shape2Index = j;
+					break;
+				}
 			}
 		}
 		if ((wc.subject === 0 && wc.shape1Index === -1) || (wc.object > 4 && wc.shape2Index === -1)) {
@@ -639,12 +672,18 @@ function putChallengeIntoByteArray(challenge: Challenge): ByteArray {
 		const lc = challenge.lossConditions[i];
 		if (lc.shape1) {
 			for (let j = 0; j < allShapes.length; j++) {
-				if (lc.shape1.equals(allShapes[j])) lc.shape1Index = j;
+				if (lc.shape1.equals(allShapes[j])) {
+					lc.shape1Index = j;
+					break;
+				}
 			}
 		}
 		if (lc.shape2) {
 			for (let j = 0; j < allShapes.length; j++) {
-				if (lc.shape2.equals(allShapes[j])) lc.shape2Index = j;
+				if (lc.shape2.equals(allShapes[j])) {
+					lc.shape2Index = j;
+					break;
+				}
 			}
 		}
 		if ((lc.subject === 0 && lc.shape1Index === -1) || (lc.object > 4 && lc.shape2Index === -1)) {

@@ -358,13 +358,18 @@ export class Bomb extends Circle {
     this.m_explosionCounter = 0;
     this.m_exploding = true;
 
-    // World-space bomb centre (Bomb.as:405): xf * circleShape.localPosition.
-    const circle = this.m_shape as unknown as { GetLocalPosition(): b2Vec2 };
-    const xf = this.m_body.GetXForm();
-    const local = circle.GetLocalPosition();
+    // World-space bomb centre (Bomb.as:405): body transform * circle local centre.
+    // Read both through the engine seam — the raw 2.0.2 GetXForm()/GetLocalPosition()
+    // don't exist on the 2.1a fixture (m_shape) or the v3 wrapper, so a bomb
+    // exploding on engine 1/2 used to crash here (r.GetLocalPosition is not a fn).
+    const backend = getPhysicsBackend();
+    const xf = backend.bodyTransform(this.m_body);
+    const local = backend.shapeLocalCenter(this.m_shape);
+    const cos = Math.cos(xf.angle);
+    const sin = Math.sin(xf.angle);
     const curPos = new b2Vec2(
-      xf.position.x + xf.R.col1.x * local.x + xf.R.col2.x * local.y,
-      xf.position.y + xf.R.col1.y * local.x + xf.R.col2.y * local.y,
+      xf.x + cos * local.x - sin * local.y,
+      xf.y + sin * local.x + cos * local.y,
     );
     this.m_lastPos = curPos.Copy();
 
@@ -418,7 +423,7 @@ export class Bomb extends Circle {
         if (t instanceof Thrusters && t.isEnabled) t.DestroyThruster(world);
       }
       const body = this.m_body;
-      if (body.m_shapeCount > 1) {
+      if (getPhysicsBackend().bodyShapeCount(body) > 1) {
         // Welded cluster: remove only the bomb's own shape (the 2.0 equivalent
         // of destroying the bomb fixture off a multi-fixture body).
         getPhysicsBackend().destroyShape(body, this.m_shape);

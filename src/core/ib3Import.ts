@@ -82,6 +82,7 @@ import {
 } from "../Parts/partDefaults";
 import { EXPO_PUBLIC_EDITABLE, EXPO_PUBLIC_UNEDITABLE, type ExposureFlags } from "./exposure";
 import type { DecodedRobot } from "./robotSerialization";
+import { sniffFileBytes } from "./serializationVersion";
 import { VERSION_PREFIX } from "./serializationVersion";
 
 /** Database.IB_ERRORS (Database.as:48). */
@@ -114,10 +115,37 @@ export interface IB3Meta {
 	editable: number;
 }
 
+/**
+ * A decoded IB3 recorded run (present only for type=REPLAY files whose replay
+ * stream read successfully). IB3 records one body pose per saved-parts-array
+ * index each sync frame (GameControl.AddSyncPoint), so index i's pose belongs to
+ * the shape at saved-parts index i. We attach index i's trajectory to that
+ * shape OBJECT (shapeByIndex[i]) — the same instances that end up in
+ * robot.parts — so playback can resolve poses by the live body's representative
+ * shape without depending on part reordering. Welded-duplicate / static shapes
+ * carry placeholder / static tracks that playback never reads (it only reads the
+ * live body representatives). Terrain bodies IB3 appends after the saved parts
+ * are simply absent here (their indices exceed shapeByIndex).
+ */
+export interface IB3ReplayData {
+	/** keyFrame of each captured sync point (playback frame timeline). */
+	syncFrames: number[];
+	/** Per-shape recorded trajectory across the sync frames, keyed by ShapePart. */
+	trajectories: Map<ShapePart, { positions: { x: number; y: number }[]; angles: number[] }>;
+	/** Recorded camera pans/zooms + focus-break markers (this app's CameraMovement shape). */
+	cameraMovements: { frame: number; x: number; y: number; scale: number; brokeFocus: boolean }[];
+	/** Recorded key-DOWN presses (text-display / cannon-fire react in sim-free playback). */
+	keyPresses: { frame: number; key: number }[];
+	/** Total recorded frame count (IB3 replayLength). */
+	numFrames: number;
+}
+
 export interface IB3ImportResult {
 	robot: DecodedRobot;
 	ib3: IB3Meta;
 	warnings: string[];
+	/** The recorded run, for type=REPLAY files whose replay stream decoded. */
+	replay?: IB3ReplayData;
 }
 
 // --- small helpers ---------------------------------------------------------
@@ -261,6 +289,17 @@ export async function decodeIB3(input: string | ArrayBuffer | Uint8Array): Promi
 }
 
 /**
+ * Decode an IB3 FILE (raw compressed .ibXX bytes, or a base64 text code pasted
+ * into a file). Mirrors decodeRobotFile's "eN" sniff: a code routes through the
+ * base64 path, raw bytes are treated as the compressed blob.
+ */
+export async function decodeIB3File(bytes: ArrayBuffer | Uint8Array): Promise<IB3ImportResult> {
+	const sniffed = sniffFileBytes(bytes);
+	if (sniffed.kind === "code") return decodeIB3(sniffed.code);
+	return decodeIB3(bytes);
+}
+
+/**
  * Decode from an already-inflated ByteArray positioned anywhere (reset to 0).
  * The robot-import wiring calls this directly after its own uncompress + sniff.
  */
@@ -290,11 +329,64 @@ export function decodeIB3FromByteArray(b: ByteArray): IB3ImportResult {
 	if (!arr || typeof arr.length !== "number") throw new Error(IB_ERRORS[0]);
 	const settings = settingsObj as Record<string, unknown> | null;
 
-	const parts = mapParts(arr as unknown[], meta.version, warnings);
+	const { parts, shapeByIndex } = mapParts(arr as unknown[], meta.version, warnings);
 	const sandbox = mapSettings(settings ?? {}, meta.version, warnings);
 
+	// For a REPLAY, the recorded run follows the metadata (Database.as:291-317):
+	//   replayLength:uint, syncPoints, keyPresses, triggerPresses, cameraMovements,
+	//   [mouseJointDrags], [frameRate]. Read it into per-shape trajectories so the
+	//   run can be PLAYED (sim-free) rather than discarded. A malformed/absent
+	//   stream degrades to a design-only import (the run is dropped, with a note).
+	let replay: IB3ReplayData | undefined;
 	if (meta.type === IB3_TYPE_REPLAY) {
-		warnings.add("IB3 replay imported as a design; the recorded run was discarded.");
+		try {
+			const numFrames = b.readUnsignedInt();
+			const syncPointsObj = b.readObject() as Array<{
+				keyFrame: number;
+				positions: Array<{ x: number; y: number }>;
+				angles: number[];
+			}>;
+			const keyPressesObj = b.readObject() as Array<{ keyFrame: number; key: number; up: boolean }>;
+			b.readObject(); // triggerPresses — not replayed (sim-free playback spawns no cannonballs)
+			const cameraObj = b.readObject() as Array<{
+				keyFrame: number;
+				x: number;
+				y: number;
+				scale: number;
+				brokeFocus: boolean;
+			}>;
+			// (optional mouseJointDrags / frameRate follow; not needed for playback)
+			const syncFrames = syncPointsObj.map((s) => s.keyFrame);
+			// IB3 sync index i ↔ saved-parts index i (verified: bot bodies align 1:1,
+			// terrain bodies are appended beyond shapeByIndex.length and ignored).
+			const trajectories = new Map<ShapePart, { positions: { x: number; y: number }[]; angles: number[] }>();
+			for (let i = 0; i < shapeByIndex.length; i++) {
+				const sp = shapeByIndex[i];
+				if (!sp) continue;
+				const positions: { x: number; y: number }[] = [];
+				const angles: number[] = [];
+				for (const s of syncPointsObj) {
+					const pos = s.positions[i];
+					positions.push(pos ? { x: pos.x, y: pos.y } : { x: 0, y: 0 });
+					const a = s.angles[i];
+					angles.push(typeof a === "number" ? a : 0);
+				}
+				trajectories.set(sp, { positions, angles });
+			}
+			const cameraMovements = cameraObj.map((c) => ({
+				frame: c.keyFrame,
+				x: c.x,
+				y: c.y,
+				scale: c.scale,
+				brokeFocus: Boolean(c.brokeFocus),
+			}));
+			// Keep key-DOWN presses only; in sim-free playback these fire text-display /
+			// cannon-fire reactions (motor keys are no-ops — bodies follow sync points).
+			const keyPresses = keyPressesObj.filter((k) => !k.up).map((k) => ({ frame: k.keyFrame, key: k.key }));
+			replay = { syncFrames, trajectories, cameraMovements, keyPresses, numFrames };
+		} catch {
+			warnings.add("IB3 replay: the recorded run could not be read; imported as a design.");
+		}
 	}
 
 	const cameraX = settings && has(settings, "cameraX") ? num(settings.cameraX, 0) : 0;
@@ -312,7 +404,7 @@ export function decodeIB3FromByteArray(b: ByteArray): IB3ImportResult {
 		version: meta.version,
 		exposure: mapExposure(meta),
 	};
-	return { robot, ib3: meta, warnings: [...warnings] };
+	return { robot, ib3: meta, warnings: [...warnings], replay };
 }
 
 /**
@@ -331,7 +423,11 @@ interface BuiltShape {
 	extra: Part[];
 }
 
-function mapParts(arr: unknown[], version: string, warnings: Set<string>): Part[] {
+function mapParts(
+	arr: unknown[],
+	version: string,
+	warnings: Set<string>,
+): { parts: Part[]; shapeByIndex: (ShapePart | null)[] } {
 	const parts: Part[] = [];
 	// IB3 index -> the primary IB2 ShapePart the joints/thrusters resolve against
 	// (null for joints/thrusters/text/unmapped). Joints hold direct references
@@ -404,7 +500,7 @@ function mapParts(arr: unknown[], version: string, warnings: Set<string>): Part[
 	// Trigger wiring: resolve synthesized source actions from listening targets.
 	resolveIB3TriggerActions(parts, warnings);
 
-	return parts;
+	return { parts, shapeByIndex };
 }
 
 // --- trigger wiring --------------------------------------------------------

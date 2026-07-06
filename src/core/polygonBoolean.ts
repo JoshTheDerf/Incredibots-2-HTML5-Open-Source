@@ -217,8 +217,17 @@ function spliceByAlpha(iv: Vertex, start: Vertex, end: Vertex): void {
  *   union        : (false, false)
  *   difference   : (false, true)   // source − clip
  * Returns the result loops (each a closed ring, first point == start crossing).
+ * An empty array `[]` is a definitive answer ONLY on the no-crossing full-cover
+ * path (subject entirely inside clip); `null` signals a DEGENERATE collapse —
+ * crossings existed but every traced loop degenerated to < 3 vertices — which the
+ * caller should retry with a jitter rather than treat as a full cover.
  */
-function clip(subject: Vec2[], clipPoly: Vec2[], sourceForwards: boolean, clipForwards: boolean): Vec2[][] {
+function clip(
+	subject: Vec2[],
+	clipPoly: Vec2[],
+	sourceForwards: boolean,
+	clipForwards: boolean,
+): Vec2[][] | null {
 	const subjFirst = buildRing(subject);
 	const clipFirst = buildRing(clipPoly);
 	const subjOrig = originalNodes(subjFirst);
@@ -317,6 +326,11 @@ function clip(subject: Vec2[], clipPoly: Vec2[], sourceForwards: boolean, clipFo
 		if (loop.length >= 3) result.push(loop);
 		start = firstUnvisitedIntersection(subjFirst);
 	}
+	// We only reach here when intersections > 0 (the no-crossing cases returned
+	// earlier). An empty result therefore means every traced loop collapsed to
+	// < 3 vertices — a geometric degeneracy, NOT a genuine full cover. Signal it
+	// with null so the caller retries (jitter) instead of deleting the target.
+	if (result.length === 0) return null;
 	return result;
 }
 
@@ -376,7 +390,11 @@ export function polygonDifference(target: Vec2[], subtrahend: Vec2[]): Vec2[][] 
 						y: p.y + eps * (1 + (i % 5)),
 					}));
 		const pieces = clip(target, cutter, false, true);
-		// An empty result (subtrahend covers target) is a VALID, definitive answer.
+		// A degenerate collapse (crossings existed but all loops collapsed) is NOT
+		// a full cover — retry with the next jitter, same as a self-intersecting
+		// output below. If every jitter is exhausted we fall through to the no-op.
+		if (pieces === null) continue;
+		// An empty result (subtrahend genuinely covers target) is a VALID, definitive answer.
 		if (pieces.length === 0) return [];
 		if (!pieces.every((r) => isSimpleRing(r))) continue; // degenerate output — retry
 		const area = pieces.reduce((s, r) => s + polygonArea(r), 0);

@@ -102,6 +102,17 @@ export class Box2D20Backend implements PhysicsBackend<b2World, b2Body, b2Shape, 
 		return { x: p.x, y: p.y, angle: body.GetAngle() };
 	}
 
+	setBodyTransform(body: b2Body, x: number, y: number, angle: number): void {
+		body.SetXForm(new b2Vec2(x, y), angle);
+	}
+
+	shapeLocalCenter(shape: b2Shape): Vec2Like {
+		// 2.0.2 b2CircleShape exposes GetLocalPosition(); non-circles have none.
+		const s = shape as unknown as { GetLocalPosition?: () => Vec2Like };
+		const p = typeof s.GetLocalPosition === "function" ? s.GetLocalPosition() : null;
+		return p ? { x: p.x, y: p.y } : { x: 0, y: 0 };
+	}
+
 	forEachBody(world: b2World, cb: (body: b2Body) => void): void {
 		for (let b: b2Body | null = world.GetBodyList(); b; b = b.GetNext()) cb(b);
 	}

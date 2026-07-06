@@ -307,7 +307,7 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 			readSupersetPartFields(text, od);
 			partData.push(text);
 		} else if (od.type === "Thrusters") {
-			if (od.shapeIndex >= 0) {
+			if (od.shapeIndex >= 0 && od.shapeIndex < partData.length && partData[od.shapeIndex]) {
 				const t = new Thrusters(partData[od.shapeIndex] as ShapePart, od.centerX, od.centerY);
 				t.strength = od.strength;
 				t.angle = od.angle;
@@ -320,7 +320,14 @@ function extractPartsFromByteArray(b: ByteArray): Part[] {
 				partData.push(t);
 			}
 		} else if (od.type === "FixedJoint" || od.type === "RevoluteJoint" || od.type === "PrismaticJoint") {
-			if (od.part1Index >= 0 && od.part2Index >= 0) {
+			if (
+				od.part1Index >= 0 &&
+				od.part1Index < partData.length &&
+				partData[od.part1Index] &&
+				od.part2Index >= 0 &&
+				od.part2Index < partData.length &&
+				partData[od.part2Index]
+			) {
 				let joint: JointPart;
 				if (od.type === "FixedJoint") {
 					joint = new FixedJoint(

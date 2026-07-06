@@ -37,8 +37,9 @@ import {
 } from "../src/core/challenge";
 import { WinCondition } from "../src/Game/WinCondition";
 import { LossCondition } from "../src/Game/LossCondition";
-import { b2AABB } from "../src/Box2D";
+import { b2AABB, b2Vec2 } from "../src/Box2D";
 import { Circle } from "../src/Parts/Circle";
+import { Polygon } from "../src/Parts/Polygon";
 import type { Part } from "../src/Parts/Part";
 
 /** A GameCore over a fresh state with the given parts (no sandbox terrain). */
@@ -292,6 +293,28 @@ describe("CheckIfPartsFit build-area fit (ControllerGame.ts:1116-1177)", () => {
 
 		// A part poking outside the upper bound fails (maxX < upper.x is strict).
 		const outside = new Circle(14.5, 3, 1); // maxX = 15.5 >= 15
+		outside.isEditable = true;
+		expect(checkIfPartsFit(session, [outside])).toBe(false);
+	});
+
+	it("a Polygon is bounded by its real extents, not treated as always-fitting", () => {
+		// Regression: checkIfPartsFit only had instanceof branches for
+		// Circle/Rectangle/Triangle/Cannon, so a Polygon (createPolygon /
+		// subtractShapes) fell to the else and kept ±MAX extents, trivially
+		// "fitting" any build area and bypassing the restriction entirely.
+		const session = createChallengeSession();
+		session.playMode = true;
+		const area = new b2AABB();
+		area.lowerBound.Set(1, 1);
+		area.upperBound.Set(15, 11.1);
+		session.challenge.buildAreas.push(area);
+
+		const inside = new Polygon([new b2Vec2(3, 3), new b2Vec2(5, 3), new b2Vec2(4, 5)], 0);
+		inside.isEditable = true;
+		expect(checkIfPartsFit(session, [inside])).toBe(true);
+
+		// The same polygon shape translated far outside the build area must NOT fit.
+		const outside = new Polygon([new b2Vec2(100, 100), new b2Vec2(102, 100), new b2Vec2(101, 102)], 0);
 		outside.isEditable = true;
 		expect(checkIfPartsFit(session, [outside])).toBe(false);
 	});

@@ -265,7 +265,13 @@ export const useGameStore = defineStore("game", () => {
 	 * previous mode's content stick when re-entering the sandbox from the menu.)
 	 */
 	function goToEditor(fresh = false): void {
-		if (fresh) dispatch({ type: "newSandbox" });
+		if (fresh) {
+			dispatch({ type: "newSandbox" });
+			// A fresh sandbox defaults to the Box2D 3 engine (see newSandbox handler);
+			// preload its wasm now so the first play runs on it instead of falling
+			// back to the IB3 (2.1a) engine.
+			void ensureEngine2();
+		}
 		appMode.value = "editor";
 	}
 
@@ -287,6 +293,8 @@ export const useGameStore = defineStore("game", () => {
 		// previous mode's parts or a lingering tutorial dialog.
 		dispatch({ type: "newSandbox" });
 		dispatch({ type: "newChallenge" });
+		// newSandbox seeds the Box2D 3 engine default; preload its wasm.
+		void ensureEngine2();
 		appMode.value = "challengeEditor";
 	}
 

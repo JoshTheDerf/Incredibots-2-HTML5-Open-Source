@@ -23,8 +23,28 @@ export default defineConfig(({ command }) => ({
         // Vue + Nuxt UI shell (src/ui/*) binds to the headless core; the
         // legacy Pixi game entry (src/index.ts) does not use this plugin.
         vue(),
-        // `router: false` is required — this app has no vue-router.
-        ui({ router: false }),
+        ui({
+            // `router: false` is required — this app has no vue-router.
+            router: false,
+            // The editor is a LIGHT-only parchment UI. By default Nuxt UI's
+            // color-mode plugin runs VueUse `useDark()`, which follows the OS
+            // preference and toggles `class="dark"` on <html>. On a dark-mode
+            // OS that flipped every semantic token (--ui-bg/-text/-elevated) to
+            // its dark value — including the *teleported* DropdownMenu popovers
+            // in the <body> portal — so the menus rendered white-on-black. We
+            // ship no light/dark switch, so disable color mode entirely: <html>
+            // never gets `.dark`, and the tokens resolve to the cream/dark IB
+            // values set in src/ui/main.css.
+            colorMode: false,
+            // Set the semantic `primary` to the custom `ibpurple` scale (defined
+            // via `@theme static` in main.css) instead of Nuxt UI's default
+            // green. The CSS `--ui-primary` override only re-points the single
+            // semantic token; the `--ui-color-primary-*` shade scale (used by
+            // focus rings, `ring-primary`, `-500` utilities …) stayed green
+            // until registered here — this is the documented mechanism. neutral
+            // stays `slate` (its default) to match the parchment surface tokens.
+            ui: { colors: { primary: 'ibpurple', neutral: 'slate' } },
+        }),
     ],
     // `.dat` robot/replay files are imported for their URL, like the images.
     assetsInclude: ['**/*.dat'],

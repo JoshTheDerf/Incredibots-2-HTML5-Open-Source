@@ -289,7 +289,10 @@ export function defaultWaterHeight(
 /** A fresh default SandboxState (SMALL/LAND/GRASS/SKY, gravity 15) with bounds. */
 export function createDefaultSandboxState(): SandboxState {
 	const base = { ...DEFAULT_SANDBOX_SETTINGS };
-	// physicsEngine defaults to 0 (IB2 / Box2DFlash 2.0.2) — the classic engine.
+	// physicsEngine defaults to 0 (IB2 / Box2DFlash 2.0.2) — the classic engine —
+	// as the neutral core/test baseline. The UI's "enter sandbox" entry points bump
+	// a FRESH (non-imported) sandbox to engine 2 (Box2D 3) via createSandboxState()
+	// below; imports pin their own engine (IB3 -> 1, old codes -> 0).
 	// Seed the (disabled) water surface at the ground top so a first enable of
 	// water doesn't submerge the terrain.
 	return {

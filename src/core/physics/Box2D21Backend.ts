@@ -285,6 +285,18 @@ export class Box2D21Backend implements PhysicsBackend<b2World, b2Body, b2Fixture
 		return { x: p.x, y: p.y, angle: body.GetAngle() };
 	}
 
+	setBodyTransform(body: b2Body, x: number, y: number, angle: number): void {
+		// 2.1a renamed 2.0's SetXForm; SetTransform(xf) just forwards to this.
+		body.SetPositionAndAngle(new b2Vec2(x, y), angle);
+	}
+
+	shapeLocalCenter(shape: b2Fixture): Vec2Like {
+		// The stored handle is the fixture; the circle's body-local centre is m_p on
+		// the b2CircleShape behind it. Non-circles (polygons) have no m_p → (0,0).
+		const cs = shape.GetShape() as unknown as { m_p?: Vec2Like };
+		return cs && cs.m_p ? { x: cs.m_p.x, y: cs.m_p.y } : { x: 0, y: 0 };
+	}
+
 	forEachBody(world: b2World, cb: (body: b2Body) => void): void {
 		for (let b: b2Body | null = world.GetBodyList(); b; b = b.GetNext()) cb(b);
 	}
