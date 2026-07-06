@@ -379,6 +379,10 @@ const mobileMenu = computed<DropdownMenuItem[][]>(() => [
 	box-shadow: inset 0 1px 0 rgba(183, 170, 227, 0.18);
 	font-family: Arial, Helvetica, sans-serif;
 	flex-shrink: 0;
+	/* Raised above the toolbar overlay so the full-width tool panel tucks UNDER
+	   the menu strip (legacy MainEditPanel underlapped the DropDownMenu). */
+	position: relative;
+	z-index: 30;
 }
 
 .logo {

@@ -69,3 +69,28 @@ export function ibBtnVars(family: ButtonFamily): Record<string, string> {
 		"--ib-btn-click": `url(${t.click})`,
 	};
 }
+
+/**
+ * Every button/panel texture URL, across ALL states (base + rollover + click for
+ * each button family, plus the nine-patch window frames). The rollover/click
+ * textures are only referenced by CSS on :hover / :active, so the browser would
+ * otherwise fetch them on FIRST interaction — a visible flash as the glossy
+ * state pops in. preloadUiAssets() warms the HTTP/image cache up front so every
+ * state is instant. Same-URL border-image reuses the cached decode.
+ */
+const allTextureUrls: readonly string[] = [
+	...Object.values(buttonTextures).flatMap((t) => [t.base, t.roll, t.click]),
+	...Object.values(frameTextures),
+];
+
+let preloaded = false;
+
+/** Warm the image cache for every button/panel texture (idempotent, browser-only). */
+export function preloadUiAssets(): void {
+	if (preloaded || typeof Image === "undefined") return;
+	preloaded = true;
+	for (const url of allTextureUrls) {
+		const img = new Image();
+		img.src = url;
+	}
+}

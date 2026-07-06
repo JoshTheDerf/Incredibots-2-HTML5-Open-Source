@@ -23,6 +23,7 @@ import PartInspectorFull from "./components/panels/PartInspectorFull.vue";
 import HintOverlay from "./components/HintOverlay.vue";
 import StatusBar from "./components/StatusBar.vue";
 import MobileControlPad from "./components/MobileControlPad.vue";
+import IbButton from "./components/IbButton.vue";
 import { useIsMobile } from "./useIsMobile";
 import ImportPanel from "./components/panels/ImportPanel.vue";
 import ExportPanel from "./components/panels/ExportPanel.vue";
@@ -95,23 +96,97 @@ watch(
 // MenuBar emits which panel to open.
 const activePanel = ref<PanelKey | null>(null);
 
-// On mobile the left inspector is a collapsible bottom-sheet so it doesn't
-// cover the canvas; this tracks whether that sheet is open. Desktop ignores it
-// (the inspector is always shown as the fixed left panel).
+// Whether the part inspector is showing. It is SELECTION-DRIVEN on both
+// platforms: closed by default (no part selected), opens when a part is
+// selected, closes when the selection is cleared — matching the legacy
+// PartEditWindow which only appeared once a part was picked. On DESKTOP the X
+// close button also hides it (without deselecting); re-selecting a part brings
+// it back. On MOBILE the same open/closed state drives the bottom-sheet the
+// drag handle animates.
 const inspectorOpen = ref(false);
 
-// Discoverability: on mobile the part-properties sheet is closed by default, so
-// selecting a part on desktop shows its editor but on mobile nothing appeared
-// (users couldn't find how to open properties). Auto-open the sheet when a part
-// becomes selected, and auto-close it when the selection is cleared, so tapping a
-// part reveals its properties — mirroring the desktop "select → inspector shows".
+// Selecting a part reveals its editor; clearing the selection hides it. Watch
+// the selection identity (not just length) so switching between two single
+// parts still re-opens the panel after an X-close.
 watch(
-	() => game.edit.selection.length,
-	(count) => {
-		if (!isMobile.value) return;
-		inspectorOpen.value = count > 0;
+	() => game.edit.selection.join(","),
+	(ids) => {
+		inspectorOpen.value = ids.length > 0;
 	},
 );
+
+// ---- Mobile bottom-sheet drag handle ----------------------------------------
+// A pink IB button straddling the top edge of the sheet acts as the handle: the
+// user flick-drags it — down to close, up to open. When closed the sheet is
+// translated so only that button peeks above the bottom edge (CSS
+// calc(100% - PEEK_H)), so it's always grabbable. During an active drag we
+// track the finger with an inline transform (no transition); on release, flick
+// velocity decides open/closed (falling back to position), then we hand the
+// transform back to the CSS class so the snap animates. A near-stationary press
+// (a tap, not a drag) just toggles.
+const inspectorEl = ref<HTMLElement | null>(null);
+const dragOffset = ref<number | null>(null); // px translateY while dragging; null = idle
+const PEEK_H = 34; // visible strip when closed — must match the CSS closed transform
+const FLICK = 0.4; // px/ms — above this the drag direction wins over position
+const TAP_SLOP = 6; // px of movement under which the press counts as a tap
+
+const dragStyle = computed(() =>
+	dragOffset.value == null
+		? undefined
+		: { transform: `translateY(${dragOffset.value}px)`, transition: "none" },
+);
+
+let dragStartY = 0;
+let dragBaseOffset = 0;
+let dragMaxOffset = 0;
+let dragMoved = 0;
+let lastMoveY = 0;
+let lastMoveT = 0;
+let dragVelocity = 0;
+
+function onHandlePointerDown(e: PointerEvent): void {
+	const el = inspectorEl.value;
+	if (!el) return;
+	dragMaxOffset = Math.max(0, el.offsetHeight - PEEK_H);
+	dragBaseOffset = inspectorOpen.value ? 0 : dragMaxOffset;
+	dragStartY = e.clientY;
+	lastMoveY = e.clientY;
+	lastMoveT = e.timeStamp;
+	dragVelocity = 0;
+	dragMoved = 0;
+	dragOffset.value = dragBaseOffset;
+	(e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+	window.addEventListener("pointermove", onHandlePointerMove);
+	window.addEventListener("pointerup", onHandlePointerUp);
+	window.addEventListener("pointercancel", onHandlePointerUp);
+	e.preventDefault();
+}
+
+function onHandlePointerMove(e: PointerEvent): void {
+	dragMoved = Math.max(dragMoved, Math.abs(e.clientY - dragStartY));
+	let off = dragBaseOffset + (e.clientY - dragStartY);
+	off = Math.min(dragMaxOffset, Math.max(0, off));
+	const dt = e.timeStamp - lastMoveT;
+	if (dt > 0) dragVelocity = (e.clientY - lastMoveY) / dt;
+	lastMoveY = e.clientY;
+	lastMoveT = e.timeStamp;
+	dragOffset.value = off;
+	e.preventDefault();
+}
+
+function onHandlePointerUp(): void {
+	window.removeEventListener("pointermove", onHandlePointerMove);
+	window.removeEventListener("pointerup", onHandlePointerUp);
+	window.removeEventListener("pointercancel", onHandlePointerUp);
+	const off = dragOffset.value ?? 0;
+	let open: boolean;
+	if (dragMoved < TAP_SLOP) open = !inspectorOpen.value; // tap toggles
+	else if (dragVelocity <= -FLICK) open = true;
+	else if (dragVelocity >= FLICK) open = false;
+	else open = off < dragMaxOffset / 2;
+	inspectorOpen.value = open;
+	dragOffset.value = null; // CSS class transform takes over (animated snap)
+}
 
 function openPanel(panel: PanelKey): void {
 	activePanel.value = panel;
@@ -192,7 +267,7 @@ onBeforeUnmount(() => {
 				     (running/paused) surfaces here; App opens ExportPanel in replay
 				     mode. -->
 				<div class="toolbar-overlay">
-					<ToolPalette @save-replay="openPanel('exportReplay')" />
+					<ToolPalette @save-replay="openPanel('exportReplay')" @open="openPanel" />
 				</div>
 
 				<!-- Part-edit panel pinned to the LEFT, under the toolbar,
@@ -200,20 +275,26 @@ onBeforeUnmount(() => {
 				     mobile it becomes a collapsible bottom-sheet (see .is-mobile
 				     styles) toggled by the button below, so it doesn't cover the
 				     canvas; desktop keeps the fixed left panel unchanged. -->
-				<div v-if="editing" class="inspector-overlay" :class="{ open: !isMobile || inspectorOpen }">
-					<PartInspectorFull />
-				</div>
-
-				<!-- Mobile-only toggle for the inspector bottom-sheet. -->
-				<button
-					v-if="isMobile && editing"
-					type="button"
-					class="inspector-toggle"
-					:aria-expanded="inspectorOpen"
-					@click="inspectorOpen = !inspectorOpen"
+				<div
+					v-if="editing"
+					ref="inspectorEl"
+					class="inspector-overlay"
+					:class="{ open: inspectorOpen, 'is-mobile': isMobile }"
+					:style="dragStyle"
 				>
-					{{ inspectorOpen ? "Close Part Editor ▾" : "Part Editor ▴" }}
-				</button>
+					<!-- Mobile: a pink IB button (3/4 screen width) straddling the top
+					     edge of the sheet is the drag handle. Flick down to close, up to
+					     open (tap toggles). Peeks above the bottom edge when closed. -->
+					<IbButton
+						v-if="isMobile"
+						family="pink"
+						label="⇕ Properties"
+						class="sheet-handle"
+						:aria-expanded="inspectorOpen"
+						@pointerdown="onHandlePointerDown"
+					/>
+					<PartInspectorFull @close="inspectorOpen = false" />
+				</div>
 
 				<!-- On-screen key controls (mobile + sim running only). -->
 				<MobileControlPad v-if="showControlPad" />
@@ -433,28 +514,35 @@ onBeforeUnmount(() => {
 	white-space: nowrap;
 }
 
-/* Toolbar overlay — pinned across the top, overlaying the canvas. */
+/* Toolbar overlay — the legacy MainEditPanel was a FULL-WIDTH bar pinned to the
+   very top, tucked UNDER the menu strip. So span the full width and pull the top
+   a few px up behind the menu bar (which is raised above it via z-index in
+   MenuBar.vue) so the toolbar underlaps the menu instead of floating below it. */
 .toolbar-overlay {
 	position: absolute;
-	top: 6px;
-	left: 6px;
-	right: 6px;
+	top: -14px;
+	left: 0;
+	right: 0;
 	z-index: 15;
 	pointer-events: auto;
 }
 
 /* Part-edit panel overlay — pinned to the left edge, starting just below the
-   toolbar (legacy PartEditWindow y=90), running down the side.
-   top clears the toolbar (top:6px + ToolPalette height) with an ~8-12px gap so
-   the inspector no longer tucks under the toolbar on desktop. Mobile overrides
-   this below (.editor-shell.is-mobile .inspector-overlay). */
+   toolbar (legacy PartEditWindow y=90), running down the side. top clears the
+   now-shorter toolbar (pulled up to underlap the menu) with a small gap. Mobile
+   overrides this below (.editor-shell.is-mobile .inspector-overlay). */
 .inspector-overlay {
 	position: absolute;
-	top: 124px;
+	top: 96px;
 	left: 6px;
 	bottom: 8px;
 	z-index: 14;
 	pointer-events: auto;
+}
+
+/* Desktop: no part selected (or X-closed) hides the panel entirely. */
+.inspector-overlay:not(.is-mobile):not(.open) {
+	display: none;
 }
 
 .tutorial-overlay {
@@ -483,14 +571,12 @@ onBeforeUnmount(() => {
 
 /* ---- Mobile (<=768px / coarse pointer) — desktop above is unchanged ---- */
 
-/* The toolbar overlay can be wide; on mobile let it scroll horizontally and hug
-   the top edge without spilling under the menu. */
+/* On mobile the palette wraps (no horizontal scroll needed); keep it full width
+   and pulled up to underlap the menu strip, the same way desktop does. */
 .editor-shell.is-mobile .toolbar-overlay {
-	top: 2px;
-	left: 2px;
-	right: 2px;
-	overflow-x: auto;
-	-webkit-overflow-scrolling: touch;
+	top: -14px;
+	left: 0;
+	right: 0;
 }
 
 /* Inspector becomes a bottom-sheet that slides up from the bottom edge, so it
@@ -502,42 +588,56 @@ onBeforeUnmount(() => {
 	right: 0;
 	bottom: 0;
 	/* Keep the properties sheet low — it should cover roughly the bottom third,
-	   not rise into the play area (dvh so it tracks the visible mobile viewport). */
-	max-height: 40dvh;
-	transform: translateY(100%);
+	   not rise into the play area (dvh so it tracks the visible mobile viewport).
+	   The pink handle straddles the top and adds a little height on top. */
+	max-height: calc(40dvh + 30px);
+	/* Closed: slide down until only the ~34px handle peeks above the bottom edge
+	   (PEEK_H in the script — keep in sync). Open: fully up. During a drag an
+	   inline transform overrides both (see dragStyle). */
+	transform: translateY(calc(100% - 34px));
 	transition: transform 0.2s ease;
-	overflow-y: auto;
-	-webkit-overflow-scrolling: touch;
-	background: rgba(36, 41, 48, 0.35);
+	/* Column so the handle sits above the panel; centered so the 75vw button is
+	   horizontally centered. overflow visible lets the handle overlap the panel
+	   top — the panel scrolls internally (PartInspectorFull .inspector-body). */
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	overflow: visible;
+	background: transparent;
 }
 
 .editor-shell.is-mobile .inspector-overlay.open {
 	transform: translateY(0);
 }
 
+/* The panel fills the remaining sheet height and scrolls inside itself. */
+.editor-shell.is-mobile .inspector-overlay :deep(.inspector) {
+	align-self: stretch;
+	flex: 1;
+	min-height: 0;
+}
+
+/* Pink IB drag handle: 3/4 of the screen width, short, centered, overlapping
+   the top edge of the panel (negative margin pulls the panel up under it). It
+   owns the vertical drag, so disable browser touch panning on it. */
+.editor-shell.is-mobile .sheet-handle {
+	width: 75vw;
+	height: 30px;
+	min-height: 30px;
+	padding: 0;
+	/* Sit lower onto the panel so the button overlaps its top border more
+	   (~8px more than the previous -12px). */
+	margin-bottom: -20px;
+	z-index: 2;
+	font-size: 13px;
+	touch-action: none;
+	-webkit-tap-highlight-color: transparent;
+}
+
 /* On mobile the inspector aside should span the sheet width rather than the
    fixed 150px left strip. */
 .editor-shell.is-mobile .inspector-overlay :deep(.inspector) {
 	width: 100%;
-}
-
-/* Toggle button for the bottom-sheet — a small tab pinned bottom-left. */
-.inspector-toggle {
-	position: absolute;
-	left: 8px;
-	bottom: 8px;
-	z-index: 26;
-	min-height: 40px;
-	padding: 0 14px;
-	border: 2px solid rgba(183, 170, 227, 0.7);
-	border-radius: 10px;
-	background: rgba(36, 41, 48, 0.85);
-	color: #fdf9ea;
-	font-family: Arial, Helvetica, sans-serif;
-	font-size: 13px;
-	font-weight: bold;
-	touch-action: manipulation;
-	-webkit-tap-highlight-color: transparent;
 }
 
 /* Move the tutorial bubble in from the desktop 170px left offset when narrow. */
