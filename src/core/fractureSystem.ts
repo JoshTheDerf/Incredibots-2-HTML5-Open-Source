@@ -83,8 +83,6 @@ export const FRACTURE_SHATTER_ELONGATION = 1.7;
 export const FRACTURE_SHATTER_JITTER = 0.28;
 /** Blob rim vertex count used to carve the shattered region out of the object. */
 const FRACTURE_BLOB_SEGMENTS = 18;
-/** Fragment collision groups start here (a large negative, clear of structure groups). */
-const FRAGMENT_GROUP_BASE = -1000000;
 
 /** A plain 2D point used throughout the geometry routines. */
 interface Pt {
@@ -247,58 +245,6 @@ function interiorPointNear(p: Pt, ring: Pt[]): Pt {
 	return { x: mx / n, y: my / n };
 }
 
-/**
- * True iff a CONVEX cell lies wholly within `ring`. A Voronoi cell is convex, so
- * it is contained iff every vertex is — but a vertex can sit exactly ON the ring
- * boundary (coincident with a ring vertex/edge), where even-odd pointInPolygon is
- * undefined; we therefore test each vertex nudged a hair toward the cell centroid
- * (still inside the convex cell), which is unambiguously interior for a contained
- * cell and unambiguously exterior for one poking into a notch. This is the
- * concave-parent containment guard (option (c)): rejecting a cell that straddles a
- * notch beats keeping it protruding, since a robust concave polygon∩polygon clip
- * isn't available here.
- */
-function convexCellInside(cell: Pt[], ring: Pt[]): boolean {
-	const c = polygonCentroid(cell);
-	// (1) every cell vertex must be inside the ring (nudged inward to dodge the
-	// boundary-coincidence ambiguity of even-odd pointInPolygon).
-	for (const v of cell) {
-		const sx = v.x + (c.x - v.x) * 1e-3;
-		const sy = v.y + (c.y - v.y) * 1e-3;
-		if (!pointInPolygon(sx, sy, ring)) return false;
-	}
-	// (2) no ring vertex may lie inside the cell — a reflex NOTCH tip poking into
-	// the convex cell means the cell spans the notch even with all its own vertices
-	// inside the ring.
-	for (const v of ring) {
-		if (pointInPolygon(v.x, v.y, cell)) return false;
-	}
-	// (3) no cell edge may properly cross a ring edge — a cell edge can slice across
-	// a notch opening while every endpoint stays inside the ring and no ring vertex
-	// falls inside the cell. `properCross` is strict (interior/interior only), so a
-	// shared vertex where a cell corner touches the ring boundary is not a false hit.
-	const cn = cell.length;
-	const rn = ring.length;
-	for (let i = 0; i < cn; i++) {
-		const a1 = cell[i];
-		const a2 = cell[(i + 1) % cn];
-		for (let j = 0; j < rn; j++) {
-			if (properCross(a1, a2, ring[j], ring[(j + 1) % rn])) return false;
-		}
-	}
-	return true;
-}
-
-/** Strict proper (interior/interior) segment crossing; collinear/touching = false. */
-function properCross(a1: Pt, a2: Pt, b1: Pt, b2: Pt): boolean {
-	const d = (p: Pt, q: Pt, r: Pt): number => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
-	const d1 = d(b1, b2, a1);
-	const d2 = d(b1, b2, a2);
-	const d3 = d(a1, a2, b1);
-	const d4 = d(a1, a2, b2);
-	return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
-}
-
 /** Andrew's monotone-chain convex hull (CCW, no collinear points). */
 function convexHull(pts: Pt[]): Pt[] {
 	const p = pts.slice().sort((a, b) => (a.x === b.x ? a.y - b.y : a.x - b.x));
@@ -340,6 +286,30 @@ function clipHalfPlane(poly: Pt[], ax: number, ay: number, nx: number, ny: numbe
 			const t = dc / (dc - dn);
 			out.push({ x: cur.x + t * (nxt.x - cur.x), y: cur.y + t * (nxt.y - cur.y) });
 		}
+	}
+	return out;
+}
+
+/**
+ * Clip a subject polygon (which MAY be concave) to a CONVEX clip polygon via
+ * Sutherland–Hodgman — one half-plane clip per convex-clip edge — returning
+ * subject ∩ clip as a single ring (possibly empty / degenerate). S–H requires
+ * only that the CLIP polygon be convex (the subject may be concave), which is
+ * exactly our case: the clip is a convex Voronoi cell and the subject is the
+ * (possibly concave) shape ring. Because the Voronoi cells tile the plane, the
+ * union of (ring ∩ cell) over all cells reconstitutes the whole ring — so
+ * clipping (rather than rejecting) straddling cells conserves the shape's area.
+ * `clip` must be wound CCW (convexHull / voronoiCell output is).
+ */
+function clipToConvex(subject: Pt[], clip: Pt[]): Pt[] {
+	let out = subject;
+	const n = clip.length;
+	for (let i = 0; i < n && out.length >= 3; i++) {
+		const a = clip[i];
+		const b = clip[(i + 1) % n];
+		// CCW clip edge a→b: interior is to its LEFT, so the OUTWARD normal is the
+		// edge vector rotated −90° = (dy, −dx). clipHalfPlane keeps (p−a)·n ≤ 0.
+		out = clipHalfPlane(out, a.x, a.y, b.y - a.y, -(b.x - a.x));
 	}
 	return out;
 }
@@ -424,16 +394,15 @@ export function shatter(ring: Pt[], impact: Pt, fragmentCount: number, rand: () 
 			continue;
 		}
 		// Concave parent: a cell built over the convex HULL can straddle a notch and
-		// protrude into empty space (the notch), where it would gain phantom material
-		// and overlap its neighbours. Keeping it on a centroid-only test (the old
-		// behaviour) let such cells through. We instead REJECT any cell not wholly
-		// inside the true ring (option (c): a robust concave polygon∩polygon clip is
-		// not cleanly available — Greiner–Hormann intersection here mis-classifies the
-		// notch region — so we accept fewer, correct fragments over protruding ones).
-		// LIMITATION: the notch's rim is left slightly under-fragmented (the straddling
-		// cells' in-ring slivers are dropped rather than kept). Acceptable for the
-		// prototype; the bulk still shatters into contained fragments.
-		if (convexCellInside(cell, ring)) fragments.push(cell);
+		// protrude into empty space. Rather than DROP such a cell (the old behaviour,
+		// which discarded most of a concave shape's area — its cells nearly all touch
+		// a notch), CLIP it to the true ring (cell ∩ ring). Because the Voronoi cells
+		// tile the hull ⊇ ring, the clipped fragments tile the whole ring, conserving
+		// the shape's area. The clip can be concave or (rarely, for a cell spanning a
+		// notch) yield a self-touching ring — buildFragment's isSimple gate drops the
+		// rare degenerate one; the vast majority are clean.
+		const clipped = clipToConvex(ring, cell);
+		if (clipped.length >= 3 && polygonArea(clipped) >= FRACTURE_MIN_FRAGMENT_AREA) fragments.push(clipped);
 	}
 	return fragments;
 }
@@ -524,11 +493,14 @@ function localizedShatter(
 			if (pointInPolygon(c.x, c.y, worldRing) && pointInPolygon(c.x, c.y, blob)) shards.push(cell);
 			continue;
 		}
-		// Concave object: reject any shard not wholly inside the ring (same option (c)
-		// containment guard as shatter) so a shard can't reach across a notch; keep
-		// the contained ones whose centre still lies in the scar (blob).
-		const c = polygonCentroid(cell);
-		if (convexCellInside(cell, worldRing) && pointInPolygon(c.x, c.y, blob)) shards.push(cell);
+		// Concave object: CLIP the shard to the true ring (cell ∩ ring) so it can't
+		// reach across a notch, keeping it when its centre still lies in the scar
+		// (blob). Clipping (vs the old reject-if-not-contained) preserves the scar's
+		// in-ring area instead of dropping straddling cells wholesale.
+		const clipped = clipToConvex(worldRing, cell);
+		if (clipped.length < 3 || polygonArea(clipped) < FRACTURE_MIN_FRAGMENT_AREA) continue;
+		const c = polygonCentroid(clipped);
+		if (pointInPolygon(c.x, c.y, blob)) shards.push(clipped);
 	}
 	return { shards, remaining, maxR };
 }
@@ -591,7 +563,6 @@ export class FractureSystem {
 	// FRACTURE_COOLDOWN_FRAMES). Keeps full-fragility bulk chippable indefinitely
 	// without pulverizing itself the instant it's carved.
 	private cooldown = new Map<ShapePart, number>();
-	private groupCounter = 0;
 
 	/** Clear all per-run state (call on play + reset). */
 	public reset(): void {
@@ -599,11 +570,6 @@ export class FractureSystem {
 		this.shapeToPart.clear();
 		this.impacts.clear();
 		this.cooldown.clear();
-		this.groupCounter = 0;
-	}
-
-	private nextGroup(): number {
-		return FRAGMENT_GROUP_BASE - this.groupCounter++;
 	}
 
 	/** Basic fracture eligibility (independent of a captured outline). */
@@ -645,19 +611,29 @@ export class FractureSystem {
 		}
 	}
 
-	/** Capture a part's rest body-local outline (once); no-op if already captured. */
+	/**
+	 * Capture a part's rest body-local outline (once); no-op if already captured.
+	 *
+	 * Called at the part's REST pose: for a state.parts part, the first beginFrame
+	 * runs BEFORE the first step, so the body still sits at its Init origin and the
+	 * editWorldOutline (which is drawn in EDIT space — it reflects part.angle, NOT
+	 * the live simulated body angle, which the ShapePart.angle field never tracks)
+	 * agrees with the live transform. We subtract the body position and un-rotate by
+	 * its angle so this composes to identity with fracturePart's
+	 * world = xf.position + R(xf.angle)·local reconstruction.
+	 *
+	 * FRAGMENTS do NOT use this path — they are seeded eagerly at creation via
+	 * seedRestOutline (their capture would otherwise be DEFERRED past a cooldown, by
+	 * which point the body has moved/rotated in the sim while editWorldOutline still
+	 * returns the frozen edit-pose outline — the two frames disagree and re-fracture
+	 * shatters a phantom shape far from where the fragment is drawn).
+	 */
 	private captureRest(part: ShapePart, backend: PhysicsBackend): void {
 		if (this.bodyLocal.has(part)) return;
 		const body = part.GetBody();
 		if (!body) return;
 		const world = editWorldOutline(part);
 		if (!world) return;
-		// Store the outline in the body's LOCAL frame: subtract the body position AND
-		// un-rotate by the body's current angle (inverse rotation). Capture can be
-		// DEFERRED (see FRACTURE_COOLDOWN_FRAMES in beginFrame) while a fragment falls
-		// and rotates, so the pose here may not be angle 0 — inverse-rotating cancels
-		// whatever angle is present. This composes to identity with fracturePart, which
-		// reconstructs world = xf.position + R(xf.angle)·local.
 		const xf = backend.bodyTransform(body);
 		const cos = Math.cos(xf.angle);
 		const sin = Math.sin(xf.angle);
@@ -669,6 +645,21 @@ export class FractureSystem {
 				return { x: dx * cos + dy * sin, y: -dx * sin + dy * cos };
 			}),
 		);
+	}
+
+	/**
+	 * Seed a freshly-built fragment's rest body-local outline DIRECTLY from its
+	 * just-Init'd body-local geometry (Polygon.GetLocalVertices — the verts relative
+	 * to the fragment body's origin, angle already 0). This is exactly what
+	 * captureRest would produce at the fragment's true rest pose, but captured NOW,
+	 * before any step moves/rotates the body — so a later re-fracture reconstructs
+	 * the fragment's world outline from its LIVE transform correctly (fixes the
+	 * sub-fracture-shatters-a-phantom-shape bug). No-op if already captured.
+	 */
+	private seedRestOutline(frag: Polygon): void {
+		if (this.bodyLocal.has(frag)) return;
+		const local = frag.GetLocalVertices();
+		if (local && local.length >= 3) this.bodyLocal.set(frag, local.map((v) => ({ x: v.x, y: v.y })));
 	}
 
 	/**
@@ -811,22 +802,32 @@ export class FractureSystem {
 		// entry can't re-attribute a later impact to it.
 		this.bodyLocal.delete(part);
 
-		const group = this.nextGroup();
 		const impactRadius = Math.hypot(centre.x - impact.x, centre.y - impact.y) + 1e-6;
 
 		const fragments: ShapePart[] = [];
 		for (const piece of pieces) {
-			const frag = this.buildFragment(piece.ring, part, piece.fragility, group, piece.isStatic, allocId);
+			const frag = this.buildFragment(piece.ring, part, piece.fragility, piece.isStatic, allocId);
 			if (!frag) continue;
 			frag.Init(world as never);
 			const fbody = frag.GetBody();
 			if (!fbody) continue;
 
-			// Pieces share the negative group so a shatter's overlapping seams don't
-			// explode apart via overlap resolution — they still collide with the world
-			// / other robots. Small (always-dynamic) shards get an outward kick (bigger
-			// near the impact); a dynamic bulk coasts with the parent's velocity; a
-			// STATIC (fixated) bulk stays put (no impulse).
+			// A fragment behaves like any free-standing body: it collides with the
+			// world, robots, AND its sibling fragments (groupIndex 0 -> the layer
+			// category/mask bits decide, exactly like a separate object). Freshly-cut
+			// Voronoi pieces merely TOUCH along shared seams (they tile, not overlap),
+			// so they settle rather than explode. Small (always-dynamic) shards get an
+			// outward kick (bigger near the impact); a dynamic bulk coasts with the
+			// parent's velocity; a STATIC (fixated) bulk stays put (no impulse).
+			//
+			// Capture this fragment's rest outline NOW, from its just-Init'd body-local
+			// geometry, so a later re-fracture reconstructs its world outline from the
+			// LIVE body transform correctly. (Deferring capture to a post-cooldown
+			// beginFrame would read the frozen edit-pose outline against a MOVED body
+			// transform — the two frames disagree, shattering a phantom shape far from
+			// where the fragment is drawn. Seeding here composes cleanly with
+			// fracturePart's world = xf.position + R(xf.angle)·local reconstruction.)
+			this.seedRestOutline(frag);
 			if (!piece.isStatic) {
 				const fc = polygonCentroid(piece.ring);
 				let vx = parentVel.x;
@@ -858,7 +859,6 @@ export class FractureSystem {
 		cell: Pt[],
 		parent: ShapePart,
 		fragility: number,
-		group: number,
 		isStatic: boolean,
 		allocId: () => number,
 	): Polygon | null {
@@ -892,8 +892,12 @@ export class FractureSystem {
 		// bodies overwhelms engine 0's (Box2D 2.0.2) TOI solver and freezes the sim
 		// (engine 2 handled it fine); non-bullet fragments fixed that.
 		frag.isEditable = false;
-		// Distinct negative group so a shatter's shards don't collide with each other.
-		frag.m_collisionGroup = group;
+		// groupIndex 0: a fragment is a free-standing body, so it collides with the
+		// world, robots, AND its sibling fragments per the layer category/mask bits —
+		// exactly like any separate object. (A shared NEGATIVE group would make same-
+		// group fixtures NEVER collide — b2ContactFilter returns groupIndex>0 for equal
+		// nonzero groups — which is why fragments used to pass through each other.)
+		frag.m_collisionGroup = 0;
 		frag.id = allocId();
 		return frag;
 	}

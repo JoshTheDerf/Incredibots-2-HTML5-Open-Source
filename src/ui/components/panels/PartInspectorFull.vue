@@ -27,6 +27,12 @@ import { ref } from "vue";
 
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
 
+// Desktop-only "X" close button (legacy PartEditWindow m_backButton — a
+// GuiButton.X at the top-right of every panel whose handler hid the window
+// without clearing the selection). The parent (App.vue) owns the inspector's
+// open/close state, so we just emit; on mobile the drag handle replaces it.
+const emit = defineEmits<{ close: [] }>();
+
 const game = useGameStore();
 
 // Mobile gate for the density pass. Desktop layout is unchanged; on mobile the
@@ -158,6 +164,15 @@ const advancedOpen = ref(false);
 			<div class="inspector-header">
 				<span class="title">{{ isMultiSelect ? "Multiple Parts" : headerTitle }}</span>
 				<span v-if="hasSelection" class="badge">{{ selectionCount }}</span>
+				<!-- Legacy X close button (top-right); desktop only. Hides the panel
+				     without deselecting — the drag handle replaces it on mobile. -->
+				<IbButton
+					v-if="!isMobile"
+					family="x"
+					label="X"
+					class="close-btn"
+					@click="emit('close')"
+				/>
 			</div>
 
 			<div class="inspector-body">
@@ -244,12 +259,27 @@ const advancedOpen = ref(false);
 }
 
 .inspector-header {
+	position: relative;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	gap: 5px;
 	padding: 2px 4px 6px;
 	flex-shrink: 0;
+}
+
+/* Legacy X close button pinned to the header's top-right (PartEditWindow put it
+   at x=90,y=-5). Small square glossy X-family pill; the border-image scales. */
+.close-btn {
+	position: absolute;
+	top: -2px;
+	right: 0;
+	width: 26px;
+	height: 24px;
+	min-width: 0;
+	padding: 0;
+	font-size: 12px;
+	line-height: 1;
 }
 
 .title {

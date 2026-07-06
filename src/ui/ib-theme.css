@@ -21,7 +21,7 @@ body,
 	--ib-purple-lighter: #b7aae3;
 	--ib-peach: #feb584;
 	--ib-muted: #4c3d57;
-	--ib-label: #573d40; /* button label text */
+	--ib-label: #5e6068; /* button label text — mid grey (was maroon #573d40) */
 	--ib-page-bg: #686d77;
 	--ib-play-bg: #9ea2c2;
 }

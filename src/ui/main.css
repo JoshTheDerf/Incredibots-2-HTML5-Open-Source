@@ -96,8 +96,12 @@
 	}
 
 	/* Select / SelectMenu / DropdownMenu triggers render `base` as a <button>;
-	   give them the same cream field as inputs so the whole form set matches. */
-	& button[data-slot="base"] {
+	   give them the same cream field as inputs so the whole form set matches.
+	   EXCEPT the top MenuBar's File/Edit/… triggers (.menu-trigger): those live
+	   on the dark chrome strip, not in a form, and own their light-on-dark ghost
+	   styling in MenuBar.vue — the cream field here would paint them as white
+	   pills with dark text, clashing with the dark bar. */
+	& button[data-slot="base"]:not(.menu-trigger) {
 		background-color: var(--ib-cream);
 		color: var(--ib-dark);
 		font-family: Arial, Helvetica, sans-serif;
