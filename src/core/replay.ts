@@ -55,6 +55,13 @@ export interface CameraMovement {
 	y: number;
 	/** physScale (world→screen scale) at capture time. */
 	scale: number;
+	/**
+	 * IB3 replays only: this movement marks the camera focus BREAKING (the user
+	 * cleared/lost the focus part). After it, playback stops live focus-following
+	 * and honors the recorded offsets (IB3 Replay.SyncCamera :125-127). Absent /
+	 * false for native IB2 replays, which record a dense per-frame camera stream.
+	 */
+	brokeFocus?: boolean;
 }
 
 /**
@@ -107,6 +114,14 @@ export interface ReplayData {
 	 * legacy exports) default to 0, the classic engine (see replaySerialization).
 	 */
 	physicsEngine?: number;
+	/**
+	 * IB3 replays only: play the camera by LIVE-FOLLOWING the camera-focus part
+	 * each frame (IB3 records a sparse camera stream and relies on the live follow
+	 * during playback), honoring `brokeFocus` markers in cameraMovements. Native
+	 * IB2 replays leave this false and drive the camera purely from the dense
+	 * recorded stream.
+	 */
+	followCameraFocus?: boolean;
 	/**
 	 * For engine 2 (Box2D v3) only: the box2d3-wasm build version the replay was
 	 * recorded on (E3-4). v3 promises deterministic results only for a fixed
@@ -423,15 +438,15 @@ export function syncReplay(
 	syncPoint: ReplaySyncPoint,
 	bodies: BodyLike[],
 	cannonballs: BodyLike[],
-	vec: (x: number, y: number) => Vec2Like,
+	setXf: (body: BodyLike, x: number, y: number, angle: number) => void,
 ): void {
 	for (let i = 0; i < bodies.length; i++) {
-		bodies[i].SetXForm(syncPoint.positions[i], syncPoint.angles[i]);
+		setXf(bodies[i], syncPoint.positions[i].x, syncPoint.positions[i].y, syncPoint.angles[i]);
 	}
 	for (let i = 0; i < cannonballs.length; i++) {
-		cannonballs[i].SetXForm(syncPoint.cannonballPositions[i], 0);
+		const c = syncPoint.cannonballPositions[i];
+		if (c) setXf(cannonballs[i], c.x, c.y, 0);
 	}
-	void vec;
 }
 
 /**
@@ -448,7 +463,7 @@ export function syncReplay2(
 	splines: ReplaySplines,
 	bodies: BodyLike[],
 	cannonballs: BodyLike[],
-	vec: (x: number, y: number) => Vec2Like,
+	setXf: (body: BodyLike, x: number, y: number, angle: number) => void,
 ): void {
 	const t = frame - syncPoint1.frame;
 	for (let i = 0; i < bodies.length; i++) {
@@ -463,11 +478,17 @@ export function syncReplay2(
 			t *
 				(splines.angles[1][segmentIndex][i] +
 					t * (splines.angles[2][segmentIndex][i] + t * splines.angles[3][segmentIndex][i]));
-		bodies[i].SetXForm(vec(x, y), angle);
+		setXf(bodies[i], x, y, angle);
 	}
 	const frameDiff = syncPoint2.frame - syncPoint1.frame;
 	for (let i = 0; i < cannonballs.length; i++) {
-		if (syncPoint1.cannonballPositions.length > i) {
+		// Both branches index into syncPoint*.cannonballPositions; a
+		// truncated/corrupt sync point can carry fewer cannonballs than the live
+		// array, which would pass undefined to SetXForm and crash. Interpolation
+		// needs BOTH endpoints; the snap fallback needs syncPoint2. Skip any
+		// cannonball an in-range position can't be found for (in-range behavior
+		// is unchanged).
+		if (syncPoint1.cannonballPositions.length > i && syncPoint2.cannonballPositions.length > i) {
 			const newX =
 				(syncPoint1.cannonballPositions[i].x * (syncPoint2.frame - frame) +
 					syncPoint2.cannonballPositions[i].x * (frame - syncPoint1.frame)) /
@@ -476,9 +497,10 @@ export function syncReplay2(
 				(syncPoint1.cannonballPositions[i].y * (syncPoint2.frame - frame) +
 					syncPoint2.cannonballPositions[i].y * (frame - syncPoint1.frame)) /
 				frameDiff;
-			cannonballs[i].SetXForm(vec(newX, newY), 0);
-		} else {
-			cannonballs[i].SetXForm(syncPoint2.cannonballPositions[i], 0);
+			setXf(cannonballs[i], newX, newY, 0);
+		} else if (syncPoint2.cannonballPositions.length > i) {
+			const c = syncPoint2.cannonballPositions[i];
+			setXf(cannonballs[i], c.x, c.y, 0);
 		}
 	}
 }
@@ -556,7 +578,7 @@ export function replayUpdate(session: ReplaySession, frame: number): ReplayTick 
 		if (frame >= data.syncPoints[session.syncPointIndex].frame) {
 			tick.sync = { kind: "hard", syncPoint: data.syncPoints[session.syncPointIndex] };
 			session.syncPointIndex++;
-		} else {
+		} else if (session.syncPointIndex >= 1) {
 			const syncPoint1 = data.syncPoints[session.syncPointIndex - 1];
 			const syncPoint2 = data.syncPoints[session.syncPointIndex];
 			tick.sync = {
@@ -566,6 +588,14 @@ export function replayUpdate(session: ReplaySession, frame: number): ReplayTick 
 				syncPoint2,
 			};
 		}
+		// else: no preceding sync point yet — this happens only when a loaded
+		// replay's first sync point sits at frame > 0, so at earlier frames
+		// syncPointIndex is still 0. Interpolating would produce segmentIndex -1
+		// and index syncPoints[-1] (undefined), crashing the splines downstream.
+		// Skip the sync until we reach the first sync point (which then hard-syncs),
+		// mirroring the null-sync case when there are no sync points at all. In the
+		// normal path the first sync point is at frame 0 and is consumed here as a
+		// hard sync, so this branch never fires and behavior is unchanged.
 	}
 
 	while (

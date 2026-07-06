@@ -223,7 +223,11 @@ const advancedOpen = ref(false);
    ~120px content wide, tall). App.vue positions it over the left of the
    canvas; here we just size it to the legacy width and let it fill height. */
 .inspector {
-	width: 150px;
+	/* Desktop: responsive width so the label + slider + number-input rows fit
+	   without a horizontal scrollbar, and the panel adapts to wide/small screens
+	   instead of sitting as a lost 150px strip. Mobile forces width:100% in
+	   App.vue (.editor-shell.is-mobile .inspector), so this only affects desktop. */
+	width: clamp(280px, 24vw, 360px);
 	flex-shrink: 0;
 	box-sizing: border-box;
 	display: flex;
@@ -270,9 +274,19 @@ const advancedOpen = ref(false);
 	flex: 1;
 	min-height: 0;
 	overflow-y: auto;
+	/* Never scroll horizontally — content is sized to fit the panel width. */
+	overflow-x: hidden;
 	display: flex;
 	flex-direction: column;
 	padding: 0 2px 2px;
+}
+
+/* Desktop: let child-panel sliders shrink within the row so the slider + number
+   input pair always fits the panel width (a range input's intrinsic min-width
+   would otherwise push the number field out and force a horizontal scrollbar).
+   Scoped to non-mobile so the bottom-sheet layout is untouched. */
+.inspector:not(.is-mobile) :deep(.slider) {
+	min-width: 0;
 }
 
 .empty-state {

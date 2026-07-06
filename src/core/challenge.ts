@@ -38,6 +38,7 @@ import { Rectangle } from "../Parts/Rectangle";
 import { ShapePart } from "../Parts/ShapePart";
 import { Triangle } from "../Parts/Triangle";
 import { Cannon } from "../Parts/Cannon";
+import { Polygon } from "../Parts/Polygon";
 
 // --- No-limit sentinels (Challenge.ts:22-32) ---
 // density min / joint & thruster caps use ∓Number.MAX_VALUE for "no limit";
@@ -398,7 +399,11 @@ export function checkIfPartsFit(session: ChallengeSession, parts: Part[]): boole
 			maxX = part.centerX + part.radius;
 			minY = part.centerY - part.radius;
 			maxY = part.centerY + part.radius;
-		} else if (part instanceof Rectangle || part instanceof Triangle || part instanceof Cannon) {
+		} else if (part instanceof Rectangle || part instanceof Triangle || part instanceof Cannon || part instanceof Polygon) {
+			// Polygon (from createPolygon / subtractShapes) has the same world-space
+			// GetVertices() outer ring as rect/tri/cannon; without this branch it fell
+			// to the else and kept ±MAX extents, so it "fit" any build area — bypassing
+			// the challenge build-area restriction entirely.
 			const verts = (part as unknown as { GetVertices(): { x: number; y: number }[] }).GetVertices();
 			minX = Number.MAX_VALUE;
 			minY = Number.MAX_VALUE;

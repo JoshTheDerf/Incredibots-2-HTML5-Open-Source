@@ -684,6 +684,11 @@ export class ByteArray {
 
       if (key == "") {
         var a = [];
+        // Add the array to the object reference table on DEFINITION (before its
+        // elements), matching AS3/Flash AMF3 (arrays share the object table with
+        // objects/vectors). Omitting this shifted every later reference index and
+        // made object back-references resolve to the wrong element.
+        this.objectTable.push(a as never);
 
         for (var i = 0; i < len; i++) {
           var value = this.readObject();
@@ -696,6 +701,7 @@ export class ByteArray {
 
       // mixed array
       var result = {};
+      this.objectTable.push(result);
 
       while (key != "") {
         result[key] = this.readObject();
@@ -708,13 +714,19 @@ export class ByteArray {
 
       return result;
     } else if (marker == AMF3Types.kObjectType) {
-      var o = {};
-
-      this.objectTable.push(o);
-
       var ref = this.readUInt29();
 
+      // A reference (low bit 0) must NOT allocate a new table slot — return the
+      // already-decoded object. The previous code pushed a fresh {} BEFORE this
+      // check, so every object reference added a spurious entry, shifting all
+      // later reference indices and returning the wrong object (the root cause of
+      // IB3 imports whose joints resolved to stray {x,y}/[] objects).
       if ((ref & 1) == 0) return this.objectTable[ref >> 1];
+
+      // Definition: create the object and register it BEFORE reading its
+      // properties so a self-reference inside resolves to this same instance.
+      var o = {};
+      this.objectTable.push(o);
 
       var ti = this.readTraits(ref);
       var className = ti.className;

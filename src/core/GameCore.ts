@@ -61,7 +61,7 @@ import {
 	decodeChallengeFile,
 	encodeChallenge,
 } from "./challengeSerialization";
-import { encodeReplay, decodeReplay, decodeReplayFile, decodeDemoReplay } from "./replaySerialization";
+import { encodeReplay, decodeReplay, decodeReplayFile, decodeDemoReplay, replayCodeIsIB3, replayFileIsIB3 } from "./replaySerialization";
 import type { DecodedReplay, ReplayMeta, ReplayRobot } from "./replaySerialization";
 import { EXPO_PUBLIC_EDITABLE } from "./exposure";
 import { buildTerrainParts, computeBounds, defaultWaterHeight } from "./sandboxEnvironment";
@@ -103,6 +103,7 @@ import {
 	type RecordingBuffers,
 	type ReplaySession,
 	type ReplayData,
+	type ReplaySyncPoint,
 	type BodyLike,
 	createRecording,
 	createReplaySession,
@@ -126,6 +127,7 @@ import {
 	TUTORIAL_LEVELS,
 } from "./tutorials";
 import type { TutorialState } from "./GameState";
+import { decodeIB3, decodeIB3File, type IB3ImportResult, type IB3ReplayData } from "./ib3Import";
 import { b2Vec2 as B2Vec2 } from "../Box2D";
 
 // --- Physics simulation constants, mirrored from the legacy ControllerGame ---
@@ -326,6 +328,20 @@ export class GameCore {
 	 * stepped; bodies are driven from sync points. See src/core/replay.ts.
 	 */
 	private replaySession: ReplaySession | null = null;
+	/**
+	 * Pending IB3 recorded run awaiting play-time compaction. IB3 sync points are
+	 * indexed by saved-parts order and keyed to ShapePart objects; they can only be
+	 * compacted into this app's live body order after handlePlay builds the bodies.
+	 * Set by the IB3-replay import path, consumed once in handlePlayReplay.
+	 */
+	private ib3ReplayTracks: IB3ReplayData | null = null;
+	/**
+	 * IB3 replay camera: whether the recorded run has BROKEN focus (a brokeFocus
+	 * camera movement was applied). While false and the replay follows focus,
+	 * playback live-pans to the camera-focus part each frame; once broken, the
+	 * recorded offsets own the camera. Reset at each playback start.
+	 */
+	private replayFocusBroken = false;
 	/** The active tutorial's hand-coded machine; null for non-tutorial sessions. */
 	private tutorialMachine: TutorialMachine | null = null;
 	/** Persistent level-done grid (mirrors LSOManager.IsLevelDone(0..13)). */
@@ -1169,6 +1185,14 @@ export class GameCore {
 	 */
 	async importReplay(replayStr: string): Promise<void> {
 		if (this.state.sim.phase !== "editing") return;
+		// An IB3 replay is an IB3 file, not the IB2 replayLength/robotLength format,
+		// so it can't go through the IB2 replay decoder. Decode it as IB3 and, if its
+		// recorded run read successfully, PLAY it; otherwise fall back to importing
+		// the bundled design.
+		if (await replayCodeIsIB3(replayStr)) {
+			await this.playOrLoadIB3Replay(await decodeIB3(replayStr));
+			return;
+		}
 		const decoded = await decodeReplay(replayStr);
 		this.applyImportedReplay(decoded);
 	}
@@ -1180,8 +1204,53 @@ export class GameCore {
 	 */
 	async importReplayFile(bytes: ArrayBuffer | Uint8Array): Promise<void> {
 		if (this.state.sim.phase !== "editing") return;
+		// IB3 replay file → play the recorded run (or import the design; see importReplay).
+		if (await replayFileIsIB3(bytes)) {
+			await this.playOrLoadIB3Replay(await decodeIB3File(bytes));
+			return;
+		}
 		const decoded = await decodeReplayFile(bytes);
 		this.applyImportedReplay(decoded);
+	}
+
+	/**
+	 * Apply a decoded IB3 file that arrived through the replay-import path: if it
+	 * carries a recorded run, load the design then PLAY the run; otherwise import
+	 * it as a design (same as importRobot's IB3 path). The recorded body tracks are
+	 * keyed to the imported ShapePart objects and compacted into the live body
+	 * order at play time (see handlePlayReplay / compactIB3SyncPoints).
+	 */
+	private async playOrLoadIB3Replay(result: IB3ImportResult): Promise<void> {
+		const design: DecodedRobot = { ...result.robot, ib3: result.ib3, warnings: result.warnings };
+		if (!result.replay) {
+			this.applyImportedRobot(design);
+			return;
+		}
+		// Load the design (parts + IB3 sandbox + rebuilt IB3 terrain) — the SAME part
+		// objects the tracks are keyed to — then start playback.
+		this.applyImportedRobot(design);
+		// If the load was refused (challenge gate) the sim is still editing and no
+		// parts changed; bail rather than play a mismatched scene.
+		if (this.state.sim.phase !== "editing") return;
+		const rep = result.replay;
+		const data: ReplayData = {
+			cameraMovements: rep.cameraMovements,
+			keyPresses: rep.keyPresses,
+			// Compacted at play time from the live body order (tracks are per-shape).
+			syncPoints: [],
+			numFrames: rep.numFrames,
+			version: "ib3",
+			// IB3 bots were tuned on the 2.1a engine, so play the recorded run on
+			// engine 1 for consistency. Playback is sim-free (bodies are hard-set from
+			// sync points), and the transform write now goes through the engine seam
+			// (setBodyTransform), so 2.1a's SetPositionAndAngle is used correctly.
+			physicsEngine: 1,
+			// IB3 records a SPARSE camera stream and relies on live focus-following
+			// during playback; follow the camera-focus part here (honoring brokeFocus).
+			followCameraFocus: true,
+		};
+		this.ib3ReplayTracks = rep;
+		this.dispatch({ type: "playReplay", data });
 	}
 
 	/** Shared tail of importReplay / importReplayFile (post-decode application). */
@@ -1270,14 +1339,16 @@ export class GameCore {
 	 * presses would fire text/cannon parts (KeyInput) — in the headless core we
 	 * forward them to each part's KeyInput so text/cannon parts react.
 	 */
-	private applyReplayFrame(frame: number): void {
-		if (!this.replaySession) return;
+	private applyReplayFrame(frame: number): ReturnType<typeof replayUpdate> | null {
+		if (!this.replaySession) return null;
 		const tick = replayUpdate(this.replaySession, frame);
 
 		// Camera (MoveCameraForReplay :777-790).
 		let cam = { drawXOff: this.state.camera.offsetX, drawYOff: this.state.camera.offsetY, scale: this.state.camera.scale };
 		for (const mv of tick.cameraMovements) {
 			cam = moveCameraForReplay(mv, cam);
+			// IB3: a brokeFocus movement ends live focus-following (Replay.SyncCamera).
+			if (mv.brokeFocus) this.replayFocusBroken = true;
 		}
 		if (
 			cam.drawXOff !== this.state.camera.offsetX ||
@@ -1295,9 +1366,16 @@ export class GameCore {
 		// or interpolate bodies straight from the recorded sync points.
 		const bodies = this.replayBodies();
 		const cannonballs = this.replayCannonballs();
+		// Hard-set the body transform through the engine seam: the method name
+		// differs per backend (SetXForm / SetPositionAndAngle / v3 SetTransform), so
+		// playback works on whichever engine the replay recorded (engines 0/1/2) —
+		// not just the 2.0.2 SetXForm the old duck-typed call assumed.
+		const setXf = (body: BodyLike, x: number, y: number, angle: number): void => {
+			getPhysicsBackend().setBodyTransform(body as never, x, y, angle);
+		};
 		if (tick.sync) {
 			if (tick.sync.kind === "hard") {
-				syncReplay(tick.sync.syncPoint, bodies, cannonballs, (x, y) => this.vec(x, y));
+				syncReplay(tick.sync.syncPoint, bodies, cannonballs, setXf);
 			} else if (this.replaySession.splines) {
 				syncReplay2(
 					tick.sync.segmentIndex,
@@ -1307,7 +1385,7 @@ export class GameCore {
 					this.replaySession.splines,
 					bodies,
 					cannonballs,
-					(x, y) => this.vec(x, y),
+					setXf,
 				);
 			}
 		}
@@ -1329,6 +1407,7 @@ export class GameCore {
 				(p as unknown as { KeyInput?: (k: number, up: boolean, replay: boolean) => void }).KeyInput?.(kp.key, true, true);
 			}
 		}
+		return tick;
 	}
 
 	// --- Tutorials ----------------------------------------------------------
@@ -1569,6 +1648,32 @@ export class GameCore {
 			const p = this.findPart(shape2Id);
 			if (p instanceof ShapePart) cond.shape2 = p;
 		}
+	}
+
+	/**
+	 * Null out any win/loss condition shape refs (shape1/shape2) that point at a
+	 * now-removed part. deleteParts and subtractShapes drop parts from state.parts
+	 * but a Condition keeps its picked ShapePart ref alive; on the next play that
+	 * part is never Init'd (m_body stays null) and Condition.Update dereferences it
+	 * via GetBody().GetXForm() -> crash. Called whenever parts leave the edit model.
+	 */
+	private clearRemovedConditionRefs(removedIds: Set<number>): void {
+		if (!this.challenge) return;
+		const ch = this.challenge.challenge;
+		const clear = (conds: (WinCondition | LossCondition)[]): void => {
+			for (const c of conds) {
+				if (c.shape1 && removedIds.has(c.shape1.id)) {
+					c.shape1 = null;
+					c.shape1Index = -1;
+				}
+				if (c.shape2 && removedIds.has(c.shape2.id)) {
+					c.shape2 = null;
+					c.shape2Index = -1;
+				}
+			}
+		};
+		clear(ch.winConditions);
+		clear(ch.lossConditions);
 	}
 
 	/**
@@ -2239,6 +2344,7 @@ export class GameCore {
 			const jointRemoveIds = this.cleanupJointsForSubtraction(targetPart, subSet, [], []);
 			for (const jid of jointRemoveIds) removeIds.add(jid);
 			removeIds.add(targetId);
+			this.clearRemovedConditionRefs(removeIds);
 			const parts = this.state.parts.filter((p) => !removeIds.has(p.id));
 			const selection = this.state.edit.selection.filter((sid) => !removeIds.has(sid));
 			this.state = {
@@ -2285,6 +2391,10 @@ export class GameCore {
 		// parts-array rebuild below drops them.
 		const jointRemoveIds = this.cleanupJointsForSubtraction(targetPart, subSet, valid, built);
 		for (const jid of jointRemoveIds) removeIds.add(jid);
+		// The target shape is swapped out for fresh Polygon pieces (different objects),
+		// so any win/loss condition pointing at the target (or a removed subtrahend)
+		// would dangle — clear those refs rather than leave a dead ShapePart.
+		this.clearRemovedConditionRefs(new Set([targetId, ...removeIds]));
 
 		// The largest piece replaces the target IN PLACE (z-order slot preserved);
 		// the remaining pieces are appended (drawn on top). Subtrahends + deleted
@@ -3923,7 +4033,12 @@ export class GameCore {
 	 * part is focused. Mutates state.camera in place (called inside the step loop).
 	 */
 	private handleCamera(): void {
-		if (this.replaySession) return;
+		// Normal sim owns the camera; a native replay drives it purely from the
+		// recorded stream (so skip focus-follow). An IB3 replay follows the focus
+		// part live (its camera stream is sparse) until the recorded run breaks focus.
+		if (this.replaySession) {
+			if (!this.replaySession.data.followCameraFocus || this.replayFocusBroken) return;
+		}
 		const part = this.cameraFocusPart();
 		if (!part) return;
 		const body = part.GetBody();
@@ -4063,7 +4178,13 @@ export class GameCore {
 	 * edit model — a reset drops them (see fractureSystem.ts / handleReset).
 	 */
 	public getSimFragments(): ShapePart[] {
-		return this.state.sim.phase === "running" ? this.simFragments : [];
+		// Show shards while the sim is live OR frozen on a win/loss (phase flips to
+		// "paused" on end, GameCore end-of-run). The fragment bodies still exist in
+		// the paused world and their consumed parents' bodies are destroyed, so
+		// gating on "running" alone would leave holes where shards should sit.
+		// simFragments is emptied on reset, so it's already [] outside a play.
+		const phase = this.state.sim.phase;
+		return phase === "running" || phase === "paused" ? this.simFragments : [];
 	}
 
 	/**
@@ -4087,6 +4208,14 @@ export class GameCore {
 		if (this.replaySession) return;
 		const results = this.fractureSystem.applyFractures(world, getPhysicsBackend(), () => ++this.nextId);
 		if (results.length === 0) return;
+
+		// A shatter is not reproducible by the deterministic sync-point replay:
+		// fracturing is OFF during playback, and consuming a parent destroys its body,
+		// which shifts the position-ordered replayBodies() list captured in later sync
+		// points (fragments live in simFragments, outside state.parts, and are never
+		// recorded). Recording a run that fractured would desync on playback, so mark
+		// this recording non-saveable — same guard the frame/cannonball caps use.
+		if (this.recording) this.recording.canSave = false;
 
 		const consumed = new Set<ShapePart>();
 		const added: ShapePart[] = [];
@@ -4123,10 +4252,15 @@ export class GameCore {
 				// recorded camera/key events for this frame (ControllerGame.HandleKey
 				// :1182-1186 -> Replay.Update). The world is NOT stepped. frame still
 				// advances one logical frame per tick.
-				this.applyReplayFrame(frame);
-				const tick = replayUpdate(this.replaySession, frame);
+				// applyReplayFrame already advanced the replay cursors and returns the
+				// same tick — read `done` from it rather than calling replayUpdate again
+				// (a second call re-consumes sync/keyPress/camera entries and desyncs).
+				const tick = this.applyReplayFrame(frame);
+				// IB3 replays follow the camera-focus part live (no-op for native
+				// replays / after focus breaks — see handleCamera's replay guard).
+				this.handleCamera();
 				frame++;
-				if (tick.done) {
+				if (tick?.done) {
 					replayFinished = true;
 					ended = true;
 					break;
@@ -4254,9 +4388,66 @@ export class GameCore {
 	private handlePlayReplay(data: ReplayData): void {
 		// Only from editing (mirrors playButton's simStarted gate).
 		if (this.state.sim.phase !== "editing") return;
+		// A native replay's sync points are already compacted to the live body order,
+		// so its session (and splines) can be built up front. An IB3 replay's tracks
+		// are per-shape and can only be compacted once the bodies exist, so its
+		// session starts with empty sync points (splines null) and is rebuilt after
+		// handlePlay below. createReplaySession tolerates empty sync points.
+		const ib3 = this.ib3ReplayTracks;
+		this.replayFocusBroken = false;
 		this.replaySession = createReplaySession(data);
 		this.state = { ...this.state, replay: { ...this.state.replay, finished: false } };
 		this.handlePlay();
+		if (ib3) {
+			// Bodies now exist: compact the per-shape IB3 tracks into the live body
+			// order (replayBodies) and rebuild the session with real splines.
+			data.syncPoints = this.compactIB3SyncPoints(ib3);
+			this.replaySession = createReplaySession(data);
+			this.ib3ReplayTracks = null;
+		}
+	}
+
+	/**
+	 * The representative ShapePart for each live replay body, in the SAME order as
+	 * replayBodies() (first non-static shape of each distinct body, parts order).
+	 * IB3 recorded the real body pose at that same first-shape index, so an IB3
+	 * track keyed to this representative carries the real (non-placeholder) pose.
+	 */
+	private replayBodyReps(): ShapePart[] {
+		const reps: ShapePart[] = [];
+		const seen = new Set<unknown>();
+		for (const p of this.state.parts) {
+			if (p instanceof ShapePart && !p.isStatic) {
+				const body = p.GetBody();
+				if (body && !seen.has(body)) {
+					seen.add(body);
+					reps.push(p);
+				}
+			}
+		}
+		return reps;
+	}
+
+	/**
+	 * Compact IB3 per-shape recorded tracks into this app's body-indexed sync
+	 * points: for each live body (via its representative shape) read that shape's
+	 * recorded position/angle at each sync frame. Bodies without a track (none in
+	 * practice) get a static placeholder. Cannonballs aren't in IB3 sync points.
+	 */
+	private compactIB3SyncPoints(tracks: IB3ReplayData): ReplaySyncPoint[] {
+		const reps = this.replayBodyReps();
+		const out: ReplaySyncPoint[] = [];
+		for (let k = 0; k < tracks.syncFrames.length; k++) {
+			const positions: { x: number; y: number }[] = [];
+			const angles: number[] = [];
+			for (const sp of reps) {
+				const tr = tracks.trajectories.get(sp);
+				positions.push(tr ? tr.positions[k] : { x: 0, y: 0 });
+				angles.push(tr ? tr.angles[k] : 0);
+			}
+			out.push({ frame: tracks.syncFrames[k], positions, angles, cannonballPositions: [] });
+		}
+		return out;
 	}
 
 	/**
@@ -4265,6 +4456,7 @@ export class GameCore {
 	 */
 	private handleViewReplayAgain(): void {
 		if (!this.replaySession) return;
+		this.replayFocusBroken = false;
 		// Tear the current world down (like reset) but keep the replay session.
 		if (this.state.world) {
 			for (const p of this.state.parts) p.UnInit(this.state.world);
@@ -5521,6 +5713,7 @@ export class GameCore {
 			}
 			case "deleteParts": {
 				const remove = new Set(command.partIds);
+				this.clearRemovedConditionRefs(remove);
 				const parts = this.state.parts.filter((p) => !remove.has(p.id));
 				const selection = this.state.edit.selection.filter((id) => !remove.has(id));
 				this.state = {
@@ -6135,6 +6328,12 @@ export class GameCore {
 				return;
 
 			case "play":
+				// A normal Play is NEVER replay playback. Clear any lingering replay
+				// session (e.g. left over from a finished/!stopped replay) so handlePlay
+				// runs the live sim instead of driving the current robot's bodies from a
+				// stale, mismatched sync-point stream (which crashed in syncReplay).
+				this.replaySession = null;
+				this.replayFocusBroken = false;
 				this.handlePlay();
 				return;
 			case "pause":
@@ -6193,10 +6392,24 @@ export class GameCore {
 			case "rotateParts": {
 				if (command.angle === 0) return;
 				const target = new Set(command.partIds);
-				const parts = this.state.parts.filter((p) => target.has(p.id));
-				if (parts.length === 0) return;
-				const c = this.selectionCentroid(parts);
-				for (const p of parts) this.rotatePartAbout(p, c.x, c.y, command.angle);
+				const selected = this.state.parts.filter((p) => target.has(p.id));
+				if (selected.length === 0) return;
+				// A locked part is pinned — it can't rotate and doesn't rotate its cluster
+				// (mirrors moveParts). If every selected part is locked, nothing rotates.
+				if (selected.some((p) => p.locked) && selected.every((p) => p.locked)) return;
+				// Pivot on the SELECTION centroid, but rotate the whole ATTACHED cluster so
+				// jointed/welded assemblies turn as one rigid body — legacy rotatingParts is
+				// the union of every selected part's GetAttachedParts() (ControllerGame.ts:3460),
+				// matching moveParts' cluster expansion. Rotating only the raw selection would
+				// tear a joint's anchors / welded partners away from the shape.
+				const c = this.selectionCentroid(selected);
+				const cluster = new Set<Part>();
+				for (const sel of selected) {
+					if (sel.locked) continue;
+					for (const p of sel.GetAttachedParts() as Part[]) cluster.add(p);
+				}
+				for (const p of [...cluster]) if (p.locked) cluster.delete(p);
+				for (const p of cluster) this.rotatePartAbout(p, c.x, c.y, command.angle);
 				this.state = {
 					...this.state,
 					parts: [...this.state.parts],
@@ -6725,7 +6938,13 @@ export class GameCore {
 				this.state = {
 					...this.state,
 					parts: fresh.parts,
-					sandbox: fresh.sandbox,
+					// Entering a fresh (non-imported) sandbox defaults to engine 2
+					// (Box2D 3 / box2d3-wasm) — the modern engine — rather than the
+					// classic IB2 (2.0.2) baseline that createInitialState() carries for
+					// tests. Imports keep their own engine; the UI preloads the wasm on
+					// this transition so the first play uses it (else applyPlayBackend
+					// falls back to the IB3 2.1a engine).
+					sandbox: { ...fresh.sandbox, physicsEngine: 2 },
 					camera: fresh.camera,
 				};
 				this.markChanged();

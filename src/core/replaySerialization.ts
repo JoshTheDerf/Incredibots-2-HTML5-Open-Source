@@ -41,6 +41,7 @@ import { SandboxSettings } from "../Game/SandboxSettings";
 import { decodeExposureInt, EXPO_PUBLIC_EDITABLE, type ExposureFlags } from "./exposure";
 import { sniffFileBytes, TYPE_TAG_REPLAY, VERSION_PREFIX, VERSION_STRING } from "./serializationVersion";
 import { decodeRobot, decodeRobotBlob, encodeRobot, readVersionedNameHeader, type DecodedRobot } from "./robotSerialization";
+import { looksLikeIB3 } from "./ib3Import";
 import type { CameraMovement, KeyPress, ReplayData, ReplaySyncPoint, Vec2Like } from "./replay";
 
 // --- Compact 2-byte scalar codecs (Database.ts:2293-2344) -----------------
@@ -450,10 +451,52 @@ export async function decodeReplay(replayStr: string): Promise<DecodedReplay> {
 	return decodeReplayFromBytes(b);
 }
 
+/**
+ * True if a "replay" export CODE is actually an IB3 file (its stream starts with
+ * a version UTF string + int type, not the IB2/Jaybit replayLength/robotLength
+ * int pair). IB3 replays aren't playable here — the caller routes them to the
+ * IB3/robot importer, which loads the bundled design and notes the recorded run
+ * was discarded — so they don't get fed to the IB2 replay decoder (which would
+ * read the version bytes as garbage section lengths and fail as "corrupt").
+ */
+export async function replayCodeIsIB3(replayStr: string): Promise<boolean> {
+	const decoder = new Base64Decoder();
+	decoder.decode(replayStr);
+	const b = decoder.toByteArray();
+	await b.uncompress();
+	b.position = 0;
+	return looksLikeIB3(b);
+}
+
+/** True if replay FILE bytes (or a pasted code) are actually an IB3 file. */
+export async function replayFileIsIB3(bytes: ArrayBuffer | Uint8Array): Promise<boolean> {
+	const sniffed = sniffFileBytes(bytes);
+	if (sniffed.kind === "code") return replayCodeIsIB3(sniffed.code);
+	const b = new ByteArray(bytes as ArrayBuffer);
+	await b.uncompress();
+	b.position = 0;
+	return looksLikeIB3(b);
+}
+
 /** Shared tail of decodeReplay / decodeReplayFile. */
 async function decodeReplayFromBytes(b: ByteArray): Promise<DecodedReplay> {
 	const replayLength = b.readInt();
 	const robotLength = b.readInt();
+	// The two section lengths are read straight from the file and then trusted by
+	// the copy loops below (`b.position < replayLength + 8`, etc.). A truncated,
+	// corrupt or malicious file can carry a negative length or one larger than the
+	// buffer, which would drive readByte past the end and throw an opaque
+	// out-of-range RangeError. Validate here and fail with a clear "corrupt
+	// replay" that the import callers already surface as invalid/corrupt.
+	if (
+		!Number.isInteger(replayLength) ||
+		!Number.isInteger(robotLength) ||
+		replayLength < 0 ||
+		robotLength < 0 ||
+		replayLength + robotLength + 8 > b.length
+	) {
+		throw new Error("corrupt replay: invalid replay/robot section lengths");
+	}
 	const replayData = new ByteArray();
 	const robotData = new ByteArray();
 	while (b.position < replayLength + 8) {

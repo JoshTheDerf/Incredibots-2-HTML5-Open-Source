@@ -279,6 +279,73 @@ interface ShapeGeom {
 }
 
 /**
+ * Live collision-filter handle duck-typing the 2.0 b2FilterData fields
+ * (categoryBits/maskBits/groupIndex) that engines 0/1 hand back on a real shape.
+ *
+ * WHY A PROXY (not a plain object): game code MUTATES this in place — e.g.
+ * Cannon.Update does `shape.m_filter.groupIndex = 0` to re-enable a fired
+ * cannonball's collision after it clears the barrel. On engines 0/1 that write
+ * lands on the live fixture filter the contact filter reads; a v3 shape's filter
+ * is an OPAQUE snapshot inside the wasm, so a bare object would drift out of sync
+ * (the cannonball would pass through its own robot forever). Each setter here
+ * re-pushes the current bits to the v3 shape via b2Shape_SetFilter.
+ *
+ * Reads return the UN-augmented game bits (what GetFilterData / PrismaticJoint /
+ * the bomb base-filter expect); the v3 shape's filter additionally carries the
+ * reserved OBJECT_BIT/SANDBOX_BIT overlay (see createShape + the constants), which
+ * every commit re-applies so the ContactFilter isSandbox force-collide survives a
+ * mid-sim filter mutation.
+ */
+class Box2D3ShapeFilter {
+	constructor(
+		private readonly m: Box2D3Module,
+		private readonly shapeId: RawShapeId,
+		private readonly isSandbox: boolean,
+		private categoryBits_: number,
+		private maskBits_: number,
+		private groupIndex_: number,
+	) {}
+
+	public get categoryBits(): number {
+		return this.categoryBits_;
+	}
+	public set categoryBits(v: number) {
+		this.categoryBits_ = v;
+		this.commit();
+	}
+	public get maskBits(): number {
+		return this.maskBits_;
+	}
+	public set maskBits(v: number) {
+		this.maskBits_ = v;
+		this.commit();
+	}
+	public get groupIndex(): number {
+		return this.groupIndex_;
+	}
+	public set groupIndex(v: number) {
+		this.groupIndex_ = v;
+		this.commit();
+	}
+
+	/** Rebuild the v3 b2Filter (game bits + isSandbox overlay) and push it live. */
+	private commit(): void {
+		const f = new this.m.b2Filter();
+		if (this.isSandbox) {
+			// Sandbox/terrain collides with EVERY object (any layer, even all-off).
+			f.categoryBits = this.categoryBits_ | SANDBOX_BIT;
+			f.maskBits = this.maskBits_ | OBJECT_BIT;
+		} else {
+			f.categoryBits = this.categoryBits_ | OBJECT_BIT;
+			f.maskBits = this.maskBits_ | SANDBOX_BIT;
+		}
+		f.groupIndex = this.groupIndex_;
+		this.m.b2Shape_SetFilter(this.shapeId, f);
+		f.delete();
+	}
+}
+
+/**
  * A v3 shape wrapper: userData + the filter used at creation (parts read
  * m_filter.groupIndex) + the render geometry (see ShapeGeom). It duck-types the
  * b2Shape read surface the shared Part code AND the pixi renderer (Draw.DrawShape
@@ -287,7 +354,11 @@ interface ShapeGeom {
  */
 export class Box2D3Shape {
 	public userData: unknown = null;
-	public readonly m_filter: { categoryBits: number; maskBits: number; groupIndex: number };
+	/**
+	 * Live filter handle: writes (e.g. Cannon's groupIndex = 0) propagate to the v3
+	 * shape via b2Shape_SetFilter; reads return the un-augmented game bits.
+	 */
+	public readonly m_filter: Box2D3ShapeFilter;
 	/**
 	 * b2Shape.e_circleShape / e_polygonShape. Draw.resolveShape treats a handle
 	 * with a defined m_type as a ready-to-read b2Shape (and its switch keys off
@@ -301,8 +372,9 @@ export class Box2D3Shape {
 		public readonly id: RawShapeId,
 		filter: { categoryBits: number; maskBits: number; groupIndex: number },
 		geom: ShapeGeom,
+		isSandbox: boolean,
 	) {
-		this.m_filter = filter;
+		this.m_filter = new Box2D3ShapeFilter(m, id, isSandbox, filter.categoryBits, filter.maskBits, filter.groupIndex);
 		this.geom = geom;
 		this.m_type = geom.type;
 	}
@@ -693,7 +765,7 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 			poly.delete();
 		}
 		sd.delete();
-		const shape = new Box2D3Shape(m, raw, filter, geom);
+		const shape = new Box2D3Shape(m, raw, filter, geom, isSandbox);
 		if (shapeDef.userData != null) shape.userData = shapeDef.userData;
 		this.shapesById.set(keyOf(raw as IdTriple), shape);
 		body.shapes.push(shape);
@@ -922,7 +994,7 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 				existing ??
 				// A shape we didn't create (never drawn): benign empty geom, unknown type
 				// so it matches no Draw switch case if it ever reached the renderer.
-				new Box2D3Shape(m, result.shapeId, { categoryBits: 0, maskBits: 0, groupIndex: 0 }, { type: b2Shape.e_unknownShape, radius: 0, localPosition: { x: 0, y: 0 }, vertices: [] });
+				new Box2D3Shape(m, result.shapeId, { categoryBits: 0, maskBits: 0, groupIndex: 0 }, { type: b2Shape.e_unknownShape, radius: 0, localPosition: { x: 0, y: 0 }, vertices: [] }, false);
 			return true;
 		});
 		lower.delete();
@@ -965,6 +1037,17 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 		const angle = m.b2Rot_GetAngle(rot);
 		rot.delete();
 		return { x: pos.x, y: pos.y, angle };
+	}
+
+	setBodyTransform(body: Box2D3Body, x: number, y: number, angle: number): void {
+		// Box2D3Body.SetXForm wraps v3 b2Body_SetTransform(pos, rot).
+		body.SetXForm({ x, y }, angle);
+	}
+
+	shapeLocalCenter(shape: Box2D3Shape): Vec2Like {
+		// The wrapper carries the circle's body-local centre (geom.localPosition).
+		const p = shape.GetLocalPosition();
+		return { x: p.x, y: p.y };
 	}
 
 	forEachBody(_world: RawWorldId, cb: (body: Box2D3Body) => void): void {
@@ -1130,9 +1213,15 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 			this.fireContact(ev.shapeIdA, ev.shapeIdB, hooks, false);
 			deleteHandle(ev);
 		}
-		// Hit events → fracture impact reports. v3 gives the world point + relative
-		// approachSpeed directly (already the engine-neutral ContactImpact.speed —
-		// no impulse/mass conversion, unlike engines 0/1).
+		// Hit events → fracture impact reports. NORMALIZED to the engines-0/1
+		// severity metric so the fracture threshold compares the SAME quantity across
+		// all three backends. Engines 0/1 feed impulseToSpeed(J, m1, m2) = J/reducedMass,
+		// which is the relative normal Δv the solver applied = (1 + e)·approachSpeed
+		// (mass-independent). v3's hit event only gives the PRE-impact approachSpeed, so
+		// scale it by (1 + combined restitution) to report that post-impulse Δv rather
+		// than the raw closing speed (which underreported by the (1+e) factor and tripped
+		// the threshold at a different real impact than engines 0/1). Restitution is
+		// combined with Box2D's default b2MixRestitution = max(eA, eB).
 		if (hooks.onImpact) {
 			const hitCount = ce.hitCount;
 			for (let i = 0; i < hitCount; i++) {
@@ -1140,7 +1229,9 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 				const s1 = this.shapesById.get(keyOf(ev.shapeIdA as IdTriple));
 				const s2 = this.shapesById.get(keyOf(ev.shapeIdB as IdTriple));
 				if (s1 && s2 && ev.approachSpeed > 0) {
-					hooks.onImpact({ shape1: s1, shape2: s2, x: ev.point.x, y: ev.point.y, speed: ev.approachSpeed });
+					const e = Math.max(m.b2Shape_GetRestitution(ev.shapeIdA), m.b2Shape_GetRestitution(ev.shapeIdB));
+					const speed = ev.approachSpeed * (1 + e);
+					hooks.onImpact({ shape1: s1, shape2: s2, x: ev.point.x, y: ev.point.y, speed });
 				}
 				deleteHandle(ev);
 			}

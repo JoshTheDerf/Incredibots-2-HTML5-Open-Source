@@ -1122,6 +1122,104 @@ function onWindowBlur(): void {
 	ctrlDown = false;
 }
 
+/**
+ * Editor keyboard shortcuts — a faithful port of the legacy ControllerGame
+ * keyPress editor bindings (:1890-1926), which used BARE keys (no modifier),
+ * plus the modern Ctrl/Cmd combos users now expect. Returns true if the event
+ * was handled. Only called while editing, not typing, and not mid-polygon-draw.
+ *
+ * Legacy bare keys: 1-7 tools, R rotate, X/C/V cut/copy/paste, Del/Backspace
+ * delete, Y redo, Z undo, +/- zoom, P play.
+ */
+function handleEditorShortcut(event: KeyboardEvent): boolean {
+	const mod = event.ctrlKey || event.metaKey;
+	const code = event.keyCode;
+	const selection = () => [...game.edit.selection];
+
+	// Modern Ctrl/Cmd combos first (so Ctrl+Z isn't caught by the bare-Z case).
+	if (mod) {
+		switch (code) {
+			case 90: // Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z = redo
+				game.dispatch({ type: event.shiftKey ? "redo" : "undo" });
+				return true;
+			case 89: // Ctrl/Cmd+Y = redo
+				game.dispatch({ type: "redo" });
+				return true;
+			case 88: // Ctrl/Cmd+X = cut
+				game.dispatch({ type: "cutParts", partIds: selection() });
+				return true;
+			case 67: // Ctrl/Cmd+C = copy
+				game.dispatch({ type: "copyParts", partIds: selection() });
+				return true;
+			case 86: // Ctrl/Cmd+V = paste
+				game.dispatch({ type: "pasteParts" });
+				return true;
+			default:
+				return false; // leave other Ctrl/Cmd combos to the browser
+		}
+	}
+	// Legacy BARE-key shortcuts (no modifier). Skip if Alt is held.
+	if (event.altKey) return false;
+	switch (code) {
+		case 90: // Z = undo
+			game.dispatch({ type: "undo" });
+			return true;
+		case 89: // Y = redo
+			game.dispatch({ type: "redo" });
+			return true;
+		case 88: // X = cut
+			game.dispatch({ type: "cutParts", partIds: selection() });
+			return true;
+		case 67: // C = copy
+			game.dispatch({ type: "copyParts", partIds: selection() });
+			return true;
+		case 86: // V = paste
+			game.dispatch({ type: "pasteParts" });
+			return true;
+		case 8: // Backspace
+		case 46: // Delete
+			if (game.edit.selection.length > 0) game.dispatch({ type: "deleteParts", partIds: selection() });
+			return true;
+		case 49: // 1 = circle
+			game.dispatch({ type: "setTool", tool: "newCircle" });
+			return true;
+		case 50: // 2 = rectangle
+			game.dispatch({ type: "setTool", tool: "newRect" });
+			return true;
+		case 51: // 3 = triangle
+			game.dispatch({ type: "setTool", tool: "newTriangle" });
+			return true;
+		case 52: // 4 = fixed joint
+			game.dispatch({ type: "setTool", tool: "newFixedJoint" });
+			return true;
+		case 53: // 5 = rotating joint
+			game.dispatch({ type: "setTool", tool: "newRevoluteJoint" });
+			return true;
+		case 54: // 6 = sliding joint
+			game.dispatch({ type: "setTool", tool: "newPrismaticJoint" });
+			return true;
+		case 55: // 7 = text
+			game.dispatch({ type: "setTool", tool: "newText" });
+			return true;
+		case 82: // R = rotate tool
+			game.dispatch({ type: "setTool", tool: "rotate" });
+			return true;
+		case 107: // numpad +
+		case 187: // = / +
+			game.dispatch({ type: "zoomIn" });
+			return true;
+		case 109: // numpad -
+		case 189: // - / _
+			game.dispatch({ type: "zoomOut" });
+			return true;
+		case 80: // P = play
+			game.dispatch({ type: "play" });
+			return true;
+		default:
+			return false;
+	}
+}
+
 function onKeyDown(event: KeyboardEvent): void {
 	updateMods(event);
 	// Polygon multi-click gesture: Enter (13) commits the ring, Escape (27)
@@ -1154,6 +1252,15 @@ function onKeyDown(event: KeyboardEvent): void {
 		heldArrows.add(arrowKey);
 		event.preventDefault();
 		return;
+	}
+	// Editor keyboard shortcuts (legacy ControllerGame.keyPress :1890-1926):
+	// undo/redo, tool selection, cut/copy/paste, delete, zoom, rotate, play —
+	// only while editing, not typing in a field, and not mid-polygon-draw.
+	if (game.sim.phase === "editing" && !isTypingTarget(event) && polygonPoints.length === 0) {
+		if (handleEditorShortcut(event)) {
+			event.preventDefault();
+			return;
+		}
 	}
 	if (game.sim.phase !== "running") return;
 	// keyCode is the code space the legacy parts compare against (motorCWKey etc.).

@@ -203,7 +203,7 @@ function applyColour(): void {
 			</div>
 		</UFormField>
 
-		<UFormField label="Fragility" help="0 = indestructible; higher shatters more easily on impact" class="field">
+		<UFormField label="Fragility" class="field">
 			<div class="slider-row">
 				<USlider v-model="fragility" :min="MIN_FRAGILITY" :max="MAX_FRAGILITY" :step="1" size="sm" class="slider" />
 				<UInput v-model.number="fragility" type="number" size="xs" class="num-input" />

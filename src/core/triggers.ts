@@ -112,20 +112,28 @@ export function wireTriggers(parts: Part[]): void {
 			continue;
 		}
 		for (const src of sources) {
-			const shape = src.GetShape();
-			if (!shape) continue;
-			const ud = shape.GetUserData() as TriggerUserData;
-			for (const token of tokens) {
-				if (token === "") continue;
-				if ((ud.triggerList && ud.triggerList.indexOf(token) > -1) || token === src.triggerName) {
-					ud.jointsToTrigger!.push(i);
-					ud.actionsToTrigger!.push(src.triggerAction);
-					ud.isFirstTrigger!.push(true);
-				}
-				if ((ud.triggerList_2 && ud.triggerList_2.indexOf(token) > -1) || token === src.triggerName_2) {
-					ud.jointsToTrigger!.push(i);
-					ud.actionsToTrigger!.push(src.triggerAction_2);
-					ud.isFirstTrigger!.push(false);
+			// A concave Polygon source is built as several triangle fixtures, EACH
+			// with its own independent per-fixture userData (jointsToTrigger etc.);
+			// the contact listener dispatches from the SPECIFIC fixture that was hit.
+			// Wire the dispatch table onto EVERY collision fixture's userData so a
+			// contact on any part of the surface fires — not just the first fixture
+			// (m_shape). Single-fixture shapes return [m_shape], so this is identical
+			// to the old per-shape behaviour for them.
+			for (const shape of src.GetCollisionShapes()) {
+				const ud = shape.GetUserData() as TriggerUserData;
+				if (!ud) continue;
+				for (const token of tokens) {
+					if (token === "") continue;
+					if ((ud.triggerList && ud.triggerList.indexOf(token) > -1) || token === src.triggerName) {
+						ud.jointsToTrigger!.push(i);
+						ud.actionsToTrigger!.push(src.triggerAction);
+						ud.isFirstTrigger!.push(true);
+					}
+					if ((ud.triggerList_2 && ud.triggerList_2.indexOf(token) > -1) || token === src.triggerName_2) {
+						ud.jointsToTrigger!.push(i);
+						ud.actionsToTrigger!.push(src.triggerAction_2);
+						ud.isFirstTrigger!.push(false);
+					}
 				}
 			}
 		}

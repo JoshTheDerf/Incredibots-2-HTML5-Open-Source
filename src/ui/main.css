@@ -120,13 +120,33 @@
 
 /* Menu / listbox popovers (DropdownMenu, Select, SelectMenu content) are
    teleported to the <body> portal, so they live OUTSIDE #ui-root and can't be
-   scoped there. Their `bg-default` fill already resolves to cream via the
-   --ui-bg token; we only add Arial + a purple edge so the floating panel reads
-   like the .ib-panel windows rather than the default white card. Kept
-   unscoped, but pinned to Nuxt UI's own slots/roles so it can't leak. */
+   scoped there. With color mode disabled (see vite.config.ts) their `bg-default`
+   / `text-default` slots resolve to the cream/dark IB tokens above, so this
+   block is mostly reinforcement: it pins the parchment surface, dark Arial text
+   and a purple edge directly on the floating panel so it always reads like the
+   .ib-panel windows — never a white (or, if a stray `.dark` ever appears, a
+   dark) card. Kept unscoped, but pinned to Nuxt UI's own roles so it can't leak
+   into app markup. */
 [data-slot="content"]:is([role="menu"], [role="listbox"], [role="dialog"]) [role="menu"],
 [role="menu"],
 [role="listbox"] {
 	font-family: Arial, Helvetica, sans-serif;
+	background-color: var(--ib-cream);
+	color: var(--ib-dark);
 	border-color: var(--ib-purple-light);
+}
+
+/* Item text stays dark on the parchment surface. */
+[role="menu"] :is([role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]),
+[role="listbox"] [role="option"] {
+	color: var(--ib-dark);
+}
+
+/* Highlighted / hovered / open / selected item: Nuxt UI paints the highlight on
+   the item's `::before` pseudo (theme: `data-highlighted:before:bg-elevated/50`).
+   Retint it to a subtle IB purple wash instead of the neutral elevated fill, so
+   the active row carries the purple accent without a saturated block. */
+[role="menu"] :is([role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]):is([data-highlighted], [data-state="open"])::before,
+[role="listbox"] [role="option"]:is([data-highlighted], [aria-selected="true"])::before {
+	background-color: rgba(160, 142, 210, 0.22);
 }
