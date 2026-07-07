@@ -56,8 +56,3 @@ export function downloadBytes(bytes: Uint8Array, filename: string): void {
 export async function readFileBytes(file: File): Promise<Uint8Array> {
 	return new Uint8Array(await file.arrayBuffer());
 }
-
-/** Read a picked File as UTF-8 text (for the Convert file->code direction). */
-export function readFileText(file: File): Promise<string> {
-	return file.text();
-}

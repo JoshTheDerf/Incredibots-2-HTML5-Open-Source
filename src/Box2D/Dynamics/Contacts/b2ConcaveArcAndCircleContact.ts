@@ -33,7 +33,7 @@ export class b2ConcaveArcAndCircleContact extends b2PolyAndCircleContact
 	//~b2CircleContact() {}
 
 	//
-	private static s_evalCP:b2ContactPoint = new b2ContactPoint();
+	public static s_evalCP:b2ContactPoint = new b2ContactPoint();
 
 	//Edited version of b2CollidePolyAndCircle
 	public static b2CollideConcaveArcAndCircle(

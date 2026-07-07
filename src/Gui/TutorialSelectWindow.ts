@@ -128,7 +128,7 @@ export class TutorialSelectWindow extends GuiWindow
 	}
 
 	private challengeEditorButton():void {
-		ControllerGameGlobals.challenge = null;
+		ControllerGameGlobals.challenge = null!;
 		var settings:SandboxSettings = new SandboxSettings(15.0, 0, 2, 0, 5);
 		ControllerGameGlobals.settings = settings;
 		Main.changeControllers = true;
@@ -136,7 +136,7 @@ export class TutorialSelectWindow extends GuiWindow
 	}
 
 	private monkeyBarsButton():void {
-		ControllerGameGlobals.challenge = null;
+		ControllerGameGlobals.challenge = null!;
 		var settings:SandboxSettings = new SandboxSettings(15.0, 0, 2, 0, 0);
 		ControllerGameGlobals.settings = settings;
 		Main.changeControllers = true;
@@ -144,7 +144,7 @@ export class TutorialSelectWindow extends GuiWindow
 	}
 
 	private climbButton():void {
-		ControllerGameGlobals.challenge = null;
+		ControllerGameGlobals.challenge = null!;
 		var settings:SandboxSettings = new SandboxSettings(15.0, 0, 2, 0, 3);
 		ControllerGameGlobals.settings = settings;
 		Main.changeControllers = true;
@@ -152,7 +152,7 @@ export class TutorialSelectWindow extends GuiWindow
 	}
 
 	private lunarButton():void {
-		ControllerGameGlobals.challenge = null;
+		ControllerGameGlobals.challenge = null!;
 		var settings:SandboxSettings = new SandboxSettings(15.0, 0, 2, 0, 5);
 		ControllerGameGlobals.settings = settings;
 		Main.changeControllers = true;
@@ -160,7 +160,7 @@ export class TutorialSelectWindow extends GuiWindow
 	}
 
 	private cannonButton():void {
-		ControllerGameGlobals.challenge = null;
+		ControllerGameGlobals.challenge = null!;
 		var settings:SandboxSettings = new SandboxSettings(15.0, 0, 2, 0, 1);
 		ControllerGameGlobals.settings = settings;
 		Main.changeControllers = true;

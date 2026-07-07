@@ -61,7 +61,7 @@ export class b2DebugDraw {
   }
 
   /// Draw a closed polygon provided in CCW order.
-  public DrawPolygon(vertices: Array<any>, vertexCount: number, color): void {
+  public DrawPolygon(vertices: Array<any>, vertexCount: number, color: any): void {
     if (this.IsPolygonOnScreen(vertices, vertexCount)) {
       this.m_sprite.moveTo(
         vertices[0].x * this.m_drawScale - this.m_drawXOff,
@@ -85,7 +85,7 @@ export class b2DebugDraw {
   public DrawSolidPolygon(
     vertices: Array<any>,
     vertexCount: number,
-    color,
+    color: any,
     isHighlighted: boolean = false,
     drawOutlines: boolean = true
   ): void {
@@ -127,7 +127,7 @@ export class b2DebugDraw {
   public DrawSolidCannon(
     vertices: Array<any>,
     vertexCount: number,
-    color,
+    color: any,
     isHighlighted: boolean = false,
     drawOutlines: boolean = true
   ): void {
@@ -179,7 +179,7 @@ export class b2DebugDraw {
   }
 
   /// Draw a circle.
-  public DrawCircle(center, radius: number, color): void {
+  public DrawCircle(center: any, radius: number, color: any): void {
     if (this.IsCircleOnScreen(center, radius)) {
       this.m_sprite.circle(
         center.x * this.m_drawScale - this.m_drawXOff,
@@ -240,13 +240,13 @@ export class b2DebugDraw {
   }
 
   /// Draw a line segment.
-  public DrawSegment(p1, p2, color): void {
+  public DrawSegment(p1: any, p2: any, color: any): void {
     this.m_sprite.moveTo(p1.x * this.m_drawScale - this.m_drawXOff, p1.y * this.m_drawScale - this.m_drawYOff);
     this.m_sprite.lineTo(p2.x * this.m_drawScale - this.m_drawXOff, p2.y * this.m_drawScale - this.m_drawYOff);
     this.m_sprite.stroke({ width: 1, color: Util.b2ColorToHex(color), alpha: this.m_alpha });
   }
 
-  public DrawSolidSegment(p1, p2, color): void {
+  public DrawSolidSegment(p1: any, p2: any, color: any): void {
     this.m_sprite.moveTo(p1.x * this.m_drawScale - this.m_drawXOff, p1.y * this.m_drawScale - this.m_drawYOff);
     this.m_sprite.lineTo(p2.x * this.m_drawScale - this.m_drawXOff, p2.y * this.m_drawScale - this.m_drawYOff);
     this.m_sprite.stroke({ width: this.m_lineThickness * this.m_drawScale, color: Util.b2ColorToHex(color), alpha: this.m_alpha });
@@ -265,7 +265,7 @@ export class b2DebugDraw {
     return false;
   }
 
-  public IsCircleOnScreen(center, radius: number): boolean {
+  public IsCircleOnScreen(center: any, radius: number): boolean {
     var screenCenter = new b2Vec2(0, 0);
     var newRadius: number = radius * this.m_drawScale;
     screenCenter.x = center.x * this.m_drawScale - this.m_drawXOff;
@@ -278,7 +278,7 @@ export class b2DebugDraw {
     );
   }
 
-  public static BrightenColour(color) {
+  public static BrightenColour(color: any) {
     var r: number = b2DebugDraw.GetR(color);
     var g: number = b2DebugDraw.GetG(color);
     var b: number = b2DebugDraw.GetB(color);
@@ -308,7 +308,7 @@ export class b2DebugDraw {
     return new b2Color(newR / 255.0, newG / 255.0, newB / 255.0);
   }
 
-  public static DarkenColour(color) {
+  public static DarkenColour(color: any) {
     var r: number = b2DebugDraw.GetR(color);
     var g: number = b2DebugDraw.GetG(color);
     var b: number = b2DebugDraw.GetB(color);
@@ -333,21 +333,21 @@ export class b2DebugDraw {
     return new b2Color(newR / 255.0, newG / 255.0, newB / 255.0);
   }
 
-  public static GetR(colour): number {
+  public static GetR(colour: any): number {
     return (Util.b2ColorToHex(colour) & 0xff0000) >> 16;
   }
 
-  public static GetG(colour): number {
+  public static GetG(colour: any): number {
     return (Util.b2ColorToHex(colour) & 0x00ff00) >> 8;
   }
 
-  public static GetB(colour): number {
+  public static GetB(colour: any): number {
     return Util.b2ColorToHex(colour) & 0x0000ff;
   }
 
   public drawColours: boolean = true;
   public m_drawFlags: number;
-  public m_sprite: Graphics;
+  public m_sprite!: Graphics;
   public m_drawScale: number = 1.0;
   public m_drawXOff: number = 0.0;
   public m_drawYOff: number = 0.0;

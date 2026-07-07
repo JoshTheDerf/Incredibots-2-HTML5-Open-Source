@@ -1,4 +1,3 @@
-import { b2Contact } from "../Box2D";
 import { ControllerChallenge } from "../ControllerChallenge"
 import { ControllerGameGlobals } from "../Globals/ControllerGameGlobals"
 import { LSOManager } from "../../General/LSOManager"
@@ -32,15 +31,15 @@ export class ControllerChallengeEditor extends ControllerChallenge
 	private excludedStuff:boolean = false;
 	private disallowedControl:boolean = false;
 
-	private wheel1:ShapePart;
-	private wheel2:ShapePart;
-	private garage:ShapePart;
-	private balloonJoint1:JointPart;
-	private balloonJoint2:JointPart;
-	private balloonJoint3:JointPart;
-	private th1:Thrusters;
-	private th2:Thrusters;
-	private th3:Thrusters;
+	private wheel1!:ShapePart;
+	private wheel2!:ShapePart;
+	private garage!:ShapePart;
+	private balloonJoint1!:JointPart;
+	private balloonJoint2!:JointPart;
+	private balloonJoint3!:JointPart;
+	private th1!:Thrusters;
+	private th2!:Thrusters;
+	private th3!:Thrusters;
 
 	private balloonTime:number = -1;
 
@@ -385,7 +384,7 @@ export class ControllerChallengeEditor extends ControllerChallenge
 			} else if (this.addedLossCondition2 && !this.clickedRestrictions && this.m_restrictionsDialog && this.m_restrictionsDialog.visible) {
 				this.clickedRestrictions = true;
 				this.ShowTutorialWindow(103, 0, 220, true);
-			} else if (this.clickedRestrictions && !this.excludedStuff && this.m_restrictionsDialog.fjBox.selected && this.m_restrictionsDialog.sjBox.selected && this.m_restrictionsDialog.thrustersBox.selected) {
+			} else if (this.clickedRestrictions && !this.excludedStuff && (this.m_restrictionsDialog as any).fjBox.selected && (this.m_restrictionsDialog as any).sjBox.selected && (this.m_restrictionsDialog as any).thrustersBox.selected) {
 				this.excludedStuff = true;
 				this.ShowTutorialWindow(105, 0, 220);
 			} else if (this.excludedStuff && !this.disallowedControl && !ControllerGameGlobals.challenge.botControlAllowed && !this.m_restrictionsDialog.visible) {
@@ -397,23 +396,23 @@ export class ControllerChallengeEditor extends ControllerChallenge
 		if (!ControllerGameGlobals.playingReplay && this.simStarted && !this.paused) {
 			this.balloonTime--;
 			if (this.balloonTime == 5) {
-				this.m_world.DestroyJoint(this.balloonJoint1.m_joint);
+				this.m_world!.DestroyJoint(this.balloonJoint1.m_joint!);
 				this.balloonJoint1.m_joint = null;
 			} else if (this.balloonTime == 0) {
-				this.m_world.DestroyJoint(this.balloonJoint3.m_joint);
+				this.m_world!.DestroyJoint(this.balloonJoint3.m_joint!);
 				this.balloonJoint3.m_joint = null;
 			}
 		}
 	}
 
-	public ContactAdded(point:b2Contact):void {
+	public ContactAdded(point:any):void {
 		super.ContactAdded(point);
 
 		if ((point.GetFixtureA().GetShape() == this.wheel1.GetShape() && point.GetFixtureB().GetShape() == this.garage.GetShape()) ||
 			(point.GetFixtureA().GetShape() == this.wheel2.GetShape() && point.GetFixtureB().GetShape() == this.garage.GetShape()) ||
 			(point.GetFixtureB().GetShape() == this.wheel1.GetShape() && point.GetFixtureA().GetShape() == this.garage.GetShape()) ||
 			(point.GetFixtureB().GetShape() == this.wheel2.GetShape() && point.GetFixtureA().GetShape() == this.garage.GetShape())) {
-				this.m_world.DestroyJoint(this.balloonJoint2.m_joint);
+				this.m_world!.DestroyJoint(this.balloonJoint2.m_joint!);
 				this.balloonJoint2.m_joint = null;
 				this.balloonTime = 10;
 			}

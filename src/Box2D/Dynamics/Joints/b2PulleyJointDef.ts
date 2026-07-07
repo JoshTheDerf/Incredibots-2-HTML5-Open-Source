@@ -90,18 +90,18 @@ export class b2PulleyJointDef extends b2JointDef
 	public localAnchor2:b2Vec2 = new b2Vec2();
 
 	/// The a reference length for the segment attached to body1.
-	public length1:number;
+	public length1!:number;
 
 	/// The maximum length of the segment attached to body1.
-	public maxLength1:number;
+	public maxLength1!:number;
 
 	/// The a reference length for the segment attached to body2.
-	public length2:number;
+	public length2!:number;
 
 	/// The maximum length of the segment attached to body2.
-	public maxLength2:number;
+	public maxLength2!:number;
 
 	/// The pulley ratio, used to simulate a block-and-tackle.
-	public ratio:number;
+	public ratio!:number;
 
 }

@@ -49,7 +49,7 @@ export class ShapeCheckboxAction extends Action
 		} else if (this.type == ShapeCheckboxAction.TERRAIN_TYPE) {
 			(this.partAffected as ShapePart).terrain = this.isChecked;
 		} else {
-			(this.partAffected as ShapePart).undragable = !this.isChecked;
+			(this.partAffected as ShapePart).undragable = this.isChecked;
 		}
 	}
 }

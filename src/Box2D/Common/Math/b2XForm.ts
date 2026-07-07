@@ -29,11 +29,11 @@ import { b2Mat22, b2Vec2 } from "../..";
 export class b2XForm
 {
 	/// The default constructor does nothing (for performance).
-	constructor(pos:b2Vec2=null, r:b2Mat22=null)
+	constructor(pos:b2Vec2 | null=null, r:b2Mat22 | null=null)
 	{
 		if (pos){
 			this.position.SetV(pos);
-			this.R.SetM(r);
+			this.R.SetM(r!);
 
 		}
 	}

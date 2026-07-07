@@ -3,8 +3,9 @@
 // shared ShapePart physical props (density/collide/fixate/outline/colour) plus
 // the bomb-only fields, with ranges from IB3 Util.as BO_* consts
 // (strength 0..40, blast radius 0..50, sensitivity 0..100; delay in ms).
-import { computed, ref, watch } from "vue";
+import { computed } from "vue";
 import { useGameStore } from "../../gameStore";
+import { useColourField } from "../../composables/useColourField";
 import IbButton from "../IbButton.vue";
 
 const game = useGameStore();
@@ -87,27 +88,7 @@ const triggerList = computed({
 	set: (v: string) => game.dispatch({ type: "setTriggerList", partIds: ids.value, value: v }),
 });
 
-const localColour = ref("#fafa00");
-const opacity = ref(100);
-watch(
-	sel,
-	() => {
-		localColour.value =
-			"#" + [sel.value?.red ?? 0, sel.value?.green ?? 0, sel.value?.blue ?? 0]
-				.map((c) => Math.round(c).toString(16).padStart(2, "0"))
-				.join("");
-		opacity.value = Math.round((sel.value?.opacity ?? 1) * 100);
-	},
-	{ immediate: true },
-);
-function applyColour(): void {
-	if (ids.value.length === 0) return;
-	const hex = localColour.value.replace("#", "");
-	const r = parseInt(hex.slice(0, 2), 16);
-	const g = parseInt(hex.slice(2, 4), 16);
-	const b = parseInt(hex.slice(4, 6), 16);
-	game.dispatch({ type: "setColour", partIds: ids.value, r, g, b, opacity: opacity.value / 100 });
-}
+const { localColour, opacity, applyColour } = useColourField();
 </script>
 
 <template>

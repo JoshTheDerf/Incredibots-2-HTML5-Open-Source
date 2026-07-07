@@ -158,7 +158,7 @@ export class GuiCheckBox extends Graphics {
     if (this._mouseDown) type = "Down";
     if (this._disabled) type = "Disabled";
     this._icon.texture = this.selected
-      ? this.textures[`selected${type}Icon`]
-      : this.textures[`${type.toLowerCase()}Icon`];
+      ? (this.textures as any)[`selected${type}Icon`]
+      : (this.textures as any)[`${type.toLowerCase()}Icon`];
   }
 }

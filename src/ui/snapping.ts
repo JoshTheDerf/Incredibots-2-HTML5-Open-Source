@@ -81,6 +81,19 @@ export function FifteenAngleIncrements(x: number, y: number, cx: number, cy: num
 }
 
 /**
+ * Law-of-cosines interior angles of the triangle with side lengths base/d1/d2:
+ * [angle at (x1,y1), angle at (x2,y2), angle at the apex]. Shared by the three
+ * recompute sites in MaxTriangle.
+ */
+function TriangleAngles(base: number, d1: number, d2: number): [number, number, number] {
+	return [
+		NormalizeAngle(Math.acos((base * base + d1 * d1 - d2 * d2) / (2 * base * d1))),
+		NormalizeAngle(Math.acos((base * base + d2 * d2 - d1 * d1) / (2 * base * d2))),
+		NormalizeAngle(Math.acos((d1 * d1 + d2 * d2 - base * base) / (2 * d1 * d2))),
+	];
+}
+
+/**
  * Util.MaxTriangle(x, y, x1, y1, x2, y2, maxSide, minSide, minAngle=-1) :258-362
  * — iteratively (≤400 steps) pull the apex toward the base midpoint until both
  * remaining sides are within [minSide, maxSide] and all angles ≥ minAngle, giving
@@ -106,9 +119,7 @@ export function MaxTriangle(
 	let d2 = GetDist(x2, y2, px, py);
 	const base = GetDist(x1, y1, x2, y2);
 	let dm = GetDist(mx, my, px, py);
-	let ang1 = NormalizeAngle(Math.acos((base * base + d1 * d1 - d2 * d2) / (2 * base * d1)));
-	let ang2 = NormalizeAngle(Math.acos((base * base + d2 * d2 - d1 * d1) / (2 * base * d2)));
-	let angApex = NormalizeAngle(Math.acos((d1 * d1 + d2 * d2 - base * base) / (2 * d1 * d2)));
+	let [ang1, ang2, angApex] = TriangleAngles(base, d1, d2);
 	let ratio = 0;
 	const maxSteps = 400;
 	const shrink = 0.01;
@@ -147,9 +158,7 @@ export function MaxTriangle(
 					d1 = GetDist(x1, y1, px, py);
 					d2 = GetDist(x2, y2, px, py);
 					dm = GetDist(mx, my, px, py);
-					ang1 = NormalizeAngle(Math.acos((base * base + d1 * d1 - d2 * d2) / (2 * base * d1)));
-					ang2 = NormalizeAngle(Math.acos((base * base + d2 * d2 - d1 * d1) / (2 * base * d2)));
-					angApex = NormalizeAngle(Math.acos((d1 * d1 + d2 * d2 - base * base) / (2 * d1 * d2)));
+					[ang1, ang2, angApex] = TriangleAngles(base, d1, d2);
 					if (angApex >= minAngle && ang2 >= minAngle && ang1 >= minAngle) break;
 				}
 				inner++;
@@ -161,9 +170,7 @@ export function MaxTriangle(
 			d1 = GetDist(x1, y1, px, py);
 			d2 = GetDist(x2, y2, px, py);
 			dm = GetDist(mx, my, px, py);
-			ang1 = NormalizeAngle(Math.acos((base * base + d1 * d1 - d2 * d2) / (2 * base * d1)));
-			ang2 = NormalizeAngle(Math.acos((base * base + d2 * d2 - d1 * d1) / (2 * base * d2)));
-			angApex = NormalizeAngle(Math.acos((d1 * d1 + d2 * d2 - base * base) / (2 * d1 * d2)));
+			[ang1, ang2, angApex] = TriangleAngles(base, d1, d2);
 		}
 		step++;
 	}

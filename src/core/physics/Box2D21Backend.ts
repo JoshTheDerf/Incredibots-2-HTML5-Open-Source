@@ -88,6 +88,9 @@ export class Box2D21Backend implements PhysicsBackend<b2World, b2Body, b2Fixture
 		return new b2World(new b2Vec2(def.gravityX, def.gravityY), def.doSleep);
 	}
 
+	/** Engine 21 is pure JS — dropping the last reference is enough (see PhysicsBackend.destroyWorld). */
+	destroyWorld(_world: b2World): void {}
+
 	step(world: b2World, dt: number, iterations: number): void {
 		// 2.1a splits velocity/position iterations; feed the single 2.0 count to
 		// both (matches box2d21-smoke.test.ts). Clear forces after the step: 2.1a

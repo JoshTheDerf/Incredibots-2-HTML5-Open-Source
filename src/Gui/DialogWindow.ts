@@ -85,16 +85,16 @@ export class DialogWindow extends GuiWindow
 
 	public ShowOKAndCancelButton(type:number):void {
 		var b = new GuiButton("OK", 40, 57 + (type == 8 ? 20 : 0), 50, 30, () => (
-			type == 0 ? (this.cont as ControllerGame).ConfirmSaveRobot() : (
-				type == 1 ? (this.cont as ControllerGame).ConfirmSaveReplay() : (
+			type == 0 ? (this.cont as unknown as ControllerGame).ConfirmSaveRobot() : (
+				type == 1 ? (this.cont as unknown as ControllerGame).ConfirmSaveReplay() : (
 					type == 2 ? this.cont.ConfirmDeleteRobot() : (
 						type == 3 ? this.cont.ConfirmDeleteReplay() : (
-							type == 4 ? (this.cont as ControllerGame).ConfirmNewRobot() : (
+							type == 4 ? (this.cont as unknown as ControllerGame).ConfirmNewRobot() : (
 								type == 5 ? this.BrowserRedirect() : (
 									type == 6 ? this.BrowserRedirect2() : (
 										type == 7 ? this.BrowserRedirect3() : (
 											type == 8 ? this.BrowserRedirect4() : (
-												type == 9 ? (this.cont as ControllerGame).ConfirmSaveChallenge() : (
+												type == 9 ? (this.cont as unknown as ControllerGame).ConfirmSaveChallenge() : (
 													type == 10 ? this.cont.ConfirmDeleteChallenge() : (
 														type == 11 ? this.editButton() : this.cont.ConfirmLogout()
 													)
@@ -118,7 +118,7 @@ export class DialogWindow extends GuiWindow
 	public ShowBuildBoxButtons():void {
 		var b = new GuiButton("Keep", 25, 80, 70, 35, () => this.cont.HideConfirmDialog(), GuiButton.PURPLE);
 		this.addChild(b);
-		b = new GuiButton("Delete", 95, 80, 80, 35, () => (this.cont as ControllerChallenge).DeleteBuildBoxes(), GuiButton.PURPLE);
+		b = new GuiButton("Delete", 95, 80, 80, 35, () => (this.cont as any).DeleteBuildBoxes(), GuiButton.PURPLE);
 		this.addChild(b);
 		this.StopTimer()
 	}
@@ -134,7 +134,7 @@ export class DialogWindow extends GuiWindow
 	}
 
 	private editButton():void {
-		(this.cont as ControllerGame).editButton(true);
+		(this.cont as unknown as ControllerGame).editButton(true);
 	}
 
 	public GetMessage():string {

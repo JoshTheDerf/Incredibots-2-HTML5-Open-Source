@@ -128,7 +128,8 @@ export function readBezierFields(od: any): {
 	return { pointTypes, handlesIn, handlesOut };
 }
 
-function putPartsIntoByteArray(parts: Part[], b: ByteArray): ByteArray {
+/** Exported so challengeSerialization reuses the exact same part codec (byte-identical by design). */
+export function putPartsIntoByteArray(parts: Part[], b: ByteArray): ByteArray {
 	parts = parts.filter(isPartOfRobot);
 
 	// All Shape/Text definitions must come earlier in the array than all joints.
@@ -185,7 +186,8 @@ function readSupersetPartFields(p: Part, od: any): void {
 	if (has(od, "scaleToZoom")) p.scaleToZoom = Boolean(od.scaleToZoom);
 }
 
-function extractPartsFromByteArray(b: ByteArray): Part[] {
+/** Exported so challengeSerialization reuses the exact same part codec (byte-identical by design). */
+export function extractPartsFromByteArray(b: ByteArray): Part[] {
 	const objectData = b.readObject() as any[];
 	const partData: Part[] = [];
 
@@ -445,9 +447,9 @@ function putRobotIntoByteArray(parts: Part[], settings: SandboxSettings): ByteAr
 /**
  * INIT_PHYS_SCALE (ControllerGameGlobals) — the default zoom the camera clamp
  * falls back to. Duplicated as a literal so the serializer stays free of
- * controller imports.
+ * controller imports. Exported for challengeSerialization's camera clamp.
  */
-const INIT_PHYS_SCALE = 30;
+export const INIT_PHYS_SCALE = 30;
 
 /**
  * Apply the IB3 water fields from a raw decoded AMF settings object onto a
@@ -456,9 +458,10 @@ const INIT_PHYS_SCALE = 30;
  * defaults (waterEnabled false etc., see SandboxSettings.ts / IB3
  * Control/SandboxSettings.as:37-59). The WRITE side needs no counterpart:
  * writeObject(settings) serializes all public fields automatically, and stock
- * Jaybit clients ignore unknown AMF props.
+ * Jaybit clients ignore unknown AMF props. Exported so challengeSerialization
+ * reuses the exact same settings decode.
  */
-function applyWaterSettings(settings: SandboxSettings, s: any): SandboxSettings {
+export function applyWaterSettings(settings: SandboxSettings, s: any): SandboxSettings {
 	if (has(s, "waterEnabled")) settings.waterEnabled = Boolean(s.waterEnabled);
 	if (has(s, "waterType")) settings.waterType = Math.trunc(s.waterType);
 	if (has(s, "waterDensity")) settings.waterDensity = Number(s.waterDensity);
@@ -653,16 +656,38 @@ export async function decodeRobot(robotStr: string): Promise<DecodedRobot> {
 	const b = decoder.toByteArray();
 	await b.uncompress();
 	b.position = 0;
-	// Try native/Jaybit/CE first (via the sniff); an IB3 code (version-string-first
-	// + int type 0..2) falls back to the IB3 importer (PLAN.md P5).
-	if (looksLikeIB3(b)) return fromIB3(b);
-	return decodeRobotFromHeaderedBytes(b);
+	// Route to the IB3 importer or the native/Jaybit/CE header dance (PLAN.md P5).
+	return decodeMaybeIB3(b);
 }
 
 /** Adapt an IB3 decode into the DecodedRobot contract (attaches provenance + warnings). */
 function fromIB3(b: ByteArray): DecodedRobot {
 	const res = decodeIB3FromByteArray(b);
 	return { ...res.robot, ib3: res.ib3, warnings: res.warnings };
+}
+
+/**
+ * Shared decodeRobot/decodeRobotFile routing. looksLikeIB3 is a HEURISTIC (an
+ * IB3 code has no sentinel — it just starts with a version-string UTF), so a
+ * legacy CE code whose robot NAME starts with a version-like string ("2.0.1
+ * Mech") can match it too. When the IB3 decode throws on such a code, retry the
+ * native/CE path instead of failing the load; if BOTH decoders fail, surface
+ * the original IB3 error (detection said IB3, so that's the likelier truth).
+ */
+async function decodeMaybeIB3(b: ByteArray): Promise<DecodedRobot> {
+	if (looksLikeIB3(b)) {
+		try {
+			return fromIB3(b);
+		} catch (ib3Error) {
+			try {
+				b.position = 0;
+				return await decodeRobotFromHeaderedBytes(b);
+			} catch {
+				throw ib3Error;
+			}
+		}
+	}
+	return decodeRobotFromHeaderedBytes(b);
 }
 
 /** Shared tail of decodeRobot / decodeRobotFile: header dance + extraction. */
@@ -690,6 +715,5 @@ export async function decodeRobotFile(bytes: ArrayBuffer | Uint8Array): Promise<
 	const b = new ByteArray(bytes as ArrayBuffer);
 	await b.uncompress();
 	b.position = 0;
-	if (looksLikeIB3(b)) return fromIB3(b);
-	return decodeRobotFromHeaderedBytes(b);
+	return decodeMaybeIB3(b);
 }

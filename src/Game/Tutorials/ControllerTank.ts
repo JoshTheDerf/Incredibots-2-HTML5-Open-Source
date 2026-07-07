@@ -319,7 +319,7 @@ export class ControllerTank extends ControllerTutorial
 
 	protected ChallengeOver():boolean {
 		if (this.simStarted) {
-			return (this.object.GetBody().GetWorldCenter().x > -15 && this.object.GetBody().GetWorldCenter().y > 12 && this.object.GetBody().GetWorldCenter().x < -3);
+			return (this.object.GetBody()!.GetWorldCenter().x > -15 && this.object.GetBody()!.GetWorldCenter().y > 12 && this.object.GetBody()!.GetWorldCenter().x < -3);
 		} else {
 			return false;
 		}

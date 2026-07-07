@@ -8,8 +8,8 @@ export class TutorialWindow extends GuiWindow
 {
 	private cont:ControllerGame;
 	private msgArea:Text;
-	private msgArea2:Text;
-	private msgArea3:Text;
+	private msgArea2!:Text;
+	private msgArea3!:Text;
 	private num:number;
 	private initX:number;
 	private initY:number;

@@ -16,15 +16,15 @@ export class ControllerRubeGoldberg extends ControllerSandbox
 	public IsRubeGoldberg(): boolean {
 		return true;
 	}
-	private ball:ShapePart;
-	private straightRect:ShapePart;
-	private angledRect:ShapePart;
-	private wheelMotor:RevoluteJoint;
-	private endChunk:ShapePart;
+	private ball!:ShapePart;
+	private straightRect!:ShapePart;
+	private angledRect!:ShapePart;
+	private wheelMotor!:RevoluteJoint;
+	private endChunk!:ShapePart;
 
-	private wasRotating:boolean;
-	private wasDragging:boolean;
-	private wasDragging2:boolean;
+	private wasRotating!:boolean;
+	private wasDragging!:boolean;
+	private wasDragging2!:boolean;
 
 	private rectSelected:boolean = false;
 	private rotatedRect:boolean = false;
@@ -714,7 +714,7 @@ export class ControllerRubeGoldberg extends ControllerSandbox
 				this.endUncollided = true;
 				this.ShowTutorialDialog(80);
 			}
-			if (this.endUncollided && !this.shownEnd && !this.paused && this.ball.GetBody().GetWorldCenter().x > 25 && this.ball.GetBody().GetWorldCenter().y > 9) {
+			if (this.endUncollided && !this.shownEnd && !this.paused && this.ball.GetBody()!.GetWorldCenter().x > 25 && this.ball.GetBody()!.GetWorldCenter().y > 9) {
 				this.shownEnd = true;
 				this.ShowTutorialDialog(81);
 			}

@@ -32,9 +32,9 @@ import { b2Body, b2Joint } from "../..";
 export class b2JointEdge
 {
 
-	public other:b2Body;		///< provides quick access to the other body attached.
-	public joint:b2Joint;		///< the joint
-	public prev:b2JointEdge;	///< the previous joint edge in the body's joint list
-	public next:b2JointEdge;	///< the next joint edge in the body's joint list
+	public other!:b2Body;		///< provides quick access to the other body attached.
+	public joint!:b2Joint;		///< the joint
+	public prev!:b2JointEdge;	///< the previous joint edge in the body's joint list
+	public next!:b2JointEdge;	///< the next joint edge in the body's joint list
 
 }

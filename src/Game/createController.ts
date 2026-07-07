@@ -35,44 +35,44 @@ export function createController(type: number, main: Main): Controller {
 		// First-frame ControllerSandbox used for replay / robot / challenge deep links.
 		case -5:
 			ControllerGameGlobals.settings = new SandboxSettings(15.0, 0, 0, 0, 0);
-			return new ControllerSandbox();
+			return new ControllerSandbox() as Controller;
 		// Initial main menu (first frame).
 		case -4:
-			return new ControllerMainMenu();
+			return new ControllerMainMenu() as Controller;
 		// Reset back to the main menu (level select).
 		case -1:
-			return new ControllerMainMenu(true);
+			return new ControllerMainMenu(true) as Controller;
 		case 10:
-			return new ControllerTank();
+			return new ControllerTank() as Controller;
 		case 11:
-			return new ControllerShapes();
+			return new ControllerShapes() as Controller;
 		case 12:
-			return new ControllerCar();
+			return new ControllerCar() as Controller;
 		case 13:
-			return new ControllerJumpbot();
+			return new ControllerJumpbot() as Controller;
 		case 14:
-			return new ControllerDumpbot();
+			return new ControllerDumpbot() as Controller;
 		case 15:
-			return new ControllerCatapult();
+			return new ControllerCatapult() as Controller;
 		case 16:
-			return new ControllerHomeMovies();
+			return new ControllerHomeMovies() as Controller;
 		case 17:
-			return new ControllerRubeGoldberg();
+			return new ControllerRubeGoldberg() as Controller;
 		case 18:
-			return new ControllerNewFeatures();
+			return new ControllerNewFeatures() as Controller;
 		case 19:
-			return new ControllerChallengeEditor();
+			return new ControllerChallengeEditor() as Controller;
 		case 1:
-			return new ControllerChallenge();
+			return new ControllerChallenge() as Controller;
 		case 2:
-			return new ControllerMonkeyBars();
+			return new ControllerMonkeyBars() as Controller;
 		case 3:
-			return new ControllerClimb();
+			return new ControllerClimb() as Controller;
 		case 4:
-			return new ControllerRace(main.preloadedBots.cRace);
+			return new ControllerRace(main.preloadedBots.cRace) as Controller;
 		case 5:
-			return new ControllerSpaceship(main.preloadedBots.cSpaceship);
+			return new ControllerSpaceship(main.preloadedBots.cSpaceship) as Controller;
 		default:
-			return new ControllerSandbox();
+			return new ControllerSandbox() as Controller;
 	}
 }

@@ -11,7 +11,9 @@
 //
 // This module is Pixi-free / DOM-free so the headless core owns tutorial logic.
 
+import { Circle } from "../Parts/Circle";
 import type { Part } from "../Parts/Part";
+import { ShapePart } from "../Parts/ShapePart";
 import {
 	buildBaseTerrain,
 	buildTankScene,
@@ -1006,4 +1008,111 @@ export function createTutorialMachine(levelIndex: number): TutorialMachine | nul
 		default:
 			return null;
 	}
+}
+
+// --- Per-frame tutorial predicates (H2) -----------------------------------
+//
+// Pure functions of (levelIndex, parts) — evaluated by GameCore each
+// running-sim frame while a tutorial is active.
+
+/** World centre of a part's live body, or null before Init. */
+function tutorialBodyCentre(p: Part): { x: number; y: number } | null {
+	const body = (p as unknown as { GetBody?: () => { GetWorldCenter: () => { x: number; y: number } } | null }).GetBody?.();
+	if (!body) return null;
+	return body.GetWorldCenter();
+}
+
+/**
+ * Per-frame tutorial win predicate (H2) — a faithful port of each base
+ * tutorial's ControllerXxx.ChallengeOver() body-position check, evaluated on
+ * the live b2Body world centres during the running sim. All are gated on the
+ * sim having started (the caller only invokes this while running). Returns true
+ * on the first frame the level's win condition is met.
+ *
+ *   0 Tank      (ControllerTank.ts:320-326): `this.object` (the blue win-target
+ *               rect) at -15 < x < -3 && y > 12.
+ *   1 Shapes    (ControllerShapes.ts:48-59): ANY editable Circle at
+ *               -15 < x < -3 && y > 10.
+ *   2 Car       (ControllerCar.ts:138-149): ANY editable ShapePart at
+ *               x < -7 && y > 12.
+ *   3 Jumpbot   (ControllerJumpbot.ts:131-142): ANY editable ShapePart at
+ *               -15 < x < -3 && 11 < y < 18.
+ *   4 Dumpbot   (ControllerDumpbot.ts:239-247): ALL three win-target objects
+ *               each at -15 < x < -3 && y > 12.
+ *   5 Catapult  (ControllerCatapult.ts:138-144): `this.ball` (the green
+ *               win-target circle) at -15 < x < -3 && y > 12.5.
+ */
+export function tutorialChallengeOver(levelIndex: number, parts: Part[]): boolean {
+	const winTargets = (): Part[] => parts.filter((p) => (p as { tutorialWinTarget?: boolean }).tutorialWinTarget);
+	switch (levelIndex) {
+		case 0: {
+			const t = winTargets()[0];
+			if (!t) return false;
+			const c = tutorialBodyCentre(t);
+			return !!c && c.x > -15 && c.y > 12 && c.x < -3;
+		}
+		case 1: {
+			for (const p of parts) {
+				if (p instanceof Circle && p.isEditable) {
+					const c = tutorialBodyCentre(p);
+					if (c && c.x > -15 && c.x < -3 && c.y > 10) return true;
+				}
+			}
+			return false;
+		}
+		case 2: {
+			for (const p of parts) {
+				if (p instanceof ShapePart && p.isEditable) {
+					const c = tutorialBodyCentre(p);
+					if (c && c.x < -7 && c.y > 12) return true;
+				}
+			}
+			return false;
+		}
+		case 3: {
+			for (const p of parts) {
+				if (p instanceof ShapePart && p.isEditable) {
+					const c = tutorialBodyCentre(p);
+					if (c && c.x > -15 && c.x < -3 && c.y > 11 && c.y < 18) return true;
+				}
+			}
+			return false;
+		}
+		case 4: {
+			const targets = winTargets();
+			if (targets.length < 3) return false;
+			for (const t of targets) {
+				const c = tutorialBodyCentre(t);
+				if (!c || !(c.x > -15 && c.y > 12 && c.x < -3)) return false;
+			}
+			return true;
+		}
+		case 5: {
+			const t = winTargets()[0];
+			if (!t) return false;
+			const c = tutorialBodyCentre(t);
+			return !!c && c.x > -15 && c.x < -3 && c.y > 12.5;
+		}
+		default:
+			return false;
+	}
+}
+
+/**
+ * Per-frame tutorial dialog milestone driven by a body-position check
+ * (ControllerRubeGoldberg.Update dialog 81 / ControllerNewFeatures.Update
+ * dialog 89). Returns the progress key to fire this frame, or null. The
+ * machine's cursor gating means firing the key only advances if it is the next
+ * expected step, so evaluating every frame is safe.
+ *   7 RubeGoldberg: `this.ball` progress target at x > 25 && y > 9 -> "reachedEnd".
+ *   8 NewFeatures:  `this.middle` progress target at x < -25 && y > -8 -> "botInBox".
+ */
+export function tutorialFrameProgressKey(levelIndex: number, parts: Part[]): string | null {
+	const target = parts.find((p) => (p as { tutorialProgressTarget?: boolean }).tutorialProgressTarget);
+	if (!target) return null;
+	const c = tutorialBodyCentre(target);
+	if (!c) return null;
+	if (levelIndex === 7 && c.x > 25 && c.y > 9) return "reachedEnd";
+	if (levelIndex === 8 && c.x < -25 && c.y > -8) return "botInBox";
+	return null;
 }

@@ -256,31 +256,33 @@ export class ControllerChallenge extends ControllerSandbox {
       this.m_fader.visible = true;
       this.ShowConfirmDialog("Redirect to incredibots2.com?", 7);
     } else {
-      if (!curRobotEditable) return;
-      if (curChallengeID == "") {
+      // BUG FIX (port): these referenced bare AS3 statics that were moved to
+      // ControllerGameGlobals; the bare names would throw ReferenceError.
+      if (!ControllerGameGlobals.curRobotEditable) return;
+      if (ControllerGameGlobals.curChallengeID == "") {
         this.m_scoreWindow.ShowFader();
         this.ShowDialog2("You must save your challenge publicly first!");
       } else {
-        if (userName != "_Public") {
+        if (ControllerGameGlobals.userName != "_Public") {
           this.AddSyncPoint();
           if (ControllerGameGlobals.viewingUnsavedReplay)
             Database.SaveReplay(
-              userName,
-              password,
-              replay,
+              ControllerGameGlobals.userName,
+              ControllerGameGlobals.password,
+              ControllerGameGlobals.replay,
               "_ScoreReplay",
               "This replay is saved for a score",
-              curRobotID,
+              ControllerGameGlobals.curRobotID,
               new Robot(this.allParts, ControllerGameGlobals.settings),
               this.ChallengeOver() ? this.GetScore() : -1,
-              curChallengeID,
+              ControllerGameGlobals.curChallengeID,
               1,
               this.finishSavingReplay
             );
           else
             Database.SaveReplay(
-              userName,
-              password,
+              ControllerGameGlobals.userName,
+              ControllerGameGlobals.password,
               new Replay(
                 this.cameraMovements,
                 this.syncPoints,
@@ -290,10 +292,10 @@ export class ControllerChallenge extends ControllerSandbox {
               ),
               "_ScoreReplay",
               "This replay is saved for a score",
-              curRobotID,
+              ControllerGameGlobals.curRobotID,
               new Robot(this.allParts, ControllerGameGlobals.settings),
               this.ChallengeOver() ? this.GetScore() : -1,
-              curChallengeID,
+              ControllerGameGlobals.curChallengeID,
               1,
               this.finishSavingReplay
             );

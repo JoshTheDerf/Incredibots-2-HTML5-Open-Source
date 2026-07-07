@@ -95,7 +95,7 @@ export class LSOManager {
     LSOManager.flush(LSOManager.obj);
   }
 
-  public static flush(obj) {
+  public static flush(obj: any) {
     localStorage.Incredibots = JSON.stringify(obj);
   }
 }

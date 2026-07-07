@@ -43,8 +43,8 @@ export class b2ManifoldPoint
 	}
 	public localPoint1:b2Vec2 = new b2Vec2();
 	public localPoint2:b2Vec2 = new b2Vec2();
-	public separation:number;
-	public normalImpulse:number;
-	public tangentImpulse:number;
+	public separation!:number;
+	public normalImpulse!:number;
+	public tangentImpulse!:number;
 	public id:b2ContactID = new b2ContactID();
 }

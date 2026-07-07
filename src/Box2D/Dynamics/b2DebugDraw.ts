@@ -33,6 +33,7 @@ interface IDrawSurface {
 	drawCircle(x: number, y: number, radius: number): void;
 	beginFill(color?: number, alpha?: number): void;
 	endFill(): void;
+	clear(): void;
 }
 
 /// Implement and register this class with a b2World to provide debug drawing of physics

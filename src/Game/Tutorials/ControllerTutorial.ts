@@ -20,7 +20,7 @@ export class ControllerTutorial extends ControllerGame
 	constructor()
 	{
 		super()
-		this.sSky = new Sky(this, 0);
+		this.sSky = new Sky(this as any, 0);
 
 		this.BuildBuildArea();
 

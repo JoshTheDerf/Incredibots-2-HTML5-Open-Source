@@ -13,8 +13,8 @@ import { ShapePart } from "../../Parts/ShapePart"
 export class ControllerCatapult extends ControllerTutorial
 {
 	private controlText:Text;
-	private motor:RevoluteJoint;
-	private ball:ShapePart;
+	private motor!:RevoluteJoint;
+	private ball!:ShapePart;
 
 	private limitedMotor:boolean = false;
 	private limitedMotor2:boolean = false;
@@ -137,7 +137,7 @@ export class ControllerCatapult extends ControllerTutorial
 
 	protected ChallengeOver():boolean {
 		if (this.simStarted) {
-			return (this.focusedBall && this.ball.GetBody().GetWorldCenter().x > -15 && this.ball.GetBody().GetWorldCenter().x < -3 && this.ball.GetBody().GetWorldCenter().y > 12.5);
+			return (this.focusedBall && this.ball.GetBody()!.GetWorldCenter().x > -15 && this.ball.GetBody()!.GetWorldCenter().x < -3 && this.ball.GetBody()!.GetWorldCenter().y > 12.5);
 		} else {
 			return false;
 		}

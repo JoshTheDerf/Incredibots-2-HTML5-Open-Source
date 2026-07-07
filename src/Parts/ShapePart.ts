@@ -172,6 +172,17 @@ export class ShapePart extends Part {
     this.m_thrusters.push(t);
   }
 
+  /**
+   * Detach a thruster from this shape's thruster list (inverse of AddThrusters,
+   * the Thrusters counterpart of RemoveJoint). Used when a thruster is deleted
+   * from the parts graph so the shape never keeps a reference to a gone
+   * thruster.
+   */
+  public RemoveThrusters(t: Thrusters): void {
+    const idx = this.m_thrusters.indexOf(t);
+    if (idx >= 0) this.m_thrusters.splice(idx, 1);
+  }
+
   public Move(xVal: number, yVal: number): void {
     this.centerX = xVal;
     this.centerY = yVal;
@@ -432,11 +443,11 @@ export class ShapePart extends Part {
   }
 
   public GetActiveJoints(): Array<any> {
-    return this.m_joints.filter(() => this.IsEnabled());
+    return this.m_joints.filter((j) => j.isEnabled);
   }
 
   public GetActiveThrusters(): Array<any> {
-    return this.m_thrusters.filter(() => this.IsEnabled());
+    return this.m_thrusters.filter((t) => t.isEnabled);
   }
 
   public WillBeStatic(shapeList: Array<any> | null = null): boolean {

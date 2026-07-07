@@ -23,8 +23,8 @@ export class MainEditPanel extends GuiWindow {
   private m_resetButton2: GuiButton;
   private m_rewindButton: GuiButton;
   private m_rewindButton2: GuiButton;
-  private m_saveReplayButton: GuiButton;
-  private m_saveReplayButton2: GuiButton;
+  private m_saveReplayButton!: GuiButton;
+  private m_saveReplayButton2!: GuiButton;
   private m_saveButton: GuiButton;
   private m_loadButton: GuiButton;
   private m_loginButton: GuiButton;
@@ -33,19 +33,19 @@ export class MainEditPanel extends GuiWindow {
   private m_conditionsButton: GuiButton;
   private m_buildBoxButton: GuiButton;
   private m_newButton: GuiButton;
-  private m_pasteButton: GuiButton;
+  private m_pasteButton!: GuiButton;
 
   private m_timer1: Text;
   private m_timer2: Text;
 
-  private m_circleButton: GuiButton;
-  private m_rectButton: GuiButton;
-  private m_triangleButton: GuiButton;
-  private m_fixedJointButton: GuiButton;
-  private m_revoluteJointButton: GuiButton;
-  private m_prismaticJointButton: GuiButton;
-  private m_mainPasteButton: GuiButton;
-  private m_textButton: GuiButton;
+  private m_circleButton!: GuiButton;
+  private m_rectButton!: GuiButton;
+  private m_triangleButton!: GuiButton;
+  private m_fixedJointButton!: GuiButton;
+  private m_revoluteJointButton!: GuiButton;
+  private m_prismaticJointButton!: GuiButton;
+  private m_mainPasteButton!: GuiButton;
+  private m_textButton!: GuiButton;
 
   private m_header: Text;
   private m_rateButton: GuiButton;
@@ -67,12 +67,12 @@ export class MainEditPanel extends GuiWindow {
   private m_embedButton3: GuiButton;
   private m_embedButton4: GuiButton;
 
-  private m_undoButton: GuiButton;
-  private m_redoButton: GuiButton;
+  private m_undoButton!: GuiButton;
+  private m_redoButton!: GuiButton;
   private m_zoomInButton: GuiButton;
   private m_zoomOutButton: GuiButton;
 
-  private m_tutorialButton: GuiButton;
+  private m_tutorialButton!: GuiButton;
 
   constructor(contr: ControllerGame) {
     super(0, 5, 800, 95);
@@ -848,67 +848,67 @@ export class MainEditPanel extends GuiWindow {
   }
 
   public static scrollbarField(): BitmapAsset {
-    var bm: BitmapAsset = new Resource.cGuiScrollbarField();
+    var bm: BitmapAsset = new (Resource as any).cGuiScrollbarField();
     return bm;
   }
 
   public static scrollbarBase(): BitmapAsset {
-    var bm: BitmapAsset = new Resource.cGuiScrollbarBase();
+    var bm: BitmapAsset = new (Resource as any).cGuiScrollbarBase();
     return bm;
   }
 
   public static scrollbarRoll(): BitmapAsset {
-    var bm: BitmapAsset = new Resource.cGuiScrollbarRoll();
+    var bm: BitmapAsset = new (Resource as any).cGuiScrollbarRoll();
     return bm;
   }
 
   public static scrollbarClick(): BitmapAsset {
-    var bm: BitmapAsset = new Resource.cGuiScrollbarClick();
+    var bm: BitmapAsset = new (Resource as any).cGuiScrollbarClick();
     return bm;
   }
 
   public static scrollbarTallBase(): BitmapAsset {
-    var bm: BitmapAsset = new Resource.cGuiScrollbarTallBase();
+    var bm: BitmapAsset = new (Resource as any).cGuiScrollbarTallBase();
     return bm;
   }
 
   public static scrollbarTallRoll(): BitmapAsset {
-    var bm: BitmapAsset = new Resource.cGuiScrollbarTallRoll();
+    var bm: BitmapAsset = new (Resource as any).cGuiScrollbarTallRoll();
     return bm;
   }
 
   public static scrollbarTallClick(): BitmapAsset {
-    var bm: BitmapAsset = new Resource.cGuiScrollbarTallClick();
+    var bm: BitmapAsset = new (Resource as any).cGuiScrollbarTallClick();
     return bm;
   }
 
   public static scrollbarButtonUpBase(): BitmapAsset {
-    var bm: BitmapAsset = new Resource.cGuiScrollbarButtonUpBase();
+    var bm: BitmapAsset = new (Resource as any).cGuiScrollbarButtonUpBase();
     return bm;
   }
 
   public static scrollbarButtonUpRoll(): BitmapAsset {
-    var bm: BitmapAsset = new Resource.cGuiScrollbarButtonUpRoll();
+    var bm: BitmapAsset = new (Resource as any).cGuiScrollbarButtonUpRoll();
     return bm;
   }
 
   public static scrollbarButtonUpClick(): BitmapAsset {
-    var bm: BitmapAsset = new Resource.cGuiScrollbarButtonUpClick();
+    var bm: BitmapAsset = new (Resource as any).cGuiScrollbarButtonUpClick();
     return bm;
   }
 
   public static scrollbarButtonDownBase(): BitmapAsset {
-    var bm: BitmapAsset = new Resource.cGuiScrollbarButtonDownBase();
+    var bm: BitmapAsset = new (Resource as any).cGuiScrollbarButtonDownBase();
     return bm;
   }
 
   public static scrollbarButtonDownRoll(): BitmapAsset {
-    var bm: BitmapAsset = new Resource.cGuiScrollbarButtonDownRoll();
+    var bm: BitmapAsset = new (Resource as any).cGuiScrollbarButtonDownRoll();
     return bm;
   }
 
   public static scrollbarButtonDownClick(): BitmapAsset {
-    var bm: BitmapAsset = new Resource.cGuiScrollbarButtonDownClick();
+    var bm: BitmapAsset = new (Resource as any).cGuiScrollbarButtonDownClick();
     return bm;
   }
 }

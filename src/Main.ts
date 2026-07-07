@@ -2,6 +2,7 @@
 
 import { Application, Container } from "pixi.js";
 import type { Controller } from "./Game/Controller"
+import type { ControllerGame } from "./Game/ControllerGame"
 import { ControllerGameGlobals } from "./Game/Globals/ControllerGameGlobals"
 import { Resource } from "./Game/Graphics/Resource"
 import { ByteArray } from "./General/ByteArray"
@@ -46,7 +47,7 @@ export class Main {
 
 	public static GLOBAL_FONT:string = "Arial";
 
-	public preloadedBots = {
+	public preloadedBots: { cRace: ByteArray | null; cSpaceship: ByteArray | null } = {
 		cRace: null,
 		cSpaceship: null
 	}
@@ -110,15 +111,15 @@ export class Main {
 			var urlParams:URLSearchParams = new URLSearchParams(window.location.search);
 			if (urlParams.get("replayID")) {
 				Main.loadReplayMode = true;
-				var replayID:string = urlParams.get("replayID");
+				var replayID:string = urlParams.get("replayID")!;
 			}
 			if (urlParams.get("robotID")) {
 				Main.loadRobotMode = true;
-				var robotID:string = urlParams.get("robotID");
+				var robotID:string = urlParams.get("robotID")!;
 			}
 			if (urlParams.get("challengeID")) {
 				Main.loadChallengeMode = true;
-				var challengeID:string = urlParams.get("challengeID");
+				var challengeID:string = urlParams.get("challengeID")!;
 			}
 			if (urlParams.get("iframe")) {
 				Main.inIFrame = true;
@@ -126,23 +127,23 @@ export class Main {
 
 			if (Main.loadReplayMode && !Main.premiumMode) {
 				Main.m_curController = Main.instantiate(-5, this);
-				Main.m_curController.LoadReplayNow(replayID);
-				ControllerGameGlobals.potentialReplayID = replayID;
+				(Main.m_curController as unknown as ControllerGame).LoadReplayNow(replayID!);
+				ControllerGameGlobals.potentialReplayID = replayID!;
 				ControllerGameGlobals.potentialReplayPublic = true;
 				ControllerGameGlobals.replayDirectlyLinked = true;
 				Main.theRoot.addChild(Main.m_curController);
 				Main.nextControllerType = 0;
 			} else if (Main.loadRobotMode && !Main.premiumMode) {
 				Main.m_curController = Main.instantiate(-5, this);
-				Main.m_curController.LoadRobotNow(robotID);
-				ControllerGameGlobals.potentialRobotID = robotID;
+				(Main.m_curController as unknown as ControllerGame).LoadRobotNow(robotID!);
+				ControllerGameGlobals.potentialRobotID = robotID!;
 				ControllerGameGlobals.potentialRobotPublic = true;
 				Main.theRoot.addChild(Main.m_curController);
 				Main.nextControllerType = 0;
 			} else if (Main.loadChallengeMode && !Main.premiumMode) {
 				Main.m_curController = Main.instantiate(-5, this);
-				Main.m_curController.LoadChallengeNow(challengeID);
-				ControllerGameGlobals.potentialChallengeID = challengeID;
+				(Main.m_curController as unknown as ControllerGame).LoadChallengeNow(challengeID!);
+				ControllerGameGlobals.potentialChallengeID = challengeID!;
 				ControllerGameGlobals.potentialChallengePublic = true;
 				Main.theRoot.addChild(Main.m_curController);
 				Main.nextControllerType = 0;

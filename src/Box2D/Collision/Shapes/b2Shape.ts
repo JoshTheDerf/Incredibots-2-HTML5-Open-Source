@@ -220,10 +220,10 @@ export class b2Shape
 		this.m_friction = def.friction;
 		this.m_restitution = def.restitution;
 		this.m_density = def.density;
-		this.m_body = null;
+		this.m_body = null!;
 		this.m_sweepRadius = 0.0;
 
-		this.m_next = null;
+		this.m_next = null!;
 
 		this.m_proxyId = b2Pair.b2_nullProxy;
 
@@ -324,7 +324,7 @@ export class b2Shape
 
 	public UpdateSweepRadius(center:b2Vec2) : void{};
 
-	public m_type:number;
+	public m_type!:number;
 	public m_next:b2Shape;
 	public m_body:b2Body;
 

@@ -44,10 +44,10 @@ export class b2Pair
 	public IsFinal():boolean		{ return (this.status & b2Pair.e_pairFinal) == b2Pair.e_pairFinal; }
 
 	public userData:any = null;
-	public proxyId1:number;
-	public proxyId2:number;
-	public next:number;
-	public status:number;
+	public proxyId1!:number;
+	public proxyId2!:number;
+	public next!:number;
+	public status!:number;
 
 	// STATIC
 	public static b2_nullPair:number = b2Settings.USHRT_MAX;

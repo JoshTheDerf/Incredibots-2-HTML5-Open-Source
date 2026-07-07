@@ -373,6 +373,8 @@ export class Box2D3Shape {
 		filter: { categoryBits: number; maskBits: number; groupIndex: number },
 		geom: ShapeGeom,
 		isSandbox: boolean,
+		/** Backend lookup from a raw body id to its canonical createBody wrapper (see GetBody). */
+		private readonly resolveBody?: (raw: RawBodyId) => Box2D3Body | undefined,
 	) {
 		this.m_filter = new Box2D3ShapeFilter(m, id, isSandbox, filter.categoryBits, filter.maskBits, filter.groupIndex);
 		this.geom = geom;
@@ -405,9 +407,16 @@ export class Box2D3Shape {
 	public GetVertices(): Vec2Like[] {
 		return this.geom.vertices;
 	}
-	/** Owning body (2.0 fixture.GetBody()); a throwaway wrapper is fine (reads only). */
+	/**
+	 * Owning body (2.0 fixture.GetBody()). Resolves to the canonical createBody
+	 * wrapper when possible — the render interpolator keys poses by wrapper
+	 * identity, so a throwaway wrapper would render at raw step poses (piston
+	 * shafts jitter against their interpolated shapes). Falls back to a bare
+	 * wrapper for bodies this backend didn't create.
+	 */
 	public GetBody(): Box2D3Body {
-		return new Box2D3Body(this.m, this.m.b2Shape_GetBody(this.id));
+		const raw = this.m.b2Shape_GetBody(this.id);
+		return this.resolveBody?.(raw as RawBodyId) ?? new Box2D3Body(this.m, raw);
 	}
 }
 
@@ -598,6 +607,14 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 	 */
 	private bodies = new Set<Box2D3Body>();
 	/**
+	 * Raw-id-key lookup onto the SAME canonical wrappers as `bodies`, so
+	 * Box2D3Shape.GetBody() can return the createBody wrapper instead of a
+	 * throwaway — the render interpolator keys poses by wrapper identity, so a
+	 * fresh wrapper per call would never interpolate (piston shafts jitter).
+	 * Reset with the world; entries removed on destroyBody.
+	 */
+	private bodiesByRaw = new Map<string, Box2D3Body>();
+	/**
 	 * A static body at the world origin, created lazily as bodyA for the user-drag
 	 * (mouse) joint — v3, unlike 2.x, has no implicit world ground body. NOT added
 	 * to `bodies` (it's not a part body; static, so the interpolator ignores it).
@@ -624,6 +641,7 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 		// previous play (the backend is a process-wide singleton).
 		this.shapesById = new Map();
 		this.bodies = new Set();
+		this.bodiesByRaw = new Map();
 		this.groundBody = null;
 		this.contactHooks = null;
 		this.waterControllers = [];
@@ -645,6 +663,20 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 		g.delete();
 		wd.delete();
 		return world;
+	}
+
+	destroyWorld(world: RawWorldId): void {
+		// Free the wasm world (and all bodies/shapes/joints still in it) — unlike
+		// the JS engines, dropping the JS-side id leaks it in linear memory.
+		this.m.b2DestroyWorld(world);
+		// Every tracked id is dangling now; drop them eagerly rather than waiting
+		// for the next createWorld reset.
+		this.shapesById = new Map();
+		this.bodies = new Set();
+		this.bodiesByRaw = new Map();
+		this.groundBody = null;
+		this.contactHooks = null;
+		this.waterControllers = [];
 	}
 
 	step(world: RawWorldId, dt: number, _iterations: number): void {
@@ -686,6 +718,7 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 		const body = new Box2D3Body(m, raw);
 		if (bodyDef.userData != null) body.userData = bodyDef.userData;
 		this.bodies.add(body);
+		this.bodiesByRaw.set(keyOf(raw as IdTriple), body);
 		return body;
 	}
 
@@ -765,7 +798,9 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 			poly.delete();
 		}
 		sd.delete();
-		const shape = new Box2D3Shape(m, raw, filter, geom, isSandbox);
+		const shape = new Box2D3Shape(m, raw, filter, geom, isSandbox, (rawBody) =>
+			this.bodiesByRaw.get(keyOf(rawBody as IdTriple)),
+		);
 		if (shapeDef.userData != null) shape.userData = shapeDef.userData;
 		this.shapesById.set(keyOf(raw as IdTriple), shape);
 		body.shapes.push(shape);
@@ -958,6 +993,7 @@ export class Box2D3Backend implements PhysicsBackend<RawWorldId, Box2D3Body, Box
 
 	destroyBody(_world: RawWorldId, body: Box2D3Body): void {
 		this.bodies.delete(body);
+		this.bodiesByRaw.delete(keyOf(body.id as IdTriple));
 		this.m.b2DestroyBody(body.id);
 	}
 

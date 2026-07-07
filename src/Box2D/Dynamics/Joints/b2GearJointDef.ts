@@ -35,8 +35,8 @@ export class b2GearJointDef extends b2JointDef
 	{
 		super();
 		this.type = b2Joint.e_gearJoint;
-		this.joint1 = null;
-		this.joint2 = null;
+		this.joint1 = null!;
+		this.joint2 = null!;
 		this.ratio = 1.0;
 	}
 

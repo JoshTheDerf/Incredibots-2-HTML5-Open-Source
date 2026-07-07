@@ -1,5 +1,43 @@
 # TypeScript Type-Check Baseline
 
+## Status: ZERO ERRORS (2026-07-06)
+
+The burn-down described below is **complete**. `npx vue-tsc --noEmit` (which is
+what `npm run typecheck` runs, and is included in `npm run gate`) reports
+**0 errors** across the entire project, with all 775 tests passing.
+
+**Policy: keep it at zero.** Any change that introduces a type error is a
+regression — fix it before merging. The gate command for CI / pre-merge is:
+
+```sh
+npm run typecheck   # vue-tsc --noEmit — must exit 0
+```
+
+(`npm run gate` runs typecheck + core-purity checks + the test suite.)
+
+Notes on how zero was reached (2026-07-01 → 2026-07-06, 2689 → 0):
+
+- All fixes were **type-level only** (annotations, `| null` unions, targeted
+  `as` casts, non-null `!` where the invariant is clear, ambient declarations,
+  `any` for genuinely dynamic AS3 patterns) — zero runtime behavior change,
+  verified by the full test suite after each chunk.
+- Conventions used throughout: lazily-initialized fields keep their non-null
+  declared type and use `= null!` at the assignment; subclass-specific props
+  read off a base variable use an inline `as` cast; AS3 `Object`/dynamic values
+  are typed `any` at the declaration; incompatible subclass overrides (TS2416)
+  are fixed on the subclass side by widening/optionalizing parameters.
+- Two real runtime bugs were found and minimally fixed during the burn-down
+  (flagged in the burn-down reports): a missing `b2AABB` import in
+  `src/Game/ControllerSandbox.ts` (`GetBuildingArea()` threw `ReferenceError`),
+  and eleven `ControllerGame.ts` handlers referencing an `e` event parameter
+  the port had dropped (restored as optional `e?: any`).
+- Known latent (dead-code) issues were deliberately preserved with `as any`
+  casts and flagged in comments/reports rather than "fixed" (e.g. the
+  cloud/DB `Main.ShowHourglass()` calls, AS3 `TextField` methods on pixi
+  `Text` in dead login paths) — see the "IB2 cloud dead code" memory note.
+
+The original baseline below is kept for historical context.
+
 ## Why this exists
 
 This project is an old ActionScript 3 -> TypeScript port. The production build

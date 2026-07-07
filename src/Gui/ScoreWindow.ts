@@ -11,13 +11,13 @@ export class ScoreWindow extends GuiWindow
 {
 	private cont:ControllerGame;
 	private m_header:Sprite;
-	private m_scoreField:Text;
+	private m_scoreField!:Text;
 	private m_viewReplayButton:GuiButton;
 	private m_saveReplayButton:GuiButton;
 	private m_submitScoreButton:GuiButton;
 	private m_mainMenuButton:GuiButton;
 	private m_cancelButton:GuiButton;
-	private m_nextLevelButton:GuiButton;
+	private m_nextLevelButton!:GuiButton;
 
 	constructor(contr:ControllerGame, score:number)
 	{

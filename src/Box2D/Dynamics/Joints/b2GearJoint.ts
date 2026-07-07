@@ -88,10 +88,10 @@ export class b2GearJoint extends b2Joint
 		//b2Settings.b2Assert(def.joint1.m_body1.IsStatic());
 		//b2Settings.b2Assert(def.joint2.m_body1.IsStatic());
 
-		this.m_revolute1 = null;
-		this.m_prismatic1 = null;
-		this.m_revolute2 = null;
-		this.m_prismatic2 = null;
+		this.m_revolute1 = null!;
+		this.m_prismatic1 = null!;
+		this.m_revolute2 = null!;
+		this.m_prismatic2 = null!;
 
 		var coordinate1:number;
 		var coordinate2:number;
@@ -322,7 +322,7 @@ export class b2GearJoint extends b2Joint
 	public m_ratio:number;
 
 	// Effective mass
-	public m_mass:number;
+	public m_mass!:number;
 
 	// Impulse for accumulation/warm starting.
 	public m_force:number;

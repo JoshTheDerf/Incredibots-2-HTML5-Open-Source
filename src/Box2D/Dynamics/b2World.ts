@@ -40,15 +40,15 @@ export class b2World
 	/// @param doSleep improve performance by not simulating inactive bodies.
 	constructor(worldAABB:b2AABB, gravity:b2Vec2, doSleep:boolean){
 
-		this.m_destructionListener = null;
-		this.m_boundaryListener = null;
+		this.m_destructionListener = null!;
+		this.m_boundaryListener = null!;
 		this.m_contactFilter = b2ContactFilter.b2_defaultFilter;
-		this.m_contactListener = null;
-		this.m_debugDraw = null;
+		this.m_contactListener = null!;
+		this.m_debugDraw = null!;
 
-		this.m_bodyList = null;
-		this.m_contactList = null;
-		this.m_jointList = null;
+		this.m_bodyList = null!;
+		this.m_contactList = null!;
+		this.m_jointList = null!;
 
 		this.m_bodyCount = 0;
 		this.m_contactCount = 0;
@@ -132,14 +132,14 @@ export class b2World
 		//b2Settings.b2Assert(m_lock == false);
 		if (this.m_lock == true)
 		{
-			return null;
+			return null!;
 		}
 
 		//void* mem = m_blockAllocator.Allocate(sizeof(b2Body));
 		var b:b2Body = new b2Body(def, this);
 
 		// Add to world doubly linked list.
-		b.m_prev = null;
+		b.m_prev = null!;
 		b.m_next = this.m_bodyList;
 		if (this.m_bodyList)
 		{
@@ -240,7 +240,7 @@ export class b2World
 		var j:b2Joint = b2Joint.Create(def, this.m_blockAllocator);
 
 		// Connect to the world list.
-		j.m_prev = null;
+		j.m_prev = null!;
 		j.m_next = this.m_jointList;
 		if (this.m_jointList)
 		{
@@ -252,14 +252,14 @@ export class b2World
 		// Connect to the bodies' doubly linked lists.
 		j.m_node1.joint = j;
 		j.m_node1.other = j.m_body2;
-		j.m_node1.prev = null;
+		j.m_node1.prev = null!;
 		j.m_node1.next = j.m_body1.m_jointList;
 		if (j.m_body1.m_jointList) j.m_body1.m_jointList.prev = j.m_node1;
 		j.m_body1.m_jointList = j.m_node1;
 
 		j.m_node2.joint = j;
 		j.m_node2.other = j.m_body1;
-		j.m_node2.prev = null;
+		j.m_node2.prev = null!;
 		j.m_node2.next = j.m_body2.m_jointList;
 		if (j.m_body2.m_jointList) j.m_body2.m_jointList.prev = j.m_node2;
 		j.m_body2.m_jointList = j.m_node2;
@@ -327,8 +327,8 @@ export class b2World
 			body1.m_jointList = j.m_node1.next;
 		}
 
-		j.m_node1.prev = null;
-		j.m_node1.next = null;
+		j.m_node1.prev = null!;
+		j.m_node1.next = null!;
 
 		// Remove from body 2
 		if (j.m_node2.prev)
@@ -346,8 +346,8 @@ export class b2World
 			body2.m_jointList = j.m_node2.next;
 		}
 
-		j.m_node2.prev = null;
-		j.m_node2.next = null;
+		j.m_node2.prev = null!;
+		j.m_node2.next = null!;
 
 		b2Joint.Destroy(j, this.m_blockAllocator);
 
@@ -784,7 +784,7 @@ export class b2World
 		for (;;)
 		{
 			// Find the first TOI.
-			var minContact:b2Contact = null;
+			var minContact:b2Contact = null!;
 			var minTOI:number = 1.0;
 
 			for (c = this.m_contactList; c; c = c.m_next)
@@ -1404,7 +1404,7 @@ export class b2World
 
 	public m_inv_dt0:number;
 
-	public m_positionIterationCount:number;
+	public m_positionIterationCount!:number;
 
 	// This is for debugging the solver.
 	public static m_positionCorrection:boolean;

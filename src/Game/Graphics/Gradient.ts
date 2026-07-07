@@ -13,7 +13,7 @@ export class Gradient {
       canvas.height = 1;
     }
 
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d")!;
     const gradient = ctx.createLinearGradient(0, 0, 0, steps);
 
     if (dir === 'to top' || dir === 'to right') {

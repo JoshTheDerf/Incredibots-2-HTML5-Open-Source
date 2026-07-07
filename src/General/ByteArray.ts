@@ -9,8 +9,8 @@ import { encodingExists, decode, encode } from "iconv-lite";
 
 import { CompressionAlgorithm, Endian, ObjectEncoding } from "./ByteArrayEnums"
 
-import amf0 from "./AMF/AMF0.js"
-import amf3 from "./AMF/AMF3.js"
+import amf0 from "./AMF/AMF0"
+import amf3 from "./AMF/AMF3"
 
 const AMF0Types = {
   kNumberType: 0,
@@ -54,7 +54,7 @@ const AMF3Types = {
  * @param {Buffer|Array|Number} v
  * @returns {Buffer}
  */
-const convert = (v) => {
+const convert = (v: Buffer | ArrayBuffer | Uint8Array | number[] | number): Buffer => {
   if (Buffer.isBuffer(v)) return v;
   if (Array.isArray(v)) return Buffer.from(v);
   if (v instanceof ArrayBuffer) return Buffer.from(new Uint8Array(v));
@@ -73,23 +73,23 @@ export class ByteArray {
    * @description The current position
    * @type {Number}
    */
-  _position;
+  _position: number;
   /**
    * @private
    * @description The byte order
    * @type {String}
    */
-  _endian;
+  _endian: string;
   /**
    * @private
    * @description The object encoding
    * @type {Number}
    */
-  _objectEncoding;
+  _objectEncoding: number;
 
-  stringTable = [];
-  objectTable = [];
-  traitTable = [];
+  stringTable: string[] = [];
+  objectTable: any[] = [];
+  traitTable: any[] = [];
   // AMF reference tables are scoped to ONE top-level readObject (an AMF "message"),
   // matching AS3's native ByteArray which resets its reference context per
   // read/writeObject. readObject recurses for nested values, so this depth counter
@@ -240,8 +240,8 @@ export class ByteArray {
    * @param {Number} pos
    * @returns {Number}
    */
-  _readBufferFunc(func, pos) {
-    const value = this.buffer[`${func}${this._endian}`](this._position);
+  _readBufferFunc(func: string, pos: number): any {
+    const value = (this.buffer as any)[`${func}${this._endian}`](this._position);
 
     this._position += pos;
 
@@ -255,10 +255,10 @@ export class ByteArray {
    * @param {String} func
    * @param {Number} pos
    */
-  _writeBufferFunc(value, func, pos) {
+  _writeBufferFunc(value: number | bigint, func: string, pos: number) {
     this._expand(pos);
 
-    this.buffer[`${func}${this._endian}`](value, this._position);
+    (this.buffer as any)[`${func}${this._endian}`](value, this._position);
     this._position += pos;
   }
 
@@ -267,7 +267,7 @@ export class ByteArray {
    * @description Expands the buffer when needed
    * @param {Number} value
    */
-  _expand(value) {
+  _expand(value: number) {
     if (this.bytesAvailable < value) {
       const old = this.buffer;
       const size = old.length + (value - this.bytesAvailable);
@@ -284,7 +284,7 @@ export class ByteArray {
    * @param {Number} bits
    * @returns {Number}
    */
-  signedOverflow(value, bits) {
+  signedOverflow(value: number, bits: number): number {
     const sign = 1 << (bits - 1);
 
     return (value & (sign - 1)) - (value & sign);
@@ -345,7 +345,7 @@ export class ByteArray {
    * @param {Number} offset
    * @param {Number} length
    */
-  readBytes(bytes, offset = 0, length = 0) {
+  readBytes(bytes: ByteArray, offset = 0, length = 0) {
     if (length === 0) {
       length = this.bytesAvailable;
     }
@@ -454,7 +454,7 @@ export class ByteArray {
    * @param {String} charset
    * @returns {String}
    */
-  readMultiByte(length, charset = "utf8") {
+  readMultiByte(length: number, charset = "utf8") {
     const position = this._position;
     this._position += length;
 
@@ -476,8 +476,8 @@ export class ByteArray {
     }
   }
 
-  stringToXML(str) {
-    var xmlDoc;
+  stringToXML(str: string) {
+    var xmlDoc: Document | undefined;
 
     if (window.DOMParser) {
       var parser = new DOMParser();
@@ -488,7 +488,7 @@ export class ByteArray {
   }
 
   readXML() {
-    var xml = this.readUTFBytes(this.readUInt30());
+    var xml = this.readUTFBytes(this.readUInt30()!);
 
     return this.stringToXML(xml);
   }
@@ -511,8 +511,8 @@ export class ByteArray {
     return str;
   }
 
-  readTraits(ref) {
-    var traitInfo = {};
+  readTraits(ref: number): any {
+    var traitInfo: any = {};
     traitInfo.properties = [];
 
     if ((ref & 3) == 1) return this.traitTable[ref >> 2];
@@ -538,7 +538,7 @@ export class ByteArray {
    * @description Reads an object
    * @returns {Object}
    */
-  readObject() {
+  readObject(): any {
     // Reset the AMF reference tables at the START of each TOP-LEVEL read. The
     // writer emits a fresh reference table per writeObject (AMF_3.writeObject),
     // so each top-level readObject must start with empty tables — otherwise a
@@ -565,7 +565,7 @@ export class ByteArray {
     }
   }
 
-  readAMF0Object() {
+  readAMF0Object(): any {
     var marker = this.readByte();
 
     if (marker == AMF0Types.kNumberType) {
@@ -575,7 +575,7 @@ export class ByteArray {
     } else if (marker == AMF0Types.kStringType) {
       return this.readUTF();
     } else if (marker == AMF0Types.kObjectType || marker == AMF0Types.kECMAArrayType) {
-      var o = {};
+      var o: any = {};
 
       var ismixed = marker == AMF0Types.kECMAArrayType;
 
@@ -598,7 +598,7 @@ export class ByteArray {
     } else if (marker == AMF0Types.kStrictArrayType) {
       var size = this.readInt();
 
-      var a = [];
+      var a: any[] = [];
 
       for (var i = 0; i < size; ++i) {
         a.push(this.readObject());
@@ -606,13 +606,16 @@ export class ByteArray {
 
       return a;
     } else if (marker == AMF0Types.kTypedObjectType) {
-      var o = {};
+      var o: any = {};
 
       var typeName = this.readUTF();
 
       var propertyName = this.readUTF();
       var type = this.readByte();
-      while (type != kObjectEndType) {
+      while (type != AMF0Types.kObjectEndType) {
+        // readObject re-reads the marker byte, so rewind past the peeked type
+        // (same pattern as the anonymous-object branch above).
+        this.position--;
         var value = this.readObject();
         o[propertyName] = value;
 
@@ -636,13 +639,13 @@ export class ByteArray {
     } else if (marker == AMF0Types.kDateType) {
       return this.readDate();
     } else if (marker == AMF0Types.kLongStringType) {
-      return this.readUTFBytes(this.readUInt30());
+      return this.readUTFBytes(this.readUInt30()!);
     } else if (marker == AMF0Types.kXMLObjectType) {
       return this.readXML();
     }
   }
 
-  readAMF3Object() {
+  readAMF3Object(): any {
     var marker = this.readByte();
 
     if (marker == AMF3Types.kUndefinedType) {
@@ -669,7 +672,7 @@ export class ByteArray {
       if ((ref & 1) == 0) return this.objectTable[ref >> 1];
 
       var d = this.readDouble();
-      var value = new Date(d);
+      var value: any = new Date(d);
       this.objectTable.push(value);
 
       return value;
@@ -683,7 +686,7 @@ export class ByteArray {
       var key = this.readStringAMF3();
 
       if (key == "") {
-        var a = [];
+        var a: any[] = [];
         // Add the array to the object reference table on DEFINITION (before its
         // elements), matching AS3/Flash AMF3 (arrays share the object table with
         // objects/vectors). Omitting this shifted every later reference index and
@@ -700,7 +703,7 @@ export class ByteArray {
       }
 
       // mixed array
-      var result = {};
+      var result: any = {};
       this.objectTable.push(result);
 
       while (key != "") {
@@ -725,7 +728,7 @@ export class ByteArray {
 
       // Definition: create the object and register it BEFORE reading its
       // properties so a self-reference inside resolves to this same instance.
-      var o = {};
+      var o: any = {};
       this.objectTable.push(o);
 
       var ti = this.readTraits(ref);
@@ -735,7 +738,7 @@ export class ByteArray {
       if (externalizable) {
         o = this.readObject();
       } else {
-        var len = ti.properties.length;
+        var len: number = ti.properties.length;
 
         for (var i = 0; i < len; i++) {
           var propName = ti.properties[i];
@@ -824,13 +827,10 @@ export class ByteArray {
   }
 
   readString(len: number) {
-    var str = "";
-
-    while (len > 0) {
-      str += String.fromCharCode(this.readUnsignedByte());
-      len--;
-    }
-    return str;
+    // AMF string lengths are UTF-8 byte counts (AS3 read them with
+    // readUTFBytes), so decode the bytes as UTF-8 rather than one
+    // charCode per raw byte.
+    return this.readMultiByte(len);
   }
 
   /**
@@ -886,7 +886,7 @@ export class ByteArray {
    * @param {Number} length
    * @returns {String}
    */
-  readUTFBytes(length) {
+  readUTFBytes(length: number) {
     return this.readMultiByte(length);
   }
 
@@ -939,7 +939,7 @@ export class ByteArray {
    * @description Writes a boolean
    * @param {Boolean} value
    */
-  writeBoolean(value) {
+  writeBoolean(value: boolean) {
     this.writeByte(value ? 1 : 0);
   }
 
@@ -947,7 +947,7 @@ export class ByteArray {
    * @description Writes a signed byte
    * @param {Number} value
    */
-  writeByte(value) {
+  writeByte(value: number) {
     this._expand(1);
     this.buffer.writeInt8(this.signedOverflow(value, 8), this._position++);
   }
@@ -958,7 +958,7 @@ export class ByteArray {
    * @param {Number} offset
    * @param {Number} length
    */
-  writeBytes(bytes, offset = 0, length = 0) {
+  writeBytes(bytes: ByteArray, offset = 0, length = 0) {
     if (length === 0) {
       length = bytes.length - offset;
     }
@@ -976,7 +976,7 @@ export class ByteArray {
    * @description Writes a double
    * @param {Number} value
    */
-  writeDouble(value) {
+  writeDouble(value: number) {
     this._writeBufferFunc(value, "writeDouble", 8);
   }
 
@@ -984,7 +984,7 @@ export class ByteArray {
    * @description Writes a float
    * @param {Number} value
    */
-  writeFloat(value) {
+  writeFloat(value: number) {
     this._writeBufferFunc(value, "writeFloat", 4);
   }
 
@@ -992,7 +992,7 @@ export class ByteArray {
    * @description Writes a signed int
    * @param {Number} value
    */
-  writeInt(value) {
+  writeInt(value: number) {
     this._writeBufferFunc(value, "writeInt32", 4);
   }
 
@@ -1000,7 +1000,7 @@ export class ByteArray {
    * @description Writes a signed long
    * @param {BigInt} value
    */
-  writeLong(value) {
+  writeLong(value: bigint) {
     this._writeBufferFunc(value, "writeBigInt64", 8);
   }
 
@@ -1009,21 +1009,24 @@ export class ByteArray {
    * @param {String} value
    * @param {String} charset
    */
-  writeMultiByte(value, charset = "utf8") {
-    this._position += Buffer.byteLength(value);
-
-    if (encodingExists(charset)) {
-      this.buffer = Buffer.concat([this.buffer, encode(value, charset)]);
-    } else {
+  writeMultiByte(value: string, charset = "utf8") {
+    if (!encodingExists(charset)) {
       throw new Error(`Invalid character set: '${charset}'.`);
     }
+
+    // AS3 semantics: overwrite at the current position (growing the buffer
+    // if needed), not append at the end of the buffer.
+    const bytes = encode(value, charset);
+    this._expand(bytes.length);
+    bytes.copy(this.buffer, this._position);
+    this._position += bytes.length;
   }
 
   /**
    * @description Writes an object
    * @param {Object} value
    */
-  writeObject(value) {
+  writeObject(value: any) {
     // Kludge version using old AMF writing libraries. Only AMF3 tested so far.
     switch (this._objectEncoding) {
 			case ObjectEncoding.AMF0:
@@ -1048,7 +1051,7 @@ export class ByteArray {
    * @description Writes a signed short
    * @param {Number} value
    */
-  writeShort(value) {
+  writeShort(value: number) {
     this._writeBufferFunc(this.signedOverflow(value, 16), "writeInt16", 2);
   }
 
@@ -1056,7 +1059,7 @@ export class ByteArray {
    * @description Writes an unsigned byte
    * @param {Number} value
    */
-  writeUnsignedByte(value) {
+  writeUnsignedByte(value: number) {
     this._expand(1);
     this.buffer.writeUInt8(value, this._position++);
   }
@@ -1065,7 +1068,7 @@ export class ByteArray {
    * @description Writes an unsigned int
    * @param {Number} value
    */
-  writeUnsignedInt(value) {
+  writeUnsignedInt(value: number) {
     this._writeBufferFunc(value, "writeUInt32", 4);
   }
 
@@ -1073,7 +1076,7 @@ export class ByteArray {
    * @description Writes an unsigned short
    * @param {Number} value
    */
-  writeUnsignedShort(value) {
+  writeUnsignedShort(value: number) {
     this._writeBufferFunc(value, "writeUInt16", 2);
   }
 
@@ -1081,7 +1084,7 @@ export class ByteArray {
    * @description Writes an unsigned long
    * @param {BigInt} value
    */
-  writeUnsignedLong(value) {
+  writeUnsignedLong(value: bigint) {
     this._writeBufferFunc(value, "writeBigUInt64", 8);
   }
 
@@ -1089,7 +1092,7 @@ export class ByteArray {
    * @description Writes a UTF-8 string
    * @param {String} value
    */
-  writeUTF(value) {
+  writeUTF(value: string) {
     this.writeUnsignedShort(Buffer.byteLength(value));
     this.writeMultiByte(value);
   }
@@ -1098,7 +1101,7 @@ export class ByteArray {
    * @description Writes UTF-8 bytes
    * @param {String} value
    */
-  writeUTFBytes(value) {
+  writeUTFBytes(value: string) {
     this.writeMultiByte(value);
   }
 }

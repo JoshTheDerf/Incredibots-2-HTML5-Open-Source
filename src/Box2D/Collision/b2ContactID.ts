@@ -48,5 +48,5 @@ export class b2ContactID
 		this.features._flip = ((this._key & 0xff000000) >> 24) & 0x000000ff;
 	}
 	public features:Features = new Features();
-	public _key:number;///< Used to quickly compare contact ids.
+	public _key!:number;///< Used to quickly compare contact ids.
 }

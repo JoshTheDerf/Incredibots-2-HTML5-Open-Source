@@ -37,10 +37,10 @@ export class b2ContactConstraint
 	}
 	public points:Array<any>;
 	public normal:b2Vec2=new b2Vec2();
-	public manifold:b2Manifold;
-	public body1:b2Body;
-	public body2:b2Body;
-	public friction:number;
-	public restitution:number;
-	public pointCount:number;
+	public manifold!:b2Manifold;
+	public body1!:b2Body;
+	public body2!:b2Body;
+	public friction!:number;
+	public restitution!:number;
+	public pointCount!:number;
 }

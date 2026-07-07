@@ -308,6 +308,6 @@ export class b2DistanceJoint extends b2Joint
 	public m_gamma:number;
 	public m_bias:number;
 	public m_impulse:number;
-	public m_mass:number;	// effective mass for the constraint.
+	public m_mass!:number;	// effective mass for the constraint.
 	public m_length:number;
 }

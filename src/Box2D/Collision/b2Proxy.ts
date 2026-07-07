@@ -30,8 +30,8 @@ export class b2Proxy{
 
 	public lowerBounds:Array<any> = [uint(0), uint(0)];
 	public upperBounds:Array<any> = [uint(0), uint(0)];
-	public overlapCount:number;
-	public timeStamp:number;
+	public overlapCount!:number;
+	public timeStamp!:number;
 
 	public userData:any = null;
 }

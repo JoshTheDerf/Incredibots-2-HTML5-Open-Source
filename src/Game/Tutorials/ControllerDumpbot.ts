@@ -19,8 +19,8 @@ export class ControllerDumpbot extends ControllerTutorial
 	private object3:ShapePart;
 	private controlText:Text;
 
-	private tutorialPart:Part;
-	private tutorialPart2:Part;
+	private tutorialPart!:Part;
+	private tutorialPart2!:Part;
 
 	private madeRectangle:boolean = false;
 	private madeWheels:boolean = false;
@@ -86,7 +86,7 @@ export class ControllerDumpbot extends ControllerTutorial
 		this.controlText.y = 102;
 		this.controlText.anchor.set(0.5, 0);
 		this.controlText.text = "Use the left/right arrow keys to rotate the wheels. Control the loading arm with the up/down arrow keys.\nDump the objects into the pit to the left.";
-		this.controlText.selectable = false;
+		(this.controlText as any).selectable = false;
 		this.controlText.visible = false;
 		var format = new TextStyle();
 		format.align = 'center';
@@ -238,9 +238,9 @@ export class ControllerDumpbot extends ControllerTutorial
 
 	protected ChallengeOver():boolean {
 		if (this.simStarted) {
-			return (this.object1.GetBody().GetWorldCenter().x > -15 && this.object1.GetBody().GetWorldCenter().y > 12 && this.object1.GetBody().GetWorldCenter().x < -3 &&
-					this.object2.GetBody().GetWorldCenter().x > -15 && this.object2.GetBody().GetWorldCenter().y > 12 && this.object2.GetBody().GetWorldCenter().x < -3 &&
-					this.object3.GetBody().GetWorldCenter().x > -15 && this.object3.GetBody().GetWorldCenter().y > 12 && this.object3.GetBody().GetWorldCenter().x < -3);
+			return (this.object1.GetBody()!.GetWorldCenter().x > -15 && this.object1.GetBody()!.GetWorldCenter().y > 12 && this.object1.GetBody()!.GetWorldCenter().x < -3 &&
+					this.object2.GetBody()!.GetWorldCenter().x > -15 && this.object2.GetBody()!.GetWorldCenter().y > 12 && this.object2.GetBody()!.GetWorldCenter().x < -3 &&
+					this.object3.GetBody()!.GetWorldCenter().x > -15 && this.object3.GetBody()!.GetWorldCenter().y > 12 && this.object3.GetBody()!.GetWorldCenter().x < -3);
 		} else {
 			return false;
 		}

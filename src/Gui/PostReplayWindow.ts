@@ -12,7 +12,7 @@ export class PostReplayWindow extends GuiWindow
 	private m_viewReplayButton:GuiButton;
 	private m_loadReplayButton:GuiButton;
 	private m_stopButton:GuiButton;
-	private m_rateButton:GuiButton;
+	private m_rateButton!:GuiButton;
 	private m_mainMenuButton:GuiButton;
 	private m_closeButton:GuiButton;
 

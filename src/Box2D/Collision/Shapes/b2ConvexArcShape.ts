@@ -99,11 +99,11 @@ export class b2ConvexArcShape extends b2Shape
 	public m_obb:b2OBB = new b2OBB();
 	//Only has 2 vertices
 	public m_vertices:Array<any> = [new b2Vec2(), new b2Vec2()];//Like b2PolyShape, these are relative to m_localPosition
-	public m_radius:number;
+	public m_radius!:number;
 	public m_norm:b2Vec2 = new b2Vec2();
-	public m_offset:number;
-	public m_d:number;//Length of straight section
-	public m_dot:number;
+	public m_offset!:number;
+	public m_d!:number;//Length of straight section
+	public m_dot!:number;
 
 
 }

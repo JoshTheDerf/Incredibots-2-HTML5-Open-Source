@@ -3,8 +3,8 @@ import { SandboxSettings } from "./SandboxSettings"
 
 export class Robot {
   public allParts: Array<any>;
-  public settings: SandboxSettings = null;
-  public challenge: Challenge = null;
+  public settings: SandboxSettings = null!;
+  public challenge: Challenge = null!;
 
   public cameraX: number = Number.MAX_VALUE;
   public cameraY: number = Number.MAX_VALUE;
@@ -12,7 +12,7 @@ export class Robot {
 
   constructor(
     parts: Array<any>,
-    s: SandboxSettings = null,
+    s: SandboxSettings = null!,
     x: number = Number.MAX_VALUE,
     y: number = Number.MAX_VALUE,
     zoom: number = Number.MAX_VALUE

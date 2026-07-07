@@ -218,8 +218,8 @@ export class b2PolyAndStaticEdgeContact extends b2Contact{
 		var separation1: number;
 		var separation2: number;
 		var separationMax: number = -Infinity;
-		var separationV1: boolean;
-		var separationIndex: number;
+		var separationV1!: boolean;
+		var separationIndex!: number;
 
 		var vertexCount:number = polygon.m_vertexCount;
 		var vertices:Array<any> = polygon.m_vertices;
@@ -231,8 +231,8 @@ export class b2PolyAndStaticEdgeContact extends b2Contact{
 		var enterEndIndex: number = -1;
 		var exitStartIndex: number = -1;
 		var exitEndIndex: number = -1;
-		var enterEN: number;
-		var exitEN: number;
+		var enterEN!: number;
+		var exitEN!: number;
 		var deepestEN: number = Infinity;
 		var deepestIndex: number;
 

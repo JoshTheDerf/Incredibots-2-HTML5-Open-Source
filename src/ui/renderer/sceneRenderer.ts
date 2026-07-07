@@ -23,9 +23,19 @@ export function worldToScreen(
 	canvasHeight: number
 ): { x: number; y: number } {
 	return {
-		x: canvasWidth / 2 + worldX * camera.scale - camera.offsetX,
-		y: canvasHeight / 2 + worldY * camera.scale - camera.offsetY,
+		x: worldToScreenX(worldX, camera, canvasWidth),
+		y: worldToScreenY(worldY, camera, canvasHeight),
 	};
+}
+
+/** Scalar form of worldToScreen (x only) — shared by the ground/sky renderers. */
+export function worldToScreenX(worldX: number, camera: CameraState, canvasWidth: number): number {
+	return canvasWidth / 2 + worldX * camera.scale - camera.offsetX;
+}
+
+/** Scalar form of worldToScreen (y only) — shared by the ground/sky renderers. */
+export function worldToScreenY(worldY: number, camera: CameraState, canvasHeight: number): number {
+	return canvasHeight / 2 + worldY * camera.scale - camera.offsetY;
 }
 
 /** screen -> world, inverse of the above. */

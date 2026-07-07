@@ -92,7 +92,7 @@ export class GuiSlider extends Container {
     })
   }
 
-  handlePositionChange(data) {
+  handlePositionChange(data: any) {
     const min = 0
     const max = this.track.width - this.thumb.width
     const x = data.x - (this.thumb.width / 2)

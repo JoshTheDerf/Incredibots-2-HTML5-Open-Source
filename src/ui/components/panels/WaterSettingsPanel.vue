@@ -105,13 +105,13 @@ const colorLabel = computed<string>({
 	},
 });
 
-function setDensity(v: number | number[]): void {
+function setDensity(v: number | number[] | undefined): void {
 	density.value = clamp(Number(Array.isArray(v) ? v[0] : v), WC_DENSITY_MIN, WC_DENSITY_MAX);
 }
-function setLinearDrag(v: number | number[]): void {
+function setLinearDrag(v: number | number[] | undefined): void {
 	linearDrag.value = clamp(Number(Array.isArray(v) ? v[0] : v), WC_LINEAR_MIN, WC_LINEAR_MAX);
 }
-function setAngularDrag(v: number | number[]): void {
+function setAngularDrag(v: number | number[] | undefined): void {
 	angularDrag.value = clamp(Number(Array.isArray(v) ? v[0] : v), WC_ANGULAR_MIN, WC_ANGULAR_MAX);
 }
 

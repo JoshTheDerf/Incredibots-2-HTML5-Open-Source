@@ -6,6 +6,7 @@
 // ControlKeyAction / LimitChangeAction.
 import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
+import { useColourField } from "../../composables/useColourField";
 import IbButton from "../IbButton.vue";
 import { keyToLabel, labelToKey } from "../../keyLabels";
 import { MAX_RJ_SPEED, MAX_RJ_STRENGTH, MAX_SJ_SPEED, MAX_SJ_STRENGTH } from "../../../Parts/partDefaults";
@@ -162,27 +163,7 @@ const strengthLabel = computed(() => (isRevolute.value ? "Motor Strength" : "Pis
 const speedLabel = computed(() => (isRevolute.value ? "Motor Speed" : "Piston Speed"));
 
 // Prismatic colour (it carries its own colour, like a ShapePart).
-const localColour = ref("#4a7dfc");
-const opacity = ref(100);
-watch(
-	sel,
-	() => {
-		localColour.value =
-			"#" + [sel.value?.red ?? 0, sel.value?.green ?? 0, sel.value?.blue ?? 0]
-				.map((c) => Math.round(c).toString(16).padStart(2, "0"))
-				.join("");
-		opacity.value = Math.round((sel.value?.opacity ?? 1) * 100);
-	},
-	{ immediate: true },
-);
-function applyColour(): void {
-	if (ids.value.length === 0) return;
-	const hex = localColour.value.replace("#", "");
-	const r = parseInt(hex.slice(0, 2), 16);
-	const g = parseInt(hex.slice(2, 4), 16);
-	const b = parseInt(hex.slice(4, 6), 16);
-	game.dispatch({ type: "setColour", partIds: ids.value, r, g, b, opacity: opacity.value / 100 });
-}
+const { localColour, opacity, applyColour } = useColourField();
 </script>
 
 <template>

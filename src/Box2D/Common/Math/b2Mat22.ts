@@ -27,7 +27,7 @@ import { b2Vec2 } from "../..";
 /// A 2-by-2 matrix. Stored in column-major order.
 export class b2Mat22
 {
-	constructor(angle:number=0, c1:b2Vec2=null, c2:b2Vec2=null)
+	constructor(angle:number=0, c1:b2Vec2 | null=null, c2:b2Vec2 | null=null)
 	{
 		if (c1!=null && c2!=null){
 			this.col1.SetV(c1);

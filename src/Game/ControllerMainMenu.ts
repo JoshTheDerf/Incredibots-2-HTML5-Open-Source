@@ -37,22 +37,22 @@ export class ControllerMainMenu extends Controller {
 
   private static firstLoad: boolean = true;
 
-  private replay: Replay;
+  private replay!: Replay;
   private frameCounter: number = 0;
-  private cameraPart: ShapePart;
-  private hasPanned: boolean;
+  private cameraPart!: ShapePart;
+  private hasPanned!: boolean;
   private m_physScale: number = 30;
-  private replaySplineXs: Array<any>;
-  private replaySplineYs: Array<any>;
-  private replaySplineAngles: Array<any>;
+  private replaySplineXs!: Array<any>;
+  private replaySplineYs!: Array<any>;
+  private replaySplineAngles!: Array<any>;
 
   private sSky: Sky;
   private sGround: Graphics;
   private sCanvas: Graphics;
   private sLogo: BitmapAsset;
-  private playButton: GuiButton;
-  private gamesButton: GuiButton = null;
-  private subscribeButton: GuiButton = null;
+  private playButton!: GuiButton;
+  private gamesButton: GuiButton = null!;
+  private subscribeButton: GuiButton = null!;
   private logInButton: GuiButton;
   private logOutButton: GuiButton;
   private enableSoundButton: GuiButton;
@@ -67,33 +67,33 @@ export class ControllerMainMenu extends Controller {
   private startHereText: BitmapAsset = null;
   private startHereArrow: BitmapAsset = null;
 
-  private windowL: Container;
-  private windowR: Container;
-  private windowC: Sprite;
+  private windowL!: Container;
+  private windowR!: Container;
+  private windowC!: Sprite;
   private forumPostText: TextField;
-  private forumPostButton: GuiButton;
+  private forumPostButton!: GuiButton;
 
-  private arrowX: number;
+  private arrowX!: number;
   private arrowVel: number = 0;
   private arrowAccel: number = 0;
   private logoShrinking: boolean = false;
-  private saveLoadOpen: boolean;
+  private saveLoadOpen!: boolean;
 
-  private m_progressDialog: DialogWindow = null;
+  private m_progressDialog: DialogWindow = null!;
   private m_linkDialog: LinkWindow = null;
   private m_exportDialog: ExportWindow = null;
-  private m_importDialog: ImportWindow = null;
+  private m_importDialog: ImportWindow = null!;
   public m_loadWindow: SaveLoadWindow = null;
   public m_loginWindow: LoginWindow = null;
   public m_newUserWindow: NewUserWindow = null;
   private m_goldLoginWindow: GoldLoginWindow = null;
-  private m_sandboxWindow: AdvancedSandboxWindow = null;
-  private m_tutorialWindow: TutorialSelectWindow = null;
+  private m_sandboxWindow: AdvancedSandboxWindow = null!;
+  private m_tutorialWindow: TutorialSelectWindow = null!;
   private m_challengeWindow: ChooseChallengeWindow = null;
 
   public backToSaveWindow: boolean = false;
 
-  public static introSong: Sound = Resource.cIntro;
+  public static introSong: any = Resource.cIntro;
   public static channel: SoundChannel;
 
   private draw: Draw = new Draw();
@@ -447,7 +447,7 @@ export class ControllerMainMenu extends Controller {
     this.replay = await Database.ExtractReplayFromByteArray(b);
     this.replay.cont = this;
     const robotData = await Resource.cRobot.arrayBuffer();
-    b = new ByteArray(new Uint8Array(robotData));
+    b = new ByteArray(new Uint8Array(robotData) as any);
     await b.uncompress();
     var robot: Robot = Database.ExtractRobotFromByteArray(b);
     this.allParts = robot.allParts;
@@ -506,7 +506,7 @@ export class ControllerMainMenu extends Controller {
       this.finishGettingLoadRobotData
     );
     this.ShowDialog("Getting robots...");
-    Main.ShowHourglass();
+    (Main as any).ShowHourglass();
     this.fader2.visible = true;
   }
 
@@ -523,7 +523,7 @@ export class ControllerMainMenu extends Controller {
       this.finishGettingLoadReplayData
     );
     this.ShowDialog("Getting replays...");
-    Main.ShowHourglass();
+    (Main as any).ShowHourglass();
     this.fader2.visible = true;
   }
 
@@ -540,7 +540,7 @@ export class ControllerMainMenu extends Controller {
       this.finishGettingLoadChallengeData
     );
     this.ShowDialog("Getting challenges...");
-    Main.ShowHourglass();
+    (Main as any).ShowHourglass();
     this.fader2.visible = true;
   }
 
@@ -568,11 +568,11 @@ export class ControllerMainMenu extends Controller {
       this.finishGettingLoadChallengeForScoreData
     );
     this.ShowDialog("Getting challenges...");
-    Main.ShowHourglass();
+    (Main as any).ShowHourglass();
     this.fader2.visible = true;
   }
 
-  public finishGettingLoadRobotData(e: Event): void {
+  public finishGettingLoadRobotData(e?: Event): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_ROBOT_DATA) return;
     if (Database.FinishGettingRobotData(e)) {
       this.m_progressDialog.visible = false;
@@ -582,7 +582,7 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public finishGettingLoadReplayData(e: Event): void {
+  public finishGettingLoadReplayData(e?: Event): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_REPLAY_DATA) return;
     if (Database.FinishGettingReplayData(e)) {
       this.m_progressDialog.visible = false;
@@ -592,7 +592,7 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public finishGettingLoadChallengeData(e: Event): void {
+  public finishGettingLoadChallengeData(e?: Event): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_CHALLENGE_DATA) return;
     if (Database.FinishGettingChallengeData(e)) {
       this.m_progressDialog.visible = false;
@@ -602,7 +602,7 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public finishGettingLoadChallengeForScoreData(e: Event): void {
+  public finishGettingLoadChallengeForScoreData(e?: Event): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_CHALLENGE_DATA) return;
     if (Database.FinishGettingChallengeData(e)) {
       this.m_progressDialog.visible = false;
@@ -612,7 +612,7 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public finishGettingScoreData(e: Event): void {
+  public finishGettingScoreData(e?: Event): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_SCORE_DATA) return;
     if (Database.FinishGettingScoreData(e)) {
       this.m_progressDialog.visible = false;
@@ -658,9 +658,9 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public finishLoading(e: Event): void {
+  public finishLoading(e?: Event): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_LOAD_ROBOT) return;
-    var robot: Robot = Database.FinishLoadingRobot(e);
+    var robot: Robot | null = Database.FinishLoadingRobot(e);
     if (robot) {
       var loadedParts: Array<any> = robot.allParts;
       var hasThrusters: boolean = false;
@@ -698,9 +698,9 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public finishLoadingReplay(e: Event): void {
+  public finishLoadingReplay(e?: Event): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_LOAD_REPLAY) return;
-    var replayAndRobot: Array<any> = Database.FinishLoadingReplay(e);
+    var replayAndRobot: Array<any> | null = Database.FinishLoadingReplay(e);
     if (replayAndRobot) {
       ControllerGameGlobals.replay = replayAndRobot[0];
       if (ControllerGameGlobals.replay.version != Database.VERSION_STRING_FOR_REPLAYS) {
@@ -770,9 +770,9 @@ export class ControllerMainMenu extends Controller {
     ControllerGameGlobals.initZoom = challenge.zoomLevel;
   }
 
-  public finishLoadingChallenge(e: Event): void {
+  public finishLoadingChallenge(e?: Event): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_LOAD_CHALLENGE) return;
-    var challenge: Challenge = Database.FinishLoadingChallenge(e);
+    var challenge: Challenge | null = Database.FinishLoadingChallenge(e);
     if (challenge) {
       Main.changeControllers = true;
       Main.nextControllerType = 1;
@@ -794,7 +794,7 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public finishDeleting(e: Event): void {
+  public finishDeleting(e?: Event): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_DELETE_ROBOT) return;
     var id: String = Database.FinishDeletingRobot(e);
     if (id != "") {
@@ -808,7 +808,7 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public finishDeletingReplay(e: Event): void {
+  public finishDeletingReplay(e?: Event): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_DELETE_REPLAY) return;
     if (Database.FinishDeletingReplay(e)) {
       this.m_progressDialog.SetMessage("Delete successful!");
@@ -821,7 +821,7 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public finishDeletingChallenge(e: Event): void {
+  public finishDeletingChallenge(e?: Event): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_DELETE_CHALLENGE) return;
     if (Database.FinishDeletingChallenge(e)) {
       this.m_progressDialog.SetMessage("Delete successful!");
@@ -849,7 +849,7 @@ export class ControllerMainMenu extends Controller {
   }
 
   public loginButton(
-    e: MouseEvent,
+    e?: any,
     displayMessage: boolean = false,
     backToSave: boolean = false,
     saveLoadWindowOpen: boolean = false
@@ -863,7 +863,7 @@ export class ControllerMainMenu extends Controller {
     this.backToSaveWindow = backToSave;
   }
 
-  public finishLoggingIn(e: Event): void {
+  public finishLoggingIn(e?: Event): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_LOGIN) return;
     var retVal: String = Database.FinishLoggingIn(e);
     if (retVal != "") {
@@ -893,10 +893,10 @@ export class ControllerMainMenu extends Controller {
     format.color = 0xffffff;
     this.userText.text =
       "Welcome, " + (ControllerGameGlobals.userName == "_Public" ? "Guest" : ControllerGameGlobals.userName);
-    this.userText.setTextFormat(format);
+    (this.userText as any).setTextFormat(format);
   }
 
-  public finishAddingUser(e: Event): void {
+  public finishAddingUser(e?: Event): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_ADD_USER) return;
     var retVal: String = Database.FinishAddingUser(e);
     if (retVal != "") {
@@ -926,7 +926,7 @@ export class ControllerMainMenu extends Controller {
     format.color = 0xffffff;
     this.userText.text =
       "Welcome, " + (ControllerGameGlobals.userName == "_Public" ? "Guest" : ControllerGameGlobals.userName);
-    this.userText.setTextFormat(format);
+    (this.userText as any).setTextFormat(format);
   }
 
   public ReloadLoadWindow(): void {
@@ -970,7 +970,7 @@ export class ControllerMainMenu extends Controller {
         this.ShowDialog("Getting challenges...");
       }
       this.m_loadWindow.ShowFader();
-      Main.ShowHourglass();
+      (Main as any).ShowHourglass();
     } else if (this.m_loadWindow.dataType == SaveLoadWindow.HIGH_SCORE_TYPE) {
       Database.GetScoreData(
         ControllerGameGlobals.userName,
@@ -985,15 +985,15 @@ export class ControllerMainMenu extends Controller {
       );
       this.ShowDialog("Getting high scores...");
       this.m_loadWindow.ShowFader();
-      Main.ShowHourglass();
+      (Main as any).ShowHourglass();
     }
   }
 
-  public commentButton(e: MouseEvent, robotID: String = "", robotPublic: boolean = false): void {
+  public commentButton(e?: any, robotID: any = "", robotPublic: boolean = false): void {
     if (robotPublic) {
       Database.CommentOnRobot(robotID, this.finishCommenting);
       this.ShowDialog("Connecting to forum...");
-      Main.ShowHourglass();
+      (Main as any).ShowHourglass();
     } else {
       this.ShowDialog3("You need to save your robot publicly first!");
       this.m_progressDialog.ShowOKButton();
@@ -1031,7 +1031,7 @@ export class ControllerMainMenu extends Controller {
     this.addChild(this.m_exportDialog);
   }
 
-  public linkButton(e: MouseEvent, robotID: String = "", robotPublic: boolean = false): void {
+  public linkButton(e?: any, robotID: any = "", robotPublic: boolean = false): void {
     if (robotPublic) {
       this.ShowLinkDialog(
         "     Use the link below to\n        link to this robot.",
@@ -1044,7 +1044,7 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public embedButton(e: MouseEvent, robotID: String = "", robotPublic: boolean = false): void {
+  public embedButton(e?: any, robotID: any = "", robotPublic: boolean = false): void {
     if (robotPublic) {
       this.ShowLinkDialog("Copy the HTML below into your\n  website to embed this robot.", null, false, robotID);
     } else {
@@ -1054,11 +1054,11 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public commentReplayButton(e: MouseEvent, replayID: String = "", replayPublic: boolean = false): void {
+  public commentReplayButton(e?: any, replayID: any = "", replayPublic: boolean = false): void {
     if (replayPublic) {
       Database.CommentOnReplay(replayID, this.finishCommenting);
       this.ShowDialog("Connecting to forum...");
-      Main.ShowHourglass();
+      (Main as any).ShowHourglass();
     } else {
       this.ShowDialog3("You need to save your replay publicly first!");
       this.m_progressDialog.ShowOKButton();
@@ -1066,7 +1066,7 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public linkReplayButton(e: MouseEvent, replayID: String = "", replayPublic: boolean = false): void {
+  public linkReplayButton(e?: any, replayID: any = "", replayPublic: boolean = false): void {
     if (replayPublic) {
       this.ShowLinkDialog(
         "     Use the link below to\n       link to this replay.",
@@ -1079,7 +1079,7 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public embedReplayButton(e: MouseEvent, replayID: String = "", replayPublic: boolean = false): void {
+  public embedReplayButton(e?: any, replayID: any = "", replayPublic: boolean = false): void {
     if (replayPublic) {
       this.ShowLinkDialog(
         "Copy the HTML below into your\n  website to embed this replay.",
@@ -1095,11 +1095,11 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public commentChallengeButton(e: MouseEvent, challengeID: String = "", challengePublic: boolean = false): void {
+  public commentChallengeButton(e?: any, challengeID: any = "", challengePublic: boolean = false): void {
     if (challengePublic) {
       Database.CommentOnChallenge(challengeID, this.finishCommenting);
       this.ShowDialog("Connecting to forum...");
-      Main.ShowHourglass();
+      (Main as any).ShowHourglass();
     } else {
       this.ShowDialog3("You need to save your challenge publicly first!");
       this.m_progressDialog.ShowOKButton();
@@ -1107,7 +1107,7 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public linkChallengeButton(e: MouseEvent, challengeID: String = "", challengePublic: boolean = false): void {
+  public linkChallengeButton(e?: any, challengeID: any = "", challengePublic: boolean = false): void {
     if (challengePublic) {
       this.ShowLinkDialog(
         "     Use the link below to\n       link to this challenge.",
@@ -1120,7 +1120,7 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public embedChallengeButton(e: MouseEvent, challengeID: String = "", challengePublic: boolean = false): void {
+  public embedChallengeButton(e?: any, challengeID: any = "", challengePublic: boolean = false): void {
     if (challengePublic) {
       this.ShowLinkDialog("Copy the HTML below into your\n  website to embed this challenge.", null, true, challengeID);
     } else {
@@ -1130,19 +1130,19 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public ShowDialog(msg: String): void {
+  public ShowDialog(msg: string): void {
     if (this.m_progressDialog) this.removeChild(this.m_progressDialog);
     this.m_progressDialog = new DialogWindow(this, msg);
     this.addChild(this.m_progressDialog);
   }
 
-  public ShowDialog2(msg: String): void {
+  public ShowDialog2(msg: string): void {
     if (this.m_progressDialog) this.removeChild(this.m_progressDialog);
     this.m_progressDialog = new DialogWindow(this, msg, true, true);
     this.addChild(this.m_progressDialog);
   }
 
-  public ShowDialog3(msg: String): void {
+  public ShowDialog3(msg: string): void {
     if (this.m_progressDialog) this.removeChild(this.m_progressDialog);
     this.m_progressDialog = new DialogWindow(this, msg, true);
     this.addChild(this.m_progressDialog);
@@ -1150,7 +1150,7 @@ export class ControllerMainMenu extends Controller {
 
   public ShowLinkDialog(
     msg1: String,
-    msg2: String,
+    msg2: String | null,
     isEmbedReplay: boolean = false,
     id: String = "",
     isEmbedChallenge: boolean = false
@@ -1160,7 +1160,7 @@ export class ControllerMainMenu extends Controller {
     this.addChild(this.m_linkDialog);
   }
 
-  public HideDialog(e: Event): void {
+  public HideDialog(e?: Event): void {
     Database.nonfatalErrorOccurred = false;
     if (this.m_loadWindow) this.m_loadWindow.HideFader();
     if (this.m_challengeWindow) this.m_challengeWindow.HideFader();
@@ -1178,12 +1178,12 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public HideLinkDialog(e: Event): void {
+  public HideLinkDialog(e?: Event): void {
     this.m_linkDialog.visible = false;
     this.m_loadWindow.HideFader();
   }
 
-  public HideExportDialog(e: Event): void {
+  public HideExportDialog(e?: Event): void {
     this.m_exportDialog.visible = false;
     if (this.m_loadWindow && this.m_loadWindow.visible) {
       this.m_loadWindow.HideFader();
@@ -1191,7 +1191,7 @@ export class ControllerMainMenu extends Controller {
     this.fader2.visible = false;
   }
 
-  public HideImportDialog(e: Event): void {
+  public HideImportDialog(e?: Event): void {
     this.m_importDialog.visible = false;
     this.fader2.visible = false;
   }
@@ -1203,20 +1203,20 @@ export class ControllerMainMenu extends Controller {
     this.addChild(this.m_importDialog);
   }
 
-  public ShowConfirmDialog(msg: String, type: number): void {
+  public ShowConfirmDialog(msg: string, type: number): void {
     if (this.m_progressDialog) this.removeChild(this.m_progressDialog);
     this.m_progressDialog = new DialogWindow(this, msg, true);
     this.addChild(this.m_progressDialog);
     this.m_progressDialog.ShowOKAndCancelButton(type);
   }
 
-  public HideConfirmDialog(e: Event): void {
+  public HideConfirmDialog(e?: Event): void {
     this.m_progressDialog.visible = false;
     if (this.m_loadWindow) this.m_loadWindow.HideFader();
     else this.fader2.visible = false;
   }
 
-  public DialogOK(e: Event): void {
+  public DialogOK(e?: Event): void {
     this.m_progressDialog.visible = false;
     if (this.m_loadWindow && this.m_loadWindow.visible) this.m_loadWindow.HideFader();
     if (this.m_challengeWindow && this.m_challengeWindow.visible) this.m_challengeWindow.HideFader();
@@ -1225,15 +1225,15 @@ export class ControllerMainMenu extends Controller {
     if (this.m_newUserWindow && this.m_newUserWindow.visible) this.m_newUserWindow.HideFader();
   }
 
-  public ConfirmDeleteRobot(e: MouseEvent): void {
+  public ConfirmDeleteRobot(e?: MouseEvent): void {
     this.m_loadWindow.deleteRobotButtonPressed(e, true);
   }
 
-  public ConfirmDeleteReplay(e: MouseEvent): void {
+  public ConfirmDeleteReplay(e?: MouseEvent): void {
     this.m_loadWindow.deleteReplayButtonPressed(e, true);
   }
 
-  public ConfirmDeleteChallenge(e: MouseEvent): void {
+  public ConfirmDeleteChallenge(e?: MouseEvent): void {
     this.m_loadWindow.deleteChallengeButtonPressed(e, true);
   }
 
@@ -1327,7 +1327,7 @@ export class ControllerMainMenu extends Controller {
   }
 
   private editorButton(e: MouseEvent): void {
-    ControllerGameGlobals.challenge = null;
+    ControllerGameGlobals.challenge = null as any;
     ControllerGameGlobals.playChallengeMode = false;
     ControllerGameGlobals.playOnlyMode = false;
     Main.nextControllerType = 1;
@@ -1341,7 +1341,7 @@ export class ControllerMainMenu extends Controller {
     this.ShowConfirmDialog("Are you sure you want to log " + ControllerGameGlobals.userName + " out?", 12);
   }
 
-  public ConfirmLogout(e: MouseEvent): void {
+  public ConfirmLogout(e?: MouseEvent): void {
     Main.premiumMode = false;
     ControllerGameGlobals.userName = "_Public";
     this.logInButton.visible = true;
@@ -1355,7 +1355,7 @@ export class ControllerMainMenu extends Controller {
     format.font = Main.GLOBAL_FONT;
     format.color = 0xffffff;
     this.userText.text = "Welcome, Guest";
-    this.userText.setTextFormat(format);
+    (this.userText as any).setTextFormat(format);
   }
 
   private instructionsButton(): void {
@@ -1377,7 +1377,7 @@ export class ControllerMainMenu extends Controller {
       ControllerMainMenu.channel.soundTransform = st;
       if (ControllerGameGlobals.introVolume <= 0) {
         ControllerMainMenu.channel.stop();
-        ControllerMainMenu.channel = null;
+        ControllerMainMenu.channel = null as any;
       }
     }
 
@@ -1473,7 +1473,7 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public SyncReplay(syncPoint: Object): void {
+  public SyncReplay(syncPoint: any): void {
     var bodiesUsed: Array<any> = new Array();
     var curIndex: number = 0;
     for (var i: number = 0; i < this.allParts.length; i++) {
@@ -1492,7 +1492,7 @@ export class ControllerMainMenu extends Controller {
     }
   }
 
-  public SyncReplay2(syncPoint1: Object, syncPoint2: Object): void {
+  public SyncReplay2(syncPoint1: any, syncPoint2: any): void {
     var syncPointIndex: number = this.replay.syncPoints.indexOf(syncPoint1);
     var bodiesUsed: Array<any> = new Array();
     var curIndex: number = 0;
@@ -1541,9 +1541,9 @@ export class ControllerMainMenu extends Controller {
       var oldX: number = this.draw.m_drawXOff;
       var oldY: number = this.draw.m_drawYOff;
       this.draw.m_drawXOff =
-        this.cameraPart.GetBody().GetWorldCenter().x * this.m_physScale - ControllerMainMenu.ZOOM_FOCUS_X;
+        this.cameraPart.GetBody()!.GetWorldCenter().x * this.m_physScale - ControllerMainMenu.ZOOM_FOCUS_X;
       this.draw.m_drawYOff =
-        this.cameraPart.GetBody().GetWorldCenter().y * this.m_physScale - ControllerMainMenu.ZOOM_FOCUS_Y;
+        this.cameraPart.GetBody()!.GetWorldCenter().y * this.m_physScale - ControllerMainMenu.ZOOM_FOCUS_Y;
       if (this.draw.m_drawYOff < -760) this.draw.m_drawYOff = -760;
       if (oldX != this.draw.m_drawXOff || oldY != this.draw.m_drawYOff) {
         this.hasPanned = true;

@@ -36,12 +36,12 @@ export class b2Joint
 	}
 
 	/// Get the anchor point on body1 in world coordinates.
-	public GetAnchor1():b2Vec2{return null};
+	public GetAnchor1():b2Vec2{return null!};
 	/// Get the anchor point on body2 in world coordinates.
-	public GetAnchor2():b2Vec2{return null};
+	public GetAnchor2():b2Vec2{return null!};
 
 	/// Get the reaction force on body2 at the joint anchor.
-	public GetReactionForce():b2Vec2 {return null};
+	public GetReactionForce():b2Vec2 {return null!};
 	/// Get the reaction torque on body2.
 	public GetReactionTorque():number {return 0.0}
 
@@ -75,7 +75,7 @@ export class b2Joint
 	//--------------- Internals Below -------------------
 
 	public static Create(def:b2JointDef, allocator:any):b2Joint{
-		var joint:b2Joint = null;
+		var joint:b2Joint = null!;
 
 		switch (def.type)
 		{
@@ -165,8 +165,8 @@ export class b2Joint
 
 	constructor(def:b2JointDef){
 		this.m_type = def.type;
-		this.m_prev = null;
-		this.m_next = null;
+		this.m_prev = null!;
+		this.m_next = null!;
 		this.m_body1 = def.body1;
 		this.m_body2 = def.body2;
 		this.m_collideConnected = def.collideConnected;
@@ -190,7 +190,7 @@ export class b2Joint
 	public m_body1:b2Body;
 	public m_body2:b2Body;
 
-	public m_inv_dt:number;
+	public m_inv_dt!:number;
 
 	public m_islandFlag:boolean;
 	public m_collideConnected:boolean;

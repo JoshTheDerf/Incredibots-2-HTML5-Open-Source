@@ -494,7 +494,7 @@ export class b2RevoluteJoint extends b2Joint
 	public m_limitPositionImpulse:number;
 
 	public m_pivotMass:b2Mat22 = new b2Mat22();		// effective mass for point-to-point constraint.
-	public m_motorMass:number;	// effective mass for motor/limit angular constraint.
+	public m_motorMass!:number;	// effective mass for motor/limit angular constraint.
 	public m_enableMotor:boolean;
 	public m_maxMotorTorque:number;
 	public m_motorSpeed:number;
@@ -503,5 +503,5 @@ export class b2RevoluteJoint extends b2Joint
 	public m_referenceAngle:number;
 	public m_lowerAngle:number;
 	public m_upperAngle:number;
-	public m_limitState:number;
+	public m_limitState!:number;
 }

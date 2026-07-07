@@ -27,19 +27,19 @@ export class ControllerNewFeatures extends ControllerSandbox
 
 	private goalText:Text;
 
-	private middle:ShapePart;
-	private leg1Circle1:ShapePart;
-	private leg1Circle2:ShapePart;
-	private leg2Circle1:ShapePart;
-	private leg2Circle2:ShapePart;
-	private neckCircle1:ShapePart;
-	private neckCircle2:ShapePart;
-	private tailCircle1:ShapePart;
-	private tailCircle2:ShapePart;
-	private leg1Rect:ShapePart;
-	private leg2Rect:ShapePart;
-	private neckRect:ShapePart;
-	private tailRect:ShapePart;
+	private middle!:ShapePart;
+	private leg1Circle1!:ShapePart;
+	private leg1Circle2!:ShapePart;
+	private leg2Circle1!:ShapePart;
+	private leg2Circle2!:ShapePart;
+	private neckCircle1!:ShapePart;
+	private neckCircle2!:ShapePart;
+	private tailCircle1!:ShapePart;
+	private tailCircle2!:ShapePart;
+	private leg1Rect!:ShapePart;
+	private leg2Rect!:ShapePart;
+	private neckRect!:ShapePart;
+	private tailRect!:ShapePart;
 
 	constructor()
 	{
@@ -319,7 +319,7 @@ export class ControllerNewFeatures extends ControllerSandbox
 				this.shapesUndragabled = true;
 				this.ShowTutorialDialog(88);
 			}
-			if (this.shapesUndragabled && !this.botInBox && this.simStarted && this.middle.GetBody().GetWorldCenter().x < -25 && this.middle.GetBody().GetWorldCenter().y > -8) {
+			if (this.shapesUndragabled && !this.botInBox && this.simStarted && this.middle.GetBody()!.GetWorldCenter().x < -25 && this.middle.GetBody()!.GetWorldCenter().y > -8) {
 				this.botInBox = true;
 				this.ShowTutorialDialog(89);
 			}

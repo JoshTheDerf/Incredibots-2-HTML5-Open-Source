@@ -4,8 +4,9 @@
 // GameCore: reads from edit.selectedPart, writes via the per-property commands
 // (setDensity/setCollide/setCameraFocus/setFixate/setOutline/setOutlineBehind/
 // setUndragable) ported from ControllerGame + src/Actions/*.
-import { computed, ref, watch } from "vue";
+import { computed } from "vue";
 import { useGameStore } from "../../gameStore";
+import { useColourField } from "../../composables/useColourField";
 import IbButton from "../IbButton.vue";
 import { selectedPolyPoint } from "../../polygonEditState";
 import { Polygon } from "../../../Parts/Polygon";
@@ -146,24 +147,7 @@ const borderOpacity = computed({
 
 // Colour (ColourChangeWindow: RGBA + opacity). Reads the part's current colour;
 // applied on click via the already-wired setColour command.
-const colourHex = computed(() =>
-	"#" + [sel.value?.red ?? 0, sel.value?.green ?? 0, sel.value?.blue ?? 0].map((c) => Math.round(c).toString(16).padStart(2, "0")).join(""),
-);
-const localColour = ref(colourHex.value);
-const opacity = ref(Math.round((sel.value?.opacity ?? 1) * 100));
-watch(sel, () => {
-	localColour.value = colourHex.value;
-	opacity.value = Math.round((sel.value?.opacity ?? 1) * 100);
-});
-
-function applyColour(): void {
-	if (ids.value.length === 0) return;
-	const hex = localColour.value.replace("#", "");
-	const r = parseInt(hex.slice(0, 2), 16);
-	const g = parseInt(hex.slice(2, 4), 16);
-	const b = parseInt(hex.slice(4, 6), 16);
-	game.dispatch({ type: "setColour", partIds: ids.value, r, g, b, opacity: opacity.value / 100 });
-}
+const { localColour, opacity, applyColour } = useColourField();
 </script>
 
 <template>

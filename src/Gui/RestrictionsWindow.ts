@@ -452,7 +452,7 @@ export class RestrictionsWindow extends GuiWindow {
 				//Database.GetChallengeData(ControllerGameGlobals.userName, ControllerGameGlobals.password, false, Database.curSortType, (Database.curSortPeriod == Database.SORT_PERIOD_FEATURED ? Database.SORT_PERIOD_ALLTIME : Database.curSortPeriod), 1, "", cont.finishGettingSaveChallengeData);
 				//cont.ShowDialog("Getting challenges...");
 				//Main.ShowHourglass();
-				Database.ExportChallenge(ControllerGameGlobals.challenge, "", "", 1, 1, (...args) => this.cont.finishExporting(...args));
+				Database.ExportChallenge(ControllerGameGlobals.challenge, "", "", 1, 1, (...args: any[]) => (this.cont.finishExporting as any)(...args));
 			} else {
 				this.cont.m_fader.visible = false;
 			}

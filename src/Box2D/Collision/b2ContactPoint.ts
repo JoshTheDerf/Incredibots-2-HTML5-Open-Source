@@ -27,13 +27,13 @@ import { b2ContactID, b2Shape, b2Vec2 } from "..";
 /// This structure is used to report contact points.
 export class b2ContactPoint
 {
-	public shape1:b2Shape;						///< the first shape
-	public shape2:b2Shape;						///< the second shape
+	public shape1!:b2Shape;						///< the first shape
+	public shape2!:b2Shape;						///< the second shape
 	public position:b2Vec2 = new b2Vec2();		///< position in world coordinates
 	public velocity:b2Vec2 = new b2Vec2();		///< velocity of point on body2 relative to point on body1 (pre-solver)
 	public normal:b2Vec2 = new b2Vec2();		///< points from shape1 to shape2
-	public separation:number;					///< the separation is negative when shapes are touching
-	public friction:number;						///< the combined friction coefficient
-	public restitution:number;					///< the combined restitution coefficient
+	public separation!:number;					///< the separation is negative when shapes are touching
+	public friction!:number;						///< the combined friction coefficient
+	public restitution!:number;					///< the combined restitution coefficient
 	public id:b2ContactID = new b2ContactID();	///< the contact id identifies the features in contact
 }

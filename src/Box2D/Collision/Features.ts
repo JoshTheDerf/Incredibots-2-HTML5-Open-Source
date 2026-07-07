@@ -31,7 +31,7 @@ export class Features
 	public get referenceEdge():number{
 		return this._referenceEdge;
 	}
-	public _referenceEdge:number;
+	public _referenceEdge!:number;
 
 	///< The edge most anti-parallel to the reference edge.
 	public set incidentEdge(value:number) {
@@ -41,7 +41,7 @@ export class Features
 	public get incidentEdge():number{
 		return this._incidentEdge;
 	}
-	public _incidentEdge:number;
+	public _incidentEdge!:number;
 
 	///< The vertex (0 or 1) on the incident edge that was clipped.
 	public set incidentVertex(value:number) {
@@ -51,7 +51,7 @@ export class Features
 	public get incidentVertex():number{
 		return this._incidentVertex;
 	}
-	public _incidentVertex:number;
+	public _incidentVertex!:number;
 
 	///< A value of 1 indicates that the reference edge is on shape2.
 	public set flip(value:number) {
@@ -61,8 +61,8 @@ export class Features
 	public get flip():number{
 		return this._flip;
 	}
-	public _flip:number;
+	public _flip!:number;
 
 
-	public _m_id:b2ContactID;
+	public _m_id!:b2ContactID;
 }

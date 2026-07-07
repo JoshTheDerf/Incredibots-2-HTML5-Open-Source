@@ -126,7 +126,7 @@ export class Input {
   }
 
   public static mouseWheel(e: MouseEvent): void {
-    Input.mouseWheelVal += e.delta;
+    Input.mouseWheelVal += (e as any).delta;
   }
 
   //======================
@@ -159,8 +159,8 @@ export class Input {
 			mouseDragY = 0;
 		}*/
 
-    Input.mouseX = e.data.global.x - Input.m_stageMc.x;
-    Input.mouseY = e.data.global.y - Input.m_stageMc.y;
+    Input.mouseX = (e as any).data.global.x - Input.m_stageMc.x;
+    Input.mouseY = (e as any).data.global.y - Input.m_stageMc.y;
     // Store offset
     // Input.mouseOffsetX = Input.mouseX - Input.mouse.x;
     // Input.mouseOffsetY = Input.mouseY - Input.mouse.y;
@@ -250,7 +250,7 @@ export class Input {
   //======================
   public static getKeyNumber(k: string): number | null {
     const number = Object.keys(Input.ascii).find((key: string) => {
-      return Input.ascii[key] === k || Input.ascii[key] === k.toUpperCase() || Input.ascii[key] === k.toLowerCase();
+      return (Input.ascii as any)[key] === k || (Input.ascii as any)[key] === k.toUpperCase() || (Input.ascii as any)[key] === k.toLowerCase();
     });
 
     if (number) return +number;

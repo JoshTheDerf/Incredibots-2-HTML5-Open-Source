@@ -631,9 +631,9 @@ export class b2PulleyJoint extends b2Joint
 	public m_maxLength2:number;
 
 	// Effective masses
-	public m_pulleyMass:number;
-	public m_limitMass1:number;
-	public m_limitMass2:number;
+	public m_pulleyMass!:number;
+	public m_limitMass1!:number;
+	public m_limitMass2!:number;
 
 	// Impulses for accumulation/warm starting.
 	public m_force:number;
@@ -641,13 +641,13 @@ export class b2PulleyJoint extends b2Joint
 	public m_limitForce2:number;
 
 	// Position impulses for accumulation.
-	public m_positionImpulse:number;
-	public m_limitPositionImpulse1:number;
-	public m_limitPositionImpulse2:number;
+	public m_positionImpulse!:number;
+	public m_limitPositionImpulse1!:number;
+	public m_limitPositionImpulse2!:number;
 
-	public m_state:number;
-	public m_limitState1:number;
-	public m_limitState2:number;
+	public m_state!:number;
+	public m_limitState1!:number;
+	public m_limitState2!:number;
 
 	// static
 	public static b2_minPulleyLength:number = 2.0;

@@ -15,6 +15,7 @@ import { Assets, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { Gradient } from "../../Game/Graphics/Gradient";
 import { Util } from "../../General/Util";
 import type { CameraState, SandboxState } from "../../core";
+import { worldToScreenX as w2sX, worldToScreenY as w2sY } from "./sceneRenderer";
 
 import cCloud0 from "../../../resource/cloud_0.png";
 import cCloud1 from "../../../resource/cloud_1.png";
@@ -37,14 +38,6 @@ const TOP_COLOURS = ["#43B0F7", "#171717", "#292935", "#22243C", "#BE4A3C", "#47
 const BOTTOM_COLOURS = ["#8ACEF7", "#353738", "#48475F", "#40457E", "#EB7A76", "#EC8D66"];
 
 const BACKGROUND_SOLID_COLOUR = 6;
-
-/** world -> screen, matching GameCanvas' Draw transform (screen = canvas/2 + world*scale - offset). */
-function w2sX(x: number, cam: CameraState, canvasW: number): number {
-	return canvasW / 2 + x * cam.scale - cam.offsetX;
-}
-function w2sY(y: number, cam: CameraState, canvasH: number): number {
-	return canvasH / 2 + y * cam.scale - cam.offsetY;
-}
 
 export class SkyRenderer {
 	/** The container GameCanvas mounts behind the Draw sprite. */
@@ -196,6 +189,15 @@ export class SkyRenderer {
 	}
 
 	private clear(): void {
+		// Destroy what this renderer OWNS, not just detach it. The gradient's
+		// canvas-backed texture is created fresh per build() (Gradient.
+		// getLinearGradientTexture), so it must die with the sprite or every
+		// background change leaks a GPU texture. Cloud sprites SHARE the preloaded
+		// cloudTextures (Assets cache owns those), so only the sprites are
+		// destroyed; the stars Graphics owns its geometry.
+		this.gradient?.destroy({ texture: true, textureSource: true });
+		for (const c of this.clouds) c.destroy();
+		this.starsGfx?.destroy();
 		this.view.removeChildren();
 		this.gradient = null;
 		this.clouds = [];

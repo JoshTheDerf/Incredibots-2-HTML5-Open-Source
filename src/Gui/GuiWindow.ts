@@ -1,4 +1,4 @@
-import { Graphics, Matrix } from "pixi.js";
+import { Graphics, Matrix, Texture } from "pixi.js";
 import { Resource } from "../Game/Graphics/Resource"
 
 export class GuiWindow extends Graphics {
@@ -56,7 +56,7 @@ export class GuiWindow extends Graphics {
         this.fill({ texture: Resource.cGuiWindowLine, matrix: m });
       }
     } else {
-      var topClass: Class, midClass: Class, bottomClass: Class;
+      var topClass: Texture, midClass: Texture, bottomClass: Texture;
       if (width == 120) {
         topClass = Resource.cGuiWindowTop120;
         midClass = Resource.cGuiWindowMid120;

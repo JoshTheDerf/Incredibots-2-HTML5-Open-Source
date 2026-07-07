@@ -21,7 +21,7 @@
 
 export class b2ContactRegister
 {
-	public createFcn:Function; // fcn pointer
-	public destroyFcn:Function;// fcn pointer
-	public primary:boolean;
+	public createFcn!:Function; // fcn pointer
+	public destroyFcn!:Function;// fcn pointer
+	public primary!:boolean;
 }

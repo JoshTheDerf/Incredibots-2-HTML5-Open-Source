@@ -33,7 +33,7 @@ export class b2ContactManager extends b2PairCallback
 {
 	constructor() {
 		super();
-		this.m_world = null;
+		this.m_world = null!;
 		this.m_destroyImmediate = false;
 	};
 
@@ -81,7 +81,7 @@ export class b2ContactManager extends b2PairCallback
 		body2 = shape2.m_body;
 
 		// Insert into the world.
-		c.m_prev = null;
+		c.m_prev = null!;
 		c.m_next = this.m_world.m_contactList;
 		if (this.m_world.m_contactList != null)
 		{
@@ -96,7 +96,7 @@ export class b2ContactManager extends b2PairCallback
 		c.m_node1.contact = c;
 		c.m_node1.other = body2;
 
-		c.m_node1.prev = null;
+		c.m_node1.prev = null!;
 		c.m_node1.next = body1.m_contactList;
 		if (body1.m_contactList != null)
 		{
@@ -108,7 +108,7 @@ export class b2ContactManager extends b2PairCallback
 		c.m_node2.contact = c;
 		c.m_node2.other = body1;
 
-		c.m_node2.prev = null;
+		c.m_node2.prev = null!;
 		c.m_node2.next = body2.m_contactList;
 		if (body2.m_contactList != null)
 		{

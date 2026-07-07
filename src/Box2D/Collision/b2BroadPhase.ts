@@ -131,7 +131,7 @@ export class b2BroadPhase
 		var proxy: b2Proxy = this.m_proxyPool[proxyId];
 		if (proxyId == b2Pair.b2_nullProxy || proxy.IsValid() == false)
 		{
-			return null;
+			return null!;
 		}
 
 		return proxy;
@@ -737,7 +737,7 @@ export class b2BroadPhase
 
 		for (var axis:number = 0; axis < 2; ++axis)
 		{
-			var bounds:b2Bound = this.m_bounds[axis];
+			var bounds:Array<any> = this.m_bounds[axis];
 
 			var boundCount:number = 2 * this.m_proxyCount;
 			var stabbingCount:number = 0;

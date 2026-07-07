@@ -63,7 +63,13 @@ const emit = defineEmits<{ advancedSandbox: [] }>();
 const bgContainer = ref<HTMLDivElement | null>(null);
 
 // SPACE sky + SMALL mars LAND — the menu's fixed backdrop settings.
-const MENU_SANDBOX: SandboxState = {
+// NOTE(typecheck): this literal predates the IB3-superset SandboxState fields
+// (gravityX/restitutionType/water/physicsEngine/groundStyle). The two renderers
+// below only read background/terrain*/size/bounds — and groundStyle, where
+// `undefined` takes the same branch as 0 (IB2 style) — so the missing fields are
+// runtime-inert here; the cast keeps that status quo without inventing defaults
+// while src/core is mid-refactor.
+const MENU_SANDBOX = {
 	gravity: 15, // unused by the renderers; the canonical sandbox default.
 	background: 1, // Sky type 1 = space/stars (ControllerMainMenu.ts:109)
 	backgroundR: 0,
@@ -73,7 +79,7 @@ const MENU_SANDBOX: SandboxState = {
 	size: 0, // SMALL
 	terrainTheme: 6, // mars (matches the menu's gradient literals)
 	bounds: { minX: -50, maxX: 50, minY: -30, maxY: 40 }, // computeBounds(SMALL/LAND)
-};
+} as SandboxState;
 
 let bgApp: Application | null = null;
 let bgSky: SkyRenderer | null = null;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { keyCodeToLabel } from "../src/ui/keyLabel";
+import { keyCodeToLabel } from "../src/ui/keyLabels";
 
 describe("keyCodeToLabel", () => {
 	it("maps arrow keys to glyphs", () => {

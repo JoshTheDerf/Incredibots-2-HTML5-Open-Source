@@ -5,7 +5,7 @@ export class ContactFilter extends b2ContactFilter {
     super();
   }
 
-  public ShouldCollide(shape1, shape2):boolean {
+  public ShouldCollide(shape1: any, shape2: any):boolean {
     if ((shape1.GetUserData() && shape1.GetUserData().isSandbox) || (shape2.GetUserData() && shape2.GetUserData().isSandbox)) return true;
 
     if (shape1.GetUserData() && shape2.GetUserData() && !shape1.GetUserData().collide && (!shape1.GetUserData().editable || shape2.GetUserData().editable) && (shape1.GetUserData().isPiston == -1 || shape2.GetUserData().isPiston == -1)) return false;

@@ -409,6 +409,32 @@ export function polygonDifference(target: Vec2[], subtrahend: Vec2[]): Vec2[][] 
 	return unchangedFallback;
 }
 
+/** Drop consecutive coincident vertices (a boolean result can emit a few). */
+export function dedupeRing(ring: Vec2[]): Vec2[] {
+	const out: Vec2[] = [];
+	const eps = 1e-7;
+	for (const p of ring) {
+		const prev = out.length ? out[out.length - 1] : ring[ring.length - 1];
+		if (out.length && Math.abs(p.x - prev.x) < eps && Math.abs(p.y - prev.y) < eps) continue;
+		out.push({ x: p.x, y: p.y });
+	}
+	// Also fold a wrap-around duplicate (last == first).
+	if (out.length >= 2) {
+		const a = out[0];
+		const b = out[out.length - 1];
+		if (Math.abs(a.x - b.x) < eps && Math.abs(a.y - b.y) < eps) out.pop();
+	}
+	return out;
+}
+
+/** Index of the first result piece whose ring contains `pt`, or -1. */
+export function containingPieceIndex(pt: Vec2, pieceRings: Vec2[][]): number {
+	for (let i = 0; i < pieceRings.length; i++) {
+		if (pointInPolygon(pt, pieceRings[i])) return i;
+	}
+	return -1;
+}
+
 /** Convenience: the largest-area ring of a difference result, or null. */
 export function largestPiece(pieces: Vec2[][]): Vec2[] | null {
 	let best: Vec2[] | null = null;

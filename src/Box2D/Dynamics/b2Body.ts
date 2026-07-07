@@ -40,7 +40,7 @@ export class b2Body
 		//b2Settings.b2Assert(m_world.m_lock == false);
 		if (this.m_world.m_lock == true)
 		{
-			return null;
+			return null!;
 		}
 
 		var s:b2Shape = b2Shape.Create(def, this.m_world.m_blockAllocator);
@@ -94,8 +94,8 @@ export class b2Body
 		// You tried to remove a shape that is not attached to this body.
 		//b2Settings.b2Assert(found);
 
-		s.m_body = null;
-		s.m_next = null;
+		s.m_body = null!;
+		s.m_next = null!;
 
 		--this.m_shapeCount;
 
@@ -667,10 +667,10 @@ export class b2Body
 		//m_sweep.c0 = m_sweep.c
 		this.m_sweep.c0.SetV(this.m_sweep.c);
 
-		this.m_jointList = null;
-		this.m_contactList = null;
-		this.m_prev = null;
-		this.m_next = null;
+		this.m_jointList = null!;
+		this.m_contactList = null!;
+		this.m_prev = null!;
+		this.m_next = null!;
 
 		this.m_linearDamping = bd.linearDamping;
 		this.m_angularDamping = bd.angularDamping;
@@ -715,7 +715,7 @@ export class b2Body
 
 		this.m_userData = bd.userData;
 
-		this.m_shapeList = null;
+		this.m_shapeList = null!;
 		this.m_shapeCount = 0;
 	}
 

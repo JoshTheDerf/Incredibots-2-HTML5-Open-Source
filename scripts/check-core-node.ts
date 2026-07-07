@@ -1,6 +1,6 @@
-#!/usr/bin/env node
+#!/usr/bin/env node --experimental-strip-types
 //
-// check-core-node.mjs
+// check-core-node.ts
 //
 // Transitive headless-purity gate for the game core.
 //
@@ -22,7 +22,9 @@
 //      module-init time — the exact failure mode a DOM/pixi dependency causes
 //      under node).
 //
-// Run:  node scripts/check-core-node.mjs   (also wired into `npm run check:core`)
+// Run:  node --experimental-strip-types scripts/check-core-node.ts
+// (also wired into `npm run check:core`; types must stay erasable — no enums/
+// namespaces — so node can strip them without a build step)
 
 import { build } from "esbuild";
 import { fileURLToPath } from "node:url";
@@ -36,7 +38,7 @@ const ROOT = resolve(__dirname, "..");
 const require = createRequire(import.meta.url);
 
 // Core entries that MUST be node-clean and load headless.
-const ENTRIES = [
+const ENTRIES: string[] = [
   "src/Parts/Circle.ts",
   "src/Parts/Rectangle.ts",
   "src/Parts/Triangle.ts",
@@ -51,19 +53,30 @@ const ENTRIES = [
 // A transitive input file is a forbidden leak if its path matches any of these.
 // (Matched against esbuild metafile input keys, which are repo-relative paths
 // like "node_modules/pixi.js/..." or "src/Game/ControllerGame.ts".)
-const FORBIDDEN_INPUT = [
+interface ForbiddenRule {
+  label: string;
+  re: RegExp;
+}
+const FORBIDDEN_INPUT: ForbiddenRule[] = [
   { label: "pixi package", re: /(^|\/)node_modules\/(pixi(\.js|-sound|-scrollbox|-text-input|-viewport)?|@pixi)(\/|$)/i },
   { label: "controller layer", re: /(^|\/)(ControllerGame\b|ControllerGameGlobals|ControllerMainMenu|ControllerChallenge|ControllerSandbox|ControllerEditor)/ },
   { label: "Gui path", re: /(^|\/)Gui\//i },
   { label: "pixi-bound Resource", re: /(^|\/)Graphics\/Resource\.[tj]s$/i },
 ];
 
+interface EntryResult {
+  entry: string;
+  ok: boolean;
+  inputs: number;
+  reason?: string;
+}
+
 let failed = false;
-const results = [];
+const results: EntryResult[] = [];
 
 for (const entry of ENTRIES) {
   const abs = resolve(ROOT, entry);
-  let out;
+  let out: Awaited<ReturnType<typeof build>>;
   try {
     out = await build({
       entryPoints: [abs],
@@ -76,15 +89,15 @@ for (const entry of ENTRIES) {
       absWorkingDir: ROOT,
     });
   } catch (err) {
-    results.push({ entry, ok: false, inputs: 0, reason: `esbuild bundle failed: ${err.message}` });
+    results.push({ entry, ok: false, inputs: 0, reason: `esbuild bundle failed: ${(err as Error).message}` });
     failed = true;
     continue;
   }
 
-  const inputs = Object.keys(out.metafile.inputs);
+  const inputs = Object.keys(out.metafile!.inputs);
 
   // 1) Graph purity: no forbidden module anywhere in the transitive inputs.
-  const leaks = [];
+  const leaks: string[] = [];
   for (const f of inputs) {
     for (const rule of FORBIDDEN_INPUT) {
       if (rule.re.test(f)) leaks.push(`${rule.label} (${f})`);
@@ -94,7 +107,7 @@ for (const entry of ENTRIES) {
   // 2) Runtime load: require the bundle; must not throw at module init.
   let loadOk = true;
   let loadErr = "";
-  const bundleText = out.outputFiles[0].text;
+  const bundleText = out.outputFiles![0].text;
   const dir = mkdtempSync(join(tmpdir(), "core-node-"));
   const file = join(dir, "bundle.cjs");
   try {
@@ -102,7 +115,7 @@ for (const entry of ENTRIES) {
     require(file);
   } catch (err) {
     loadOk = false;
-    loadErr = err && err.message ? err.message : String(err);
+    loadErr = err instanceof Error ? err.message : String(err);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

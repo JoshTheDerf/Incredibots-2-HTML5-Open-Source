@@ -20,7 +20,7 @@ export class ControllerJumpbot extends ControllerTutorial
 	private decreasedDensity:boolean = false;
 	private controlText:Text;
 
-	private carBody:ShapePart;
+	private carBody!:ShapePart;
 
 	constructor()
 	{
@@ -111,7 +111,7 @@ export class ControllerJumpbot extends ControllerTutorial
 			}
 		}
 
-		if (!this.paused && this.carBody.GetBody().GetWorldCenter().y > 50) {
+		if (!this.paused && this.carBody.GetBody()!.GetWorldCenter().y > 50) {
 			this.resetButton();
 		}
 	}

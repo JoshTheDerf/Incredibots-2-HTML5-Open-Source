@@ -6,6 +6,7 @@
 // ControlKeyAction TEXT_TYPE) plus the shared setColour.
 import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
+import { useColourField } from "../../composables/useColourField";
 import IbButton from "../IbButton.vue";
 import { keyToLabel, labelToKey } from "../../keyLabels";
 
@@ -50,26 +51,8 @@ const visibleOnStart = computed({
 	set: (v: boolean) => game.dispatch({ type: "setTextVisibleOnStart", partIds: ids.value, value: v }),
 });
 
-const localColour = ref("#242930");
-watch(
-	sel,
-	() => {
-		localColour.value =
-			"#" + [sel.value?.red ?? 0, sel.value?.green ?? 0, sel.value?.blue ?? 0]
-				.map((c) => Math.round(c).toString(16).padStart(2, "0"))
-				.join("");
-	},
-	{ immediate: true },
-);
-function applyColour(): void {
-	if (ids.value.length === 0) return;
-	const hex = localColour.value.replace("#", "");
-	const r = parseInt(hex.slice(0, 2), 16);
-	const g = parseInt(hex.slice(2, 4), 16);
-	const b = parseInt(hex.slice(4, 6), 16);
-	// TextPart has no opacity field; setColour ignores opacity for text.
-	game.dispatch({ type: "setColour", partIds: ids.value, r, g, b, opacity: 1 });
-}
+// TextPart has no opacity field; setColour ignores opacity for text.
+const { localColour, applyColour } = useColourField({ withOpacity: false });
 </script>
 
 <template>

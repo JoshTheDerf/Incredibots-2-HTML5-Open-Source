@@ -33,8 +33,8 @@ export class b2JointDef
 	{
 		this.type = b2Joint.e_unknownJoint;
 		this.userData = null;
-		this.body1 = null;
-		this.body2 = null;
+		this.body1 = null!;
+		this.body2 = null!;
 		this.collideConnected = false;
 	}
 

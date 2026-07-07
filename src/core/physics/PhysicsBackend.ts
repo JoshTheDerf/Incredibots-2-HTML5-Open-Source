@@ -235,6 +235,14 @@ export interface PhysicsBackend<W = unknown, B = unknown, S = unknown, J = unkno
 	// --- world lifecycle ---
 	/** Build a fresh world. Contact filter/listener are wired by the caller. */
 	createWorld(def: WorldDef): W;
+	/**
+	 * Free a world created by createWorld once it's torn down. Engines 0/1 are
+	 * plain JS (GC reclaims the world — no-op); engine 2 must b2DestroyWorld the
+	 * wasm world explicitly or every play leaks it in linear memory. Call it on
+	 * the backend that CREATED the world, i.e. before resetPhysicsBackend() in
+	 * the teardown.
+	 */
+	destroyWorld(world: W): void;
 	/** Advance the world one solver pass (dt seconds, `iterations` velocity/position iters). */
 	step(world: W, dt: number, iterations: number): void;
 

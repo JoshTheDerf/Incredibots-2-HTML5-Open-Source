@@ -103,7 +103,7 @@ export class ResizeShapesAction extends Action
 				this.partsAffected[i].x = initDragX + this.partsAffected[i].dragXOff * this.scaleFactor - this.partsAffected[i].w / 2;
 				this.partsAffected[i].y = initDragY + this.partsAffected[i].dragYOff * this.scaleFactor - this.partsAffected[i].h / 2;
 			} else if (this.partsAffected[i] instanceof Thrusters) {
-				this.partsAffected[i].Move(initDragX + this.partsAffected[i].dragXOff / this.scaleFactor, initDragY + this.partsAffected[i].dragYOff / this.scaleFactor);
+				this.partsAffected[i].Move(initDragX + this.partsAffected[i].dragXOff * this.scaleFactor, initDragY + this.partsAffected[i].dragYOff * this.scaleFactor);
 			}
 		}
 	}

@@ -31,8 +31,8 @@ import { b2Body, b2Contact } from "../..";
 /// nodes, one for each attached body.
 export class b2ContactEdge
 {
-	public other:b2Body;
-	public contact:b2Contact;
-	public prev:b2ContactEdge;
-	public next:b2ContactEdge;
+	public other!:b2Body;
+	public contact!:b2Contact;
+	public prev!:b2ContactEdge;
+	public next!:b2ContactEdge;
 };

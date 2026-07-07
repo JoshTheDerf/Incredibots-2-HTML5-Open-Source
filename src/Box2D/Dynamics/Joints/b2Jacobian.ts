@@ -27,9 +27,9 @@ import { b2Vec2 } from "../..";
 export class b2Jacobian
 {
 	public linear1:b2Vec2 = new b2Vec2();
-	public angular1:number;
+	public angular1!:number;
 	public linear2:b2Vec2 = new b2Vec2();
-	public angular2:number;
+	public angular2!:number;
 
 	public SetZero() : void{
 		this.linear1.SetZero(); this.angular1 = 0.0;

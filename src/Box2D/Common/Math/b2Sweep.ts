@@ -74,7 +74,7 @@ export class b2Sweep
 	public localCenter:b2Vec2 = new b2Vec2();	///< local center of mass position
 	public c0:b2Vec2 = new b2Vec2;				///< center world positions
 	public c:b2Vec2 = new b2Vec2();
-	public a0:number;
-	public a:number;					///< world angles
-	public t0:number;							///< time interval = [t0,1], where t0 is in [0,1]
+	public a0!:number;
+	public a!:number;					///< world angles
+	public t0!:number;							///< time interval = [t0,1], where t0 is in [0,1]
 }

@@ -248,14 +248,14 @@ export class b2PolyAndConcaveArcContact extends b2PolygonContact
 					arcLimitations[i] = maxEdge;
 					if(i==0)
 					{
-						s = (polyVx2.x-local.x)*arcNormal2.x+(polyVx2.y-local.y)*arcNormal2.y;
+						s = (polyVx2!.x-local.x)*arcNormal2.x+(polyVx2!.y-local.y)*arcNormal2.y;
 						if(maxS<s&&s<0)
 						{
 							autoApprove[i] = maxEdge+1<poly.m_vertexCount?maxEdge+1:0;
 							maxEdge = -1;
 						}
 					}else{
-						s = (polyVx.x-local.x)*arcNormal1.x+(polyVx.y-local.y)*arcNormal1.y;
+						s = (polyVx!.x-local.x)*arcNormal1.x+(polyVx!.y-local.y)*arcNormal1.y;
 						if(maxS<s&&s<0)
 						{
 							autoApprove[i] = maxEdge;
@@ -464,5 +464,5 @@ export class b2PolyAndConcaveArcContact extends b2PolygonContact
 	//Manifolds to return if collision with arc
 	private m_arcManifolds:Array<any>=[];
 	//Is collision with arc part, or poly part?
-	private m_arcColl:boolean;
+	private m_arcColl!:boolean;
 }

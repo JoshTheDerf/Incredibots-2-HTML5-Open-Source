@@ -11,6 +11,7 @@ import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
 import { frameTextures } from "../../assets";
+import { clampByte } from "../../waterPresets";
 
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
 
@@ -104,11 +105,6 @@ const bgLabel = computed({
 // Only editable when "Solid Color" is selected, matching the legacy
 // bgBoxChanged() enable/disable behaviour.
 const isSolidColour = computed(() => bgIndex.value === 6);
-
-function clampByte(n: number): number {
-	if (Number.isNaN(n)) return 0;
-	return Math.min(255, Math.max(0, Math.round(n)));
-}
 
 function clampGravity(n: number): number {
 	if (Number.isNaN(n)) return 15;

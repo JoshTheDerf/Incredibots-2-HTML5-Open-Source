@@ -41,9 +41,9 @@ export class ConditionsWindow extends GuiWindow
 	private removeWinConditionButton:GuiButton;
 	private removeLossConditionButton:GuiButton;
 
-	private addingWinCondition:boolean;
-	private selectingForShape1:boolean;
-	public shape1:ShapePart;
+	private addingWinCondition!:boolean;
+	private selectingForShape1!:boolean;
+	public shape1!:ShapePart | null;
 
 	private static STRINGS_FOR_SUBJECTS:Array<string> = ["A specific shape", "Any shape", "All user-created shapes", "Any pre-existing shape", "Any cannonball"];
 	private static STRINGS_FOR_OBJECTS:Array<string> = ["within a box", "above a line", "below a line", "left of a line", "right of a line", "touching another shape", "touched another shape"];
@@ -366,12 +366,12 @@ export class ConditionsWindow extends GuiWindow
 	}
 
 	private removeWinButtonPressed():void {
-		ControllerGameGlobals.challenge.winConditions = Util.RemoveFromArray(ControllerGameGlobals.challenge.winConditions[this.winConditions.selectedIndex], ControllerGameGlobals.challenge.winConditions);
+		ControllerGameGlobals.challenge.winConditions = Util.RemoveFromArray(ControllerGameGlobals.challenge.winConditions[this.winConditions.selectedIndex!], ControllerGameGlobals.challenge.winConditions);
 		this.RefreshList(true);
 	}
 
 	private removeLossButtonPressed():void {
-		ControllerGameGlobals.challenge.lossConditions = Util.RemoveFromArray(ControllerGameGlobals.challenge.lossConditions[this.lossConditions.selectedIndex], ControllerGameGlobals.challenge.lossConditions);
+		ControllerGameGlobals.challenge.lossConditions = Util.RemoveFromArray(ControllerGameGlobals.challenge.lossConditions[this.lossConditions.selectedIndex!], ControllerGameGlobals.challenge.lossConditions);
 		this.RefreshList(false);
 	}
 

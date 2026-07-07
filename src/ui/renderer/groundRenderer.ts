@@ -24,6 +24,7 @@ import { Container, Graphics, Matrix } from "pixi.js";
 import { Gradient } from "../../Game/Graphics/Gradient";
 import { Util } from "../../General/Util";
 import type { CameraState, SandboxState } from "../../core";
+import { worldToScreenX as w2sX, worldToScreenY as w2sY } from "./sceneRenderer";
 
 // SandboxSettings.* enum values (mirrored from src/core/sandboxEnvironment.ts so
 // this module doesn't reach into the Game controller graph).
@@ -129,14 +130,6 @@ const rock3BottomColours: string[] = [
 	Util.HexColourString(179, 105, 57),
 ];
 const rockOutlines: number[] = [0x6bb05a, 0xa66b52, 0xb1a058, 0x98a4a8, 0xbdcbd7, 0x94939d, 0xba643d];
-
-/** world -> screen, matching the shared Draw transform (sceneRenderer.worldToScreen). */
-function w2sX(x: number, cam: CameraState, canvasW: number): number {
-	return canvasW / 2 + x * cam.scale - cam.offsetX;
-}
-function w2sY(y: number, cam: CameraState, canvasH: number): number {
-	return canvasH / 2 + y * cam.scale - cam.offsetY;
-}
 
 /** Per-size/-type world anchor + width for the Update reposition (ControllerSandbox.ts:817-888). */
 interface Anchor {

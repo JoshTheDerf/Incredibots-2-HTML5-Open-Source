@@ -60,7 +60,7 @@ export class ControlKeyAction extends Action
 		} else if (this.type == ControlKeyAction.THRUSTERS_TYPE) {
 			(this.partAffected as Thrusters).thrustKey = this.newKey;
 		} else if (this.type == ControlKeyAction.CANNON_TYPE) {
-			(this.partAffected as Cannon).fireKey = this.oldKey;
+			(this.partAffected as Cannon).fireKey = this.newKey;
 		}
 	}
 }

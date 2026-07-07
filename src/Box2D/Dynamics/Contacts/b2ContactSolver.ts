@@ -399,7 +399,7 @@ export class b2ContactSolver
 
 		// We can't expect minSpeparation >= -b2_linearSlop because we don't
 		// push the separation above -b2_linearSlop.
-		return minSeparation >= -1.5 * linearSlop;
+		return minSeparation >= -1.5 * linearSlop!;
 	}
 
 	public m_step:b2TimeStep = new b2TimeStep();

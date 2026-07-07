@@ -67,11 +67,11 @@ export class b2DistanceJointDef extends b2JointDef
 	public localAnchor2:b2Vec2 = new b2Vec2();
 
 	/// The equilibrium length between the anchor points.
-	public length:number;
+	public length!:number;
 
 	/// The response speed.
-	public frequencyHz:number;
+	public frequencyHz!:number;
 
 	/// The damping ratio. 0 = no damping, 1 = critical damping.
-	public dampingRatio:number;
+	public dampingRatio!:number;
 }

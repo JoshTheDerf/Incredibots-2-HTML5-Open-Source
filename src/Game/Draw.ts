@@ -35,7 +35,7 @@ export class Draw extends b2DebugDraw {
   private static s_jointCreatingColor = new b2Color(0.9, 0.4, 0.4);
   private static s_staticColor = new b2Color(0.4, 0.9, 0.4);
   private static s_staticEditableColor = new b2Color(0.6, 0.8, 0.6);
-  private m_world = null;
+  private m_world: any = null;
 
   /**
    * Joint-visualization fill-alpha nudge (Jaybit Draw.as:706-712 / :726-732 /
@@ -125,6 +125,11 @@ export class Draw extends b2DebugDraw {
   // The headless game core (TextPart) holds only plain data; the live Pixi
   // Text objects live here and are created/updated/destroyed per-frame.
   private m_textFields: Map<TextPart, Text> = new Map();
+  // Last style inputs applied to each TextPart's Text. Assigning a fresh
+  // TextStyle forces Pixi to re-rasterize the text, so DrawWorld only rebuilds
+  // the style when one of its inputs (size/colour/wrap width, all derived from
+  // the part + m_drawScale) actually changed.
+  private m_textStyleCache: Map<TextPart, { fontSize: number; fill: number; wordWrapWidth: number }> = new Map();
   // Two containers hold the text: one drawn behind the canvas (m_sprite),
   // one in front. This preserves the original z-order semantics, which placed
   // each TextPart's Text just below or just above m_canvas based on `inFront`.
@@ -161,12 +166,12 @@ export class Draw extends b2DebugDraw {
   public DrawWorld(
     allParts: Array<Part>,
     selectedParts: Array<any>,
-    world,
+    world: any,
     notStarted: boolean,
     drawStatic: boolean = true,
     showJoints: boolean = true,
     showOutlines: boolean = true,
-    challenge: Challenge = null,
+    challenge: Challenge | null = null,
     // Joint visualization (Jaybit ControllerGame.jointVisualization / ShapePart.
     // highlightForJV, applied at Draw.as:705-773): the set of shape part ids to
     // "blink" while a joint is selected — the two shapes the joint connects. The
@@ -176,6 +181,10 @@ export class Draw extends b2DebugDraw {
   ): void {
     this.m_world = world
     var i: number;
+    // Selection membership is checked per part per frame below; build one Set up
+    // front instead of Util.ObjectInArray's linear scan (same ==-on-objects
+    // semantics as Set#has for parts).
+    var selectedSet: Set<any> = new Set(selectedParts || []);
     this.m_sprite.clear();
     // Outline stroke alpha, reset each frame. Per-part IB3 borderOpacity overrides
     // it at the top of each part in the draw loops below (see Part.borderOpacity).
@@ -222,22 +231,22 @@ export class Draw extends b2DebugDraw {
       if (this.drawColours && showOutlines) {
         for (i = 0; i < allParts.length; i++) {
           if (!allParts[i].isStatic || allParts[i].isEditable || drawStatic || allParts[i].drawAnyway) {
-            if (allParts[i] instanceof ShapePart && allParts[i].terrain && allParts[i].outline) {
+            if (allParts[i] instanceof ShapePart && (allParts[i] as ShapePart).terrain && (allParts[i] as ShapePart).outline) {
               var myColor = Draw.s_normalColor;
               var isHighlighted: boolean = false;
               if (this.drawColours) {
-                myColor = new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0);
+                myColor = new b2Color((allParts[i] as ShapePart).red / 255.0, (allParts[i] as ShapePart).green / 255.0, (allParts[i] as ShapePart).blue / 255.0);
                 if (
-                  (allParts[i] instanceof ShapePart && allParts[i].highlightForJoint) ||
-                  Util.ObjectInArray(allParts[i], selectedParts)
+                  (allParts[i] instanceof ShapePart && (allParts[i] as ShapePart).highlightForJoint) ||
+                  selectedSet.has(allParts[i])
                 )
                   isHighlighted = true;
               } else {
                 if (!allParts[i].isEditable) myColor = Draw.s_uneditableColor;
                 if (allParts[i].isStatic && allParts[i].isEditable) myColor = Draw.s_staticEditableColor;
-                if (Util.ObjectInArray(allParts[i], selectedParts)) myColor = Draw.s_selectedColor;
+                if (selectedSet.has(allParts[i])) myColor = Draw.s_selectedColor;
                 if (allParts[i].isStatic && !allParts[i].isEditable) myColor = Draw.s_staticColor;
-                if (allParts[i] instanceof ShapePart && allParts[i].highlightForJoint)
+                if (allParts[i] instanceof ShapePart && (allParts[i] as ShapePart).highlightForJoint)
                   myColor = Draw.s_jointCreatingColor;
               }
 
@@ -281,20 +290,20 @@ export class Draw extends b2DebugDraw {
             // selected joint (see ApplyJointVizNudge).
             var jvHighlight: boolean = !!(highlightForJVIds && highlightForJVIds.has(allParts[i].id));
             if (this.drawColours) {
-              myColor = new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0);
+              myColor = new b2Color((allParts[i] as ShapePart).red / 255.0, (allParts[i] as ShapePart).green / 255.0, (allParts[i] as ShapePart).blue / 255.0);
 
               if (
-                (allParts[i] instanceof ShapePart && allParts[i].highlightForJoint) ||
-                Util.ObjectInArray(allParts[i], selectedParts)
+                (allParts[i] instanceof ShapePart && (allParts[i] as ShapePart).highlightForJoint) ||
+                selectedSet.has(allParts[i])
               )
                 isHighlighted = true;
             } else {
               if (allParts[i] instanceof JointPart) myColor = Draw.s_jointColor;
               if (!allParts[i].isEditable) myColor = Draw.s_uneditableColor;
               if (allParts[i].isStatic && allParts[i].isEditable) myColor = Draw.s_staticEditableColor;
-              if (Util.ObjectInArray(allParts[i], selectedParts)) myColor = Draw.s_selectedColor;
+              if (selectedSet.has(allParts[i])) myColor = Draw.s_selectedColor;
               if (allParts[i].isStatic && !allParts[i].isEditable) myColor = Draw.s_staticColor;
-              if (allParts[i] instanceof ShapePart && allParts[i].highlightForJoint)
+              if (allParts[i] instanceof ShapePart && (allParts[i] as ShapePart).highlightForJoint)
                 myColor = Draw.s_jointCreatingColor;
             }
 
@@ -502,9 +511,9 @@ export class Draw extends b2DebugDraw {
             myColor = Draw.s_jointColor;
             if (!allParts[i].isEditable) myColor = Draw.s_uneditableColor;
             if (allParts[i].isStatic && allParts[i].isEditable) myColor = Draw.s_staticEditableColor;
-            if (Util.ObjectInArray(allParts[i], selectedParts)) myColor = Draw.s_selectedColor;
+            if (selectedSet.has(allParts[i])) myColor = Draw.s_selectedColor;
             if (allParts[i].isStatic && !allParts[i].isEditable) myColor = Draw.s_staticColor;
-            if (allParts[i] instanceof ShapePart && allParts[i].highlightForJoint) myColor = Draw.s_jointCreatingColor;
+            if (allParts[i] instanceof ShapePart && (allParts[i] as ShapePart).highlightForJoint) myColor = Draw.s_jointCreatingColor;
 
             // IB3 scaleToZoom: FALSE (default) draws the joint/thruster marker at a
             // CONSTANT on-screen size (the *30/m_drawScale below); TRUE draws it
@@ -570,14 +579,14 @@ export class Draw extends b2DebugDraw {
       if (this.drawColours && showOutlines) {
         for (i = 0; i < allParts.length; i++) {
           if (!allParts[i].isStatic || allParts[i].isEditable || drawStatic || allParts[i].drawAnyway) {
-            if (allParts[i] instanceof ShapePart && allParts[i].terrain && allParts[i].outline) {
-              xf = this.RenderXForm(allParts[i].GetBody());
+            if (allParts[i] instanceof ShapePart && (allParts[i] as ShapePart).terrain && (allParts[i] as ShapePart).outline) {
+              xf = this.RenderXForm((allParts[i] as ShapePart).GetBody());
               if (allParts[i] instanceof Cannon)
                 this.DrawCannonForOutline(
-                  allParts[i].GetShape(),
+                  (allParts[i] as ShapePart).GetShape(),
                   xf,
-                  new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0),
-                  allParts[i].opacity / 255.0
+                  new b2Color((allParts[i] as ShapePart).red / 255.0, (allParts[i] as ShapePart).green / 255.0, (allParts[i] as ShapePart).blue / 255.0),
+                  (allParts[i] as ShapePart).opacity / 255.0
                 );
               else if (allParts[i] instanceof Polygon)
                 this.DrawPolygonBodyForOutline(
@@ -592,10 +601,10 @@ export class Draw extends b2DebugDraw {
                 );
               else
                 this.DrawShapeForOutline(
-                  allParts[i].GetShape(),
+                  (allParts[i] as ShapePart).GetShape(),
                   xf,
-                  new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0),
-                  allParts[i].opacity / 255.0
+                  new b2Color((allParts[i] as ShapePart).red / 255.0, (allParts[i] as ShapePart).green / 255.0, (allParts[i] as ShapePart).blue / 255.0),
+                  (allParts[i] as ShapePart).opacity / 255.0
                 );
             }
           }
@@ -616,14 +625,14 @@ export class Draw extends b2DebugDraw {
           // them mid-sim) — skip the shape pass (IB3 skips destroyed bombs the
           // same way, Draw2D.as:541-544).
           if (allParts[i] instanceof ShapePart && (allParts[i] as ShapePart).GetShape() != null) {
-            xf = this.RenderXForm(allParts[i].GetBody());
+            xf = this.RenderXForm((allParts[i] as ShapePart).GetBody());
             if (this.drawColours) {
               if (allParts[i] instanceof Cannon)
                 this.DrawCannon(
-                  allParts[i].GetShape(),
+                  (allParts[i] as ShapePart).GetShape(),
                   xf,
-                  new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0),
-                  allParts[i].opacity / 255.0,
+                  new b2Color((allParts[i] as ShapePart).red / 255.0, (allParts[i] as ShapePart).green / 255.0, (allParts[i] as ShapePart).blue / 255.0),
+                  (allParts[i] as ShapePart).opacity / 255.0,
                   showOutlines
                 );
               else if (allParts[i] instanceof Polygon)
@@ -640,16 +649,16 @@ export class Draw extends b2DebugDraw {
                 );
               else
                 this.DrawShape(
-                  allParts[i].GetShape(),
+                  (allParts[i] as ShapePart).GetShape(),
                   xf,
-                  new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0),
-                  allParts[i].opacity / 255.0,
+                  new b2Color((allParts[i] as ShapePart).red / 255.0, (allParts[i] as ShapePart).green / 255.0, (allParts[i] as ShapePart).blue / 255.0),
+                  (allParts[i] as ShapePart).opacity / 255.0,
                   showOutlines
                 );
             } else if (allParts[i].isStatic) {
               if (allParts[i] instanceof Cannon)
                 this.DrawCannon(
-                  allParts[i].GetShape(),
+                  (allParts[i] as ShapePart).GetShape(),
                   xf,
                   Draw.s_staticColor,
                   1,
@@ -665,7 +674,7 @@ export class Draw extends b2DebugDraw {
                 );
               else
                 this.DrawShape(
-                  allParts[i].GetShape(),
+                  (allParts[i] as ShapePart).GetShape(),
                   xf,
                   Draw.s_staticColor,
                   1,
@@ -674,7 +683,7 @@ export class Draw extends b2DebugDraw {
             } else {
               if (allParts[i] instanceof Cannon)
                 this.DrawCannon(
-                  allParts[i].GetShape(),
+                  (allParts[i] as ShapePart).GetShape(),
                   xf,
                   Draw.s_normalColor,
                   1,
@@ -690,7 +699,7 @@ export class Draw extends b2DebugDraw {
                 );
               else
                 this.DrawShape(
-                  allParts[i].GetShape(),
+                  (allParts[i] as ShapePart).GetShape(),
                   xf,
                   Draw.s_normalColor,
                   1,
@@ -701,7 +710,7 @@ export class Draw extends b2DebugDraw {
             // IB3 visualInSim=false hides the joint graphic during the sim (the
             // prismatic shaft is the only joint/thruster graphic drawn while running).
             const pj = allParts[i] as PrismaticJoint;
-            var shapes = allParts[i].GetShapes();
+            var shapes = pj.GetShapes();
             for (j = 0; j < shapes.length; j++) {
               const f = shapes[j];
               xf = this.RenderXForm(shapes[j].GetBody());
@@ -709,35 +718,35 @@ export class Draw extends b2DebugDraw {
                 this.DrawShape(
                   shapes[j],
                   xf,
-                  new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0),
-                  allParts[i].opacity / 255.0,
+                  new b2Color(pj.red / 255.0, pj.green / 255.0, pj.blue / 255.0),
+                  pj.opacity / 255.0,
                   showOutlines
                 );
               } else if (allParts[i].isStatic) {
-                this.DrawShape(shapes[j], pj.part2.GetUserData(), xf, Draw.s_staticColor, 1, showOutlines);
+                this.DrawShape(shapes[j], xf, Draw.s_staticColor, 1, showOutlines);
               } else {
-                this.DrawShape(shapes[j], pj.part2.GetUserData(), xf, Draw.s_normalColor, 1, showOutlines);
+                this.DrawShape(shapes[j], xf, Draw.s_normalColor, 1, showOutlines);
               }
             }
           }
         }
 
         if (allParts[i] instanceof Cannon) {
-          for (j = 0; j < allParts[i].cannonballs.length; j++) {
-            const cannonballBody = allParts[i].cannonballs[j];
+          for (j = 0; j < (allParts[i] as Cannon).cannonballs.length; j++) {
+            const cannonballBody = (allParts[i] as Cannon).cannonballs[j];
             xf = this.RenderXForm(cannonballBody);
             if (this.drawColours) {
               this.DrawShape(
-                allParts[i].cannonballs[j].GetShapeList(),
+                (allParts[i] as Cannon).cannonballs[j].GetShapeList(),
                 xf,
-                new b2Color(allParts[i].red / 255.0, allParts[i].green / 255.0, allParts[i].blue / 255.0),
-                allParts[i].opacity / 255.0,
+                new b2Color((allParts[i] as Cannon).red / 255.0, (allParts[i] as Cannon).green / 255.0, (allParts[i] as Cannon).blue / 255.0),
+                (allParts[i] as Cannon).opacity / 255.0,
                 showOutlines,
                 true
               );
             } else {
               this.DrawShape(
-                allParts[i].cannonballs[j].GetShapeList(),
+                (allParts[i] as Cannon).cannonballs[j].GetShapeList(),
                 xf,
                 Draw.s_normalColor,
                 1,
@@ -799,22 +808,34 @@ export class Draw extends b2DebugDraw {
         textField.y = part.y * this.m_drawScale - this.m_drawYOff;
         // IB3 TextPart.angle (radians): rotate the text about its top-left anchor.
         textField.rotation = part.angle;
-        var format: TextStyle = new TextStyle();
-        format.fontSize = part.scaleWithZoom ? (part.size * this.m_drawScale) / 30 : part.size;
-        format.fill = (part.red << 16) | (part.green << 8) | part.blue;
-        format.fontFamily = Main.GLOBAL_FONT;
-        format.breakWords = true
-        format.wordWrap = true
-        format.wordWrapWidth = part.w * this.m_drawScale
-        textField.style = format;
+        var fontSize: number = part.scaleWithZoom ? (part.size * this.m_drawScale) / 30 : part.size;
+        var fill: number = (part.red << 16) | (part.green << 8) | part.blue;
+        var wordWrapWidth: number = part.w * this.m_drawScale;
+        var cachedStyle = this.m_textStyleCache.get(part);
+        if (
+          !cachedStyle ||
+          cachedStyle.fontSize !== fontSize ||
+          cachedStyle.fill !== fill ||
+          cachedStyle.wordWrapWidth !== wordWrapWidth
+        ) {
+          var format: TextStyle = new TextStyle();
+          format.fontSize = fontSize;
+          format.fill = fill;
+          format.fontFamily = Main.GLOBAL_FONT;
+          format.breakWords = true
+          format.wordWrap = true
+          format.wordWrapWidth = wordWrapWidth
+          textField.style = format;
+          this.m_textStyleCache.set(part, { fontSize, fill, wordWrapWidth });
+        }
         if (notStarted) {
-          var selected: boolean = Util.ObjectInArray(allParts[i], selectedParts);
+          var selected: boolean = selectedSet.has(allParts[i]);
           var color = selected ? new b2Color(1, 1, 1) : new b2Color(0.1, 0.1, 0.1);
           var vertices: Array<any> = new Array();
-          vertices[0] = new b2Vec2(allParts[i].x, allParts[i].y);
-          vertices[1] = new b2Vec2(allParts[i].x + allParts[i].w, allParts[i].y);
-          vertices[2] = new b2Vec2(allParts[i].x + allParts[i].w, allParts[i].y + allParts[i].h);
-          vertices[3] = new b2Vec2(allParts[i].x, allParts[i].y + allParts[i].h);
+          vertices[0] = new b2Vec2(part.x, part.y);
+          vertices[1] = new b2Vec2(part.x + part.w, part.y);
+          vertices[2] = new b2Vec2(part.x + part.w, part.y + part.h);
+          vertices[3] = new b2Vec2(part.x, part.y + part.h);
           this.DrawPolygon(vertices, 4, color);
           var newVerts: Array<any> = new Array();
           for (j = 0; j < 4; j++) {
@@ -834,6 +855,7 @@ export class Draw extends b2DebugDraw {
         if (field.parent) field.parent.removeChild(field);
         field.destroy();
         this.m_textFields.delete(part);
+        this.m_textStyleCache.delete(part);
       }
     });
   }
@@ -859,7 +881,7 @@ export class Draw extends b2DebugDraw {
     if (field) field.visible = false;
   }
 
-  public DrawJoint(joint): void {
+  public DrawJoint(joint: any): void {
     var b1 = joint.GetBody1();
     var b2 = joint.GetBody2();
     var xf1 = b1.GetXForm();
@@ -904,9 +926,9 @@ export class Draw extends b2DebugDraw {
   }
 
   public DrawShape(
-    shape,
-    xf,
-    color,
+    shape: any,
+    xf: any,
+    color: any,
     alpha: number,
     showOutlines: boolean = true,
     cannonball: boolean = false
@@ -1008,9 +1030,9 @@ export class Draw extends b2DebugDraw {
   }
 
   public DrawCannon(
-    shape,
-    xf,
-    color,
+    shape: any,
+    xf: any,
+    color: any,
     alpha: number,
     showOutlines: boolean = true
   ): void {
@@ -1129,7 +1151,7 @@ export class Draw extends b2DebugDraw {
     });
   }
 
-  public DrawShapeForOutline(shape, xf, color, alpha: number): void {
+  public DrawShapeForOutline(shape: any, xf: any, color: any, alpha: number): void {
     shape = this.resolveShape(shape);
     color = Draw.DarkenColour(color);
     var thickness: number = Math.max(0.1, (this.m_lineThickness * Math.pow(this.m_drawScale, 0.5)) / 8);
@@ -1168,7 +1190,7 @@ export class Draw extends b2DebugDraw {
     }
   }
 
-  public DrawCannonForOutline(shape, xf, color, alpha: number): void {
+  public DrawCannonForOutline(shape: any, xf: any, color: any, alpha: number): void {
     shape = this.resolveShape(shape);
     color = Draw.DarkenColour(color);
     var thickness: number = Math.max(0.1, (this.m_lineThickness * Math.pow(this.m_drawScale, 0.5)) / 8);

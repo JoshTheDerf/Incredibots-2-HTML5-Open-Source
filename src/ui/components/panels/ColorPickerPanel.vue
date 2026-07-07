@@ -17,6 +17,7 @@ import { computed, ref, watch } from "vue";
 import { useGameStore } from "../../gameStore";
 import IbButton from "../IbButton.vue";
 import { frameTextures } from "../../assets";
+import { clampByte as clamp255 } from "../../waterPresets";
 
 const panelStyle = { "--ib-panel-src": `url(${frameTextures.panelFrameCream})` };
 
@@ -76,11 +77,6 @@ function onPresetChange(label: string): void {
 const swatchStyle = computed(() => ({
 	backgroundColor: `rgba(${red.value}, ${green.value}, ${blue.value}, ${opacity.value / 255})`,
 }));
-
-function clamp255(n: number): number {
-	if (Number.isNaN(n)) return 0;
-	return Math.max(0, Math.min(255, Math.round(n)));
-}
 
 // Live preview: dispatch setColour (no makeDefault) on every R/G/B/opacity
 // change so the canvas repaints as the sliders move, exactly like the legacy

@@ -12,6 +12,11 @@ import { GuiTextInput } from "./GuiTextInput"
 import { GuiWindow } from "./GuiWindow"
 import { Main } from "../Main"
 
+// Legacy AS3 global (the Flash Stage). Only referenced by the dead
+// `refreshMouse` handler below; declared type-only so the file compiles
+// without changing runtime behavior (emits nothing).
+declare const stage: any;
+
 export class AdvancedSandboxWindow extends GuiWindow {
   private cont: Controller;
 
@@ -256,7 +261,7 @@ export class AdvancedSandboxWindow extends GuiWindow {
 
   private cancelButtonPressed(e: MouseEvent): void {
     if (this.cont instanceof ControllerMainMenu) (this.cont as ControllerMainMenu).fader2.visible = false;
-    else (this.cont as ControllerGame).m_fader.visible = false;
+    else (this.cont as unknown as ControllerGame).m_fader.visible = false;
     this.visible = false;
     this.cont.removeChild(this);
   }
@@ -276,8 +281,8 @@ export class AdvancedSandboxWindow extends GuiWindow {
     if (this.cont instanceof ControllerMainMenu) Main.changeControllers = true;
     else {
       if (this.cont.controllerType === "challenge") ControllerGameGlobals.challenge.settings = settings;
-      (this.cont as ControllerSandbox).RefreshSandboxSettings();
-      (this.cont as ControllerSandbox).m_fader.visible = false;
+      (this.cont as unknown as ControllerSandbox).RefreshSandboxSettings();
+      (this.cont as unknown as ControllerSandbox).m_fader.visible = false;
     }
   }
 
@@ -328,9 +333,9 @@ export class AdvancedSandboxWindow extends GuiWindow {
   }
 
   private refreshMouse(e: Event): void {
-    if (e.target == this.bgBox.dropdown || e.target == this.themeBox.dropdown) {
-      e.target.height = 140;
+    if (e.target == (this.bgBox as any).dropdown || e.target == (this.themeBox as any).dropdown) {
+      (e.target as any).height = 140;
     }
-    Main.RefreshMouse(stage, e.target as Sprite);
+    (Main as any).RefreshMouse(stage, e.target as Sprite);
   }
 }

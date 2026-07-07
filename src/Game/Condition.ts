@@ -7,14 +7,14 @@ export class Condition {
   public subject: number;
   public object: number;
 
-  public minX: number;
-  public maxX: number;
-  public minY: number;
-  public maxY: number;
+  public minX!: number;
+  public maxX!: number;
+  public minY!: number;
+  public maxY!: number;
 
-  public shape1: ShapePart = null;
+  public shape1: ShapePart | null = null;
   public shape1Index: number = -1;
-  public shape2: ShapePart = null;
+  public shape2: ShapePart | null = null;
   public shape2Index: number = -1;
 
   public isSatisfied: boolean = false;
@@ -39,19 +39,19 @@ export class Condition {
         return;
       }
       if (this.shape1.GetShape() instanceof b2CircleShape) {
-        const circle = this.shape1.GetShape();
-        const center = b2Math.b2MulX(this.shape1.GetBody().GetXForm(), circle.GetLocalPosition());
+        const circle = this.shape1.GetShape() as b2CircleShape;
+        const center = b2Math.b2MulX(this.shape1.GetBody()!.GetXForm(), circle.GetLocalPosition());
         minShapeX = center.x - circle.GetRadius();
         maxShapeX = center.x + circle.GetRadius();
         minShapeY = center.y - circle.GetRadius();
         maxShapeY = center.y + circle.GetRadius();
       } else if (this.shape1.GetShape() instanceof b2PolygonShape) {
-        const poly = this.shape1.GetShape();
+        const poly = this.shape1.GetShape() as b2PolygonShape;
         var vertexCount: number = poly.GetVertexCount();
         var localVertices: Array<any> = poly.GetVertices();
 
         for (i = 0; i < vertexCount; i++) {
-          const vertex = b2Math.b2MulX(this.shape1.GetBody().GetXForm(), localVertices[i])
+          const vertex = b2Math.b2MulX(this.shape1.GetBody()!.GetXForm(), localVertices[i])
           if (vertex.x < minShapeX) minShapeX = vertex.x;
           if (vertex.x > maxShapeX) maxShapeX = vertex.x;
           if (vertex.y < minShapeY) minShapeY = vertex.y;
@@ -89,7 +89,10 @@ export class Condition {
             minShapeY = center.y - circle.GetRadius();
             maxShapeY = center.y + circle.GetRadius();
           } else if (parts[i].GetShape() instanceof b2PolygonShape) {
-            poly = parts[i].GetShape();
+            // BUG FIX: `poly` was assigned without a declaration (the `const poly`
+            // above is block-scoped), which threw a ReferenceError in strict
+            // module code whenever this branch ran. Declare it locally.
+            const poly = parts[i].GetShape();
             vertexCount = poly.GetVertexCount();
             localVertices = poly.GetVertices();
 
@@ -258,7 +261,7 @@ export class Condition {
     }
   }
 
-  public ContactAdded(point, parts: Array<any>, cannonballs: Array<any>): void {
+  public ContactAdded(point: any, parts: Array<any>, cannonballs: Array<any>): void {
     if (this.object == 5 || this.object == 6) {
       // Defensive: obj-5/6 ("touching"/"touched") needs the picked object shape
       // (shape2), and subject-0 also needs shape1. A deleted/subtracted pick would
@@ -266,13 +269,13 @@ export class Condition {
       if (!this.shape2 || !this.shape2.GetShape()) return;
       if (this.subject == 0 && (!this.shape1 || !this.shape1.GetShape())) return;
       if (this.subject == 0) {
-        if ((point.shape1 == this.shape1.GetShape() && point.shape2 == this.shape2.GetShape()) || (point.shape1 == this.shape2.GetShape() && point.shape2 == this.shape1.GetShape())) this.isSatisfied = true;
+        if ((point.shape1 == this.shape1!.GetShape() && point.shape2 == this.shape2.GetShape()) || (point.shape1 == this.shape2.GetShape() && point.shape2 == this.shape1!.GetShape())) this.isSatisfied = true;
       } else if (this.subject == 1) {
         if (point.shape1 == this.shape2.GetShape() || point.shape2 == this.shape2.GetShape()) this.isSatisfied = true;
       } else if (this.subject == 2) {
         if (point.shape1 == this.shape2.GetShape() || point.shape2 == this.shape2.GetShape()) {
           parts = parts.filter(this.PartIsEditable);
-          for (var i:int = 0; i < parts.length; i++) {
+          for (var i: number = 0; i < parts.length; i++) {
             if (point.shape1 == parts[i].GetShape() || point.shape2 == parts[i].GetShape()) this.isSatisfied = true;
           }
         }

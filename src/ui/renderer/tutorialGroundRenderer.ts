@@ -25,14 +25,7 @@
 import { Container, Graphics, Matrix } from "pixi.js";
 import { Gradient } from "../../Game/Graphics/Gradient";
 import type { CameraState } from "../../core";
-
-/** world -> screen, matching the shared Draw transform (sceneRenderer.worldToScreen). */
-function w2sX(x: number, cam: CameraState, canvasW: number): number {
-	return canvasW / 2 + x * cam.scale - cam.offsetX;
-}
-function w2sY(y: number, cam: CameraState, canvasH: number): number {
-	return canvasH / 2 + y * cam.scale - cam.offsetY;
-}
+import { worldToScreenX as w2sX, worldToScreenY as w2sY } from "./sceneRenderer";
 
 export class TutorialGroundRenderer {
 	/** The container GameCanvas mounts (above the sandbox ground, below the Draw sprite). */

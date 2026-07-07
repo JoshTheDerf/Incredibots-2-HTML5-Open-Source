@@ -281,7 +281,7 @@ export class b2PairManager
 		var hash:number = b2PairManager.Hash(proxyId1, proxyId2) & b2Pair.b2_tableMask;
 
 		var node:number = this.m_hashTable[hash];
-		var pNode:b2Pair = null;
+		var pNode:b2Pair = null!;
 
 		while (node != b2Pair.b2_nullPair)
 		{
@@ -350,7 +350,7 @@ export class b2PairManager
 
 		if ( index == b2Pair.b2_nullPair )
 		{
-			return null;
+			return null!;
 		}
 
 		//b2Settings.b2Assert(index < b2_maxPairs);
@@ -367,8 +367,8 @@ export class b2PairManager
 	}
 
 //public:
-	public m_broadPhase:b2BroadPhase;
-	public m_callback:b2PairCallback;
+	public m_broadPhase!:b2BroadPhase;
+	public m_callback!:b2PairCallback;
 	public m_pairs:Array<any>;
 	public m_freePair:number = 0;
 	public m_pairCount:number;

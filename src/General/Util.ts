@@ -81,7 +81,7 @@ export class Util {
     return Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
   }
 
-  public static GetAngle(vec): number {
+  public static GetAngle(vec: any): number {
     return Math.atan2(vec.y, vec.x);
   }
 
@@ -91,7 +91,7 @@ export class Util {
     return angle;
   }
 
-  public static Midpoint(p1, p2) {
+  public static Midpoint(p1: any, p2: any) {
     return new b2Vec2((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0);
   }
 
@@ -103,7 +103,7 @@ export class Util {
     return `#${[r, g, b].map((x) => x.toString(16).padStart(2, "0")).join("")}`;
   }
 
-  public static b2ColorToHex(color): number {
+  public static b2ColorToHex(color: any): number {
     return (color._b) | ((color._g) << 8) | ((color._r) << 16);
   }
 
@@ -190,13 +190,13 @@ export class Util {
     return false;
   }
 
-  public static DistanceFromPointToLine(point, linePoint, lineVect): number {
+  public static DistanceFromPointToLine(point: any, linePoint: any, lineVect: any): number {
     lineVect.Normalize();
     var r = new b2Vec2(linePoint.x - point.x, linePoint.y - point.y);
     return Math.abs(Util.Determinant(new b2Mat22(0, lineVect, r)));
   }
 
-  public static Determinant(matrix): number {
+  public static Determinant(matrix: any): number {
     return matrix.col1.x * matrix.col2.y - matrix.col1.y * matrix.col2.x;
   }
 }

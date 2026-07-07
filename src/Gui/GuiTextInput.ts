@@ -22,6 +22,10 @@ export class GuiTextInput extends Container {
   private _boxHeight: number;
   private _disabled: boolean = false;
   private _text: string = "";
+  // Legacy pixi-text-input property still assigned by callers (PartEditWindow);
+  // stored as a plain own-property on the Container at runtime. `declare` keeps
+  // the type without emitting any field initializer.
+  declare focusEnabled: boolean;
 
   set maxLength(value: number) {
     this.domInput.maxLength = value || 0;

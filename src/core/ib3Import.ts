@@ -857,6 +857,8 @@ function buildJoint(od: Record<string, unknown>, shapeByIndex: (ShapePart | null
 		if (has(od, "collB")) pj.collB = Boolean(od.collB);
 		if (has(od, "collC")) pj.collC = Boolean(od.collC);
 		if (has(od, "collD")) pj.collD = Boolean(od.collD);
+		// Same derivation as applyCommonShapeFields: IB3 has no aggregate flag.
+		pj.collide = pj.collA || pj.collB || pj.collC || pj.collD;
 		if (has(od, "selfColl")) pj.subColl = Boolean(od.selfColl);
 		if (has(od, "buoyant")) pj.buoyant = Boolean(od.buoyant);
 		// Begin-expanded + per-direction key enable map directly (IB3

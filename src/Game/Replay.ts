@@ -6,7 +6,7 @@ export class Replay {
   public syncPoints: Array<any>;
   public version: string;
   public numFrames: number;
-  public cont: Controller = null;
+  public cont: Controller = null!;
 
   public syncPointIndex: number = 0;
   public cameraMovementIndex: number = 0;

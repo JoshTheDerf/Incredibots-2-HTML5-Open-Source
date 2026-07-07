@@ -202,7 +202,7 @@ export class b2StaticEdgeShape extends b2Shape
 	public m_cornerDir2:b2Vec2;
 
 	// Reference to parent chain and adjacent siblings:
-	public m_chain:b2StaticEdgeChain;
-	public m_nextEdge: b2StaticEdgeShape;
-	public m_prevEdge: b2StaticEdgeShape;
+	public m_chain!:b2StaticEdgeChain;
+	public m_nextEdge!: b2StaticEdgeShape;
+	public m_prevEdge!: b2StaticEdgeShape;
 }

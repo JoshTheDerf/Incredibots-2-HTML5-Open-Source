@@ -15,7 +15,7 @@
 // out of the way.
 import { computed } from "vue";
 import { useGameStore } from "../gameStore";
-import { keyCodeToLabel } from "../keyLabel";
+import { keyCodeToLabel } from "../keyLabels";
 import IbButton from "./IbButton.vue";
 
 const game = useGameStore();

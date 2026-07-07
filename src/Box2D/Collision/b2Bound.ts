@@ -36,7 +36,7 @@ export class b2Bound{
 		b.stabbingCount = tempStabbingCount;
 	}
 
-	public value:number;
-	public proxyId:number;
-	public stabbingCount:number;
+	public value!:number;
+	public proxyId!:number;
+	public stabbingCount!:number;
 }

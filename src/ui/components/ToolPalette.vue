@@ -274,11 +274,14 @@ function reset(): void {
 					<template v-else>Resume</template>
 				</IbButton>
 				<!-- Save Replay — shown while the sim is running/paused (legacy game
-				     and pause panels both carried it). -->
+				     and pause panels both carried it). Disabled when the recording is
+				     marked non-saveable (fracture / bomb detonation / replay caps):
+				     exportReplay refuses it, so the button greys out instead. -->
 				<IbButton
 					family="purple"
 					:class="{ 'icon-btn': isMobile }"
-					title="Save Replay"
+					:disabled="!game.replay.canSave"
+					:title="game.replay.canSave ? 'Save Replay' : 'Replay can\'t be saved (the run isn\'t reproducible)'"
 					aria-label="Save Replay"
 					@click="emit('saveReplay')"
 				>

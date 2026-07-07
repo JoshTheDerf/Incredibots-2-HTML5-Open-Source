@@ -63,7 +63,7 @@ export class PartEditWindow extends GuiWindow {
   private m_outlineBox3: GuiCheckBox;
   private m_collisionBox3: GuiCheckBox;
   private m_collisionBox2: GuiCheckBox;
-  private m_fixateBox2: GuiCheckBox = null;
+  private m_fixateBox2: GuiCheckBox = null!;
   private m_undragableBox2: GuiCheckBox;
 
   private m_alwaysVisibleBox: GuiCheckBox;
@@ -525,7 +525,7 @@ export class PartEditWindow extends GuiWindow {
     this.m_sizeArea.maxLength = 4;
     this.m_sizeArea.on("click", (event: any) => this.sizeFocus(event));
     this.m_sizeArea.on("focus", (event: any) => this.TextAreaGotFocus(event));
-    this.m_sizeArea.on("change", (event: any) => this.cont.textEntered(event));
+    this.m_sizeArea.on("change", (event: any) => (this.cont as any).textEntered(event));
     this.m_sizeArea.on("blur", (event: any) => this.cont.sizeText(this.m_sizeArea, event));
     this.m_sizeArea.on("hide", (event: any) => this.cont.sizeText(this.m_sizeArea, event));
     this.m_textEditPanel.addChild(this.m_sizeArea);
@@ -829,7 +829,7 @@ export class PartEditWindow extends GuiWindow {
     this.m_strengthArea.height = 15;
     this.m_strengthArea.on("click", (event: any) => this.strengthFocus(event));
     this.m_strengthArea.on("focus", (event: any) => this.TextAreaGotFocus(event));
-    this.m_strengthArea.on("change", (event: any) => this.cont.textEntered(event));
+    this.m_strengthArea.on("change", (event: any) => (this.cont as any).textEntered(event));
     this.m_strengthArea.on("blur", (event: any) => this.cont.strengthText(event));
     this.m_strengthArea.on("hide", (event: any) => this.cont.strengthText(event));
     this.m_jointEditPanel.addChild(this.m_strengthArea);
@@ -838,7 +838,7 @@ export class PartEditWindow extends GuiWindow {
     this.m_speedArea.maxLength = 5;
     this.m_speedArea.on("click", (event: any) => this.speedFocus(event));
     this.m_speedArea.on("focus", (event: any) => this.TextAreaGotFocus(event));
-    this.m_speedArea.on("change", (event: any) => this.cont.textEntered(event));
+    this.m_speedArea.on("change", (event: any) => (this.cont as any).textEntered(event));
     this.m_speedArea.on("blur", (event: any) => this.cont.speedText(event));
     this.m_speedArea.on("hide", (event: any) => this.cont.speedText(event));
     this.m_jointEditPanel.addChild(this.m_speedArea);
@@ -1089,12 +1089,12 @@ export class PartEditWindow extends GuiWindow {
     this.m_densityArea7.text = cannon.density.toString();
     this.m_collisionBox7.selected = cannon.collide;
     this.m_collisionBox7.visible =
-      (this.cont.controllerType === "sandbox" && !(this.cont.controllerType === "challenge")) ||
+      (this.cont.controllerType === "sandbox" && !((this.cont.controllerType as string) === "challenge")) ||
       (this.cont.controllerType === "challenge" &&
         (ControllerGameGlobals.challenge.nonCollidingAllowed || !ControllerGameGlobals.playChallengeMode));
     this.m_fixateBox7.selected = cannon.isStatic;
     this.m_fixateBox7.visible =
-      (this.cont.controllerType === "sandbox" && !(this.cont.controllerType === "challenge")) ||
+      (this.cont.controllerType === "sandbox" && !((this.cont.controllerType as string) === "challenge")) ||
       (this.cont.controllerType === "challenge" &&
         (ControllerGameGlobals.challenge.fixateAllowed || !ControllerGameGlobals.playChallengeMode));
     this.m_outlineBox7.selected = cannon.outline;
@@ -1150,11 +1150,11 @@ export class PartEditWindow extends GuiWindow {
     this.m_undragableBox2.selected = false;
     this.m_collisionBox2.selected = true;
     this.m_collisionBox2.visible =
-      (this.cont.controllerType === "sandbox" && !(this.cont.controllerType === "challenge")) ||
+      (this.cont.controllerType === "sandbox" && !((this.cont.controllerType as string) === "challenge")) ||
       (this.cont.controllerType === "challenge" &&
         (ControllerGameGlobals.challenge.nonCollidingAllowed || !ControllerGameGlobals.playChallengeMode));
     this.m_fixateBox2.visible =
-      (this.cont.controllerType === "sandbox" && !(this.cont.controllerType === "challenge")) ||
+      (this.cont.controllerType === "sandbox" && !((this.cont.controllerType as string) === "challenge")) ||
       (this.cont.controllerType === "challenge" &&
         (ControllerGameGlobals.challenge.fixateAllowed || !ControllerGameGlobals.playChallengeMode));
     this.m_buildBoxPanel.visible = false;
@@ -1301,7 +1301,7 @@ export class PartEditWindow extends GuiWindow {
       this.m_backButton.visible = true;
       this.m_outlineBox2.visible = true;
       this.m_collisionBox3.visible =
-        (this.cont.controllerType === "sandbox" && !(this.cont.controllerType === "challenge")) ||
+        (this.cont.controllerType === "sandbox" && !((this.cont.controllerType as string) === "challenge")) ||
         (this.cont.controllerType === "challenge" &&
           (ControllerGameGlobals.challenge.nonCollidingAllowed || !ControllerGameGlobals.playChallengeMode));
       this.m_collisionBox3.selected = pjoint.collide;
@@ -1336,19 +1336,19 @@ export class PartEditWindow extends GuiWindow {
     this.m_strengthLabel.style = format;
 
     this.m_inputLabel1.visible =
-      !(this.cont.controllerType === "challenge") ||
+      !((this.cont.controllerType as string) === "challenge") ||
       !ControllerGameGlobals.playChallengeMode ||
       (this.cont.controllerType === "challenge" && ControllerGameGlobals.challenge.botControlAllowed);
     this.m_inputLabel2.visible =
-      !(this.cont.controllerType === "challenge") ||
+      !((this.cont.controllerType as string) === "challenge") ||
       !ControllerGameGlobals.playChallengeMode ||
       (this.cont.controllerType === "challenge" && ControllerGameGlobals.challenge.botControlAllowed);
     this.m_controlKeyArea1.visible =
-      !(this.cont.controllerType === "challenge") ||
+      !((this.cont.controllerType as string) === "challenge") ||
       !ControllerGameGlobals.playChallengeMode ||
       (this.cont.controllerType === "challenge" && ControllerGameGlobals.challenge.botControlAllowed);
     this.m_controlKeyArea2.visible =
-      !(this.cont.controllerType === "challenge") ||
+      !((this.cont.controllerType as string) === "challenge") ||
       !ControllerGameGlobals.playChallengeMode ||
       (this.cont.controllerType === "challenge" && ControllerGameGlobals.challenge.botControlAllowed);
   }
@@ -1374,11 +1374,11 @@ export class PartEditWindow extends GuiWindow {
     this.m_thrustKeyArea.text = str;
 
     this.m_thrustKeyLabel.visible =
-      !(this.cont.controllerType === "challenge") ||
+      !((this.cont.controllerType as string) === "challenge") ||
       !ControllerGameGlobals.playChallengeMode ||
       (this.cont.controllerType === "challenge" && ControllerGameGlobals.challenge.botControlAllowed);
     this.m_thrustKeyArea.visible =
-      !(this.cont.controllerType === "challenge") ||
+      !((this.cont.controllerType as string) === "challenge") ||
       !ControllerGameGlobals.playChallengeMode ||
       (this.cont.controllerType === "challenge" && ControllerGameGlobals.challenge.botControlAllowed);
   }
@@ -1396,11 +1396,11 @@ export class PartEditWindow extends GuiWindow {
     this.m_cannonPanel.visible = false;
   }
 
-  public TextAreaGotFocus(e: Event = null): void {
+  public TextAreaGotFocus(e: Event | null = null): void {
     this.enteringInput = true;
   }
 
-  public TextAreaLostFocus(e: Event = null): void {
+  public TextAreaLostFocus(e: Event | null = null): void {
     this.enteringInput = false;
   }
 

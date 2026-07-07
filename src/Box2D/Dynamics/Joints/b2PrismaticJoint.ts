@@ -667,5 +667,5 @@ export class b2PrismaticJoint extends b2Joint
 
 	public m_enableLimit:boolean;
 	public m_enableMotor:boolean;
-	public m_limitState:number;
+	public m_limitState!:number;
 }

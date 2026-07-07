@@ -10,7 +10,3 @@ import { ref } from "vue";
 
 /** Index of the active control point on the selected Polygon, or null if none. */
 export const selectedPolyPoint = ref<number | null>(null);
-
-export function usePolygonEditState() {
-	return { selectedPolyPoint };
-}

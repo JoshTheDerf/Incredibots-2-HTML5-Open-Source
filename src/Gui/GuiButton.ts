@@ -25,12 +25,12 @@ export class GuiButton extends Container {
   public depressed: boolean = false;
   public stopPropagation: boolean = false;
 
-  public labelText: Text = null;
-  public background: Sprite = null;
+  public labelText: Text = null!;
+  public background: Sprite = null!;
 
-  private upTexture: Texture;
-  private overTexture: Texture;
-  private downTexture: Texture;
+  private upTexture!: Texture;
+  private overTexture!: Texture;
+  private downTexture!: Texture;
   private _disabled: boolean = false;
 
   set disabled(value: boolean) {
@@ -63,7 +63,7 @@ export class GuiButton extends Container {
     colour: number,
     style: TextStyle | null = null,
     addCheckbox: boolean = false,
-    checkboxSelected: boolean = false
+    checkboxSelected: boolean | Boolean = false
   ) {
     super();
 

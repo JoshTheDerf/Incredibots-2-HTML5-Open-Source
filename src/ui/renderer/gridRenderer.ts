@@ -42,6 +42,10 @@ export class GridRenderer {
 	// Fixed label pool, mirroring GridControl.as:52-65 (20 TextFields created up
 	// front, toggled visible per frame).
 	private readonly labels: Text[] = [];
+	// DEVIATION (perf, not in IB3): update() is called every render frame but the
+	// grid is a pure function of camera/viewport/spacing — key those inputs and
+	// skip the full line+label re-tessellation when nothing changed.
+	private lastKey = "";
 
 	constructor() {
 		this.view = new Container();
@@ -68,6 +72,13 @@ export class GridRenderer {
 	update(camera: CameraState, canvasW: number, canvasH: number, visible: boolean, spacing: number): void {
 		this.view.visible = visible;
 		if (!visible) return; // GridControl.as:83-86 — Update no-ops while hidden.
+
+		// Cheap dirty check: rebuild only when an input changed since the last
+		// draw (the Graphics/labels persist across frames, including while hidden,
+		// so re-showing with the same camera reuses the previous tessellation).
+		const key = `${camera.scale},${camera.offsetX},${camera.offsetY},${canvasW},${canvasH},${spacing}`;
+		if (key === this.lastKey) return;
+		this.lastKey = key;
 
 		const scale = camera.scale;
 		const xOff = canvasW / 2 - camera.offsetX;

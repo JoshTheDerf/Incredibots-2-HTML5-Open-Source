@@ -1,5 +1,5 @@
 ﻿import { Graphics, Matrix, Text, TextStyle } from "pixi.js";
-import { b2AABB, b2MouseJointDef, b2Vec2, b2World } from "../Box2D";
+import { b2AABB, b2Body, b2MouseJointDef, b2Vec2, b2World } from "../Box2D";
 import { Action } from "../Actions/Action"
 import { CameraAction } from "../Actions/CameraAction"
 import { ChangeSliderAction } from "../Actions/ChangeSliderAction"
@@ -72,6 +72,7 @@ import { TextPart } from "../Parts/TextPart"
 import { Thrusters } from "../Parts/Thrusters"
 import { Triangle } from "../Parts/Triangle"
 import { Gradient } from "./Graphics/Gradient";
+import type { Sound } from "@pixi/sound";
 
 export class ControllerGame extends Controller {
   //======================
@@ -79,12 +80,12 @@ export class ControllerGame extends Controller {
   //======================
   public controllerType: string = "game";
 
-  private replaySplineXs: Array<any>;
-  private replaySplineYs: Array<any>;
-  private replaySplineAngles: Array<any>;
+  private replaySplineXs!: Array<any>;
+  private replaySplineYs!: Array<any>;
+  private replaySplineAngles!: Array<any>;
 
-  public m_world = null;
-  public m_mouseJoint = null;
+  public m_world: b2World | null = null;
+  public m_mouseJoint: any = null;
   public m_iterations: number = 10;
   public m_timeStep: number = 1.0 / 30;
   public m_physScale: number = ControllerGameGlobals.INIT_PHYS_SCALE;
@@ -99,20 +100,20 @@ export class ControllerGame extends Controller {
   public m_chooserWindow: SaveLoadWindow = null;
   public m_loginWindow: LoginWindow = null;
   public m_newUserWindow: NewUserWindow = null;
-  public m_scoreWindow: ScoreWindow = null;
-  public m_progressDialog: DialogWindow = null;
+  public m_scoreWindow: ScoreWindow = null!;
+  public m_progressDialog: DialogWindow = null!;
   public m_linkDialog: LinkWindow = null;
-  public m_tutorialDialog: TutorialWindow = null;
-  public m_postReplayWindow: PostReplayWindow = null;
+  public m_tutorialDialog: TutorialWindow = null!;
+  public m_postReplayWindow: PostReplayWindow = null!;
   public m_rateDialog: RateWindow = null;
-  public m_restrictionsDialog: RestrictionsWindow = null;
-  public m_conditionsDialog: ConditionsWindow = null;
-  public m_sandboxWindow: AdvancedSandboxWindow = null;
+  public m_restrictionsDialog: RestrictionsWindow = null!;
+  public m_conditionsDialog: ConditionsWindow = null!;
+  public m_sandboxWindow: AdvancedSandboxWindow = null!;
   public m_challengeWindow: ChooseChallengeWindow = null;
   public m_reportWindow: ReportWindow = null;
-  public m_loadWindow: LoadWindow = null;
-  public m_exportDialog: ExportWindow = null;
-  public m_importDialog: ImportWindow = null;
+  public m_loadWindow: LoadWindow = null!;
+  public m_exportDialog: ExportWindow = null!;
+  public m_importDialog: ImportWindow = null!;
   public m_fader: Graphics;
 
   protected hasPanned: boolean = true;
@@ -125,32 +126,32 @@ export class ControllerGame extends Controller {
   public wonChallenge: boolean = false;
   public canSaveReplay: boolean = true;
   protected autoPanning: boolean = true;
-  protected cameraPart: ShapePart = null;
+  protected cameraPart: ShapePart = null!;
 
-  private initRotatingAngle: number;
-  private initDragX: number;
-  private initDragY: number;
+  private initRotatingAngle!: number;
+  private initDragX!: number;
+  private initDragY!: number;
   protected curAction: number = -1;
   private actionStep: number = 0;
-  private firstClickX: number;
-  private firstClickY: number;
-  private secondClickX: number;
-  private secondClickY: number;
-  private savedDrawXOff: number;
-  private savedDrawYOff: number;
-  private mostRecentScaleFactor: number;
+  private firstClickX!: number;
+  private firstClickY!: number;
+  private secondClickX!: number;
+  private secondClickY!: number;
+  private savedDrawXOff!: number;
+  private savedDrawYOff!: number;
+  private mostRecentScaleFactor!: number;
 
   public draw: Draw;
 
-  public sSky: Sky;
+  public sSky!: Sky;
 
   public allParts: Array<any>;
   public actions: Array<any>;
-  public cameraMovements: Array<any>;
-  public keyPresses: Array<any>;
-  public syncPoints: Array<any>;
+  public cameraMovements!: Array<any>;
+  public keyPresses!: Array<any>;
+  public syncPoints!: Array<any>;
 
-  public frameCounter: number;
+  public frameCounter!: number;
   public lastAction: number = -1;
   protected partsFit: boolean = true;
   private draggingTutorial: boolean = false;
@@ -167,18 +168,18 @@ export class ControllerGame extends Controller {
   public saveAfterRestrictions: boolean = false;
 
   public selectedParts: Array<any> = new Array();
-  public selectedBuildArea;
-  public rotatingPart: Object = null;
-  public rotatingParts: Array<any> = null;
-  public draggingPart: Part = null;
-  public draggingParts: Array<any> = null;
-  public jointPart: ShapePart = null;
-  private lastSelectedShape: ShapePart = null;
-  private lastSelectedJoint: JointPart = null;
-  private lastSelectedText: TextPart = null;
-  private lastSelectedThrusters: Thrusters = null;
-  public copiedJoint: JointPart = null;
-  public copiedThrusters: Thrusters = null;
+  public selectedBuildArea: any;
+  public rotatingPart: any = null!;
+  public rotatingParts: Array<any> = null!;
+  public draggingPart: Part = null!;
+  public draggingParts: Array<any> = null!;
+  public jointPart: ShapePart = null!;
+  private lastSelectedShape: ShapePart = null!;
+  private lastSelectedJoint: JointPart = null!;
+  private lastSelectedText: TextPart = null!;
+  private lastSelectedThrusters: Thrusters = null!;
+  public copiedJoint: JointPart = null!;
+  public copiedThrusters: Thrusters = null!;
 
   protected removedGraphics: Array<any> = new Array();
 
@@ -189,15 +190,15 @@ export class ControllerGame extends Controller {
   protected horizLineText: Text;
   protected vertLineText: Text;
   protected shapeText: Text;
-  private newText: Object;
+  private newText: any = null!;
   private oldText: string = "";
 
-  public potentialJointPart1: ShapePart;
-  public potentialJointPart2: ShapePart;
-  public candidateJointX: number;
-  public candidateJointY: number;
-  public candidateJointType: number;
-  public candidateJointParts: Array<any>;
+  public potentialJointPart1!: ShapePart;
+  public potentialJointPart2!: ShapePart;
+  public candidateJointX!: number;
+  public candidateJointY!: number;
+  public candidateJointType!: number;
+  public candidateJointParts!: Array<any>;
 
   constructor() {
     super();
@@ -381,12 +382,12 @@ export class ControllerGame extends Controller {
           this.allParts[i] = newTextPart;
         }
       }
-      ControllerGameGlobals.loadedParts = null;
+      ControllerGameGlobals.loadedParts = null!;
       if (ControllerGameGlobals.initX != Number.MAX_VALUE) {
         this.draw.m_drawXOff = ControllerGameGlobals.initX;
         this.draw.m_drawYOff = ControllerGameGlobals.initY;
         this.m_physScale = ControllerGameGlobals.initZoom;
-      } else if (!(this.controllerType === "challenge")) {
+      } else if (!((this.controllerType as string) === "challenge")) {
         this.CenterOnLoadedRobot();
       }
     } else if (!ControllerGameGlobals.playingReplay) {
@@ -534,7 +535,7 @@ export class ControllerGame extends Controller {
       if (ControllerGameGlobals.showColours) this.draw.m_fillAlpha = 1.0;
       else this.draw.m_fillAlpha = 0.5;
 
-      if (ControllerGameGlobals.playingReplay && !this.simStarted) this.playButton(new MouseEvent(""));
+      if (ControllerGameGlobals.playingReplay && !this.simStarted) this.playButton(new MouseEvent("") as any);
 
       // update mouse position
       ControllerGameGlobals.mouseXWorldPhys = (Input.mouseX + this.draw.m_drawXOff) / this.m_physScale;
@@ -576,8 +577,8 @@ export class ControllerGame extends Controller {
       if (!this.paused) {
         if (!ControllerGameGlobals.playingReplay) {
           if (this.frameCounter % ControllerGameGlobals.REPLAY_SYNC_FRAMES == 0) this.AddSyncPoint();
-          this.m_world.Step(1 / 60, 5);
-          this.m_world.Step(1 / 60, this.m_iterations);
+          this.m_world!.Step(1 / 60, 5);
+          this.m_world!.Step(1 / 60, this.m_iterations);
         }
         this.frameCounter++;
         this.m_guiPanel.SetTimer(this.frameCounter);
@@ -718,7 +719,7 @@ export class ControllerGame extends Controller {
       }
     }
 
-    Main.m_fpsCounter.updatePhys(physStart);
+    Main.m_fpsCounter.updatePhys(physStart!);
 
     if (Database.errorOccurred) {
       this.m_progressDialog.StopTimer();
@@ -774,7 +775,7 @@ export class ControllerGame extends Controller {
     }
   }
 
-  public MoveCameraForReplay(cameraMovement: Object): void {
+  public MoveCameraForReplay(cameraMovement: any): void {
     if (cameraMovement.x != Number.POSITIVE_INFINITY) {
       var oldX: number = this.draw.m_drawXOff;
       var oldY: number = this.draw.m_drawYOff;
@@ -962,7 +963,7 @@ export class ControllerGame extends Controller {
     return S;
   }
 
-  public SyncReplay(syncPoint: Object): void {
+  public SyncReplay(syncPoint: any): void {
     var bodiesUsed: Array<any> = new Array();
     var curIndex: number = 0;
     for (var i: number = 0; i < this.allParts.length; i++) {
@@ -981,7 +982,7 @@ export class ControllerGame extends Controller {
     }
   }
 
-  public SyncReplay2(syncPoint1: Object, syncPoint2: Object): void {
+  public SyncReplay2(syncPoint1: any, syncPoint2: any): void {
     var syncPointIndex: number = ControllerGameGlobals.replay.syncPoints.indexOf(syncPoint1);
     var bodiesUsed: Array<any> = new Array();
     var curIndex: number = 0;
@@ -1071,13 +1072,13 @@ export class ControllerGame extends Controller {
     throw new IllegalOperationError("abstract ControllerGameGlobals.GetScore() called");
   }
 
-  public ContactAdded(point): void {}
+  public ContactAdded(point: any): void {}
 
-  protected GetBuildingArea() {
+  protected GetBuildingArea(): b2AABB {
     throw new IllegalOperationError("abstract ControllerGameGlobals.GetBuildingArea() called");
   }
 
-  protected GetBuildingAreaNumber(i: number) {
+  protected GetBuildingAreaNumber(i: number): b2AABB {
     return this.GetBuildingArea();
   }
 
@@ -1208,7 +1209,7 @@ export class ControllerGame extends Controller {
   }
 
   protected CenterOnLoadedRobot(): void {
-    var cameraPart: ShapePart = null;
+    var cameraPart: ShapePart = null!;
     for (var i: number = 0; i < this.allParts.length; i++) {
       if (this.allParts[i] instanceof ShapePart && this.allParts[i].isCameraFocus) cameraPart = this.allParts[i];
     }
@@ -1235,9 +1236,9 @@ export class ControllerGame extends Controller {
       var oldX: number = this.draw.m_drawXOff;
       var oldY: number = this.draw.m_drawYOff;
       this.draw.m_drawXOff =
-        this.cameraPart.GetBody().GetWorldCenter().x * this.m_physScale - ControllerGameGlobals.ZOOM_FOCUS_X;
+        this.cameraPart.GetBody()!.GetWorldCenter().x * this.m_physScale - ControllerGameGlobals.ZOOM_FOCUS_X;
       this.draw.m_drawYOff =
-        this.cameraPart.GetBody().GetWorldCenter().y * this.m_physScale - ControllerGameGlobals.ZOOM_FOCUS_Y;
+        this.cameraPart.GetBody()!.GetWorldCenter().y * this.m_physScale - ControllerGameGlobals.ZOOM_FOCUS_Y;
       if (isNaN(this.draw.m_drawXOff) || isNaN(this.draw.m_drawYOff)) {
         this.draw.m_drawXOff = oldX;
         this.draw.m_drawYOff = oldY;
@@ -1775,7 +1776,7 @@ export class ControllerGame extends Controller {
       }
     } else if (
       !this.paused &&
-      ((this.controllerType === "sandbox" && !(this.controllerType === "challenge")) ||
+      ((this.controllerType === "sandbox" && !((this.controllerType as string) === "challenge")) ||
         (this.controllerType === "challenge" && ControllerGameGlobals.challenge.mouseDragAllowed))
     ) {
       // mouse press
@@ -1784,12 +1785,12 @@ export class ControllerGame extends Controller {
 
         if (!ControllerGameGlobals.playingReplay && body) {
           var md = new b2MouseJointDef();
-          md.body1 = this.m_world.m_groundBody;
+          md.body1 = this.m_world!.m_groundBody;
           md.body2 = body;
           md.target.Set(ControllerGameGlobals.mouseXWorldPhys, ControllerGameGlobals.mouseYWorldPhys);
           md.maxForce = 300.0 * body.m_mass;
           md.timeStep = this.m_timeStep;
-          this.m_mouseJoint = this.m_world.CreateJoint(md);
+          this.m_mouseJoint = this.m_world!.CreateJoint(md);
           body.WakeUp();
       }
       }
@@ -1803,7 +1804,7 @@ export class ControllerGame extends Controller {
       // mouse release
       if (!Input.mouseDown) {
         if (this.m_mouseJoint) {
-          this.m_world.DestroyJoint(this.m_mouseJoint);
+          this.m_world!.DestroyJoint(this.m_mouseJoint);
           this.m_mouseJoint = null;
         }
       }
@@ -1911,7 +1912,7 @@ export class ControllerGame extends Controller {
       } else if (up && key == 86) {
         this.pasteButton();
       } else if (up && (key == 8 || key == 46)) {
-        if (this.selectedParts.length == 1 && !this.selectedParts[0] instanceof TextPart) this.deleteButton();
+        if (this.selectedParts.length == 1 && !(this.selectedParts[0] instanceof TextPart)) this.deleteButton();
         else this.multiDeleteButton();
       } else if (up && key == 89) {
         this.redoButton();
@@ -1957,7 +1958,7 @@ export class ControllerGame extends Controller {
         }
       }
       if (this.m_tutorialDialog && this.m_tutorialDialog.visible) {
-        this.m_tutorialDialog.closeWindow(new MouseEvent(""));
+        (this.m_tutorialDialog.closeWindow as any)(new MouseEvent(""));
       }
       if (this.m_linkDialog && this.m_linkDialog.visible) {
         this.m_linkDialog.visible = false;
@@ -2063,7 +2064,7 @@ export class ControllerGame extends Controller {
           if (hasShape) this.PlayShapeSound();
         }
         if (this.curAction < 14) this.curAction = -1;
-        this.draggingPart = null;
+        this.draggingPart = null!;
       } else {
         this.ignoreAClick = false;
       }
@@ -2513,19 +2514,19 @@ export class ControllerGame extends Controller {
       this.m_sidePanel.visible = false;
     } else if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof Cannon) {
       this.m_sidePanel.ShowCannonPanel(this.selectedParts[0] as Cannon);
-      this.lastSelectedShape = null;
+      this.lastSelectedShape = null!;
     } else if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof ShapePart) {
       this.m_sidePanel.ShowObjectPanel(this.selectedParts[0] as ShapePart);
-      this.lastSelectedShape = null;
+      this.lastSelectedShape = null!;
     } else if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof TextPart) {
       this.m_sidePanel.ShowTextPanel(this.selectedParts[0] as TextPart);
-      this.lastSelectedText = null;
+      this.lastSelectedText = null!;
     } else if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof JointPart) {
       this.m_sidePanel.ShowJointPanel(this.selectedParts[0] as JointPart);
-      this.lastSelectedJoint = null;
+      this.lastSelectedJoint = null!;
     } else if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof Thrusters) {
       this.m_sidePanel.ShowThrustersPanel(this.selectedParts[0] as Thrusters);
-      this.lastSelectedThrusters = null;
+      this.lastSelectedThrusters = null!;
     } else {
       this.m_sidePanel.ShowMultiSelectPanel(this.selectedParts);
     }
@@ -2541,7 +2542,7 @@ export class ControllerGame extends Controller {
 
   public CenterOnSelected(): void {
     if (this.selectedParts.length == 1) {
-      var centerX: number, centerY: number;
+      var centerX!: number, centerY!: number;
       if (this.selectedParts[0] instanceof ShapePart || this.selectedParts[0] instanceof Thrusters) {
         centerX = this.selectedParts[0].centerX;
         centerY = this.selectedParts[0].centerY;
@@ -2614,9 +2615,9 @@ export class ControllerGame extends Controller {
       this.actionStep = 0;
       this.selectedParts = new Array();
       this.m_sidePanel.visible = false;
-      this.potentialJointPart1 = null;
-      this.potentialJointPart2 = null;
-      this.copiedJoint = null;
+      this.potentialJointPart1 = null!;
+      this.potentialJointPart2 = null!;
+      this.copiedJoint = null!;
     }
   }
 
@@ -2630,9 +2631,9 @@ export class ControllerGame extends Controller {
       this.actionStep = 0;
       this.selectedParts = new Array();
       this.m_sidePanel.visible = false;
-      this.potentialJointPart1 = null;
-      this.potentialJointPart2 = null;
-      this.copiedJoint = null;
+      this.potentialJointPart1 = null!;
+      this.potentialJointPart2 = null!;
+      this.copiedJoint = null!;
     }
   }
 
@@ -2646,9 +2647,9 @@ export class ControllerGame extends Controller {
       this.actionStep = 0;
       this.selectedParts = new Array();
       this.m_sidePanel.visible = false;
-      this.potentialJointPart1 = null;
-      this.potentialJointPart2 = null;
-      this.copiedJoint = null;
+      this.potentialJointPart1 = null!;
+      this.potentialJointPart2 = null!;
+      this.copiedJoint = null!;
     }
   }
 
@@ -2672,7 +2673,7 @@ export class ControllerGame extends Controller {
       this.actionStep = 0;
       this.selectedParts = new Array();
       this.m_sidePanel.visible = false;
-      this.copiedThrusters = null;
+      this.copiedThrusters = null!;
     } else {
       this.m_fader.visible = true;
       this.ShowConfirmDialog(
@@ -2768,7 +2769,7 @@ export class ControllerGame extends Controller {
               this.allParts[i].Init(this.m_world);
           }
 
-          this.cameraPart = null;
+          this.cameraPart = null!;
           for (i = 0; i < this.allParts.length; i++) {
             if (this.allParts[i] instanceof ShapePart && this.allParts[i].isCameraFocus && this.allParts[i].isEnabled)
               this.cameraPart = this.allParts[i];
@@ -2887,7 +2888,7 @@ export class ControllerGame extends Controller {
     }
   }
 
-  public reportButton(): void {
+  public reportButton(e?: any): void {
     if (this.selectingCondition) return;
     if (
       ControllerGameGlobals.playingReplay &&
@@ -2937,7 +2938,7 @@ export class ControllerGame extends Controller {
     }
   }
 
-  public finishReporting(): void {
+  public finishReporting(e?: any): void {
     var threadID: number = Database.FinishReporting(e);
     if (threadID != -1) {
       this.ShowDialog3("Thank you, the moderators have been notified.");
@@ -2961,7 +2962,7 @@ export class ControllerGame extends Controller {
       );
       this.m_fader.visible = true;
       this.ShowDialog("Featuring...");
-      Main.ShowHourglass();
+      (Main as any).ShowHourglass();
     } else if (ControllerGameGlobals.curChallengeID != "" && ControllerGameGlobals.curChallengePublic) {
       Database.FeatureChallenge(
         ControllerGameGlobals.curChallengeID,
@@ -2970,7 +2971,7 @@ export class ControllerGame extends Controller {
       );
       this.m_fader.visible = true;
       this.ShowDialog("Featuring...");
-      Main.ShowHourglass();
+      (Main as any).ShowHourglass();
     } else if (ControllerGameGlobals.curRobotID != "" && ControllerGameGlobals.curRobotPublic) {
       Database.FeatureRobot(
         ControllerGameGlobals.curRobotID,
@@ -2979,7 +2980,7 @@ export class ControllerGame extends Controller {
       );
       this.m_fader.visible = true;
       this.ShowDialog("Featuring...");
-      Main.ShowHourglass();
+      (Main as any).ShowHourglass();
     } else {
       this.m_fader.visible = true;
       this.ShowDialog3("You can only feature publicly saved robots.");
@@ -2988,7 +2989,7 @@ export class ControllerGame extends Controller {
     }
   }
 
-  private finishFeaturing(): void {
+  private finishFeaturing(e?: any): void {
     var retVal: boolean = Database.FinishFeaturing(e);
     if (retVal) {
       this.m_progressDialog.SetMessage("Success!");
@@ -3043,7 +3044,7 @@ export class ControllerGame extends Controller {
     this.redirectAfterRating = redirect;
     this.m_fader.visible = true;
     this.ShowDialog("Rating...");
-    Main.ShowHourglass();
+    (Main as any).ShowHourglass();
     this.curAction = -1;
   }
 
@@ -3055,7 +3056,7 @@ export class ControllerGame extends Controller {
     this.shapeText.visible = false;
     this.m_sidePanel.visible = false;
     if (this.m_conditionsDialog) this.removeChild(this.m_conditionsDialog);
-    this.m_conditionsDialog = new ConditionsWindow(this as ControllerChallenge);
+    this.m_conditionsDialog = new ConditionsWindow(this as unknown as ControllerChallenge);
     this.addChild(this.m_conditionsDialog);
     this.m_fader.visible = true;
   }
@@ -3064,7 +3065,7 @@ export class ControllerGame extends Controller {
     if (this.selectingCondition) return;
     this.m_sidePanel.visible = false;
     if (this.m_restrictionsDialog) this.removeChild(this.m_restrictionsDialog);
-    this.m_restrictionsDialog = new RestrictionsWindow(this as ControllerChallenge);
+    this.m_restrictionsDialog = new RestrictionsWindow(this as unknown as ControllerChallenge);
     this.addChild(this.m_restrictionsDialog);
     this.m_fader.visible = true;
     this.saveAfterRestrictions = false;
@@ -3088,7 +3089,7 @@ export class ControllerGame extends Controller {
     if (!this.simStarted) {
       if (
         this.controllerType === "sandbox" &&
-        (!(this.controllerType === "challenge") || !ControllerGameGlobals.playOnlyMode)
+        (!((this.controllerType as string) === "challenge") || !ControllerGameGlobals.playOnlyMode)
       ) {
         this.m_sandboxWindow = new AdvancedSandboxWindow(this, ControllerGameGlobals.settings);
         this.m_fader.visible = true;
@@ -3112,7 +3113,7 @@ export class ControllerGame extends Controller {
       Database.CommentOnRobot(robotID, this.finishCommenting);
       this.m_fader.visible = true;
       this.ShowDialog("Connecting to forum...");
-      Main.ShowHourglass();
+      (Main as any).ShowHourglass();
       this.curAction = -1;
     } else {
       this.m_fader.visible = true;
@@ -3129,7 +3130,7 @@ export class ControllerGame extends Controller {
         Database.curTransactionType != Database.ACTION_COMMENT_REPLAY)
     )
       return;
-    var threadID: number = Database.FinishCommenting();
+    var threadID: number = (Database.FinishCommenting as any)();
     if (threadID != -1) {
       if (this.m_chooserWindow && this.m_chooserWindow.visible) this.m_chooserWindow.HideFader();
       else this.m_fader.visible = false;
@@ -3146,7 +3147,7 @@ export class ControllerGame extends Controller {
 
   public finishRatingRobot(): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_RATE_ROBOT) return;
-    var retVal: boolean = Database.FinishRating();
+    var retVal: boolean = (Database.FinishRating as any)();
     if (retVal) {
       LSOManager.SetRobotRated(ControllerGameGlobals.curRobotID);
       this.m_progressDialog.SetMessage("Success!");
@@ -3170,7 +3171,7 @@ export class ControllerGame extends Controller {
     this.redirectAfterRating = 0;
   }
 
-  public finishRatingReplay(): void {
+  public finishRatingReplay(e?: any): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_RATE_REPLAY) return;
     var retVal: boolean = Database.FinishRating(e);
     if (retVal) {
@@ -3198,7 +3199,7 @@ export class ControllerGame extends Controller {
 
   public finishRatingChallenge(): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_RATE_CHALLENGE) return;
-    var retVal: boolean = Database.FinishRating();
+    var retVal: boolean = (Database.FinishRating as any)();
     if (retVal) {
       LSOManager.SetChallengeRated(ControllerGameGlobals.curChallengeID);
       this.m_progressDialog.SetMessage("Success!");
@@ -3230,7 +3231,7 @@ export class ControllerGame extends Controller {
     }
     if (robotID != "" && robotPublic) {
       this.m_fader.visible = true;
-      this.ShowLinkDialog("Copy the HTML below into your\n  website to embed this robot.", null, false, robotID);
+      this.ShowLinkDialog("Copy the HTML below into your\n  website to embed this robot.", null!, false, robotID);
     } else {
       this.m_fader.visible = true;
       this.ShowDialog3("You need to save your robot publicly first!");
@@ -3292,7 +3293,7 @@ export class ControllerGame extends Controller {
       Database.CommentOnReplay(replayID, this.finishCommenting);
       this.m_fader.visible = true;
       this.ShowDialog("Connecting to forum...");
-      Main.ShowHourglass();
+      (Main as any).ShowHourglass();
       this.curAction = -1;
     } else {
       this.m_fader.visible = true;
@@ -3309,7 +3310,7 @@ export class ControllerGame extends Controller {
     }
     if (replayID != "" && replayPublic) {
       this.m_fader.visible = true;
-      this.ShowLinkDialog("Copy the HTML below into your\n  website to embed this replay.", null, true, replayID);
+      this.ShowLinkDialog("Copy the HTML below into your\n  website to embed this replay.", null!, true, replayID);
     } else {
       this.m_fader.visible = true;
       this.ShowDialog3("You need to save your replay publicly first!");
@@ -3371,7 +3372,7 @@ export class ControllerGame extends Controller {
       Database.CommentOnChallenge(challengeID, this.finishCommenting);
       this.m_fader.visible = true;
       this.ShowDialog("Connecting to forum...");
-      Main.ShowHourglass();
+      (Main as any).ShowHourglass();
       this.curAction = -1;
     } else {
       this.m_fader.visible = true;
@@ -3391,7 +3392,7 @@ export class ControllerGame extends Controller {
       this.m_fader.visible = true;
       this.ShowLinkDialog(
         "Copy the HTML below into your\n  website to embed this challenge.",
-        null,
+        null!,
         false,
         challengeID,
         true
@@ -4111,7 +4112,7 @@ export class ControllerGame extends Controller {
 
   public strengthText(value: string): void {
     if (this.lastSelectedJoint instanceof JointPart) {
-      var oldStrength: number;
+      var oldStrength!: number;
       if (this.lastSelectedJoint instanceof RevoluteJoint)
         oldStrength = (this.lastSelectedJoint as RevoluteJoint).motorStrength;
       if (this.lastSelectedJoint instanceof PrismaticJoint)
@@ -4143,7 +4144,7 @@ export class ControllerGame extends Controller {
 
   public speedText(value: string): void {
     if (this.lastSelectedJoint instanceof JointPart) {
-      var oldSpeed: number;
+      var oldSpeed!: number;
       if (this.lastSelectedJoint instanceof RevoluteJoint)
         oldSpeed = (this.lastSelectedJoint as RevoluteJoint).motorSpeed;
       if (this.lastSelectedJoint instanceof PrismaticJoint)
@@ -4212,7 +4213,7 @@ export class ControllerGame extends Controller {
     if (this.selectedParts.length == 1 && this.selectedParts[0] instanceof ShapePart) {
       (this.selectedParts[0] as ShapePart).isCameraFocus = value;
       ControllerGameGlobals.curRobotID = "";
-      var oldCameraPart: ShapePart = null;
+      var oldCameraPart: ShapePart = null!;
       if (value) {
         for (var i: number = 0; i < this.allParts.length; i++) {
           if (this.allParts[i] instanceof ShapePart && this.allParts[i] != this.selectedParts[0]) {
@@ -4452,7 +4453,7 @@ export class ControllerGame extends Controller {
   }
 
   public colourButton(red: number, green: number, blue: number, opacity: number, defaultColour: boolean): void {
-    var oldRed: number, oldGreen: number, oldBlue: number, oldOpacity: number;
+    var oldRed: number, oldGreen: number, oldBlue: number, oldOpacity!: number;
     if (defaultColour) {
       ControllerGameGlobals.defaultR = red;
       ControllerGameGlobals.defaultG = green;
@@ -4799,7 +4800,7 @@ export class ControllerGame extends Controller {
       (this.selectedParts[0] as PrismaticJoint).pistonSpeed = value;
       if (oldSpeed != value)
         this.AddAction(
-          new ChangeSliderAction(this.selectedParts[0], ChangeSliderAction.SPEED_TYPE, this.m_checkBoxRoll - oldSpeed)
+          new ChangeSliderAction(this.selectedParts[0], ChangeSliderAction.SPEED_TYPE, (this as any).m_checkBoxRoll - oldSpeed)
         );
     }
     ControllerGameGlobals.curRobotID = "";
@@ -4892,8 +4893,8 @@ export class ControllerGame extends Controller {
   public cutButton(): void {
     if (this.selectingCondition) return;
     if (this.simStarted) return;
-    this.copiedJoint = null;
-    this.copiedThrusters = null;
+    this.copiedJoint = null!;
+    this.copiedThrusters = null!;
     if (this.selectedParts.length == 1) {
       ControllerGameGlobals.clipboardParts = new Array();
       if (this.selectedParts[0] instanceof ShapePart || this.selectedParts[0] instanceof TextPart) {
@@ -4966,8 +4967,8 @@ export class ControllerGame extends Controller {
   public copyButton(): void {
     if (this.selectingCondition) return;
     if (this.simStarted) return;
-    this.copiedJoint = null;
-    this.copiedThrusters = null;
+    this.copiedJoint = null!;
+    this.copiedThrusters = null!;
     if (this.selectedParts.length == 1) {
       ControllerGameGlobals.clipboardParts = new Array();
       if (this.selectedParts[0] instanceof ShapePart || this.selectedParts[0] instanceof TextPart) {
@@ -5114,7 +5115,7 @@ export class ControllerGame extends Controller {
     } else if (this.copiedThrusters) {
       this.curAction = ControllerGameGlobals.NEW_THRUSTERS;
     } else {
-      this.draggingPart = null;
+      this.draggingPart = null!;
       this.m_sidePanel.visible = false;
       this.selectedParts = new Array();
       this.draggingParts = new Array();
@@ -5312,7 +5313,7 @@ export class ControllerGame extends Controller {
     this.ShowConfirmDialog("Are you sure you want to log " + ControllerGameGlobals.userName + " out?", 12);
   }
 
-  public ConfirmLogout(e: MouseEvent): void {
+  public ConfirmLogout(e?: MouseEvent): void {
     Main.premiumMode = false;
     ControllerGameGlobals.userName = "_Public";
     this.m_guiPanel.ShowLogin();
@@ -5370,7 +5371,7 @@ export class ControllerGame extends Controller {
         );
       this.m_scoreWindow.ShowFader();
       this.ShowDialog("Submitting score...");
-      Main.ShowHourglass();
+      (Main as any).ShowHourglass();
     } else if (this.clickedReport) {
       this.clickedReport = false;
       this.reportButton();
@@ -5455,7 +5456,7 @@ export class ControllerGame extends Controller {
           this.ShowDialog("Getting replays...");
         }
         this.m_chooserWindow.ShowFader();
-        Main.ShowHourglass();
+        (Main as any).ShowHourglass();
       }
     }
   }
@@ -5500,8 +5501,8 @@ export class ControllerGame extends Controller {
         this.IsNewFeatures() ||
         this.IsChallengeEditor() ||
         (ControllerGameGlobals.curRobotID != "" &&
-          (!(this.controllerType === "challenge") || ControllerGameGlobals.curChallengeID != "")) ||
-        (!partsExist && !(this.controllerType === "challenge"))
+          (!((this.controllerType as string) === "challenge") || ControllerGameGlobals.curChallengeID != "")) ||
+        (!partsExist && !((this.controllerType as string) === "challenge"))
       ) {
         this.ConfirmNewRobot();
       } else {
@@ -5512,7 +5513,7 @@ export class ControllerGame extends Controller {
     }
   }
 
-  public saveButton(): void {
+  public saveButton(e?: any): void {
     if (this.selectingCondition) return;
     if (Main.inIFrame) {
       this.m_fader.visible = true;
@@ -5542,13 +5543,13 @@ export class ControllerGame extends Controller {
         }
         if (this.controllerType === "challenge" && !ControllerGameGlobals.playChallengeMode) {
           if (this.m_restrictionsDialog) this.removeChild(this.m_restrictionsDialog);
-          this.m_restrictionsDialog = new RestrictionsWindow(this as ControllerChallenge);
+          this.m_restrictionsDialog = new RestrictionsWindow(this as unknown as ControllerChallenge);
           this.addChild(this.m_restrictionsDialog);
           this.saveAfterRestrictions = true;
         } else {
           //Database.GetRobotData(userName, password, false, Database.curSortType, (Database.curSortPeriod == Database.SORT_PERIOD_FEATURED ? Database.SORT_PERIOD_ALLTIME : Database.curSortPeriod), 1, "", finishGettingSaveRobotData);
           //ShowDialog("Getting robots...");
-          //Main.ShowHourglass();
+          //(Main as any).ShowHourglass();
           Database.ExportRobot(
             new Robot(
               this.allParts.filter(this.PartIsEditable),
@@ -5562,7 +5563,7 @@ export class ControllerGame extends Controller {
             1,
             1,
             0,
-            (...args) => this.finishExporting(...args)
+            (...args: any[]) => this.finishExporting(...(args as [string, string]))
           );
         }
         this.m_fader.visible = true;
@@ -5708,14 +5709,14 @@ export class ControllerGame extends Controller {
       );
       this.m_fader.visible = true;
       this.ShowDialog("Getting robots...");
-      Main.ShowHourglass();
+      (Main as any).ShowHourglass();
       this.curAction = -1;
     }
   }
 
   public finishGettingLoadRobotData(): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_ROBOT_DATA) return;
-    if (Database.FinishGettingRobotData()) {
+    if ((Database.FinishGettingRobotData as any)()) {
       this.m_progressDialog.visible = false;
       if (this.m_chooserWindow) this.removeChild(this.m_chooserWindow);
       this.m_chooserWindow = new SaveLoadWindow(this, SaveLoadWindow.LOAD_ROBOT_TYPE);
@@ -5723,9 +5724,9 @@ export class ControllerGame extends Controller {
     }
   }
 
-  public finishLoading(): void {
+  public finishLoading(e?: any): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_LOAD_ROBOT) return;
-    var robot: Robot = Database.FinishLoadingRobot(e);
+    var robot: Robot = (Database.FinishLoadingRobot as any)(e);
     this.processLoadedRobot(robot);
   }
 
@@ -5826,7 +5827,7 @@ export class ControllerGame extends Controller {
     }
   }
 
-  public finishDeleting(): void {
+  public finishDeleting(e?: any): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_DELETE_ROBOT) return;
     var id: string = Database.FinishDeletingRobot(e);
     if (id != "") {
@@ -5850,7 +5851,7 @@ export class ControllerGame extends Controller {
     this.addChild(this.m_exportDialog);
   }
 
-  public saveReplayButton(): void {
+  public saveReplayButton(e?: any): void {
     if (Main.inIFrame) {
       this.m_fader.visible = true;
       this.ShowConfirmDialog("Redirect to incredibots2.com?", 7);
@@ -5861,7 +5862,7 @@ export class ControllerGame extends Controller {
           //if (Database.curSortPeriod == Database.SORT_PERIOD_PROP) Database.curSortPeriod = Database.SORT_PERIOD_ALLTIME;
           //Database.GetReplayData(userName, password, false, Database.curSortType, (Database.curSortPeriod == Database.SORT_PERIOD_FEATURED ? Database.SORT_PERIOD_ALLTIME : Database.curSortPeriod), 1, "", finishGettingSaveReplayData);
           //ShowDialog("Getting replays...");
-          //Main.ShowHourglass();
+          //(Main as any).ShowHourglass();
           //m_fader.visible = true;
           this.AddSyncPoint();
           if (ControllerGameGlobals.viewingUnsavedReplay)
@@ -5874,7 +5875,7 @@ export class ControllerGame extends Controller {
               -1,
               "",
               1,
-              (...args) => this.finishExporting(...args)
+              (...args: any[]) => this.finishExporting(...(args as [string, string]))
             );
           else
             Database.ExportReplay(
@@ -5892,7 +5893,7 @@ export class ControllerGame extends Controller {
               -1,
               "",
               1,
-              (...args) => this.finishExporting(...args)
+              (...args: any[]) => this.finishExporting(...(args as [string, string]))
             );
         } else {
           this.clickedSaveReplay = true;
@@ -5974,7 +5975,7 @@ export class ControllerGame extends Controller {
         this.finishGettingLoadReplayData
       );
       this.ShowDialog("Getting replays...");
-      Main.ShowHourglass();
+      (Main as any).ShowHourglass();
       this.m_fader.visible = true;
       this.curAction = -1;
     }
@@ -6045,7 +6046,7 @@ export class ControllerGame extends Controller {
         this.finishGettingLoadChallengeData
       );
       this.ShowDialog("Getting challenges...");
-      Main.ShowHourglass();
+      (Main as any).ShowHourglass();
       this.m_fader.visible = true;
       this.curAction = -1;
     }
@@ -6101,7 +6102,7 @@ export class ControllerGame extends Controller {
         );
         this.ShowDialog("Getting high scores...");
       }
-      Main.ShowHourglass();
+      (Main as any).ShowHourglass();
       this.m_fader.visible = true;
       this.curAction = -1;
     }
@@ -6159,7 +6160,7 @@ export class ControllerGame extends Controller {
     }
   }
 
-  public finishAddingUser(): void {
+  public finishAddingUser(e?: any): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_ADD_USER) return;
     var retVal: string = Database.FinishAddingUser(e);
     if (retVal != "") {
@@ -6176,11 +6177,11 @@ export class ControllerGame extends Controller {
       );
       ControllerGameGlobals.sessionID = retVal.substr(retVal.indexOf("session: ") + 9);
       this.m_guiPanel.ShowLogout();
-      this.loginHidden(true);
+      (this.loginHidden as any)(true);
     }
   }
 
-  public finishLoggingIn(): void {
+  public finishLoggingIn(e?: any): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_LOGIN) return;
     var retVal: string = Database.FinishLoggingIn(e);
     if (retVal != "") {
@@ -6198,11 +6199,11 @@ export class ControllerGame extends Controller {
       ControllerGameGlobals.sessionID = retVal.substr(retVal.indexOf("session: ") + 9);
       //m_guiPanel.ShowFeatureButton();
       this.m_guiPanel.ShowLogout();
-      this.loginHidden(true);
+      (this.loginHidden as any)(true);
     }
   }
 
-  public finishSavingReplay(): void {
+  public finishSavingReplay(e?: any): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_SAVE_REPLAY) return;
     var robotID: string = Database.FinishSavingReplay(e);
     if (robotID != "") {
@@ -6221,7 +6222,7 @@ export class ControllerGame extends Controller {
         if (this.clickedSubmitScore) {
           this.clickedSubmitScore = false;
           this.m_progressDialog.visible = false;
-          this.highScoresButton(new MouseEvent(""));
+          (this.highScoresButton as any)(new MouseEvent(""));
         } else {
           this.m_scoreWindow.HideFader();
 
@@ -6232,7 +6233,7 @@ export class ControllerGame extends Controller {
 
   public finishGettingLoadReplayData(): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_REPLAY_DATA) return;
-    if (Database.FinishGettingReplayData()) {
+    if ((Database.FinishGettingReplayData as any)()) {
       this.m_progressDialog.visible = false;
       if (this.m_chooserWindow) this.removeChild(this.m_chooserWindow);
       this.m_chooserWindow = new SaveLoadWindow(this, SaveLoadWindow.LOAD_REPLAY_TYPE);
@@ -6241,9 +6242,9 @@ export class ControllerGame extends Controller {
     }
   }
 
-  public async finishLoadingReplay(e): void {
+  public async finishLoadingReplay(e?: any): Promise<void> {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_LOAD_REPLAY) return;
-    var replayAndRobot: Array<any> = await Database.FinishLoadingReplay(e);
+    var replayAndRobot: Array<any> = await (Database.FinishLoadingReplay as any)(e);
     this.processLoadedReplay(replayAndRobot);
   }
 
@@ -6296,7 +6297,7 @@ export class ControllerGame extends Controller {
 
   public finishDeletingReplay(): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_DELETE_REPLAY) return;
-    if (Database.FinishDeletingReplay()) {
+    if ((Database.FinishDeletingReplay as any)()) {
       this.m_progressDialog.SetMessage("Delete successful!");
       this.m_progressDialog.HideInXSeconds(1);
       var type: number = this.m_chooserWindow.dataType;
@@ -6310,7 +6311,7 @@ export class ControllerGame extends Controller {
 
   public finishSavingChallenge(): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_SAVE_CHALLENGE) return;
-    var challengeID: string = Database.FinishSavingChallenge();
+    var challengeID: string = (Database.FinishSavingChallenge as any)();
     if (challengeID != "") {
       ControllerGameGlobals.curChallengeID = challengeID;
       ControllerGameGlobals.ratedCurChallenge = true;
@@ -6333,7 +6334,7 @@ export class ControllerGame extends Controller {
 
   public finishLoadingChallenge(): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_LOAD_CHALLENGE) return;
-    var challenge: Challenge = Database.FinishLoadingChallenge();
+    var challenge: Challenge = (Database.FinishLoadingChallenge as any)();
     this.processLoadedChallenge(challenge);
   }
 
@@ -6362,7 +6363,7 @@ export class ControllerGame extends Controller {
 
   public finishGettingLoadChallengeData(): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_CHALLENGE_DATA) return;
-    if (Database.FinishGettingChallengeData()) {
+    if ((Database.FinishGettingChallengeData as any)()) {
       this.m_progressDialog.visible = false;
       if (this.m_chooserWindow) this.removeChild(this.m_chooserWindow);
       this.m_chooserWindow = new SaveLoadWindow(this, SaveLoadWindow.LOAD_CHALLENGE_TYPE);
@@ -6373,7 +6374,7 @@ export class ControllerGame extends Controller {
 
   public finishGettingLoadChallengeForScoreData(): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_CHALLENGE_DATA) return;
-    if (Database.FinishGettingChallengeData()) {
+    if ((Database.FinishGettingChallengeData as any)()) {
       this.m_progressDialog.visible = false;
       if (this.m_challengeWindow) this.removeChild(this.m_challengeWindow);
       this.m_challengeWindow = new ChooseChallengeWindow(this);
@@ -6384,7 +6385,7 @@ export class ControllerGame extends Controller {
 
   public finishDeletingChallenge(): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_DELETE_CHALLENGE) return;
-    if (Database.FinishDeletingChallenge()) {
+    if ((Database.FinishDeletingChallenge as any)()) {
       this.m_progressDialog.SetMessage("Delete successful!");
       this.m_progressDialog.HideInXSeconds(1);
       var type: number = this.m_chooserWindow.dataType;
@@ -6398,7 +6399,7 @@ export class ControllerGame extends Controller {
 
   public finishGettingScoreData(): void {
     if (!Database.waitingForResponse || Database.curTransactionType != Database.ACTION_GET_SCORE_DATA) return;
-    if (Database.FinishGettingScoreData()) {
+    if ((Database.FinishGettingScoreData as any)()) {
       this.m_progressDialog.visible = false;
       if (this.m_chooserWindow) this.removeChild(this.m_chooserWindow);
       this.m_chooserWindow = new SaveLoadWindow(this, SaveLoadWindow.HIGH_SCORE_TYPE);
@@ -6533,7 +6534,7 @@ export class ControllerGame extends Controller {
       }
     }
     this.m_progressDialog.visible = false;
-    if (ControllerGameGlobals.failedChallenge) this.resetButton(new MouseEvent(""));
+    if (ControllerGameGlobals.failedChallenge) this.resetButton(new MouseEvent("") as any);
     ControllerGameGlobals.failedChallenge = false;
   }
 
@@ -6630,9 +6631,9 @@ export class ControllerGame extends Controller {
     this.m_world = new b2World(worldAABB, this.GetGravity(), true);
 
     var filter: ContactFilter = new ContactFilter();
-    this.m_world.SetContactFilter(filter);
+    this.m_world!.SetContactFilter(filter);
     var listener: ContactListener = new ContactListener(this);
-    this.m_world.SetContactListener(listener);
+    this.m_world!.SetContactListener(listener);
   }
 
   protected GetGravity(): b2Vec2 {
@@ -6660,7 +6661,7 @@ export class ControllerGame extends Controller {
   }
 
   protected FindCenterOfRobot(): ShapePart {
-    var heaviestGroup: Array<any> = null;
+    var heaviestGroup: Array<any> = null!;
     var massOfHeaviestGroup: number = 0;
     for (var i: number = 0; i < this.allParts.length; i++) {
       if (
@@ -6687,7 +6688,7 @@ export class ControllerGame extends Controller {
       }
     }
 
-    if (!heaviestGroup) return null;
+    if (!heaviestGroup) return null!;
 
     var bestIndex: number = -1;
     var bestMass: number = 0;
@@ -6698,7 +6699,7 @@ export class ControllerGame extends Controller {
         bestIndex = i;
       }
     }
-    if (bestIndex == -1) return null;
+    if (bestIndex == -1) return null!;
     return heaviestGroup[bestIndex];
   }
 
@@ -6708,10 +6709,10 @@ export class ControllerGame extends Controller {
     var centerY: number = (ControllerGameGlobals.ZOOM_FOCUS_Y + this.draw.m_drawYOff) / this.m_physScale;
     if (zoomIn) {
       this.m_physScale *= 4.0 / 3.0;
-      if (this.m_physScale > ControllerGameGlobals.MAX_ZOOM_VAL) this.m_physScale = ControllerGameGlobals.MAX_ZOOM_VAL;
+      if (this.m_physScale > (ControllerGameGlobals as any).MAX_ZOOM_VAL) this.m_physScale = (ControllerGameGlobals as any).MAX_ZOOM_VAL;
     } else {
       this.m_physScale *= 3.0 / 4.0;
-      if (this.m_physScale < ControllerGameGlobals.MIN_ZOOM_VAL) this.m_physScale = ControllerGameGlobals.MIN_ZOOM_VAL;
+      if (this.m_physScale < (ControllerGameGlobals as any).MIN_ZOOM_VAL) this.m_physScale = (ControllerGameGlobals as any).MIN_ZOOM_VAL;
     }
     this.draw.m_drawXOff = centerX * this.m_physScale - ControllerGameGlobals.ZOOM_FOCUS_X;
     this.draw.m_drawYOff = centerY * this.m_physScale - ControllerGameGlobals.ZOOM_FOCUS_Y;
@@ -6936,8 +6937,8 @@ export class ControllerGame extends Controller {
     }
   }
 
-  private FindPartToSnapTo(draggingPart: ShapePart = null): ShapePart {
-    var closestPart: ShapePart = null;
+  private FindPartToSnapTo(draggingPart: ShapePart = null!): ShapePart {
+    var closestPart: ShapePart = null!;
     var closestDist: number = Number.MAX_VALUE;
     for (var i: number = 0; i < this.allParts.length; i++) {
       if (this.allParts[i] instanceof ShapePart && this.allParts[i] != draggingPart && this.allParts[i].isEditable) {
@@ -6958,7 +6959,7 @@ export class ControllerGame extends Controller {
     var DIST_THRESHHOLD: number = 12.0 / this.m_physScale;
 
     if (closestDist < DIST_THRESHHOLD) return closestPart;
-    return null;
+    return null!;
   }
 
   private GetBodyAtMouse(): b2Body {
@@ -6971,8 +6972,8 @@ export class ControllerGame extends Controller {
     // Query the world for overlapping shapes.
     var k_maxCount: number = 10;
     var shapes: Array<any> = [];
-    var count:int = this.m_world.Query(aabb, shapes, k_maxCount);
-    var body: b2Body = null;
+    var count: number = this.m_world!.Query(aabb, shapes, k_maxCount);
+    var body: b2Body = null!;
     for (var i: number = 0; i < shapes.length; ++i) {
       if (
         shapes[i].m_body.IsStatic() === false &&
@@ -7041,7 +7042,7 @@ export class ControllerGame extends Controller {
       }
     }
 
-    if (candidateParts.length == 0) return null;
+    if (candidateParts.length == 0) return null!;
     if (candidateParts.length == 1 || allPartsSelected || noPartsSelected) return candidateParts[0];
     for (
       i = (firstSelectedPart + 1) % candidateParts.length;
@@ -7050,6 +7051,6 @@ export class ControllerGame extends Controller {
     ) {
       if (!Util.ObjectInArray(candidateParts[i], this.selectedParts)) return candidateParts[i];
     }
-    return null;
+    return null!;
   }
 }

@@ -197,7 +197,7 @@ export class Database {
     request.method = URLRequestMethod.POST;
     request.contentType = "application/octet-stream";
     Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -331,7 +331,7 @@ export class Database {
     );
     request.method = URLRequestMethod.GET;
     Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -356,7 +356,7 @@ export class Database {
     );
     request.method = URLRequestMethod.GET;
     Database.loader.dataFormat = URLLoaderDataFormat.BINARY;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -398,7 +398,7 @@ export class Database {
     );
     request.method = URLRequestMethod.GET;
     Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -466,7 +466,7 @@ export class Database {
     request.data = replayAndRobot;
     request.method = URLRequestMethod.POST;
     request.contentType = "application/octet-stream";
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -512,7 +512,7 @@ export class Database {
     );
     request.method = URLRequestMethod.GET;
     Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -667,7 +667,7 @@ export class Database {
     );
     request.method = URLRequestMethod.GET;
     Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -712,7 +712,7 @@ export class Database {
     request.data = challengeData;
     request.method = URLRequestMethod.POST;
     request.contentType = "application/octet-stream";
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -758,7 +758,7 @@ export class Database {
     );
     request.method = URLRequestMethod.GET;
     Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -842,7 +842,7 @@ export class Database {
     var request: URLRequest = new URLRequest(Database.Encrypt(Database.BASE_URL + "op=commentRobot&id=" + robotID));
     request.method = URLRequestMethod.GET;
     Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -857,7 +857,7 @@ export class Database {
     var request: URLRequest = new URLRequest(Database.Encrypt(Database.BASE_URL + "op=commentReplay&id=" + replayID));
     request.method = URLRequestMethod.GET;
     Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -874,7 +874,7 @@ export class Database {
     );
     request.method = URLRequestMethod.GET;
     Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -893,7 +893,7 @@ export class Database {
     );
     request.method = URLRequestMethod.GET;
     Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -912,7 +912,7 @@ export class Database {
     );
     request.method = URLRequestMethod.GET;
     Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -931,7 +931,7 @@ export class Database {
     );
     request.method = URLRequestMethod.GET;
     Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -948,7 +948,7 @@ export class Database {
     );
     request.method = URLRequestMethod.GET;
     Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -965,7 +965,7 @@ export class Database {
     );
     request.method = URLRequestMethod.GET;
     Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -982,7 +982,7 @@ export class Database {
     );
     request.method = URLRequestMethod.GET;
     Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -999,7 +999,7 @@ export class Database {
     );
     request.method = URLRequestMethod.GET;
     Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -1016,7 +1016,7 @@ export class Database {
     );
     request.method = URLRequestMethod.GET;
     Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -1033,7 +1033,7 @@ export class Database {
     );
     request.method = URLRequestMethod.GET;
     Database.loader.dataFormat = URLLoaderDataFormat.TEXT;
-    Database.loader.addEventListener(Event.COMPLETE, completionFunction);
+    Database.loader.addEventListener((Event as any).COMPLETE, completionFunction);
     Database.loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.addEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.loader.load(request);
@@ -1042,7 +1042,7 @@ export class Database {
     Database.StartTimer();
   }
 
-  public static FinishFeaturing(e: Event): boolean {
+  public static FinishFeaturing(e: any): boolean {
     Database.StopTimer();
     var response: string = e.target.data.substring(4);
     if (response.search("ERROR") == 0) {
@@ -1056,14 +1056,14 @@ export class Database {
       try {
         Database.nonfatalErrorOccurred = false;
         return parseInt(response) == 1;
-      } catch (e: Error) {
+      } catch (e: any) {
         Database.ErrorHandler(new Event(""), Database.EXCEPTION_MESSAGE);
       }
       return false;
     }
   }
 
-  public static FinishRating(e: Event): boolean {
+  public static FinishRating(e: any): boolean {
     Database.StopTimer();
     var response: string = e.target.data.substring(4);
     if (response.search("ERROR") == 0) {
@@ -1077,14 +1077,14 @@ export class Database {
       try {
         Database.nonfatalErrorOccurred = false;
         return parseInt(response) == 1;
-      } catch (e: Error) {
+      } catch (e: any) {
         Database.ErrorHandler(new Event(""), Database.EXCEPTION_MESSAGE);
       }
       return false;
     }
   }
 
-  public static FinishCommenting(e: Event): number {
+  public static FinishCommenting(e: any): number {
     Database.StopTimer();
     var response: string = e.target.data.substring(4);
     if (response.search("ERROR") == 0) {
@@ -1098,14 +1098,14 @@ export class Database {
       try {
         Database.nonfatalErrorOccurred = false;
         return parseInt(response);
-      } catch (e: Error) {
+      } catch (e: any) {
         Database.ErrorHandler(new Event(""), Database.EXCEPTION_MESSAGE);
       }
       return -1;
     }
   }
 
-  public static FinishReporting(e: Event): number {
+  public static FinishReporting(e: any): number {
     Database.StopTimer();
     var response: string = e.target.data.substring(4);
     if (response.search("ERROR") == 0) {
@@ -1119,14 +1119,14 @@ export class Database {
       try {
         Database.nonfatalErrorOccurred = false;
         return parseInt(response);
-      } catch (e: Error) {
+      } catch (e: any) {
         Database.ErrorHandler(new Event(""), Database.EXCEPTION_MESSAGE);
       }
       return -1;
     }
   }
 
-  public static FinishAddingUser(e: Event): string {
+  public static FinishAddingUser(e: any): string {
     Database.StopTimer();
     var response: string = e.target.data.substring(4);
     if (response.search("ERROR") == 0) {
@@ -1142,7 +1142,7 @@ export class Database {
     }
   }
 
-  public static FinishLoggingIn(e: Event): string {
+  public static FinishLoggingIn(e: any): string {
     Database.StopTimer();
     var response: string = e.target.data.substring(4);
     if (response.search("ERROR") == 0) {
@@ -1158,7 +1158,7 @@ export class Database {
     }
   }
 
-  public static FinishSavingRobot(e: Event): string {
+  public static FinishSavingRobot(e: any): string {
     Database.StopTimer();
     var response: string = e.target.data.substring(4);
     if (response.search("ERROR") != -1) {
@@ -1173,7 +1173,7 @@ export class Database {
     }
   }
 
-  public static FinishGettingRobotData(e: Event): boolean {
+  public static FinishGettingRobotData(e: any): boolean {
     Database.StopTimer();
     var str: string = e.target.data.substring(4);
     if (str.search("ERROR") != -1 && str.search("ERROR") < 5) {
@@ -1218,7 +1218,7 @@ export class Database {
           Database.robotList.push(curRobot);
         }
         return true;
-      } catch (e: Error) {
+      } catch (e: any) {
         Database.ErrorHandler(new Event(""), Database.EXCEPTION_MESSAGE);
       }
       return false;
@@ -1286,7 +1286,7 @@ export class Database {
     return Database.ExtractChallengeFromByteArray(b);
   }
 
-  public static FinishLoadingRobot(e: Event): Robot {
+  public static FinishLoadingRobot(e: any): Robot | null {
     Database.StopTimer();
     var responseData: ByteArray = Database.StripNewlinesAndExtractByte(e.target.data);
     if (responseData.length == 6 || responseData.length == 7) {
@@ -1333,13 +1333,13 @@ export class Database {
       }
 
       return robot;
-    } catch (e: Error) {
+    } catch (e: any) {
       Database.ErrorHandler(new Event(""), Database.EXCEPTION_MESSAGE);
     }
     return null;
   }
 
-  public static FinishDeletingRobot(e: Event): string {
+  public static FinishDeletingRobot(e: any): string {
     Database.StopTimer();
     var response: string = e.target.data.substring(4);
     if (response.search("ERROR") != -1) {
@@ -1355,14 +1355,14 @@ export class Database {
         Database.robotList = Util.RemoveFromArray(Database.robotList[Database.deleteNumber], Database.robotList);
         Database.nonfatalErrorOccurred = false;
         return id;
-      } catch (e: Error) {
+      } catch (e: any) {
         Database.ErrorHandler(new Event(""), Database.EXCEPTION_MESSAGE);
       }
       return "";
     }
   }
 
-  public static FinishSavingReplay(e: Event): string {
+  public static FinishSavingReplay(e: any): string {
     Database.StopTimer();
     var response: string = e.target.data.substring(4);
     if (response.search("ERROR") != -1) {
@@ -1377,7 +1377,7 @@ export class Database {
     }
   }
 
-  public static FinishGettingReplayData(e: Event): boolean {
+  public static FinishGettingReplayData(e: any): boolean {
     Database.StopTimer();
     var str: string = e.target.data.substring(4);
     if (str.search("ERROR") != -1 && str.search("ERROR") < 5) {
@@ -1418,14 +1418,14 @@ export class Database {
           Database.replayList.push(curReplay);
         }
         return true;
-      } catch (e: Error) {
+      } catch (e: any) {
         Database.ErrorHandler(new Event(""), Database.EXCEPTION_MESSAGE);
       }
       return false;
     }
   }
 
-  public static FinishLoadingReplay(e: Event): Array<any> {
+  public static FinishLoadingReplay(e: any): Array<any> | null {
     Database.StopTimer();
     var responseData: ByteArray = Database.StripNewlines(e.target.data);
     if (responseData.length == 6 || responseData.length == 7) {
@@ -1489,13 +1489,13 @@ export class Database {
       replayAndRobot.push(replay);
       replayAndRobot.push(robot);
       return replayAndRobot;
-    } catch (e: Error) {
+    } catch (e: any) {
       Database.ErrorHandler(new Event(""), Database.EXCEPTION_MESSAGE);
     }
     return null;
   }
 
-  public static FinishDeletingReplay(e: Event): boolean {
+  public static FinishDeletingReplay(e: any): boolean {
     Database.StopTimer();
     var response: string = e.target.data.substring(4);
     if (response.search("ERROR") != -1) {
@@ -1510,14 +1510,14 @@ export class Database {
         Database.replayList = Util.RemoveFromArray(Database.replayList[Database.deleteNumber], Database.replayList);
         Database.nonfatalErrorOccurred = false;
         return true;
-      } catch (e: Error) {
+      } catch (e: any) {
         Database.ErrorHandler(new Event(""), Database.EXCEPTION_MESSAGE);
       }
       return false;
     }
   }
 
-  public static FinishSavingChallenge(e: Event): string {
+  public static FinishSavingChallenge(e: any): string {
     Database.StopTimer();
     var response: string = e.target.data.substring(4);
     if (response.search("ERROR") != -1) {
@@ -1532,7 +1532,7 @@ export class Database {
     }
   }
 
-  public static FinishGettingChallengeData(e: Event): boolean {
+  public static FinishGettingChallengeData(e: any): boolean {
     Database.StopTimer();
     var str: string = e.target.data.substring(4);
     if (str.search("ERROR") != -1 && str.search("ERROR") < 5) {
@@ -1573,14 +1573,14 @@ export class Database {
           Database.challengeList.push(curChallenge);
         }
         return true;
-      } catch (e: Error) {
+      } catch (e: any) {
         Database.ErrorHandler(new Event(""), Database.EXCEPTION_MESSAGE);
       }
       return false;
     }
   }
 
-  public static FinishLoadingChallenge(e: Event): Challenge {
+  public static FinishLoadingChallenge(e: any): Challenge | null {
     Database.StopTimer();
     var responseData: ByteArray = Database.StripNewlinesAndExtractByte(e.target.data);
     if (responseData.length == 6 || responseData.length == 7) {
@@ -1609,13 +1609,13 @@ export class Database {
 
       responseData.uncompress();
       return Database.ExtractChallengeFromByteArray(responseData);
-    } catch (e: Error) {
+    } catch (e: any) {
       Database.ErrorHandler(new Event(""), Database.EXCEPTION_MESSAGE);
     }
     return null;
   }
 
-  public static FinishDeletingChallenge(e: Event): boolean {
+  public static FinishDeletingChallenge(e: any): boolean {
     Database.StopTimer();
     var response: string = e.target.data.substring(4);
     if (response.search("ERROR") != -1) {
@@ -1633,14 +1633,14 @@ export class Database {
         );
         Database.nonfatalErrorOccurred = false;
         return true;
-      } catch (e: Error) {
+      } catch (e: any) {
         Database.ErrorHandler(new Event(""), Database.EXCEPTION_MESSAGE);
       }
       return false;
     }
   }
 
-  public static FinishGettingScoreData(e: Event): boolean {
+  public static FinishGettingScoreData(e: any): boolean {
     Database.StopTimer();
     var str: string = e.target.data.substring(4);
     if (str.search("ERROR") != -1 && str.search("ERROR") < 5) {
@@ -1667,7 +1667,7 @@ export class Database {
           Database.scoreList.push(curScore);
         }
         return true;
-      } catch (e: Error) {
+      } catch (e: any) {
         Database.ErrorHandler(new Event(""), Database.EXCEPTION_MESSAGE);
       }
       return false;
@@ -1691,13 +1691,13 @@ export class Database {
   }
 
   private static TimeoutHandler(e: TimerEvent): void {
-    Database.loader.removeEventListener(Event.COMPLETE, Database.latestCompletionFunction);
+    Database.loader.removeEventListener((Event as any).COMPLETE, Database.latestCompletionFunction);
     Database.loader.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, Database.ErrorHandler);
     Database.loader.removeEventListener(IOErrorEvent.IO_ERROR, Database.ErrorHandler);
     Database.ErrorHandler(e, Database.ERROR_MESSAGES[0]);
   }
 
-  public static ErrorHandler(e: Event, msg: string = Database.UNKNOWN_MESSAGE): void {
+  public static ErrorHandler(e: any, msg: string = Database.UNKNOWN_MESSAGE): void {
     Database.StopTimer();
     Database.errorOccurred = true;
     if (msg == Database.UNKNOWN_MESSAGE) {
@@ -1706,7 +1706,7 @@ export class Database {
       } else {
         msg = Database.IO_MESSAGE;
       }
-      Database.lastErrorMsg = "Error: " + msg + "  Code: " + (e as ErrorEvent).text;
+      Database.lastErrorMsg = "Error: " + msg + "  Code: " + (e as any).text;
     } else {
       Database.lastErrorMsg = "Error: " + msg;
     }
@@ -1813,7 +1813,7 @@ export class Database {
 
   public static ExtractChallengeFromByteArray(data: ByteArray): Challenge {
     var partData: Array<any> = Database.ExtractPartsFromByteArray(data);
-    var settings: Object = data.readObject();
+    var settings: any = data.readObject();
     var c: Challenge = new Challenge(
       new SandboxSettings(
         settings.gravity,
@@ -1953,7 +1953,7 @@ export class Database {
   }
 
   private static ExtractPartsFromByteArray(b: ByteArray): Array<any> {
-    var objectData: Array<any> = b.readObject() as Array;
+    var objectData: Array<any> = b.readObject() as Array<any>;
     var partData: Array<any> = new Array();
 
     // extract the data from the stored Object and recreate parts based on that
@@ -1964,7 +1964,7 @@ export class Database {
         objectData[i].type == "Triangle" ||
         objectData[i].type == "Cannon"
       ) {
-        var shape: ShapePart;
+        var shape!: ShapePart;
         if (objectData[i].type == "Circle") {
           shape = new Circle(objectData[i].centerX, objectData[i].centerY, objectData[i].radius, false);
         } else if (objectData[i].type == "Rectangle") {
@@ -2002,7 +2002,7 @@ export class Database {
         partData.push(shape);
       } else if (objectData[i].type == "TextPart") {
         var text: TextPart = new TextPart(
-          Main.m_curController as ControllerGame,
+          Main.m_curController as unknown as ControllerGame,
           objectData[i].x,
           objectData[i].y,
           objectData[i].w,
@@ -2038,7 +2038,7 @@ export class Database {
         objectData[i].type == "PrismaticJoint"
       ) {
         if (objectData[i].part1Index >= 0 && objectData[i].part2Index >= 0) {
-          var joint: JointPart;
+          var joint!: JointPart;
           if (objectData[i].type == "FixedJoint") {
             joint = new FixedJoint(
               partData[objectData[i].part1Index],
@@ -2129,7 +2129,7 @@ export class Database {
         Number.MAX_VALUE
       );
     } else {
-      var settings: Object = data.readObject();
+      var settings: any = data.readObject();
       var cameraX: number = Number.MAX_VALUE;
       var cameraY: number = Number.MAX_VALUE;
       var zoomLevel: number = Number.MAX_VALUE;
@@ -2303,7 +2303,7 @@ export class Database {
     n += 327;
     n *= 100;
     var i: number = Util.NearestInt(n);
-    var b1: number = parseInt(i / 256);
+    var b1: number = parseInt((i / 256) as any);
     var b2: number = i % 256;
     b.writeByte(b1 - 128);
     b.writeByte(b2 - 128);

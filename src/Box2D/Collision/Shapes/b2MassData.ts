@@ -35,7 +35,7 @@ export class b2MassData
 	/// The rotational inertia of the shape.
 	public I:number = 0.0;
 
-	public static Add(...masses):b2MassData
+	public static Add(...masses:b2MassData[]):b2MassData
 	{
 		var finalMass:b2MassData=new b2MassData();
 		for(var massData of masses) {

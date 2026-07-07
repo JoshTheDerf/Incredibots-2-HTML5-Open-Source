@@ -29,5 +29,5 @@ export class b2NullContact extends b2Contact
 {
 	constructor() { super() }
 	public Evaluate(l:b2ContactListener): void {}
-	public GetManifolds():Array<any> { return null; }
+	public GetManifolds():Array<any> { return null!; }
 }

@@ -27,11 +27,11 @@ import { b2ContactID, b2Shape, b2Vec2 } from "../..";
 /// This structure is used to report contact point results.
 export class  b2ContactResult
 {
-	public shape1:b2Shape;						///< the first shape
-	public shape2:b2Shape;						///< the second shape
+	public shape1!:b2Shape;						///< the first shape
+	public shape2!:b2Shape;						///< the second shape
 	public position:b2Vec2 = new b2Vec2();		///< position in world coordinates
 	public normal:b2Vec2 = new b2Vec2();		///< points from shape1 to shape2
-	public normalImpulse:number;				///< the normal impulse applied to body2
-	public tangentImpulse:number;				///< the tangent impulse applied to body2
+	public normalImpulse!:number;				///< the normal impulse applied to body2
+	public tangentImpulse!:number;				///< the tangent impulse applied to body2
 	public id:b2ContactID = new b2ContactID();	///< the contact id identifies the features in contact
 }

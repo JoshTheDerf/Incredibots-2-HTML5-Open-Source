@@ -1,5 +1,5 @@
 import { Graphics, Matrix, Text } from "pixi.js";
-import { b2Vec2 } from "../Box2D";
+import { b2AABB, b2Vec2 } from "../Box2D";
 import { ControllerGame } from "./ControllerGame"
 import { ControllerGameGlobals } from "./Globals/ControllerGameGlobals"
 import { Gradient } from "./Graphics/Gradient"
@@ -36,7 +36,7 @@ export class ControllerSandbox extends ControllerGame {
 
   private BuildGround(fromConstructor: boolean = false): void {
     this.sSky = new Sky(
-      this,
+      this as any,
       ControllerGameGlobals.settings.background,
       ControllerGameGlobals.settings.backgroundR,
       ControllerGameGlobals.settings.backgroundG,
@@ -608,11 +608,11 @@ export class ControllerSandbox extends ControllerGame {
     }
     if (this.m_scoreWindow) {
       this.removeChild(this.m_scoreWindow);
-      this.m_scoreWindow = null;
+      this.m_scoreWindow = null!;
     }
     if (this.m_progressDialog) {
       this.removeChild(this.m_progressDialog);
-      this.m_progressDialog = null;
+      this.m_progressDialog = null!;
     }
     if (this.m_linkDialog) {
       this.removeChild(this.m_linkDialog);
@@ -620,11 +620,11 @@ export class ControllerSandbox extends ControllerGame {
     }
     if (this.m_tutorialDialog) {
       this.removeChild(this.m_tutorialDialog);
-      this.m_tutorialDialog = null;
+      this.m_tutorialDialog = null!;
     }
     if (this.m_postReplayWindow) {
       this.removeChild(this.m_postReplayWindow);
-      this.m_postReplayWindow = null;
+      this.m_postReplayWindow = null!;
     }
     if (this.m_rateDialog) {
       this.removeChild(this.m_rateDialog);
@@ -632,15 +632,15 @@ export class ControllerSandbox extends ControllerGame {
     }
     if (this.m_restrictionsDialog) {
       this.removeChild(this.m_restrictionsDialog);
-      this.m_restrictionsDialog = null;
+      this.m_restrictionsDialog = null!;
     }
     if (this.m_conditionsDialog) {
       this.removeChild(this.m_conditionsDialog);
-      this.m_conditionsDialog = null;
+      this.m_conditionsDialog = null!;
     }
     if (this.m_sandboxWindow) {
       this.removeChild(this.m_sandboxWindow);
-      this.m_sandboxWindow = null;
+      this.m_sandboxWindow = null!;
     }
     if (this.m_challengeWindow) {
       this.removeChild(this.m_challengeWindow);
@@ -652,7 +652,7 @@ export class ControllerSandbox extends ControllerGame {
     }
     if (this.m_loadWindow) {
       this.removeChild(this.m_loadWindow);
-      this.m_loadWindow = null;
+      this.m_loadWindow = null!;
     }
     this.m_buildAreas = new Array();
     this.m_badBuildAreas = new Array();

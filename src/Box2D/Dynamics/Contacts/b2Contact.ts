@@ -36,7 +36,7 @@ import { b2Body, b2CircleContact, b2ConcaveArcAndCircleContact, b2ContactEdge, b
 
 export class b2Contact
 {
-	public GetManifolds():Array<any>{return null};
+	public GetManifolds():Array<any>{return null!};
 
 	/// Get the number of manifolds. This is 0 or 1 between convex shapes.
 	/// This may be greater than 1 for convex-vs-concave shapes. Each
@@ -146,7 +146,7 @@ export class b2Contact
 		}
 		else
 		{
-			return null;
+			return null!;
 		}
 	}
 	public static Destroy(contact:b2Contact, allocator:any) : void{
@@ -169,13 +169,13 @@ export class b2Contact
 		destroyFcn(contact, allocator);
 	}
 
-	constructor(s1:b2Shape=null, s2:b2Shape=null)
+	constructor(s1:b2Shape | null=null, s2:b2Shape | null=null)
 	{
 		this.m_flags = 0;
 
 		if (!s1 || !s2){
-			this.m_shape1 = null;
-			this.m_shape2 = null;
+			this.m_shape1 = null!;
+			this.m_shape2 = null!;
 			return;
 		}
 
@@ -192,18 +192,18 @@ export class b2Contact
 		this.m_friction = Math.sqrt(this.m_shape1.m_friction * this.m_shape2.m_friction);
 		this.m_restitution = b2Math.b2Max(this.m_shape1.m_restitution, this.m_shape2.m_restitution);
 
-		this.m_prev = null;
-		this.m_next = null;
+		this.m_prev = null!;
+		this.m_next = null!;
 
-		this.m_node1.contact = null;
-		this.m_node1.prev = null;
-		this.m_node1.next = null;
-		this.m_node1.other = null;
+		this.m_node1.contact = null!;
+		this.m_node1.prev = null!;
+		this.m_node1.next = null!;
+		this.m_node1.other = null!;
 
-		this.m_node2.contact = null;
-		this.m_node2.prev = null;
-		this.m_node2.next = null;
-		this.m_node2.other = null;
+		this.m_node2.contact = null!;
+		this.m_node2.prev = null!;
+		this.m_node2.next = null!;
+		this.m_node2.other = null!;
 	}
 
 	public Update(listener:b2ContactListener) : void
@@ -243,8 +243,8 @@ export class b2Contact
 	public m_flags:number;
 
 	// World pool and list pointers.
-	public m_prev:b2Contact;
-	public m_next:b2Contact;
+	public m_prev!:b2Contact;
+	public m_next!:b2Contact;
 
 	// Nodes for connecting bodies.
 	public m_node1:b2ContactEdge = new b2ContactEdge();
@@ -253,12 +253,12 @@ export class b2Contact
 	public m_shape1:b2Shape;
 	public m_shape2:b2Shape;
 
-	public m_manifoldCount:number;
+	public m_manifoldCount!:number;
 
 	// Combined friction
-	public m_friction:number;
-	public m_restitution:number;
+	public m_friction!:number;
+	public m_restitution!:number;
 
-	public m_toi:number;
+	public m_toi!:number;
 
 }

@@ -25,3 +25,12 @@ declare module "*.dat" {
 	export default src;
 }
 
+// The bundled offline icon subset (registerIcons.ts). Vite resolves .json
+// imports natively; tsconfig has no resolveJsonModule, so declare just this
+// one module (narrow wildcard — not "*.json" — to avoid masking other JSON).
+declare module "*lucideSubset.json" {
+	import type { IconifyJSON } from "@iconify/types";
+	const data: IconifyJSON;
+	export default data;
+}
+

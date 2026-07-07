@@ -33,6 +33,9 @@ export class Box2D20Backend implements PhysicsBackend<b2World, b2Body, b2Shape, 
 		return new b2World(aabb, new b2Vec2(def.gravityX, def.gravityY), def.doSleep);
 	}
 
+	/** Engine 20 is pure JS — dropping the last reference is enough (see PhysicsBackend.destroyWorld). */
+	destroyWorld(_world: b2World): void {}
+
 	step(world: b2World, dt: number, iterations: number): void {
 		world.Step(dt, iterations);
 	}

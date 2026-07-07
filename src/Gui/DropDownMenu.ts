@@ -68,8 +68,8 @@ export class DropDownMenu extends Graphics {
     format.fill = "#E1E1EA";
     format.fontSize = 12;
     format.dropShadow = true;
-    format.dropShadowColor = "#343550";
-    format.dropShadowDistance = 1;
+    (format as any).dropShadowColor = "#343550";
+    (format as any).dropShadowDistance = 1;
 
     this.fileText = new MenuText("File", 0, 40);
     this.fileText.interactive = true;

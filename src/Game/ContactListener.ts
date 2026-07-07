@@ -11,7 +11,7 @@ export class ContactListener extends b2ContactListener {
 
   /// Called when a contact point is added. This includes the geometry
   /// and the forces.
-  public BeginContact(point): void {
+  public BeginContact(point: any): void {
     this.cont.ContactAdded(point);
   }
 }

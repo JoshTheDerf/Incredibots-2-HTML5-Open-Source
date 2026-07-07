@@ -535,14 +535,14 @@ export class Resource {
     const promises = [];
     for (const key in Resource.paths) {
       promises.push(
-        fetch(Resource.paths[key])
+        fetch((Resource.paths as any)[key])
           .then((res) => res.blob())
-          .then((resource) => (Resource[key] = resource))
+          .then((resource) => ((Resource as any)[key] = resource))
       );
     }
 
     for (const key in Resource.textures) {
-      promises.push(Assets.load(Resource.textures[key]).then((texture) => (Resource[key] = texture)));
+      promises.push(Assets.load((Resource.textures as any)[key]).then((texture) => ((Resource as any)[key] = texture)));
     }
 
     await Promise.all(promises);

@@ -9,6 +9,7 @@ import { PartEditWindow } from "./PartEditWindow"
 import { Main } from "../Main"
 import { Part } from "../Parts/Part"
 import { TextPart } from "../Parts/TextPart"
+import { ShapePart } from "../Parts/ShapePart"
 
 export class ColourChangeWindow extends GuiWindow {
   private cont: ControllerGame;
@@ -143,10 +144,10 @@ export class ColourChangeWindow extends GuiWindow {
 
   public SetVals(): void {
     var selectedPart: Part = this.cont.selectedParts[0];
-    this.m_redArea.text = selectedPart.red + "";
-    this.m_greenArea.text = selectedPart.green + "";
-    this.m_blueArea.text = selectedPart.blue + "";
-    this.m_opacityArea.text = selectedPart instanceof TextPart ? "255" : selectedPart.opacity + "";
+    this.m_redArea.text = (selectedPart as ShapePart).red + "";
+    this.m_greenArea.text = (selectedPart as ShapePart).green + "";
+    this.m_blueArea.text = (selectedPart as ShapePart).blue + "";
+    this.m_opacityArea.text = selectedPart instanceof TextPart ? "255" : (selectedPart as ShapePart).opacity + "";
     this.SetComboBoxIndex();
     this.redrawBox();
   }
